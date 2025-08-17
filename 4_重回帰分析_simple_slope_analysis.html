@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="小室竜也">
+
+<title>6&nbsp; 重回帰分析 – Rによる統計解析実戦ガイド</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./5_一般化線形モデル_一般化加法モデル.html" rel="next">
+<link href="./3_MANOVA_判別分析.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-5f5948b16bc3df4d260423ec79d744c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "一致なし",
+    "search-matching-documents-text": "一致した文書",
+    "search-copy-link-title": "検索へのリンクをコピー",
+    "search-hide-matches-text": "追加の検索結果を非表示",
+    "search-more-match-text": "追加の検索結果",
+    "search-more-matches-text": "追加の検索結果",
+    "search-clear-button-title": "消去",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "取消",
+    "search-submit-button-title": "検索",
+    "search-label": "サーチ"
+  }
+}</script>
+
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./4_重回帰分析_simple_slope_analysis.html">第II部：回帰分析</a></li><li class="breadcrumb-item"><a href="./4_重回帰分析_simple_slope_analysis.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">重回帰分析</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="サーチ" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Rによる統計解析実戦ガイド</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="リーダーモードの切り替え">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="サーチ"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">はじめに</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./Rの基本的な使い方.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Rの基本的な使い方</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">第I部：統計モデルの基礎</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./統計モデルについての概略.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">統計モデルについての概略</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./1_T検定と効果量.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">T検定と効果量</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./2_ANOVAとカテゴリカル変数のコーディング.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">ANOVA・カテゴリカル変数のコーディング</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./3_MANOVA_判別分析.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">MANOVA・判別分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">第II部：回帰分析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./4_重回帰分析_simple_slope_analysis.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">重回帰分析</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./5_一般化線形モデル_一般化加法モデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">一般化線形モデル・一般化加法モデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./6_混合効果モデル_2値ロジスティック回帰.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">混合効果モデル：2値ロジスティック回帰分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">第III部：ベイズ統計と機械学習</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./7_ベイズ推定.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">ベイズ推定</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./8_ROC曲線_ツリーモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">ROC曲線・ツリーモデル</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">第IV部：多変量解析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10_一般化可能性理論.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">一般化可能性理論</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_項目応答理論とラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">項目応答理論とラッシュモデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_拡張ラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">T検定と効果量</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./参考文献_おすすめの書籍.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">参考文献・おすすめの書籍</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+    <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">目次</h2>
+   
+  <ul>
+  <li><a href="#はじめに" id="toc-はじめに" class="nav-link active" data-scroll-target="#はじめに"><span class="header-section-number">7</span> はじめに</a></li>
+  <li><a href="#データの準備" id="toc-データの準備" class="nav-link" data-scroll-target="#データの準備"><span class="header-section-number">8</span> データの準備</a></li>
+  <li><a href="#説明変数の変換" id="toc-説明変数の変換" class="nav-link" data-scroll-target="#説明変数の変換"><span class="header-section-number">9</span> 説明変数の変換</a></li>
+  <li><a href="#重回帰分析の実施" id="toc-重回帰分析の実施" class="nav-link" data-scroll-target="#重回帰分析の実施"><span class="header-section-number">10</span> 重回帰分析の実施</a>
+  <ul class="collapse">
+  <li><a href="#フルモデルの当てはめ" id="toc-フルモデルの当てはめ" class="nav-link" data-scroll-target="#フルモデルの当てはめ"><span class="header-section-number">10.1</span> フルモデルの当てはめ</a></li>
+  <li><a href="#モデルの作成と選択aic" id="toc-モデルの作成と選択aic" class="nav-link" data-scroll-target="#モデルの作成と選択aic"><span class="header-section-number">10.2</span> モデルの作成と選択（AIC）</a></li>
+  </ul></li>
+  <li><a href="#モデルの前提の確認" id="toc-モデルの前提の確認" class="nav-link" data-scroll-target="#モデルの前提の確認"><span class="header-section-number">11</span> モデルの前提の確認</a></li>
+  <li><a href="#結果の出力" id="toc-結果の出力" class="nav-link" data-scroll-target="#結果の出力"><span class="header-section-number">12</span> 結果の出力</a></li>
+  <li><a href="#結果の可視化" id="toc-結果の可視化" class="nav-link" data-scroll-target="#結果の可視化"><span class="header-section-number">13</span> 結果の可視化</a></li>
+  <li><a href="#下位検定simple-slope-analysis" id="toc-下位検定simple-slope-analysis" class="nav-link" data-scroll-target="#下位検定simple-slope-analysis"><span class="header-section-number">14</span> 下位検定・Simple Slope Analysis</a>
+  <ul class="collapse">
+  <li><a href="#交互作用の可視化" id="toc-交互作用の可視化" class="nav-link" data-scroll-target="#交互作用の可視化"><span class="header-section-number">14.1</span> 交互作用の可視化</a></li>
+  </ul></li>
+  <li><a href="#まとめ" id="toc-まとめ" class="nav-link" data-scroll-target="#まとめ"><span class="header-section-number">15</span> まとめ</a></li>
+  <li><a href="#参考ウェブサイト" id="toc-参考ウェブサイト" class="nav-link" data-scroll-target="#参考ウェブサイト"><span class="header-section-number">16</span> 参考ウェブサイト</a></li>
+  </ul>
+</nav>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./4_重回帰分析_simple_slope_analysis.html">第II部：回帰分析</a></li><li class="breadcrumb-item"><a href="./4_重回帰分析_simple_slope_analysis.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">重回帰分析</span></a></li></ol></nav>
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">重回帰分析</span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> コード</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">すべてのコードを表示</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">すべてのコードを非表示</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">ソースコードを表示</a></li></ul></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">作者</div>
+    <div class="quarto-title-meta-contents">
+             <p>小室竜也 </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">公開</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">2025年8月17日</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+<section id="はじめに" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> はじめに</h1>
+<p>これまでに <strong>t検定</strong> と <strong>MANOVA</strong> を扱ってきました。いずれも説明変数がカテゴリカル中心でしたが、実データでは <strong>連続変数</strong>（例：語彙サイズ、適性）を含むことが一般的です。本章では、Notionノートの内容を基に、<strong>重回帰分析</strong>（線形モデル）と <strong>Simple Slope Analysis</strong>（連続×カテゴリカルの交互作用の下位検定）を、<strong>実行可能なRコード</strong>とともに示します。</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+ノート
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>想定データ</strong>：2つの学習方法（Glossing / Writing）、2つのテスト（Recall / Recognition）、2つの時点（Immediate / Delayed）、共変量として Proficiency（語彙サイズ）, Aptitude（記憶力/適性）。</p>
+</div>
+</div>
+</section>
+<section id="データの準備" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> データの準備</h1>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># パッケージ</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(performance)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(effectsize)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(emmeans)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sjPlot)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(broom)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MASS)      <span class="co"># step() の周辺や今後の拡張で使用可</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_bw</span>())</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># パラメータ</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>n_participants <span class="ot">&lt;-</span> <span class="dv">50</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>n_items        <span class="ot">&lt;-</span> <span class="dv">30</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>treatments     <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Glossing"</span>, <span class="st">"Writing"</span>)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>tests          <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Recall"</span>, <span class="st">"Recognition"</span>)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>times          <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Immediate"</span>, <span class="st">"Delayed"</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co"># 完全要因の展開</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="at">Participant =</span> <span class="dv">1</span><span class="sc">:</span>n_participants,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="at">Item        =</span> <span class="dv">1</span><span class="sc">:</span>n_items,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">Treatment   =</span> treatments,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="at">Test        =</span> tests,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">Time        =</span> times,</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  <span class="at">KEEP.OUT.ATTRS =</span> <span class="cn">FALSE</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co"># アイテム割当（Glossing:1-15, Writing:16-30）</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> dat[</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>  (dat<span class="sc">$</span>Treatment <span class="sc">==</span> <span class="st">"Glossing"</span> <span class="sc">&amp;</span> dat<span class="sc">$</span>Item <span class="sc">&lt;=</span> <span class="dv">15</span>) <span class="sc">|</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>  (dat<span class="sc">$</span>Treatment <span class="sc">==</span> <span class="st">"Writing"</span>  <span class="sc">&amp;</span> dat<span class="sc">$</span>Item <span class="sc">&gt;</span>  <span class="dv">15</span>), ]</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co"># 0/1反応（Writing &gt; Glossing, Recognition &gt; Recall）</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>Score <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  dat<span class="sc">$</span>Treatment <span class="sc">==</span> <span class="st">"Glossing"</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rbinom</span>(<span class="fu">nrow</span>(dat), <span class="dv">1</span>, <span class="fu">ifelse</span>(dat<span class="sc">$</span>Test <span class="sc">==</span> <span class="st">"Recognition"</span>, <span class="fl">0.5</span>, <span class="fl">0.2</span>)),</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rbinom</span>(<span class="fu">nrow</span>(dat), <span class="dv">1</span>, <span class="fu">ifelse</span>(dat<span class="sc">$</span>Test <span class="sc">==</span> <span class="st">"Recognition"</span>, <span class="fl">0.9</span>, <span class="fl">0.5</span>))</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Immediate 効果を少し上げる（上限1でクリップ）</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>Score <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(dat<span class="sc">$</span>Time <span class="sc">==</span> <span class="st">"Immediate"</span>,</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">pmin</span>(dat<span class="sc">$</span>Score <span class="sc">+</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">1</span>, <span class="fu">nrow</span>(dat), <span class="cn">TRUE</span>), <span class="dv">1</span>),</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>                    dat<span class="sc">$</span>Score)</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co"># 参加者×条件に合計（0-15点）</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>dat_summarized <span class="ot">&lt;-</span> dat <span class="sc">|&gt;</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(Participant, Item, Treatment, Test, Time), as.factor)) <span class="sc">|&gt;</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Participant, Treatment, Test, Time) <span class="sc">|&gt;</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">Score =</span> <span class="fu">sum</span>(Score), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co"># Wide（多変量）→ 本章では Score_Recall を主目的変数に利用</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>wide_scores <span class="ot">&lt;-</span> dat_summarized <span class="sc">|&gt;</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> Test, <span class="at">values_from =</span> Score, <span class="at">names_prefix =</span> <span class="st">"Score_"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(Participant, Treatment, Time), as.factor))</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co"># 参加者レベルの共変量を付与（Proficiency ~ N(2500, 500), Aptitude ~ N(10, 10)）</span></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>participants       <span class="ot">&lt;-</span> <span class="fu">unique</span>(wide_scores<span class="sc">$</span>Participant)</span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>proficiency_values <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="fu">length</span>(participants), <span class="at">mean =</span> <span class="dv">2500</span>, <span class="at">sd =</span> <span class="fu">sqrt</span>(<span class="dv">500</span>))</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>aptitude_values    <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="fu">length</span>(participants), <span class="at">mean =</span> <span class="dv">10</span>,   <span class="at">sd =</span> <span class="fu">sqrt</span>(<span class="dv">10</span>))</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>wide_scores <span class="ot">&lt;-</span> wide_scores <span class="sc">|&gt;</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(<span class="fu">tibble</span>(<span class="at">Participant =</span> participants, <span class="at">Proficiency =</span> proficiency_values), <span class="at">by =</span> <span class="st">"Participant"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(<span class="fu">tibble</span>(<span class="at">Participant =</span> participants, <span class="at">Aptitude    =</span> aptitude_values),   <span class="at">by =</span> <span class="st">"Participant"</span>)</span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(wide_scores)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 7
+  Participant Treatment Time      Score_Recall Score_Recognition Proficiency
+  &lt;fct&gt;       &lt;fct&gt;     &lt;fct&gt;            &lt;dbl&gt;             &lt;dbl&gt;       &lt;dbl&gt;
+1 1           Glossing  Immediate           10                11       2543.
+2 1           Glossing  Delayed              3                 7       2543.
+3 1           Writing   Immediate           14                15       2543.
+4 1           Writing   Delayed              8                12       2543.
+5 2           Glossing  Immediate           10                12       2486.
+6 2           Glossing  Delayed              3                 8       2486.
+# ℹ 1 more variable: Aptitude &lt;dbl&gt;</code></pre>
+</div>
+</div>
+</section>
+<section id="説明変数の変換" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> 説明変数の変換</h1>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" aria-current="page">z変換（連続変数）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">コントラスト（カテゴリカル）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false">補足：係数の読み方</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<p>連続変数は<strong>単位を揃える</strong>ために z 変換します。これにより係数は「<strong>1 SDの変化で従属変数が何単位変わるか</strong>」の解釈になり、<strong>交互作用の比較</strong>や可視化がしやすくなります。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>wide_scores <span class="ot">&lt;-</span> wide_scores <span class="sc">|&gt;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">Proficiency =</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(Proficiency)),</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">Aptitude    =</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(Aptitude))</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<p>交互作用を解釈しやすい <strong>sum coding</strong>（水準和=0）を用います。2水準の場合、レベルは {-1, +1} に再符号化され、<strong>主効果は両群の平均差</strong>、<strong>交互作用は傾きの差</strong>として読みやすくなります。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wide_scores<span class="sc">$</span>Treatment) <span class="ot">&lt;-</span> <span class="fu">contr.sum</span>(<span class="dv">2</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wide_scores<span class="sc">$</span>Time)      <span class="ot">&lt;-</span> <span class="fu">contr.sum</span>(<span class="dv">2</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</div>
+<div id="tabset-1-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-3-tab">
+<ul>
+<li><code>Proficiency</code> と <code>Aptitude</code> は<strong>標準化済み</strong>なので、係数は<strong>標準化回帰係数</strong>に近い解釈になります。<br>
+</li>
+<li><code>Treatment</code> と <code>Time</code> は <strong>sum coding</strong> のため、切片は<strong>水準平均</strong>、主効果は<strong>平均差</strong>を意味します。<br>
+</li>
+<li>交互作用（例：<code>Treatment:Proficiency</code>）は、<strong>Proficiencyの傾きが群でどれだけ異なるか</strong>を表します。</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+<section id="重回帰分析の実施" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> 重回帰分析の実施</h1>
+<section id="フルモデルの当てはめ" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="フルモデルの当てはめ"><span class="header-section-number">10.1</span> フルモデルの当てはめ</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 4要因＋全交互作用のフルモデル</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>mra_full <span class="ot">&lt;-</span> <span class="fu">lm</span>(Score_Recall <span class="sc">~</span> Treatment <span class="sc">*</span> Time <span class="sc">*</span> Proficiency <span class="sc">*</span> Aptitude, <span class="at">data =</span> wide_scores)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mra_full)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = Score_Recall ~ Treatment * Time * Proficiency * 
+    Aptitude, data = wide_scores)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-5.6031 -1.2315  0.0478  1.2162  5.2725 
+
+Coefficients:
+                                      Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)                            7.74303    0.13367  57.929  &lt; 2e-16 ***
+Treatment1                            -1.74832    0.13367 -13.080  &lt; 2e-16 ***
+Time1                                  2.30219    0.13367  17.224  &lt; 2e-16 ***
+Proficiency                            0.04759    0.13711   0.347  0.72893    
+Aptitude                               0.10119    0.15166   0.667  0.50547    
+Treatment1:Time1                       0.43976    0.13367   3.290  0.00120 ** 
+Treatment1:Proficiency                -0.38174    0.13711  -2.784  0.00593 ** 
+Time1:Proficiency                     -0.11915    0.13711  -0.869  0.38600    
+Treatment1:Aptitude                   -0.13492    0.15166  -0.890  0.37485    
+Time1:Aptitude                        -0.10594    0.15166  -0.698  0.48575    
+Proficiency:Aptitude                   0.06765    0.15892   0.426  0.67081    
+Treatment1:Time1:Proficiency           0.07085    0.13711   0.517  0.60599    
+Treatment1:Time1:Aptitude              0.01292    0.15166   0.085  0.93221    
+Treatment1:Proficiency:Aptitude       -0.11230    0.15892  -0.707  0.48068    
+Time1:Proficiency:Aptitude             0.06057    0.15892   0.381  0.70356    
+Treatment1:Time1:Proficiency:Aptitude -0.04414    0.15892  -0.278  0.78152    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.871 on 184 degrees of freedom
+Multiple R-squared:  0.7289,    Adjusted R-squared:  0.7068 
+F-statistic: 32.98 on 15 and 184 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+</section>
+<section id="モデルの作成と選択aic" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="モデルの作成と選択aic"><span class="header-section-number">10.2</span> モデルの作成と選択（AIC）</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ステップワイズ（両方向）：AIC最小化</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>mra_step <span class="ot">&lt;-</span> <span class="fu">step</span>(mra_full, <span class="at">trace =</span> <span class="dv">0</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>mra_step<span class="sc">$</span>call</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>lm(formula = Score_Recall ~ Treatment + Time + Proficiency + 
+    Treatment:Time + Treatment:Proficiency, data = wide_scores)</code></pre>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = Score_Recall ~ Treatment + Time + Proficiency + 
+    Treatment:Time + Treatment:Proficiency, data = wide_scores)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-5.6657 -1.0983  0.0662  1.1871  5.3067 
+
+Coefficients:
+                       Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)             7.73500    0.13017  59.424  &lt; 2e-16 ***
+Treatment1             -1.73500    0.13017 -13.329  &lt; 2e-16 ***
+Time1                   2.29500    0.13017  17.631  &lt; 2e-16 ***
+Proficiency             0.02606    0.13049   0.200 0.841904    
+Treatment1:Time1        0.44500    0.13017   3.419 0.000767 ***
+Treatment1:Proficiency -0.34995    0.13049  -2.682 0.007955 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.841 on 194 degrees of freedom
+Multiple R-squared:  0.7234,    Adjusted R-squared:  0.7163 
+F-statistic: 101.5 on 5 and 194 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+ノート
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>モデル選択の考え方</strong><br>
+- <strong>AIC</strong> は汎化を意識した情報量基準。<strong>小さいほど良い</strong>（過学習を一定程度抑制）。<br>
+- <strong>BIC</strong> はパラメータ数への罰則が強く、より<strong>保守的</strong>。<br>
+- 可能なら <strong>交差検証（CV）</strong> を併用して、予測性能も確認しましょう。</p>
+</div>
+</div>
+</section>
+</section>
+<section id="モデルの前提の確認" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> モデルの前提の確認</h1>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">線形性・外れ値</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">等分散性（ホモスケダスティシティ）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false">正規性（誤差項）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-4" role="tab" aria-controls="tabset-2-4" aria-selected="false">独立性（系列相関）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-5-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-5" role="tab" aria-controls="tabset-2-5" aria-selected="false">多重共線性（VIF）</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<p>残差 vs 予測値の散布図で<strong>系統的な曲線</strong>がないかを確認します。強い曲線や極端な外れ値は<strong>非線形</strong>や<strong>影響点</strong>の可能性。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">check_model</span>(mra_step)  <span class="co"># 総合ダイアグノスティクス</span></span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="4_重回帰分析_simple_slope_analysis_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<p>残差の分散が予測値に依存して増減しないかをチェックします。<strong>ファン形</strong>は違反のサイン。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_heteroscedasticity</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>OK: Error variance appears to be homoscedastic (p = 0.811).</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-3-tab">
+<p>Q-Qプロットで<strong>直線から大きく外れない</strong>ことを確認。サンプルが大きい場合は軽微な逸脱に過敏にならないこと。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_normality</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>OK: residuals appear as normally distributed (p = 0.957).</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-4-tab">
+<p>時系列や縦断データの場合は<strong>自己相関</strong>に注意。Durbin–Watson などで補助確認。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_autocorrelation</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>OK: Residuals appear to be independent and not autocorrelated (p = 0.726).</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-5-tab">
+<p>VIF が <strong>10超</strong>で注意、<strong>5超</strong>でも文脈により検討。相関が高い説明変数は解釈を不安定にします。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_collinearity</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># Check for Multicollinearity
+
+Low Correlation
+
+                  Term  VIF      VIF  CI adj. VIF Tolerance
+             Treatment 1.00 [1.00, 1.00]     1.00      1.00
+                  Time 1.00 [1.00, 1.00]     1.00      1.00
+           Proficiency 1.00 [1.00, 1.00]     1.00      1.00
+        Treatment:Time 1.00 [1.00, 1.00]     1.00      1.00
+ Treatment:Proficiency 1.00 [1.00, 1.00]     1.00      1.00</code></pre>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">model_performance</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># Indices of model performance
+
+AIC     |    AICc |     BIC |    R2 | R2 (adj.) |  RMSE | Sigma
+---------------------------------------------------------------
+819.569 | 820.152 | 842.657 | 0.723 |     0.716 | 1.813 | 1.841</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="結果の出力" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> 結果の出力</h1>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = Score_Recall ~ Treatment + Time + Proficiency + 
+    Treatment:Time + Treatment:Proficiency, data = wide_scores)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-5.6657 -1.0983  0.0662  1.1871  5.3067 
+
+Coefficients:
+                       Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)             7.73500    0.13017  59.424  &lt; 2e-16 ***
+Treatment1             -1.73500    0.13017 -13.329  &lt; 2e-16 ***
+Time1                   2.29500    0.13017  17.631  &lt; 2e-16 ***
+Proficiency             0.02606    0.13049   0.200 0.841904    
+Treatment1:Time1        0.44500    0.13017   3.419 0.000767 ***
+Treatment1:Proficiency -0.34995    0.13049  -2.682 0.007955 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.841 on 194 degrees of freedom
+Multiple R-squared:  0.7234,    Adjusted R-squared:  0.7163 
+F-statistic: 101.5 on 5 and 194 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(mra_step)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small" data-quarto-postprocess="true">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th" style="text-align: center; border-top: double; font-style: normal; font-weight: bold; padding: 0.2cm;">&nbsp;</td>
+<td colspan="3" data-quarto-table-cell-role="th" style="text-align: center; border-top: double; font-style: normal; font-weight: bold; padding: 0.2cm;">Score_Recall</td>
+</tr>
+<tr class="even">
+<td style="text-align: center; border-bottom: 1px solid; font-style: italic; font-weight: normal;">Predictors</td>
+<td style="text-align: center; border-bottom: 1px solid; font-style: italic; font-weight: normal;">Estimates</td>
+<td style="text-align: center; border-bottom: 1px solid; font-style: italic; font-weight: normal;">CI</td>
+<td style="text-align: center; border-bottom: 1px solid; font-style: italic; font-weight: normal;">p</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">(Intercept)</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">7.74</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">7.48&nbsp;–&nbsp;7.99</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;"><strong>&lt;0.001</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">Treatment [1]</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">-1.74</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">-1.99&nbsp;–&nbsp;-1.48</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;"><strong>&lt;0.001</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">Time [1]</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">2.30</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">2.04&nbsp;–&nbsp;2.55</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;"><strong>&lt;0.001</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">Proficiency</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">0.03</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">-0.23&nbsp;–&nbsp;0.28</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">0.842</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">Treatment [1] × Time [1]</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">0.44</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">0.19&nbsp;–&nbsp;0.70</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;"><strong>0.001</strong></td>
+</tr>
+<tr class="even">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">Treatment [1] ×<br>
+Proficiency</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">-0.35</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;">-0.61&nbsp;–&nbsp;-0.09</td>
+<td style="text-align: left; padding: 0.2cm; vertical-align: top;"><strong>0.008</strong></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top; padding-top: 0.1cm; padding-bottom: 0.1cm; border-top: 1px solid;">Observations</td>
+<td colspan="3" style="text-align: left; padding: 0.2cm; vertical-align: top; padding-top: 0.1cm; padding-bottom: 0.1cm; border-top: 1px solid;">200</td>
+</tr>
+<tr class="even">
+<td style="text-align: left; padding: 0.2cm; vertical-align: top; padding-top: 0.1cm; padding-bottom: 0.1cm;">R<sup>2</sup> / R<sup>2</sup> adjusted</td>
+<td colspan="3" style="text-align: left; padding: 0.2cm; vertical-align: top; padding-top: 0.1cm; padding-bottom: 0.1cm;">0.723 / 0.716</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="結果の可視化" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> 結果の可視化</h1>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 代表例：Proficiency × Treatment × Time の効果を可視化</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_model</span>(</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  mra_step,</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">type  =</span> <span class="st">"pred"</span>,</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">terms =</span> <span class="fu">c</span>(<span class="st">"Proficiency"</span>, <span class="st">"Treatment"</span>, <span class="st">"Time"</span>)</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="4_重回帰分析_simple_slope_analysis_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="下位検定simple-slope-analysis" class="level1" data-number="14">
+<h1 data-number="14"><span class="header-section-number">14</span> 下位検定・Simple Slope Analysis</h1>
+<p>連続変数を含む交互作用の下位検定は、<strong>どの値で比較するか</strong>を明示する必要があります。ここでは <code>emmeans</code> の <strong><code>ref_grid()</code></strong> を使って、関心の z 値（例：-2, -1, 0, 1, 2）で条件付き平均と群差を評価します。</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true">概念</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false">条件付きの群差（Timeごと）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-3" role="tab" aria-controls="tabset-3-3" aria-selected="false">Simple Slope（Proficiencyの範囲で）</a></li></ul>
+<div class="tab-content">
+<div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
+<ul>
+<li><strong>Simple slope</strong>：連続変数の特定値で「群差の傾き」を比較<br>
+</li>
+<li><strong>注意</strong>：<code>offset</code> 引数は回帰の切片ずらし用途で、<strong>連続モデレータの下位検定には不向き</strong>。<code>ref_grid()</code> を使います。<br>
+</li>
+<li><strong>解釈</strong>：例えば <code>Treatment:Proficiency</code> が有意なら、「Proficiency が 1 SD 増えたときの傾き差」が有意。</li>
+</ul>
+</div>
+<div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">emmeans</span>(mra_step, pairwise <span class="sc">~</span> Treatment <span class="sc">|</span> Time)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>$emmeans
+Time = Immediate:
+ Treatment emmean   SE  df lower.CL upper.CL
+ Glossing    8.74 0.26 194     8.23     9.25
+ Writing    11.32 0.26 194    10.81    11.83
+
+Time = Delayed:
+ Treatment emmean   SE  df lower.CL upper.CL
+ Glossing    3.26 0.26 194     2.75     3.77
+ Writing     7.62 0.26 194     7.11     8.13
+
+Confidence level used: 0.95 
+
+$contrasts
+Time = Immediate:
+ contrast           estimate    SE  df t.ratio p.value
+ Glossing - Writing    -2.58 0.368 194  -7.008  &lt;.0001
+
+Time = Delayed:
+ contrast           estimate    SE  df t.ratio p.value
+ Glossing - Writing    -4.36 0.368 194 -11.843  &lt;.0001</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-3-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-3-tab">
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>rg <span class="ot">&lt;-</span> <span class="fu">ref_grid</span>(mra_step, <span class="at">at =</span> <span class="fu">list</span>(<span class="at">Proficiency =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">2</span>)))</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">emmeans</span>(rg, pairwise <span class="sc">~</span> Treatment <span class="sc">|</span> Proficiency)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>$emmeans
+Proficiency = -2:
+ Treatment emmean    SE  df lower.CL upper.CL
+ Glossing    6.65 0.412 194     5.83     7.46
+ Writing     8.72 0.412 194     7.90     9.53
+
+Proficiency = -1:
+ Treatment emmean    SE  df lower.CL upper.CL
+ Glossing    6.32 0.261 194     5.81     6.84
+ Writing     9.09 0.261 194     8.58     9.61
+
+Proficiency =  0:
+ Treatment emmean    SE  df lower.CL upper.CL
+ Glossing    6.00 0.184 194     5.64     6.36
+ Writing     9.47 0.184 194     9.11     9.83
+
+Proficiency =  1:
+ Treatment emmean    SE  df lower.CL upper.CL
+ Glossing    5.68 0.261 194     5.16     6.19
+ Writing     9.85 0.261 194     9.33    10.36
+
+Proficiency =  2:
+ Treatment emmean    SE  df lower.CL upper.CL
+ Glossing    5.35 0.412 194     4.54     6.17
+ Writing    10.22 0.412 194     9.41    11.04
+
+Results are averaged over the levels of: Time 
+Confidence level used: 0.95 
+
+$contrasts
+Proficiency = -2:
+ contrast           estimate    SE  df t.ratio p.value
+ Glossing - Writing    -2.07 0.583 194  -3.549  0.0005
+
+Proficiency = -1:
+ contrast           estimate    SE  df t.ratio p.value
+ Glossing - Writing    -2.77 0.369 194  -7.515  &lt;.0001
+
+Proficiency =  0:
+ contrast           estimate    SE  df t.ratio p.value
+ Glossing - Writing    -3.47 0.260 194 -13.329  &lt;.0001
+
+Proficiency =  1:
+ contrast           estimate    SE  df t.ratio p.value
+ Glossing - Writing    -4.17 0.369 194 -11.312  &lt;.0001
+
+Proficiency =  2:
+ contrast           estimate    SE  df t.ratio p.value
+ Glossing - Writing    -4.87 0.583 194  -8.349  &lt;.0001
+
+Results are averaged over the levels of: Time </code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<section id="交互作用の可視化" class="level2" data-number="14.1">
+<h2 data-number="14.1" class="anchored" data-anchor-id="交互作用の可視化"><span class="header-section-number">14.1</span> 交互作用の可視化</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Timeを平均化し、Proficiency上の傾きを図示（点区切り）</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">emmip</span>(rg, Treatment <span class="sc">~</span> Proficiency, <span class="at">style =</span> <span class="st">"factor"</span>, <span class="at">CIs =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>      <span class="at">linearg =</span> <span class="fu">list</span>(), <span class="at">dotarg =</span> <span class="fu">list</span>(<span class="at">size =</span> <span class="dv">2</span>), <span class="at">CIarg =</span> <span class="fu">list</span>(<span class="at">alpha =</span> <span class="dv">1</span>))</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="4_重回帰分析_simple_slope_analysis_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="まとめ" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> まとめ</h1>
+<ul>
+<li>連続変数を含む線形モデルは <strong>lm()</strong> で実装し、<strong>z変換</strong>＋<strong>sum coding</strong> を使うと交互作用の解釈が明瞭。</li>
+<li><strong>AIC によるモデル選択</strong>で過度な複雑さを回避しつつ汎化性能を確保。</li>
+<li><strong>performance</strong> と <strong>emmeans</strong> で <strong>前提確認</strong> と <strong>下位検定</strong> を系統立てて実施。</li>
+<li>Simple Slope はあくまで補助。<strong>可視化</strong>（<code>plot_model</code> / <code>emmip</code>）と併せて解釈。</li>
+</ul>
+</section>
+<section id="参考ウェブサイト" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> 参考ウェブサイト</h1>
+<ul>
+<li>https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis</li>
+<li>https://bookdown.org/mike/data_analysis/moderation.html</li>
+<li>https://kzee.github.io/Interactions_Demo.html</li>
+</ul>
+
+
+<!-- -->
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "コピーしました");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "コピーしました");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+        for (let i=0; i<detailsSrc.length; i++) {
+          const details = detailsSrc[i].parentElement;
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./3_MANOVA_判別分析.html" class="pagination-link" aria-label="MANOVA・判別分析">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">MANOVA・判別分析</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./5_一般化線形モデル_一般化加法モデル.html" class="pagination-link" aria-label="一般化線形モデル・一般化加法モデル">
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">一般化線形モデル・一般化加法モデル</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">ソースコード</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="sourceCode" id="cb31" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "重回帰分析"</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> "小室竜也"</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> today</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true</span></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-depth: 3</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-location: left</span></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-title: "目次"</span></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a><span class="co">    number-sections: true</span></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: true</span></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a><span class="co">    theme: journal</span></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a><span class="co">    fontsize: 1.1em</span></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a><span class="co">    linestretch: 1.8</span></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a><span class="co">    mainfont: "Noto Serif JP"</span></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a><span class="an">lang:</span><span class="co"> ja</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a><span class="in">```{=html}</span></span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a><span class="in">&lt;style&gt;</span></span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a><span class="in">/* journalテーマ用のアカデミックなカスタムスタイル */</span></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a><span class="in">body {</span></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a><span class="in">  font-family: 'Noto Serif JP', 'Times New Roman', serif;</span></span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #2c3e50;</span></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a><span class="in">  line-height: 1.8;</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-29"><a href="#cb31-29" aria-hidden="true" tabindex="-1"></a><span class="in">/* タイトルブロックをジャーナル風に */</span></span>
+<span id="cb31-30"><a href="#cb31-30" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner {</span></span>
+<span id="cb31-31"><a href="#cb31-31" aria-hidden="true" tabindex="-1"></a><span class="in">  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);</span></span>
+<span id="cb31-32"><a href="#cb31-32" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 4px double #495057;</span></span>
+<span id="cb31-33"><a href="#cb31-33" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 2.5em 2em;</span></span>
+<span id="cb31-34"><a href="#cb31-34" aria-hidden="true" tabindex="-1"></a><span class="in">  text-align: center;</span></span>
+<span id="cb31-35"><a href="#cb31-35" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-36"><a href="#cb31-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-37"><a href="#cb31-37" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner .title {</span></span>
+<span id="cb31-38"><a href="#cb31-38" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #212529 !important;</span></span>
+<span id="cb31-39"><a href="#cb31-39" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 2.2em !important;</span></span>
+<span id="cb31-40"><a href="#cb31-40" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 700;</span></span>
+<span id="cb31-41"><a href="#cb31-41" aria-hidden="true" tabindex="-1"></a><span class="in">  letter-spacing: 0.02em;</span></span>
+<span id="cb31-42"><a href="#cb31-42" aria-hidden="true" tabindex="-1"></a><span class="in">  text-transform: uppercase;</span></span>
+<span id="cb31-43"><a href="#cb31-43" aria-hidden="true" tabindex="-1"></a><span class="in">  font-family: 'Noto Sans JP', sans-serif;</span></span>
+<span id="cb31-44"><a href="#cb31-44" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-45"><a href="#cb31-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-46"><a href="#cb31-46" aria-hidden="true" tabindex="-1"></a><span class="in">/* 見出しのアカデミックスタイル */</span></span>
+<span id="cb31-47"><a href="#cb31-47" aria-hidden="true" tabindex="-1"></a><span class="in">h1 {</span></span>
+<span id="cb31-48"><a href="#cb31-48" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.8em;</span></span>
+<span id="cb31-49"><a href="#cb31-49" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 700;</span></span>
+<span id="cb31-50"><a href="#cb31-50" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #1a1a1a;</span></span>
+<span id="cb31-51"><a href="#cb31-51" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 2px solid #212529;</span></span>
+<span id="cb31-52"><a href="#cb31-52" aria-hidden="true" tabindex="-1"></a><span class="in">  padding-bottom: 0.5em;</span></span>
+<span id="cb31-53"><a href="#cb31-53" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 2em;</span></span>
+<span id="cb31-54"><a href="#cb31-54" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 1em;</span></span>
+<span id="cb31-55"><a href="#cb31-55" aria-hidden="true" tabindex="-1"></a><span class="in">  text-transform: uppercase;</span></span>
+<span id="cb31-56"><a href="#cb31-56" aria-hidden="true" tabindex="-1"></a><span class="in">  letter-spacing: 0.03em;</span></span>
+<span id="cb31-57"><a href="#cb31-57" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-58"><a href="#cb31-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-59"><a href="#cb31-59" aria-hidden="true" tabindex="-1"></a><span class="in">h2 {</span></span>
+<span id="cb31-60"><a href="#cb31-60" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.4em;</span></span>
+<span id="cb31-61"><a href="#cb31-61" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb31-62"><a href="#cb31-62" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #343a40;</span></span>
+<span id="cb31-63"><a href="#cb31-63" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 1.5em;</span></span>
+<span id="cb31-64"><a href="#cb31-64" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 0.8em;</span></span>
+<span id="cb31-65"><a href="#cb31-65" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-66"><a href="#cb31-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-67"><a href="#cb31-67" aria-hidden="true" tabindex="-1"></a><span class="in">h2:before {</span></span>
+<span id="cb31-68"><a href="#cb31-68" aria-hidden="true" tabindex="-1"></a><span class="in">  content: "§";</span></span>
+<span id="cb31-69"><a href="#cb31-69" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-right: 0.5em;</span></span>
+<span id="cb31-70"><a href="#cb31-70" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #6c757d;</span></span>
+<span id="cb31-71"><a href="#cb31-71" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 400;</span></span>
+<span id="cb31-72"><a href="#cb31-72" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-73"><a href="#cb31-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-74"><a href="#cb31-74" aria-hidden="true" tabindex="-1"></a><span class="in">h3 {</span></span>
+<span id="cb31-75"><a href="#cb31-75" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.2em;</span></span>
+<span id="cb31-76"><a href="#cb31-76" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb31-77"><a href="#cb31-77" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #495057;</span></span>
+<span id="cb31-78"><a href="#cb31-78" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb31-79"><a href="#cb31-79" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 1.2em;</span></span>
+<span id="cb31-80"><a href="#cb31-80" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 0.6em;</span></span>
+<span id="cb31-81"><a href="#cb31-81" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-82"><a href="#cb31-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-83"><a href="#cb31-83" aria-hidden="true" tabindex="-1"></a><span class="in">/* テーブルを学術論文風に */</span></span>
+<span id="cb31-84"><a href="#cb31-84" aria-hidden="true" tabindex="-1"></a><span class="in">table {</span></span>
+<span id="cb31-85"><a href="#cb31-85" aria-hidden="true" tabindex="-1"></a><span class="in">  margin: 2em auto;</span></span>
+<span id="cb31-86"><a href="#cb31-86" aria-hidden="true" tabindex="-1"></a><span class="in">  border-collapse: collapse;</span></span>
+<span id="cb31-87"><a href="#cb31-87" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.95em;</span></span>
+<span id="cb31-88"><a href="#cb31-88" aria-hidden="true" tabindex="-1"></a><span class="in">  width: 90%;</span></span>
+<span id="cb31-89"><a href="#cb31-89" aria-hidden="true" tabindex="-1"></a><span class="in">  border-top: 2px solid #212529;</span></span>
+<span id="cb31-90"><a href="#cb31-90" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 2px solid #212529;</span></span>
+<span id="cb31-91"><a href="#cb31-91" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-92"><a href="#cb31-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-93"><a href="#cb31-93" aria-hidden="true" tabindex="-1"></a><span class="in">thead {</span></span>
+<span id="cb31-94"><a href="#cb31-94" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa;</span></span>
+<span id="cb31-95"><a href="#cb31-95" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 1px solid #212529;</span></span>
+<span id="cb31-96"><a href="#cb31-96" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-97"><a href="#cb31-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-98"><a href="#cb31-98" aria-hidden="true" tabindex="-1"></a><span class="in">/* コードブロックをシンプルに */</span></span>
+<span id="cb31-99"><a href="#cb31-99" aria-hidden="true" tabindex="-1"></a><span class="in">pre {</span></span>
+<span id="cb31-100"><a href="#cb31-100" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa !important;</span></span>
+<span id="cb31-101"><a href="#cb31-101" aria-hidden="true" tabindex="-1"></a><span class="in">  border: 1px solid #dee2e6;</span></span>
+<span id="cb31-102"><a href="#cb31-102" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 0;</span></span>
+<span id="cb31-103"><a href="#cb31-103" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 1em;</span></span>
+<span id="cb31-104"><a href="#cb31-104" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.9em;</span></span>
+<span id="cb31-105"><a href="#cb31-105" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-106"><a href="#cb31-106" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-107"><a href="#cb31-107" aria-hidden="true" tabindex="-1"></a><span class="in">/* 数式を強調 */</span></span>
+<span id="cb31-108"><a href="#cb31-108" aria-hidden="true" tabindex="-1"></a><span class="in">.math {</span></span>
+<span id="cb31-109"><a href="#cb31-109" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #212529;</span></span>
+<span id="cb31-110"><a href="#cb31-110" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.05em;</span></span>
+<span id="cb31-111"><a href="#cb31-111" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb31-112"><a href="#cb31-112" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb31-113"><a href="#cb31-113" aria-hidden="true" tabindex="-1"></a><span class="in">&lt;/style&gt;</span></span>
+<span id="cb31-114"><a href="#cb31-114" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-115"><a href="#cb31-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-116"><a href="#cb31-116" aria-hidden="true" tabindex="-1"></a><span class="fu"># はじめに</span></span>
+<span id="cb31-117"><a href="#cb31-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-118"><a href="#cb31-118" aria-hidden="true" tabindex="-1"></a>これまでに **t検定** と **MANOVA** を扱ってきました。いずれも説明変数がカテゴリカル中心でしたが、実データでは **連続変数**（例：語彙サイズ、適性）を含むことが一般的です。本章では、Notionノートの内容を基に、**重回帰分析**（線形モデル）と **Simple Slope Analysis**（連続×カテゴリカルの交互作用の下位検定）を、**実行可能なRコード**とともに示します。</span>
+<span id="cb31-119"><a href="#cb31-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-120"><a href="#cb31-120" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
+<span id="cb31-121"><a href="#cb31-121" aria-hidden="true" tabindex="-1"></a>**想定データ**：2つの学習方法（Glossing / Writing）、2つのテスト（Recall / Recognition）、2つの時点（Immediate / Delayed）、共変量として Proficiency（語彙サイズ）, Aptitude（記憶力/適性）。</span>
+<span id="cb31-122"><a href="#cb31-122" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb31-123"><a href="#cb31-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-124"><a href="#cb31-124" aria-hidden="true" tabindex="-1"></a><span class="fu"># データの準備</span></span>
+<span id="cb31-125"><a href="#cb31-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-128"><a href="#cb31-128" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-129"><a href="#cb31-129" aria-hidden="true" tabindex="-1"></a><span class="co"># パッケージ</span></span>
+<span id="cb31-130"><a href="#cb31-130" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb31-131"><a href="#cb31-131" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(performance)</span>
+<span id="cb31-132"><a href="#cb31-132" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(effectsize)</span>
+<span id="cb31-133"><a href="#cb31-133" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(emmeans)</span>
+<span id="cb31-134"><a href="#cb31-134" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sjPlot)</span>
+<span id="cb31-135"><a href="#cb31-135" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(broom)</span>
+<span id="cb31-136"><a href="#cb31-136" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MASS)      <span class="co"># step() の周辺や今後の拡張で使用可</span></span>
+<span id="cb31-137"><a href="#cb31-137" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_bw</span>())</span>
+<span id="cb31-138"><a href="#cb31-138" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-139"><a href="#cb31-139" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb31-140"><a href="#cb31-140" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-141"><a href="#cb31-141" aria-hidden="true" tabindex="-1"></a><span class="co"># パラメータ</span></span>
+<span id="cb31-142"><a href="#cb31-142" aria-hidden="true" tabindex="-1"></a>n_participants <span class="ot">&lt;-</span> <span class="dv">50</span></span>
+<span id="cb31-143"><a href="#cb31-143" aria-hidden="true" tabindex="-1"></a>n_items        <span class="ot">&lt;-</span> <span class="dv">30</span></span>
+<span id="cb31-144"><a href="#cb31-144" aria-hidden="true" tabindex="-1"></a>treatments     <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Glossing"</span>, <span class="st">"Writing"</span>)</span>
+<span id="cb31-145"><a href="#cb31-145" aria-hidden="true" tabindex="-1"></a>tests          <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Recall"</span>, <span class="st">"Recognition"</span>)</span>
+<span id="cb31-146"><a href="#cb31-146" aria-hidden="true" tabindex="-1"></a>times          <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Immediate"</span>, <span class="st">"Delayed"</span>)</span>
+<span id="cb31-147"><a href="#cb31-147" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-148"><a href="#cb31-148" aria-hidden="true" tabindex="-1"></a><span class="co"># 完全要因の展開</span></span>
+<span id="cb31-149"><a href="#cb31-149" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
+<span id="cb31-150"><a href="#cb31-150" aria-hidden="true" tabindex="-1"></a>  <span class="at">Participant =</span> <span class="dv">1</span><span class="sc">:</span>n_participants,</span>
+<span id="cb31-151"><a href="#cb31-151" aria-hidden="true" tabindex="-1"></a>  <span class="at">Item        =</span> <span class="dv">1</span><span class="sc">:</span>n_items,</span>
+<span id="cb31-152"><a href="#cb31-152" aria-hidden="true" tabindex="-1"></a>  <span class="at">Treatment   =</span> treatments,</span>
+<span id="cb31-153"><a href="#cb31-153" aria-hidden="true" tabindex="-1"></a>  <span class="at">Test        =</span> tests,</span>
+<span id="cb31-154"><a href="#cb31-154" aria-hidden="true" tabindex="-1"></a>  <span class="at">Time        =</span> times,</span>
+<span id="cb31-155"><a href="#cb31-155" aria-hidden="true" tabindex="-1"></a>  <span class="at">KEEP.OUT.ATTRS =</span> <span class="cn">FALSE</span></span>
+<span id="cb31-156"><a href="#cb31-156" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb31-157"><a href="#cb31-157" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-158"><a href="#cb31-158" aria-hidden="true" tabindex="-1"></a><span class="co"># アイテム割当（Glossing:1-15, Writing:16-30）</span></span>
+<span id="cb31-159"><a href="#cb31-159" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> dat[</span>
+<span id="cb31-160"><a href="#cb31-160" aria-hidden="true" tabindex="-1"></a>  (dat<span class="sc">$</span>Treatment <span class="sc">==</span> <span class="st">"Glossing"</span> <span class="sc">&amp;</span> dat<span class="sc">$</span>Item <span class="sc">&lt;=</span> <span class="dv">15</span>) <span class="sc">|</span></span>
+<span id="cb31-161"><a href="#cb31-161" aria-hidden="true" tabindex="-1"></a>  (dat<span class="sc">$</span>Treatment <span class="sc">==</span> <span class="st">"Writing"</span>  <span class="sc">&amp;</span> dat<span class="sc">$</span>Item <span class="sc">&gt;</span>  <span class="dv">15</span>), ]</span>
+<span id="cb31-162"><a href="#cb31-162" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-163"><a href="#cb31-163" aria-hidden="true" tabindex="-1"></a><span class="co"># 0/1反応（Writing &gt; Glossing, Recognition &gt; Recall）</span></span>
+<span id="cb31-164"><a href="#cb31-164" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>Score <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(</span>
+<span id="cb31-165"><a href="#cb31-165" aria-hidden="true" tabindex="-1"></a>  dat<span class="sc">$</span>Treatment <span class="sc">==</span> <span class="st">"Glossing"</span>,</span>
+<span id="cb31-166"><a href="#cb31-166" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rbinom</span>(<span class="fu">nrow</span>(dat), <span class="dv">1</span>, <span class="fu">ifelse</span>(dat<span class="sc">$</span>Test <span class="sc">==</span> <span class="st">"Recognition"</span>, <span class="fl">0.5</span>, <span class="fl">0.2</span>)),</span>
+<span id="cb31-167"><a href="#cb31-167" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rbinom</span>(<span class="fu">nrow</span>(dat), <span class="dv">1</span>, <span class="fu">ifelse</span>(dat<span class="sc">$</span>Test <span class="sc">==</span> <span class="st">"Recognition"</span>, <span class="fl">0.9</span>, <span class="fl">0.5</span>))</span>
+<span id="cb31-168"><a href="#cb31-168" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb31-169"><a href="#cb31-169" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-170"><a href="#cb31-170" aria-hidden="true" tabindex="-1"></a><span class="co"># Immediate 効果を少し上げる（上限1でクリップ）</span></span>
+<span id="cb31-171"><a href="#cb31-171" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>Score <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(dat<span class="sc">$</span>Time <span class="sc">==</span> <span class="st">"Immediate"</span>,</span>
+<span id="cb31-172"><a href="#cb31-172" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">pmin</span>(dat<span class="sc">$</span>Score <span class="sc">+</span> <span class="fu">sample</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">1</span>, <span class="fu">nrow</span>(dat), <span class="cn">TRUE</span>), <span class="dv">1</span>),</span>
+<span id="cb31-173"><a href="#cb31-173" aria-hidden="true" tabindex="-1"></a>                    dat<span class="sc">$</span>Score)</span>
+<span id="cb31-174"><a href="#cb31-174" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-175"><a href="#cb31-175" aria-hidden="true" tabindex="-1"></a><span class="co"># 参加者×条件に合計（0-15点）</span></span>
+<span id="cb31-176"><a href="#cb31-176" aria-hidden="true" tabindex="-1"></a>dat_summarized <span class="ot">&lt;-</span> dat <span class="sc">|&gt;</span></span>
+<span id="cb31-177"><a href="#cb31-177" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(Participant, Item, Treatment, Test, Time), as.factor)) <span class="sc">|&gt;</span></span>
+<span id="cb31-178"><a href="#cb31-178" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Participant, Treatment, Test, Time) <span class="sc">|&gt;</span></span>
+<span id="cb31-179"><a href="#cb31-179" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">Score =</span> <span class="fu">sum</span>(Score), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb31-180"><a href="#cb31-180" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-181"><a href="#cb31-181" aria-hidden="true" tabindex="-1"></a><span class="co"># Wide（多変量）→ 本章では Score_Recall を主目的変数に利用</span></span>
+<span id="cb31-182"><a href="#cb31-182" aria-hidden="true" tabindex="-1"></a>wide_scores <span class="ot">&lt;-</span> dat_summarized <span class="sc">|&gt;</span></span>
+<span id="cb31-183"><a href="#cb31-183" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> Test, <span class="at">values_from =</span> Score, <span class="at">names_prefix =</span> <span class="st">"Score_"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb31-184"><a href="#cb31-184" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(Participant, Treatment, Time), as.factor))</span>
+<span id="cb31-185"><a href="#cb31-185" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-186"><a href="#cb31-186" aria-hidden="true" tabindex="-1"></a><span class="co"># 参加者レベルの共変量を付与（Proficiency ~ N(2500, 500), Aptitude ~ N(10, 10)）</span></span>
+<span id="cb31-187"><a href="#cb31-187" aria-hidden="true" tabindex="-1"></a>participants       <span class="ot">&lt;-</span> <span class="fu">unique</span>(wide_scores<span class="sc">$</span>Participant)</span>
+<span id="cb31-188"><a href="#cb31-188" aria-hidden="true" tabindex="-1"></a>proficiency_values <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="fu">length</span>(participants), <span class="at">mean =</span> <span class="dv">2500</span>, <span class="at">sd =</span> <span class="fu">sqrt</span>(<span class="dv">500</span>))</span>
+<span id="cb31-189"><a href="#cb31-189" aria-hidden="true" tabindex="-1"></a>aptitude_values    <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="fu">length</span>(participants), <span class="at">mean =</span> <span class="dv">10</span>,   <span class="at">sd =</span> <span class="fu">sqrt</span>(<span class="dv">10</span>))</span>
+<span id="cb31-190"><a href="#cb31-190" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-191"><a href="#cb31-191" aria-hidden="true" tabindex="-1"></a>wide_scores <span class="ot">&lt;-</span> wide_scores <span class="sc">|&gt;</span></span>
+<span id="cb31-192"><a href="#cb31-192" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(<span class="fu">tibble</span>(<span class="at">Participant =</span> participants, <span class="at">Proficiency =</span> proficiency_values), <span class="at">by =</span> <span class="st">"Participant"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb31-193"><a href="#cb31-193" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(<span class="fu">tibble</span>(<span class="at">Participant =</span> participants, <span class="at">Aptitude    =</span> aptitude_values),   <span class="at">by =</span> <span class="st">"Participant"</span>)</span>
+<span id="cb31-194"><a href="#cb31-194" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-195"><a href="#cb31-195" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(wide_scores)</span>
+<span id="cb31-196"><a href="#cb31-196" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-197"><a href="#cb31-197" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-198"><a href="#cb31-198" aria-hidden="true" tabindex="-1"></a><span class="fu"># 説明変数の変換</span></span>
+<span id="cb31-199"><a href="#cb31-199" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-200"><a href="#cb31-200" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb31-201"><a href="#cb31-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-202"><a href="#cb31-202" aria-hidden="true" tabindex="-1"></a><span class="fu">### z変換（連続変数）</span></span>
+<span id="cb31-203"><a href="#cb31-203" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-204"><a href="#cb31-204" aria-hidden="true" tabindex="-1"></a>連続変数は**単位を揃える**ために z 変換します。これにより係数は「**1 SDの変化で従属変数が何単位変わるか**」の解釈になり、**交互作用の比較**や可視化がしやすくなります。</span>
+<span id="cb31-205"><a href="#cb31-205" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-208"><a href="#cb31-208" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-209"><a href="#cb31-209" aria-hidden="true" tabindex="-1"></a>wide_scores <span class="ot">&lt;-</span> wide_scores <span class="sc">|&gt;</span></span>
+<span id="cb31-210"><a href="#cb31-210" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb31-211"><a href="#cb31-211" aria-hidden="true" tabindex="-1"></a>    <span class="at">Proficiency =</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(Proficiency)),</span>
+<span id="cb31-212"><a href="#cb31-212" aria-hidden="true" tabindex="-1"></a>    <span class="at">Aptitude    =</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(Aptitude))</span>
+<span id="cb31-213"><a href="#cb31-213" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb31-214"><a href="#cb31-214" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-215"><a href="#cb31-215" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-216"><a href="#cb31-216" aria-hidden="true" tabindex="-1"></a><span class="fu">### コントラスト（カテゴリカル）</span></span>
+<span id="cb31-217"><a href="#cb31-217" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-218"><a href="#cb31-218" aria-hidden="true" tabindex="-1"></a>交互作用を解釈しやすい **sum coding**（水準和=0）を用います。2水準の場合、レベルは \{-1, +1\} に再符号化され、**主効果は両群の平均差**、**交互作用は傾きの差**として読みやすくなります。</span>
+<span id="cb31-219"><a href="#cb31-219" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-222"><a href="#cb31-222" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-223"><a href="#cb31-223" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wide_scores<span class="sc">$</span>Treatment) <span class="ot">&lt;-</span> <span class="fu">contr.sum</span>(<span class="dv">2</span>)</span>
+<span id="cb31-224"><a href="#cb31-224" aria-hidden="true" tabindex="-1"></a><span class="fu">contrasts</span>(wide_scores<span class="sc">$</span>Time)      <span class="ot">&lt;-</span> <span class="fu">contr.sum</span>(<span class="dv">2</span>)</span>
+<span id="cb31-225"><a href="#cb31-225" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-226"><a href="#cb31-226" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-227"><a href="#cb31-227" aria-hidden="true" tabindex="-1"></a><span class="fu">### 補足：係数の読み方</span></span>
+<span id="cb31-228"><a href="#cb31-228" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-229"><a href="#cb31-229" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`Proficiency`</span> と <span class="in">`Aptitude`</span> は**標準化済み**なので、係数は**標準化回帰係数**に近い解釈になります。  </span>
+<span id="cb31-230"><a href="#cb31-230" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`Treatment`</span> と <span class="in">`Time`</span> は **sum coding** のため、切片は**水準平均**、主効果は**平均差**を意味します。  </span>
+<span id="cb31-231"><a href="#cb31-231" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>交互作用（例：<span class="in">`Treatment:Proficiency`</span>）は、**Proficiencyの傾きが群でどれだけ異なるか**を表します。</span>
+<span id="cb31-232"><a href="#cb31-232" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb31-233"><a href="#cb31-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-234"><a href="#cb31-234" aria-hidden="true" tabindex="-1"></a><span class="fu"># 重回帰分析の実施</span></span>
+<span id="cb31-235"><a href="#cb31-235" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-236"><a href="#cb31-236" aria-hidden="true" tabindex="-1"></a><span class="fu">## フルモデルの当てはめ</span></span>
+<span id="cb31-237"><a href="#cb31-237" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-240"><a href="#cb31-240" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-241"><a href="#cb31-241" aria-hidden="true" tabindex="-1"></a><span class="co"># 4要因＋全交互作用のフルモデル</span></span>
+<span id="cb31-242"><a href="#cb31-242" aria-hidden="true" tabindex="-1"></a>mra_full <span class="ot">&lt;-</span> <span class="fu">lm</span>(Score_Recall <span class="sc">~</span> Treatment <span class="sc">*</span> Time <span class="sc">*</span> Proficiency <span class="sc">*</span> Aptitude, <span class="at">data =</span> wide_scores)</span>
+<span id="cb31-243"><a href="#cb31-243" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mra_full)</span>
+<span id="cb31-244"><a href="#cb31-244" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-245"><a href="#cb31-245" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-246"><a href="#cb31-246" aria-hidden="true" tabindex="-1"></a><span class="fu">## モデルの作成と選択（AIC）</span></span>
+<span id="cb31-247"><a href="#cb31-247" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-250"><a href="#cb31-250" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-251"><a href="#cb31-251" aria-hidden="true" tabindex="-1"></a><span class="co"># ステップワイズ（両方向）：AIC最小化</span></span>
+<span id="cb31-252"><a href="#cb31-252" aria-hidden="true" tabindex="-1"></a>mra_step <span class="ot">&lt;-</span> <span class="fu">step</span>(mra_full, <span class="at">trace =</span> <span class="dv">0</span>)</span>
+<span id="cb31-253"><a href="#cb31-253" aria-hidden="true" tabindex="-1"></a>mra_step<span class="sc">$</span>call</span>
+<span id="cb31-254"><a href="#cb31-254" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mra_step)</span>
+<span id="cb31-255"><a href="#cb31-255" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-256"><a href="#cb31-256" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-257"><a href="#cb31-257" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
+<span id="cb31-258"><a href="#cb31-258" aria-hidden="true" tabindex="-1"></a>**モデル選択の考え方**  </span>
+<span id="cb31-259"><a href="#cb31-259" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**AIC** は汎化を意識した情報量基準。**小さいほど良い**（過学習を一定程度抑制）。  </span>
+<span id="cb31-260"><a href="#cb31-260" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**BIC** はパラメータ数への罰則が強く、より**保守的**。  </span>
+<span id="cb31-261"><a href="#cb31-261" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>可能なら **交差検証（CV）** を併用して、予測性能も確認しましょう。</span>
+<span id="cb31-262"><a href="#cb31-262" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb31-263"><a href="#cb31-263" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-264"><a href="#cb31-264" aria-hidden="true" tabindex="-1"></a><span class="fu"># モデルの前提の確認</span></span>
+<span id="cb31-265"><a href="#cb31-265" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-266"><a href="#cb31-266" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb31-267"><a href="#cb31-267" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-268"><a href="#cb31-268" aria-hidden="true" tabindex="-1"></a><span class="fu">### 線形性・外れ値</span></span>
+<span id="cb31-269"><a href="#cb31-269" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-270"><a href="#cb31-270" aria-hidden="true" tabindex="-1"></a>残差 vs 予測値の散布図で**系統的な曲線**がないかを確認します。強い曲線や極端な外れ値は**非線形**や**影響点**の可能性。</span>
+<span id="cb31-271"><a href="#cb31-271" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-274"><a href="#cb31-274" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-275"><a href="#cb31-275" aria-hidden="true" tabindex="-1"></a><span class="fu">check_model</span>(mra_step)  <span class="co"># 総合ダイアグノスティクス</span></span>
+<span id="cb31-276"><a href="#cb31-276" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-277"><a href="#cb31-277" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-278"><a href="#cb31-278" aria-hidden="true" tabindex="-1"></a><span class="fu">### 等分散性（ホモスケダスティシティ）</span></span>
+<span id="cb31-279"><a href="#cb31-279" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-280"><a href="#cb31-280" aria-hidden="true" tabindex="-1"></a>残差の分散が予測値に依存して増減しないかをチェックします。**ファン形**は違反のサイン。</span>
+<span id="cb31-281"><a href="#cb31-281" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-284"><a href="#cb31-284" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-285"><a href="#cb31-285" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_heteroscedasticity</span>(mra_step)</span>
+<span id="cb31-286"><a href="#cb31-286" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-287"><a href="#cb31-287" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-288"><a href="#cb31-288" aria-hidden="true" tabindex="-1"></a><span class="fu">### 正規性（誤差項）</span></span>
+<span id="cb31-289"><a href="#cb31-289" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-290"><a href="#cb31-290" aria-hidden="true" tabindex="-1"></a>Q-Qプロットで**直線から大きく外れない**ことを確認。サンプルが大きい場合は軽微な逸脱に過敏にならないこと。</span>
+<span id="cb31-291"><a href="#cb31-291" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-294"><a href="#cb31-294" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-295"><a href="#cb31-295" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_normality</span>(mra_step)</span>
+<span id="cb31-296"><a href="#cb31-296" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-297"><a href="#cb31-297" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-298"><a href="#cb31-298" aria-hidden="true" tabindex="-1"></a><span class="fu">### 独立性（系列相関）</span></span>
+<span id="cb31-299"><a href="#cb31-299" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-300"><a href="#cb31-300" aria-hidden="true" tabindex="-1"></a>時系列や縦断データの場合は**自己相関**に注意。Durbin–Watson などで補助確認。</span>
+<span id="cb31-301"><a href="#cb31-301" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-304"><a href="#cb31-304" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-305"><a href="#cb31-305" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_autocorrelation</span>(mra_step)</span>
+<span id="cb31-306"><a href="#cb31-306" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-307"><a href="#cb31-307" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-308"><a href="#cb31-308" aria-hidden="true" tabindex="-1"></a><span class="fu">### 多重共線性（VIF）</span></span>
+<span id="cb31-309"><a href="#cb31-309" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-310"><a href="#cb31-310" aria-hidden="true" tabindex="-1"></a>VIF が **10超**で注意、**5超**でも文脈により検討。相関が高い説明変数は解釈を不安定にします。</span>
+<span id="cb31-311"><a href="#cb31-311" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-314"><a href="#cb31-314" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-315"><a href="#cb31-315" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_collinearity</span>(mra_step)</span>
+<span id="cb31-316"><a href="#cb31-316" aria-hidden="true" tabindex="-1"></a><span class="fu">model_performance</span>(mra_step)</span>
+<span id="cb31-317"><a href="#cb31-317" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-318"><a href="#cb31-318" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-319"><a href="#cb31-319" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb31-320"><a href="#cb31-320" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-321"><a href="#cb31-321" aria-hidden="true" tabindex="-1"></a><span class="fu"># 結果の出力</span></span>
+<span id="cb31-322"><a href="#cb31-322" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-325"><a href="#cb31-325" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-326"><a href="#cb31-326" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mra_step)</span>
+<span id="cb31-327"><a href="#cb31-327" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(mra_step)</span>
+<span id="cb31-328"><a href="#cb31-328" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-329"><a href="#cb31-329" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-330"><a href="#cb31-330" aria-hidden="true" tabindex="-1"></a><span class="fu"># 結果の可視化</span></span>
+<span id="cb31-331"><a href="#cb31-331" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-334"><a href="#cb31-334" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-335"><a href="#cb31-335" aria-hidden="true" tabindex="-1"></a><span class="co"># 代表例：Proficiency × Treatment × Time の効果を可視化</span></span>
+<span id="cb31-336"><a href="#cb31-336" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_model</span>(</span>
+<span id="cb31-337"><a href="#cb31-337" aria-hidden="true" tabindex="-1"></a>  mra_step,</span>
+<span id="cb31-338"><a href="#cb31-338" aria-hidden="true" tabindex="-1"></a>  <span class="at">type  =</span> <span class="st">"pred"</span>,</span>
+<span id="cb31-339"><a href="#cb31-339" aria-hidden="true" tabindex="-1"></a>  <span class="at">terms =</span> <span class="fu">c</span>(<span class="st">"Proficiency"</span>, <span class="st">"Treatment"</span>, <span class="st">"Time"</span>)</span>
+<span id="cb31-340"><a href="#cb31-340" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb31-341"><a href="#cb31-341" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-342"><a href="#cb31-342" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-343"><a href="#cb31-343" aria-hidden="true" tabindex="-1"></a><span class="fu"># 下位検定・Simple Slope Analysis</span></span>
+<span id="cb31-344"><a href="#cb31-344" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-345"><a href="#cb31-345" aria-hidden="true" tabindex="-1"></a>連続変数を含む交互作用の下位検定は、**どの値で比較するか**を明示する必要があります。ここでは `emmeans` の **`ref_grid()`** を使って、関心の z 値（例：-2, -1, 0, 1, 2）で条件付き平均と群差を評価します。</span>
+<span id="cb31-346"><a href="#cb31-346" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-347"><a href="#cb31-347" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb31-348"><a href="#cb31-348" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-349"><a href="#cb31-349" aria-hidden="true" tabindex="-1"></a><span class="fu">### 概念</span></span>
+<span id="cb31-350"><a href="#cb31-350" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-351"><a href="#cb31-351" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Simple slope**：連続変数の特定値で「群差の傾き」を比較  </span>
+<span id="cb31-352"><a href="#cb31-352" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**注意**：`offset` 引数は回帰の切片ずらし用途で、**連続モデレータの下位検定には不向き**。<span class="in">`ref_grid()`</span> を使います。  </span>
+<span id="cb31-353"><a href="#cb31-353" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**解釈**：例えば <span class="in">`Treatment:Proficiency`</span> が有意なら、「Proficiency が 1 SD 増えたときの傾き差」が有意。</span>
+<span id="cb31-354"><a href="#cb31-354" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-355"><a href="#cb31-355" aria-hidden="true" tabindex="-1"></a><span class="fu">### 条件付きの群差（Timeごと）</span></span>
+<span id="cb31-356"><a href="#cb31-356" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-359"><a href="#cb31-359" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-360"><a href="#cb31-360" aria-hidden="true" tabindex="-1"></a><span class="fu">emmeans</span>(mra_step, pairwise <span class="sc">~</span> Treatment <span class="sc">|</span> Time)</span>
+<span id="cb31-361"><a href="#cb31-361" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-362"><a href="#cb31-362" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-363"><a href="#cb31-363" aria-hidden="true" tabindex="-1"></a><span class="fu">### Simple Slope（Proficiencyの範囲で）</span></span>
+<span id="cb31-364"><a href="#cb31-364" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-367"><a href="#cb31-367" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-368"><a href="#cb31-368" aria-hidden="true" tabindex="-1"></a>rg <span class="ot">&lt;-</span> <span class="fu">ref_grid</span>(mra_step, <span class="at">at =</span> <span class="fu">list</span>(<span class="at">Proficiency =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">2</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">2</span>)))</span>
+<span id="cb31-369"><a href="#cb31-369" aria-hidden="true" tabindex="-1"></a><span class="fu">emmeans</span>(rg, pairwise <span class="sc">~</span> Treatment <span class="sc">|</span> Proficiency)</span>
+<span id="cb31-370"><a href="#cb31-370" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-371"><a href="#cb31-371" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-372"><a href="#cb31-372" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb31-373"><a href="#cb31-373" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-374"><a href="#cb31-374" aria-hidden="true" tabindex="-1"></a><span class="fu">## 交互作用の可視化</span></span>
+<span id="cb31-375"><a href="#cb31-375" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-378"><a href="#cb31-378" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb31-379"><a href="#cb31-379" aria-hidden="true" tabindex="-1"></a><span class="co"># Timeを平均化し、Proficiency上の傾きを図示（点区切り）</span></span>
+<span id="cb31-380"><a href="#cb31-380" aria-hidden="true" tabindex="-1"></a><span class="fu">emmip</span>(rg, Treatment <span class="sc">~</span> Proficiency, <span class="at">style =</span> <span class="st">"factor"</span>, <span class="at">CIs =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb31-381"><a href="#cb31-381" aria-hidden="true" tabindex="-1"></a>      <span class="at">linearg =</span> <span class="fu">list</span>(), <span class="at">dotarg =</span> <span class="fu">list</span>(<span class="at">size =</span> <span class="dv">2</span>), <span class="at">CIarg =</span> <span class="fu">list</span>(<span class="at">alpha =</span> <span class="dv">1</span>))</span>
+<span id="cb31-382"><a href="#cb31-382" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb31-383"><a href="#cb31-383" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-384"><a href="#cb31-384" aria-hidden="true" tabindex="-1"></a><span class="fu"># まとめ</span></span>
+<span id="cb31-385"><a href="#cb31-385" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-386"><a href="#cb31-386" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>連続変数を含む線形モデルは **lm()** で実装し、**z変換**＋**sum coding** を使うと交互作用の解釈が明瞭。</span>
+<span id="cb31-387"><a href="#cb31-387" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**AIC によるモデル選択**で過度な複雑さを回避しつつ汎化性能を確保。</span>
+<span id="cb31-388"><a href="#cb31-388" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**performance** と **emmeans** で **前提確認** と **下位検定** を系統立てて実施。</span>
+<span id="cb31-389"><a href="#cb31-389" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Simple Slope はあくまで補助。**可視化**（<span class="in">`plot_model`</span> / <span class="in">`emmip`</span>）と併せて解釈。</span>
+<span id="cb31-390"><a href="#cb31-390" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-391"><a href="#cb31-391" aria-hidden="true" tabindex="-1"></a><span class="fu"># 参考ウェブサイト</span></span>
+<span id="cb31-392"><a href="#cb31-392" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-393"><a href="#cb31-393" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis</span>
+<span id="cb31-394"><a href="#cb31-394" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>https://bookdown.org/mike/data_analysis/moderation.html</span>
+<span id="cb31-395"><a href="#cb31-395" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>https://kzee.github.io/Interactions_Demo.html</span>
+</code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,0 +1,2303 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="小室竜也">
+
+<title>9&nbsp; ベイズ推定 – Rによる統計解析実戦ガイド</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./8_ROC曲線_ツリーモデル.html" rel="next">
+<link href="./6_混合効果モデル_2値ロジスティック回帰.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-5f5948b16bc3df4d260423ec79d744c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "一致なし",
+    "search-matching-documents-text": "一致した文書",
+    "search-copy-link-title": "検索へのリンクをコピー",
+    "search-hide-matches-text": "追加の検索結果を非表示",
+    "search-more-match-text": "追加の検索結果",
+    "search-more-matches-text": "追加の検索結果",
+    "search-clear-button-title": "消去",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "取消",
+    "search-submit-button-title": "検索",
+    "search-label": "サーチ"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./7_ベイズ推定.html">第III部：ベイズ統計と機械学習</a></li><li class="breadcrumb-item"><a href="./7_ベイズ推定.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">ベイズ推定</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="サーチ" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Rによる統計解析実戦ガイド</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="リーダーモードの切り替え">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="サーチ"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">はじめに</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./Rの基本的な使い方.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Rの基本的な使い方</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">第I部：統計モデルの基礎</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./統計モデルについての概略.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">統計モデルについての概略</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./1_T検定と効果量.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">T検定と効果量</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./2_ANOVAとカテゴリカル変数のコーディング.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">ANOVA・カテゴリカル変数のコーディング</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./3_MANOVA_判別分析.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">MANOVA・判別分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">第II部：回帰分析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./4_重回帰分析_simple_slope_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">重回帰分析</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./5_一般化線形モデル_一般化加法モデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">一般化線形モデル・一般化加法モデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./6_混合効果モデル_2値ロジスティック回帰.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">混合効果モデル：2値ロジスティック回帰分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">第III部：ベイズ統計と機械学習</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./7_ベイズ推定.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">ベイズ推定</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./8_ROC曲線_ツリーモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">ROC曲線・ツリーモデル</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">第IV部：多変量解析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10_一般化可能性理論.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">一般化可能性理論</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_項目応答理論とラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">項目応答理論とラッシュモデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_拡張ラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">T検定と効果量</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./参考文献_おすすめの書籍.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">参考文献・おすすめの書籍</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+    <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">目次</h2>
+   
+  <ul>
+  <li><a href="#はじめに" id="toc-はじめに" class="nav-link active" data-scroll-target="#はじめに"><span class="header-section-number">10</span> はじめに</a>
+  <ul class="collapse">
+  <li><a href="#水準以上のカテゴリカル変数" id="toc-水準以上のカテゴリカル変数" class="nav-link" data-scroll-target="#水準以上のカテゴリカル変数"><span class="header-section-number">10.1</span> 3水準以上のカテゴリカル変数</a></li>
+  <li><a href="#順序データ" id="toc-順序データ" class="nav-link" data-scroll-target="#順序データ"><span class="header-section-number">10.2</span> 順序データ</a></li>
+  <li><a href="#多変量のデータ" id="toc-多変量のデータ" class="nav-link" data-scroll-target="#多変量のデータ"><span class="header-section-number">10.3</span> 多変量のデータ</a></li>
+  </ul></li>
+  <li><a href="#brmsパッケージとベイズアプローチ" id="toc-brmsパッケージとベイズアプローチ" class="nav-link" data-scroll-target="#brmsパッケージとベイズアプローチ"><span class="header-section-number">11</span> brmsパッケージとベイズアプローチ</a>
+  <ul class="collapse">
+  <li><a href="#ベイズ推定" id="toc-ベイズ推定" class="nav-link" data-scroll-target="#ベイズ推定"><span class="header-section-number">11.0.1</span> ベイズ推定</a></li>
+  </ul></li>
+  <li><a href="#ポアソン回帰分析" id="toc-ポアソン回帰分析" class="nav-link" data-scroll-target="#ポアソン回帰分析"><span class="header-section-number">12</span> ポアソン回帰分析</a></li>
+  <li><a href="#順序ロジスティック回帰" id="toc-順序ロジスティック回帰" class="nav-link" data-scroll-target="#順序ロジスティック回帰"><span class="header-section-number">13</span> 順序ロジスティック回帰</a>
+  <ul class="collapse">
+  <li><a href="#累積ロジスティック回帰分析" id="toc-累積ロジスティック回帰分析" class="nav-link" data-scroll-target="#累積ロジスティック回帰分析"><span class="header-section-number">13.1</span> 累積ロジスティック回帰分析</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./7_ベイズ推定.html">第III部：ベイズ統計と機械学習</a></li><li class="breadcrumb-item"><a href="./7_ベイズ推定.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">ベイズ推定</span></a></li></ol></nav>
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">ベイズ推定</span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> コード</button><ul class="dropdown-menu dropdown-menu-end" aria-labelelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">すべてのコードを表示</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">すべてのコードを非表示</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">ソースコードを表示</a></li></ul></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">作者</div>
+    <div class="quarto-title-meta-contents">
+             <p>小室竜也 </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">公開</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">2025年8月17日</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+<p>こちらのページで紹介されているRのコードはいずれもbrmsパッケージのデフォルトの事前分布を仮定していることにご注意ください。</p>
+<section id="はじめに" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> はじめに</h1>
+<p>混合モデルを実装するlme4パッケージでは、引数familyにbinomial (2値ロジスティック回帰 = 目的変数が2値データ)、poisson (ポアソン回帰 = 目的変数がカウントデータ)、Gamma (ガンマ回帰 = 目的変数が自然数となるデータ)、gaussian (線型混合モデル = 目的変数が連続データ) などが含まれています。なお、ポアソン回帰の一種である負の二項分布 (negative binomial distribution) に基づく回帰分析 (混合モデル) の場合には、glmer()関数ではなくglmer.nb()関数を使います。</p>
+<p>これらの混合モデルはいずれもlme4やmgcv、gammパッケージなどを使うことで実装することができますが、目的変数が3水準以上のダミーコードとなる場合や順序データ、多変量の分析などの自由なモデリングには対応していません。(もしかしたら今後改善されるかもしれません)</p>
+<section id="水準以上のカテゴリカル変数" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="水準以上のカテゴリカル変数"><span class="header-section-number">10.1</span> 3水準以上のカテゴリカル変数</h2>
+<p>3水準以上のカテゴリカル変数は、例えば、語彙連想課題の分野などで使われます。語彙連想課題とは、目標語から連想される語を書き出す (or 口頭で述べる) という課題で、メンタルレキシコンの構造を検討する際に用いられてきました。例えば、appleから連想される語としてはbanana、fruit、red、pie、Newtonなどがあります。語彙連想課題の分析の際にはこれらの連想語をいくつかのカテゴリーに分けていきます。apple-bananaの関係は同位語、apple-fruitの関係は上位語・下位語、apple-redの関係はシンタグマティック (コロケーション・統語)、apple-Newtonの関係はfree associationとなります。このようなカテゴリーの間には順序関係がありません。そのため、「正解・不正解」「成功・失敗」のような2値データと同じダミーコードが付与されます。</p>
+<p>2024年現在、lme4パッケージのfamilyではこのmultinomialのデータを分析することができません。</p>
+</section>
+<section id="順序データ" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="順序データ"><span class="header-section-number">10.2</span> 順序データ</h2>
+<p>lme4パッケージで分析することができないデータの2つ目は順序データです。順序データの典型例はアンケートなどのリッカートスケールです。アンケートの結果は因子分析などでまとめられてしまうことが多いですが、例えば、生徒のスピーチを5段階で評価するなどのデータでは有用です。パフォーマンス評価を行う際には、評価者と受験者をファセットとした多層ラッシュモデルで分析することもできます。多相ラッシュモデルは評価者の厳しさや受験者の能力を含めたモデリングであり、現在のデータを説明することが目的です。一方、順序ロジスティック回帰では、未来のデータを予測することが目的となります。例えば、受験者の授業中の様子からスピーチの評価を予測するなどが挙げられます。</p>
+<p>lme4パッケージのfamilyではこのordinal logistic regressionは実装できません。ランダム効果も含めたcumulative link mixed effect modelの場合はclmmパッケージを使うことができます。</p>
+</section>
+<section id="多変量のデータ" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="多変量のデータ"><span class="header-section-number">10.3</span> 多変量のデータ</h2>
+<p>MANOVAのように目的変数が複数ある場合、lme4パッケージでは混合効果を含めたMANOVAを実装することができません。例えば、recallとrecognitionの語彙テストで得られた正解・不正解のデータはrecallで1つの2値ロジスティック回帰、recognitionで1つの2値ロジスティック回帰という具合に、2つのGLMMでモデルが作成されます。</p>
+</section>
+</section>
+<section id="brmsパッケージとベイズアプローチ" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> brmsパッケージとベイズアプローチ</h1>
+<p>上記のように、lme4パッケージで分析することができないデータはbrmsパッケージを使うことで全て解決可能です。brmsパッケージはベイズ推定を行うためのパッケージです。以下ではベイズアプローチに基づく回帰分析について簡単に紹介します。</p>
+<section id="ベイズ推定" class="level3" data-number="11.0.1">
+<h3 data-number="11.0.1" class="anchored" data-anchor-id="ベイズ推定"><span class="header-section-number">11.0.1</span> ベイズ推定</h3>
+<p>ベイズアプローチとは、物事について、どれくらい知っているのか、あるいは知らないのかを、確率で表現するものです。例えば、明日が雨なのか晴れなのかよくわからないという場合でも、「よくわからない」ではなく、「雨が降る確率は40%くらいだろうか」と確率を使って定量的に評価することが試みられます。</p>
+<p>ベイズアプローチはベイズの定理に基づき、事前確率を事後確率に更新します。事前確率とは、データが得られる前に想定された確率のことで、データが得られた後に想定する確率です。例えば、先行研究で得られている効果量を事前確率とし、手元のデータに当てはめてパラメータの推定値やデータの予測値を得ることができます。</p>
+<p>事前確率を事後確率に更新する際には尤度と周辺尤度の比を使います。尤度とはパラメータが所与であるという条件における、標本が得られる確率のことで、条件付き確率として表現されます。一方で周辺尤度とはデータが得られる平均的な確率です。例えば、語彙テストにおいて、ある単語の意味を正しく回答できるかどうかの確率は正解か不正解かで50%であると想定されます。ただし、appleやorangeのように具体的な語彙は75%の確率で正解し、amazingやdoubtfulのような抽象的な語彙の正解率は50%であることが先行研究で示されているとします。この状況を数式としてまとめると、以下のようになります。</p>
+<ul>
+<li>テスト項目が具体的な単語であるときに、テストで正解するというデータが得られる確率：P(D|H1) = 0.75</li>
+<li>テスト項目が抽象的な単語であるときに、テストで正解するというデータが得られる確率：P(D|H2) = 0.50</li>
+<li>周辺尤度：P(D) = P(D|H1)P(H1) + P(D|H2)P(H2) = 0.75 × 0.5 + 0.5 × 0.5 = 0.625</li>
+</ul>
+<p>これらの確率を使い、ベイズの定理に基づくと、事前確率を事後確率に更新することができます。ベイズの定理は以下のように表されます。</p>
+<p><span class="math display">\[
+P(H_1|D) = \frac{P(D|H1)P(H_1)}{P(D)}
+\]</span></p>
+<p>このベイズの定理を用いた事前確率から事後確率への更新はベイズ更新と呼ばれています。語彙テストの例を続けると、学習者が語彙テストに正解した後に想定する「テスト項目が具象語であると想定する確率」、すなわち事後確率は以下のように計算されます。</p>
+<p><span class="math display">\[
+Posterior Probability = P(H_1|D) = P(H_1) × \frac{P(D|H_1)}{P(D)} = 0.5 × \frac{0.75}{0.625} = 0.5 × 1.2 = 0.6
+\]</span></p>
+<p>このベイズ更新を用いて確率を更新していくことにより、パラメータや予測結果の不確実性が確率で定量化されます。パラメータは確率分布として扱うことができることから、データが得られる前に想定される確率分布は事前分布、データが得られた後に想定される確率分布は事後分布と呼ばれます。この事後分布に従う乱数を小さいものから順番に並べ、2.5%点から97.5%点に該当する範囲を調べることで95%ベイズ信用区間を得ることができます。つまり、95%Credible Interval (CrI) はNull Hypothesis Significant Testingにおける95%Confidence Interval (CI) と異なり、95%の確率で母集団のパラメータを推定することが可能です。</p>
+</section>
+</section>
+<section id="ポアソン回帰分析" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> ポアソン回帰分析</h1>
+<p>ベイズ推定について紹介するため紹介するため、ポアソン回帰分析を例としてコードを見ていきましょう。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># パッケージの読み込み</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  brms, rstan, rstanarm, loo, tidybayes, tidyverse,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  bayesplot, sjPlot, performance)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># プロットのテーマの設定</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_bw</span>())</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># 処理の高速化</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">rstan_options</span>(<span class="at">auto_write =</span> T)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">mc.cores=</span>parallel<span class="sc">::</span><span class="fu">detectCores</span>())</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>パッケージとして主に用いるのはbrmsとなります。brmsはBayesian Regression Models using ‘Stan’ のことを指しています。Stanとは、ベイズ推定で必要となるMCMCサンプリングを行うプログラムのことです。デフォルトで4,000回のコンパイルがあるため、処理を高速化する必要があります。</p>
+<p>続いては分析用のデータを確認していきましょう。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ポアソン回帰</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(epilepsy) <span class="co"># データの読み込み</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(epilepsy)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Age Base Trt patient visit count obs       zAge      zBase
+1  31   11   0       1     1     5   1  0.4249950 -0.7571728
+2  30   11   0       2     1     3   2  0.2652835 -0.7571728
+3  25    6   0       3     1     2   3 -0.5332740 -0.9444033
+4  36    8   0       4     1     4   4  1.2235525 -0.8695111
+5  22   66   0       5     1     7   5 -1.0124085  1.3023626
+6  29   27   0       6     1     5   6  0.1055720 -0.1580352</code></pre>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(epilepsy, <span class="fu">aes</span>(<span class="at">x =</span> count)) <span class="sc">+</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a> <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>, <span class="at">fill =</span> <span class="st">"blue"</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a> <span class="fu">facet_grid</span>(. <span class="sc">~</span> Trt) <span class="sc">+</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a> <span class="fu">theme_bw</span>()</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-2-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>データはbrmsパッケージに含まれているepilepsyデータでてんかんにおける抗けいれん薬治療のランダム化試験における発作回数を検討します。目的変数はcount、説明変数はz変換されたAge (zAge)、zBaseとTrtの交互作用となります。</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://prod-files-secure.s3.us-west-2.amazonaws.com/c37f0e82-1db9-44a5-b16e-29ff982c00da/d6f1dedc-f343-4272-9c0e-0bf6e9a61d70/Untitled.png" class="img-fluid figure-img"></p>
+<figcaption>Untitled</figcaption>
+</figure>
+</div>
+<p>brmsパッケージのbrm関数の記述方法はlme4パッケージと同じように使うことができます。ポアソン回帰分析を実行するにはfamilyにpoissonを用いることとなります。</p>
+<p>brm関数の引数にはチェーンの数やバーンインの回数などがありますが、今回は何も指定せずにデフォルトを使用しています。デフォルトではチェーン数は4、iterationは2000、バーンインは1000、thiningは1となっています。また、事前分布としてはget_prior関数を使うと確認することができます。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ポアソン回帰の実行</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>fit1 <span class="ot">&lt;-</span> <span class="fu">brm</span>(count <span class="sc">~</span> zAge <span class="sc">+</span> zBase <span class="sc">*</span> Trt <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>patient),</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a> <span class="at">data =</span> epilepsy, <span class="at">family =</span> <span class="fu">poisson</span>())</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 結果の表示</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit1, <span class="at">prob =</span> <span class="fl">0.95</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit1)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<table style="border-collapse:collapse; border:none;">
+<tbody><tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
+<th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">count</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Incidence Rate Ratios</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI (95%)</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">5.91</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">4.70&nbsp;–&nbsp;7.49</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">zAge</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.10</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.93&nbsp;–&nbsp;1.32</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">zBase</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">2.03</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.61&nbsp;–&nbsp;2.60</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Trt: Trt1</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.76</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.55&nbsp;–&nbsp;1.05</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">zBase:Trt1</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.05</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.76&nbsp;–&nbsp;1.45</td>
+</tr>
+<tr>
+<td colspan="3" style="font-weight:bold; text-align:left; padding-top:.8em;">Random Effects</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">σ<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">-159.01</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">τ<sub>00</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">295.05</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">ICC</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">-1.19</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">N <sub>patient</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">59</td>
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">236</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">Marginal R<sup>2</sup> / Conditional R<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.703 / 0.829</td>
+</tr>
+
+</tbody></table>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">conditional_effects</span>(fit1), <span class="at">ask =</span> F)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-3-2.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-3-3.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-3-4.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>summary関数の結果には推定値などが示されています。重要な指標の解釈は以下の通りです。</p>
+<ul>
+<li>R hat：1.1を超えているとモデルの収束に問題あり</li>
+<li>Estimate：対数変換されているIncidence Rate Ratios (IRR)</li>
+<li>95%CI：IRRの95%信用区間 (credible interval) に0が含まれていると実質的に差がない</li>
+<li>Bulk ESS：MCMCサンプルの中心の有効なサンプルサイズ</li>
+<li>Tail BSS：MCMCサンプルの尾部の有効なサンプルサイズ</li>
+</ul>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" aria-current="page">結果の確認</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">tab_modelでの出力結果</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false">トレースプロット</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-4" role="tab" aria-controls="tabset-1-4" aria-selected="false">モデルの予測</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-5-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-5" role="tab" aria-controls="tabset-1-5" aria-selected="false">モデルの適合度</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-6-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-6" role="tab" aria-controls="tabset-1-6" aria-selected="false">事前分布とStanコード</a></li></ul>
+<div class="tab-content">
+<div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit1, <span class="at">prob =</span> <span class="fl">0.95</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code> Family: poisson 
+  Links: mu = log 
+Formula: count ~ zAge + zBase * Trt + (1 | patient) 
+   Data: epilepsy (Number of observations: 236) 
+  Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+         total post-warmup draws = 4000
+
+Multilevel Hyperparameters:
+~patient (Number of levels: 59) 
+              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+sd(Intercept)     0.58      0.07     0.46     0.73 1.00      878     1799
+
+Regression Coefficients:
+           Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+Intercept      1.78      0.12     1.55     2.01 1.01      623     1353
+zAge           0.10      0.09    -0.07     0.28 1.01      724     1267
+zBase          0.71      0.12     0.47     0.96 1.01      701     1402
+Trt1          -0.27      0.17    -0.60     0.05 1.01      650     1147
+zBase:Trt1     0.04      0.17    -0.28     0.37 1.00      757     1481
+
+Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+and Tail_ESS are effective sample size measures, and Rhat is the potential
+scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
+<p>tab_model関数の出力結果は、summary関数のEstimateがIRRへと指数変換されています。そのため、95%CIに1が含まれている際には実質的な差が見られないと解釈できます。そのため、zAgeの主効果、zBaseとTrtの交互作用、Trtの主効果は発生率に影響を与えていないと言えます。onditional_effects関数とplot関数を使うと予測プロットを描画することができます。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit1)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<table style="border-collapse:collapse; border:none;">
+<tbody><tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
+<th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">count</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Incidence Rate Ratios</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI (95%)</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">5.91</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">4.70&nbsp;–&nbsp;7.49</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">zAge</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.10</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.93&nbsp;–&nbsp;1.32</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">zBase</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">2.03</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.61&nbsp;–&nbsp;2.60</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Trt: Trt1</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.76</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.55&nbsp;–&nbsp;1.05</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">zBase:Trt1</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.05</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.76&nbsp;–&nbsp;1.45</td>
+</tr>
+<tr>
+<td colspan="3" style="font-weight:bold; text-align:left; padding-top:.8em;">Random Effects</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">σ<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">-161.54</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">τ<sub>00</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">297.26</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">ICC</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">-1.20</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">N <sub>patient</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">59</td>
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">236</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">Marginal R<sup>2</sup> / Conditional R<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.703 / 0.829</td>
+</tr>
+
+</tbody></table>
+</div>
+</div>
+</div>
+<div id="tabset-1-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-3-tab">
+<p>トレースプロットはベイズ推定で用いられるMCMCサンプルの安定性を各パラメータごとに可視化しています。b_で始まるパラメータは固定効果、sd_で始まるパラメータはランダム効果の推定結果となります。iterationが1〜4であり、それぞれが安定しているかを視覚的に捉えることができます。今回は比較的安定しているように思われます。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fit1, <span class="at">combo =</span> <span class="fu">c</span>(<span class="st">"trace"</span>, <span class="st">"dens_overlay"</span>), <span class="at">ask =</span> F)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-6-2.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-4-tab">
+<p>モデルの予測について、事後分布を確認することができます。左側がヒストグラム、右側が確率密度で目的変数の事後分布をプロットしています。Bulk ESS、Tail ESSで700〜1400のシミュレーションの平均に基づくと、目的変数は8.0〜8.5あたりになるようです。左側のヒストグラムの<span class="math inline">\(T(y)\)</span> はシミュレーションの最小値となり、ヒストグラムの山と重なっていることから、実際のデータとシミュレーションの結果が一致していることを表しています。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># モデルの予測の確認</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit1, <span class="at">ndraws =</span> <span class="dv">1000</span>, <span class="at">type =</span> <span class="st">"stat"</span>, <span class="at">stat =</span> <span class="st">"mean"</span>) <span class="sc">+</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Frequency"</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit1, <span class="at">ndraws =</span> <span class="dv">100</span>) <span class="sc">+</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Density"</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-7-2.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div id="tabset-1-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-5-tab">
+<p>モデルの適合度は以下の通りです。回帰モデルの適合度を計算する際には、観測値と回帰直線の残差を使うこととなります。この残差を用いると、モデルの決定係数 (<span class="math inline">\(R^2 = 1 - 残差標準誤差\)</span>) を計算することや、逸脱度 (パラメータが所与の目的変数の確率密度を対数変換し、-2をかけたもの) を計算することができます。逸脱度は低いほどモデルの当てはまりがよくなります。</p>
+<p>逸脱度では、確率密度を対数変換を行なっています。確率密度は掛け合わせるものですが、対数変換をすることにより確率を足し合わせることができるようになります。 leave-one-out (LOO) cross validationを用いたLOO残差を対数変換したexpected log predictive density (ELPD) は、小さいほどモデルの当てはまりがよいとされます。また、事前情報を組み込んだモデルを用いるとか学習は防がれます。このモデルを比較する際には、ELPDやLOOIC、WAICなどを用います。LOOICはELPD_LOOに-2をかけたものであり、高いほど当てはまりが良いと言えます。WAICはAICと同じように低いほど当てはまりが良いと言えます。WAICはモデルの予測尤度の対数を計算し、これらの値の平均を取ります。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">model_performance</span>(fit1)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># Indices of model performance
+
+ELPD     | ELPD_SE |    LOOIC | LOOIC_SE |     WAIC |    R2 | R2 (marg.)
+------------------------------------------------------------------------
+-671.187 |  36.162 | 1342.374 |   72.324 | 1337.344 | 0.829 |      0.703
+
+ELPD     |  RMSE | Sigma | Score_log | Score_spherical
+------------------------------------------------------
+-671.187 | 4.946 | 0.000 |      -Inf |           0.017</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-1-6" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-6-tab">
+<p>事前分布はget_prior関数を使うと確認することができます。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">get_prior</span>(count <span class="sc">~</span> zAge <span class="sc">+</span> zBase <span class="sc">*</span> Trt <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>patient), </span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>          <span class="at">data =</span> epilepsy)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                prior     class       coef   group resp dpar nlpar lb ub
+               (flat)         b                                         
+               (flat)         b       Trt1                              
+               (flat)         b       zAge                              
+               (flat)         b      zBase                              
+               (flat)         b zBase:Trt1                              
+ student_t(3, 4, 4.4) Intercept                                         
+ student_t(3, 0, 4.4)        sd                                     0   
+ student_t(3, 0, 4.4)        sd            patient                  0   
+ student_t(3, 0, 4.4)        sd  Intercept patient                  0   
+ student_t(3, 0, 4.4)     sigma                                     0   
+       source
+      default
+ (vectorized)
+ (vectorized)
+ (vectorized)
+ (vectorized)
+      default
+      default
+ (vectorized)
+ (vectorized)
+      default</code></pre>
+</div>
+</div>
+<p>flatは無情報分布と呼ばれるものです。多くの場合、平均0、分散100の正規分布のような平らな分布となります。こちらはclassがbのパラメータ (固定効果) に対して用いられています。</p>
+<p>事前分布は先行研究でどのようなパラメータが用いられているかを踏まえて推定されます。例えば、身長はマイナスの値にはならないなど、分析者の専門知識を活用することが必要となります。基本的にはデフォルトの事前分布を用いて良いかと思います。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">stancode</span>(fit1)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>// generated with brms 2.22.0
+functions {
+}
+data {
+  int&lt;lower=1&gt; N;  // total number of observations
+  array[N] int Y;  // response variable
+  int&lt;lower=1&gt; K;  // number of population-level effects
+  matrix[N, K] X;  // population-level design matrix
+  int&lt;lower=1&gt; Kc;  // number of population-level effects after centering
+  // data for group-level effects of ID 1
+  int&lt;lower=1&gt; N_1;  // number of grouping levels
+  int&lt;lower=1&gt; M_1;  // number of coefficients per level
+  array[N] int&lt;lower=1&gt; J_1;  // grouping indicator per observation
+  // group-level predictor values
+  vector[N] Z_1_1;
+  int prior_only;  // should the likelihood be ignored?
+}
+transformed data {
+  matrix[N, Kc] Xc;  // centered version of X without an intercept
+  vector[Kc] means_X;  // column means of X before centering
+  for (i in 2:K) {
+    means_X[i - 1] = mean(X[, i]);
+    Xc[, i - 1] = X[, i] - means_X[i - 1];
+  }
+}
+parameters {
+  vector[Kc] b;  // regression coefficients
+  real Intercept;  // temporary intercept for centered predictors
+  vector&lt;lower=0&gt;[M_1] sd_1;  // group-level standard deviations
+  array[M_1] vector[N_1] z_1;  // standardized group-level effects
+}
+transformed parameters {
+  vector[N_1] r_1_1;  // actual group-level effects
+  real lprior = 0;  // prior contributions to the log posterior
+  r_1_1 = (sd_1[1] * (z_1[1]));
+  lprior += student_t_lpdf(Intercept | 3, 1.4, 2.5);
+  lprior += student_t_lpdf(sd_1 | 3, 0, 2.5)
+    - 1 * student_t_lccdf(0 | 3, 0, 2.5);
+}
+model {
+  // likelihood including constants
+  if (!prior_only) {
+    // initialize linear predictor term
+    vector[N] mu = rep_vector(0.0, N);
+    mu += Intercept;
+    for (n in 1:N) {
+      // add more terms to the linear predictor
+      mu[n] += r_1_1[J_1[n]] * Z_1_1[n];
+    }
+    target += poisson_log_glm_lpmf(Y | Xc, mu, b);
+  }
+  // priors including constants
+  target += lprior;
+  target += std_normal_lpdf(z_1[1]);
+}
+generated quantities {
+  // actual population-level intercept
+  real b_Intercept = Intercept - dot_product(means_X, b);
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="順序ロジスティック回帰" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> 順序ロジスティック回帰</h1>
+<p>目的変数が順序尺度 (例：とてもそう思う・そう思う・どちらでもない・あまりそう思わない・全くそう思わない) の場合、順序ロジスティック回帰分析を用いることとなります。なお、順序ロジスティック回帰には累積ロジスティック回帰分析と隣接ロジスティック回帰分析の2種類があります。</p>
+<section id="累積ロジスティック回帰分析" class="level2" data-number="13.1">
+<h2 data-number="13.1" class="anchored" data-anchor-id="累積ロジスティック回帰分析"><span class="header-section-number">13.1</span> 累積ロジスティック回帰分析</h2>
+<p>目的変数が2値のロジスティック回帰分析では「成功の確率」と「失敗の確率」を比較するものでした。目的変数が順序尺度の場合、5件法のアンケートを例とすると、1の確率と2以上の確率の比較、2以下の確率と3以上の確率の比較、3以下の確率と4以上の確率の比較、4以下の確率と5の確率の比較を行なっています。つまり、累積ロジスティック回帰は目的変数が複数の順序尺度を2つの比較へと縮小していると言えます。一方、隣接ロジスティック回帰は、1の確率と2の確率の比較、2の確率と3の確率の比較、3の確率と4の確率の比較、4の確率と5の確率の比較などを行います。</p>
+<p>それでは具体例で見ていきましょう。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># パッケージの読み込み</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(brms)</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstan)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstanarm)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(loo)</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidybayes)</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(bayesplot)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sjPlot)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(performance)</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a><span class="co"># プロットのテーマの設定</span></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_bw</span>())</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a><span class="co"># 処理の高速化</span></span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a><span class="fu">rstan_options</span>(<span class="at">auto_write =</span> T)</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">mc.cores=</span>parallel<span class="sc">::</span><span class="fu">detectCores</span>())</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ordinal) <span class="co"># wineデータの読み込みのためのパッケージ</span></span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(wine) <span class="co"># データの読み込み</span></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(wine)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>  response rating temp contact bottle judge
+1       36      2 cold      no      1     1
+2       48      3 cold      no      2     1
+3       47      3 cold     yes      3     1
+4       67      4 cold     yes      4     1
+5       77      4 warm      no      5     1
+6       60      4 warm      no      6     1</code></pre>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(wine, <span class="fu">aes</span>(<span class="at">x =</span> rating, <span class="at">y =</span> response, <span class="at">fill =</span> temp)) <span class="sc">+</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">geom_boxplot</span>()</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>今回使用するデータはordinalパッケージに含まれるワインの苦味を5段階で評定するwineというデータです。9人の審査員が2本ずつワインをテイスティングし、5段階で苦味を報告しています。この評定にワインを作成する際の温度 (2水準：warm vs.&nbsp;cold)、果汁と果皮の接触 (2水準：Yes vs.&nbsp;No) が影響するかを検討します。</p>
+<p>プロットを見てみると、warmの場合は2〜5が多く、coldの場合は1〜4が多いように思われます。また、ratingは1が少なく、5が最もおおいようです。</p>
+<p>それではbrmsパッケージを使って累積ロジスティック回帰分析を実行してみます。familyにcumulativeを設定しています。なお、link = “logit” の部分はリンク関数を明示しており、省略可能です。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 順序ロジスティック回帰の実行</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>fit2 <span class="ot">&lt;-</span> <span class="fu">brm</span>(rating <span class="sc">~</span> temp <span class="sc">+</span> contact <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>judge),</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="at">data =</span> wine, <span class="at">family =</span> <span class="fu">cumulative</span>(<span class="at">link =</span> <span class="st">"logit"</span>))</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 結果の表示</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit2, <span class="at">prob =</span> <span class="fl">0.95</span>)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit2)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<table style="border-collapse:collapse; border:none;">
+<tbody><tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
+<th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">rating</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Odds Ratios</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI (95%)</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[1]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.19</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.04&nbsp;–&nbsp;0.77</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[2]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">4.39</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.26&nbsp;–&nbsp;16.82</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[3]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">62.91</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">13.58&nbsp;–&nbsp;394.51</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[4]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">410.86</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">68.22&nbsp;–&nbsp;3544.59</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">temp: warm</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">21.54</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">6.91&nbsp;–&nbsp;69.44</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">contact: yes</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">6.22</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">2.40&nbsp;–&nbsp;18.05</td>
+</tr>
+<tr>
+<td colspan="3" style="font-weight:bold; text-align:left; padding-top:.8em;">Random Effects</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">σ<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.15</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">τ<sub>00</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">1.01</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">ICC</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.13</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">N <sub>judge</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">9</td>
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">72</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">Marginal R<sup>2</sup> / Conditional R<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.397 / 0.550</td>
+</tr>
+
+</tbody></table>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_model</span>(fit2,</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a> <span class="at">type =</span> <span class="st">"pred"</span>,</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a> <span class="at">terms =</span> <span class="fu">c</span>(<span class="st">"temp"</span>, <span class="st">"contact"</span>))</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">conditional_effects</span>(fit2), <span class="at">ask =</span> F)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-12-2.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-12-3.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>ポアソン回帰ではEstimateが対数変換されていないIncidence Rate Ratios (IRR) でした。ロジスティック回帰分析絵は対数変換されているオッズ比 (Odds Ratio: OR) であるロジットが表示されています。ロジットが0であることは基準と比べて差がないことを表しています。</p>
+<p>ロジットの95%CIを確認すると、tempは0が含まれていないため、ratingに影響を与えているようです。ベースラインはcoldであるため、coldに比べてwarmは高く評定されるようにあります。また、contactはNoに比べ、Yesの方が高く評定されるようです。</p>
+<p>tab_model関数の出力結果は指数変換されており、ロジットがオッズ比へと変換されています。そのため、CIに1.00が含まれているとベースラインと比べて差がないことを意味しています。今回はtempもcontactも影響を与えているようです。この結果はplot_model関数の結果を確認すると視覚的に分かります。</p>
+<div class="tabset-margin-container"></div><div class="panel-tabset">
+<ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">結果の確認</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">tab_modelでの出力結果</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false">予測プロット</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-4" role="tab" aria-controls="tabset-2-4" aria-selected="false">トレースプロット</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-5-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-5" role="tab" aria-controls="tabset-2-5" aria-selected="false">モデルの指標</a></li></ul>
+<div class="tab-content">
+<div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit2, <span class="at">prob =</span> <span class="fl">0.95</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code> Family: cumulative 
+  Links: mu = logit; disc = identity 
+Formula: rating ~ temp + contact + (1 | judge) 
+   Data: wine (Number of observations: 72) 
+  Draws: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
+         total post-warmup draws = 4000
+
+Multilevel Hyperparameters:
+~judge (Number of levels: 9) 
+              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+sd(Intercept)     1.39      0.53     0.61     2.68 1.00     1098     2035
+
+Regression Coefficients:
+             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+Intercept[1]    -1.68      0.75    -3.22    -0.26 1.00     1668     2387
+Intercept[2]     1.48      0.66     0.23     2.82 1.00     1897     2264
+Intercept[3]     4.17      0.84     2.61     5.98 1.00     1750     2127
+Intercept[4]     6.07      1.00     4.22     8.17 1.00     1891     2304
+tempwarm         3.07      0.59     1.93     4.24 1.00     2437     2940
+contactyes       1.84      0.51     0.87     2.89 1.00     2793     3058
+
+Further Distributional Parameters:
+     Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
+disc     1.00      0.00     1.00     1.00   NA       NA       NA
+
+Draws were sampled using sampling(NUTS). For each parameter, Bulk_ESS
+and Tail_ESS are effective sample size measures, and Rhat is the potential
+scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
+</div>
+</div>
+</div>
+<div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit2)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<table style="border-collapse:collapse; border:none;">
+<tbody><tr>
+<th style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm;  text-align:left; ">&nbsp;</th>
+<th colspan="2" style="border-top: double; text-align:center; font-style:normal; font-weight:bold; padding:0.2cm; ">rating</th>
+</tr>
+<tr>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  text-align:left; ">Predictors</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">Odds Ratios</td>
+<td style=" text-align:center; border-bottom:1px solid; font-style:italic; font-weight:normal;  ">CI (95%)</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[1]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.19</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">0.04&nbsp;–&nbsp;0.77</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[2]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">4.39</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">1.26&nbsp;–&nbsp;16.82</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[3]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">62.91</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">13.58&nbsp;–&nbsp;394.51</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">Intercept[4]</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">410.86</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">68.22&nbsp;–&nbsp;3544.59</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">temp: warm</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">21.54</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">6.91&nbsp;–&nbsp;69.44</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; ">contact: yes</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">6.22</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:center;  ">2.40&nbsp;–&nbsp;18.05</td>
+</tr>
+<tr>
+<td colspan="3" style="font-weight:bold; text-align:left; padding-top:.8em;">Random Effects</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">σ<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.16</td>
+</tr>
+
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">τ<sub>00</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">1.00</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">ICC</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.14</td>
+
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">N <sub>judge</sub></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">9</td>
+</tr><tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm; border-top:1px solid;">Observations</td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left; border-top:1px solid;" colspan="2">72</td>
+</tr>
+<tr>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; text-align:left; padding-top:0.1cm; padding-bottom:0.1cm;">Marginal R<sup>2</sup> / Conditional R<sup>2</sup></td>
+<td style=" padding:0.2cm; text-align:left; vertical-align:top; padding-top:0.1cm; padding-bottom:0.1cm; text-align:left;" colspan="2">0.397 / 0.550</td>
+</tr>
+
+</tbody></table>
+</div>
+</div>
+<p>1と評定する左上のプロットはwarmよりもcoldの方が多く、contactがyesよりnoの方が多いようです。この傾向は逆に、5の評定をみると逆転しています。つまり、tempがwarmであると評定が高くなり、contactがyesであると評定が高くなる傾向が見られます。</p>
+</div>
+<div id="tabset-2-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-3-tab">
+<p>予測モデルでは分かりにくい場合、以下のコードを使ってみましょう。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">conditional_effects</span>(fit2), <span class="at">ask =</span> F)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-15-2.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>conditional_effects関数を使うとratingがwarmおよびyesであると高くなることがわかります。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_model</span>(fit2)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>こちらは予測プロットを作成する際のtypeとtermsを削除したsjPlotパッケージのplot_model関数で、フォレストプロットを作成するものです。x軸には効果量であるオッズ比を示しており、Interceptとの比較が示されています。それぞれの比較の解釈は以下の通りです。</p>
+<ul>
+<li>Intercept[1]：評定が1と2以上の比較</li>
+<li>Intercept[2]：評定が2以下と3以上の比較</li>
+<li>Intercept[3]：評定が3以下と4以上の比較</li>
+<li>Intercept[4]：評定が4以下と5の比較</li>
+</ul>
+<p>それぞれオッズ比が1よりも小さい場合には赤、1より大きい場合には青で示されます。95%CIが1を跨いでいると目的変数に影響を与えないという解釈となります。</p>
+</div>
+<div id="tabset-2-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-4-tab">
+<p>それではトレースプロットやモデル指標などを確認し、これらの結果が信頼できるものか確認してみましょう。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># トレースプロット</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fit2, <span class="at">combo =</span> <span class="fu">c</span>(<span class="st">"trace"</span>, <span class="st">"dens_overlay"</span>), <span class="at">ask =</span> F)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-17-2.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># モデルの予測の確認</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit2, <span class="at">ndraws =</span> <span class="dv">1000</span>, <span class="at">type =</span> <span class="st">"stat"</span>, <span class="at">stat =</span> <span class="st">"mean"</span>) <span class="sc">+</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Frequency"</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-17-3.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit2, <span class="at">ndraws =</span> <span class="dv">100</span>) <span class="sc">+</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Density"</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="7_ベイズ推定_files/figure-html/unnamed-chunk-17-4.png" class="img-fluid figure-img" width="2100"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>トレースプロットなどを確認すると、モデルの収束に問題はなかったようです。事後分布を確認すると、評定は3であることが多いようです。</p>
+</div>
+<div id="tabset-2-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-5-tab">
+<p>それではモデルの指標を確認していきましょう。警告メッセージとして、ベイズ決定係数は順序尺度には不適切であることが述べられています。</p>
+<div class="cell">
+<details class="code-fold">
+<summary>コードを表示</summary>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">model_performance</span>(fit2)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># Indices of model performance
+
+ELPD    | ELPD_SE |   LOOIC | LOOIC_SE |    WAIC |    R2 | R2 (marg.) | Sigma
+-----------------------------------------------------------------------------
+-85.364 |   5.209 | 170.728 |   10.419 | 170.443 | 0.550 |      0.397 | 1.000</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+
+<!-- -->
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "コピーしました");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "コピーしました");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+        for (let i=0; i<detailsSrc.length; i++) {
+          const details = detailsSrc[i].parentElement;
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./6_混合効果モデル_2値ロジスティック回帰.html" class="pagination-link" aria-label="混合効果モデル：2値ロジスティック回帰分析">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">混合効果モデル：2値ロジスティック回帰分析</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./8_ROC曲線_ツリーモデル.html" class="pagination-link" aria-label="ROC曲線・ツリーモデル">
+        <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">ROC曲線・ツリーモデル</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">ソースコード</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="sourceCode" id="cb35" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "ベイズ推定"</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> "小室竜也"</span></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> today</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span></span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true</span></span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-depth: 3</span></span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-location: left</span></span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-title: "目次"</span></span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a><span class="co">    number-sections: true</span></span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: true</span></span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a><span class="co">    theme: journal</span></span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a><span class="co">    fontsize: 1.1em</span></span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a><span class="co">    linestretch: 1.8</span></span>
+<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a><span class="co">    mainfont: "Noto Serif JP"</span></span>
+<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a><span class="an">lang:</span><span class="co"> ja</span></span>
+<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a><span class="in">```{=html}</span></span>
+<span id="cb35-21"><a href="#cb35-21" aria-hidden="true" tabindex="-1"></a><span class="in">&lt;style&gt;</span></span>
+<span id="cb35-22"><a href="#cb35-22" aria-hidden="true" tabindex="-1"></a><span class="in">/* journalテーマ用のアカデミックなカスタムスタイル */</span></span>
+<span id="cb35-23"><a href="#cb35-23" aria-hidden="true" tabindex="-1"></a><span class="in">body {</span></span>
+<span id="cb35-24"><a href="#cb35-24" aria-hidden="true" tabindex="-1"></a><span class="in">  font-family: 'Noto Serif JP', 'Times New Roman', serif;</span></span>
+<span id="cb35-25"><a href="#cb35-25" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #2c3e50;</span></span>
+<span id="cb35-26"><a href="#cb35-26" aria-hidden="true" tabindex="-1"></a><span class="in">  line-height: 1.8;</span></span>
+<span id="cb35-27"><a href="#cb35-27" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-28"><a href="#cb35-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-29"><a href="#cb35-29" aria-hidden="true" tabindex="-1"></a><span class="in">/* タイトルブロックをジャーナル風に */</span></span>
+<span id="cb35-30"><a href="#cb35-30" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner {</span></span>
+<span id="cb35-31"><a href="#cb35-31" aria-hidden="true" tabindex="-1"></a><span class="in">  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);</span></span>
+<span id="cb35-32"><a href="#cb35-32" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 4px double #495057;</span></span>
+<span id="cb35-33"><a href="#cb35-33" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 2.5em 2em;</span></span>
+<span id="cb35-34"><a href="#cb35-34" aria-hidden="true" tabindex="-1"></a><span class="in">  text-align: center;</span></span>
+<span id="cb35-35"><a href="#cb35-35" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-36"><a href="#cb35-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-37"><a href="#cb35-37" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner .title {</span></span>
+<span id="cb35-38"><a href="#cb35-38" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #212529 !important;</span></span>
+<span id="cb35-39"><a href="#cb35-39" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 2.2em !important;</span></span>
+<span id="cb35-40"><a href="#cb35-40" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 700;</span></span>
+<span id="cb35-41"><a href="#cb35-41" aria-hidden="true" tabindex="-1"></a><span class="in">  letter-spacing: 0.02em;</span></span>
+<span id="cb35-42"><a href="#cb35-42" aria-hidden="true" tabindex="-1"></a><span class="in">  text-transform: uppercase;</span></span>
+<span id="cb35-43"><a href="#cb35-43" aria-hidden="true" tabindex="-1"></a><span class="in">  font-family: 'Noto Sans JP', sans-serif;</span></span>
+<span id="cb35-44"><a href="#cb35-44" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-45"><a href="#cb35-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-46"><a href="#cb35-46" aria-hidden="true" tabindex="-1"></a><span class="in">/* 見出しのアカデミックスタイル */</span></span>
+<span id="cb35-47"><a href="#cb35-47" aria-hidden="true" tabindex="-1"></a><span class="in">h1 {</span></span>
+<span id="cb35-48"><a href="#cb35-48" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.8em;</span></span>
+<span id="cb35-49"><a href="#cb35-49" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 700;</span></span>
+<span id="cb35-50"><a href="#cb35-50" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #1a1a1a;</span></span>
+<span id="cb35-51"><a href="#cb35-51" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 2px solid #212529;</span></span>
+<span id="cb35-52"><a href="#cb35-52" aria-hidden="true" tabindex="-1"></a><span class="in">  padding-bottom: 0.5em;</span></span>
+<span id="cb35-53"><a href="#cb35-53" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 2em;</span></span>
+<span id="cb35-54"><a href="#cb35-54" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 1em;</span></span>
+<span id="cb35-55"><a href="#cb35-55" aria-hidden="true" tabindex="-1"></a><span class="in">  text-transform: uppercase;</span></span>
+<span id="cb35-56"><a href="#cb35-56" aria-hidden="true" tabindex="-1"></a><span class="in">  letter-spacing: 0.03em;</span></span>
+<span id="cb35-57"><a href="#cb35-57" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-58"><a href="#cb35-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-59"><a href="#cb35-59" aria-hidden="true" tabindex="-1"></a><span class="in">h2 {</span></span>
+<span id="cb35-60"><a href="#cb35-60" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.4em;</span></span>
+<span id="cb35-61"><a href="#cb35-61" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb35-62"><a href="#cb35-62" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #343a40;</span></span>
+<span id="cb35-63"><a href="#cb35-63" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 1.5em;</span></span>
+<span id="cb35-64"><a href="#cb35-64" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 0.8em;</span></span>
+<span id="cb35-65"><a href="#cb35-65" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-66"><a href="#cb35-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-67"><a href="#cb35-67" aria-hidden="true" tabindex="-1"></a><span class="in">h2:before {</span></span>
+<span id="cb35-68"><a href="#cb35-68" aria-hidden="true" tabindex="-1"></a><span class="in">  content: "§";</span></span>
+<span id="cb35-69"><a href="#cb35-69" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-right: 0.5em;</span></span>
+<span id="cb35-70"><a href="#cb35-70" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #6c757d;</span></span>
+<span id="cb35-71"><a href="#cb35-71" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 400;</span></span>
+<span id="cb35-72"><a href="#cb35-72" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-73"><a href="#cb35-73" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-74"><a href="#cb35-74" aria-hidden="true" tabindex="-1"></a><span class="in">h3 {</span></span>
+<span id="cb35-75"><a href="#cb35-75" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.2em;</span></span>
+<span id="cb35-76"><a href="#cb35-76" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb35-77"><a href="#cb35-77" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #495057;</span></span>
+<span id="cb35-78"><a href="#cb35-78" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb35-79"><a href="#cb35-79" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 1.2em;</span></span>
+<span id="cb35-80"><a href="#cb35-80" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 0.6em;</span></span>
+<span id="cb35-81"><a href="#cb35-81" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-82"><a href="#cb35-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-83"><a href="#cb35-83" aria-hidden="true" tabindex="-1"></a><span class="in">/* テーブルを学術論文風に */</span></span>
+<span id="cb35-84"><a href="#cb35-84" aria-hidden="true" tabindex="-1"></a><span class="in">table {</span></span>
+<span id="cb35-85"><a href="#cb35-85" aria-hidden="true" tabindex="-1"></a><span class="in">  margin: 2em auto;</span></span>
+<span id="cb35-86"><a href="#cb35-86" aria-hidden="true" tabindex="-1"></a><span class="in">  border-collapse: collapse;</span></span>
+<span id="cb35-87"><a href="#cb35-87" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.95em;</span></span>
+<span id="cb35-88"><a href="#cb35-88" aria-hidden="true" tabindex="-1"></a><span class="in">  width: 90%;</span></span>
+<span id="cb35-89"><a href="#cb35-89" aria-hidden="true" tabindex="-1"></a><span class="in">  border-top: 2px solid #212529;</span></span>
+<span id="cb35-90"><a href="#cb35-90" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 2px solid #212529;</span></span>
+<span id="cb35-91"><a href="#cb35-91" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-92"><a href="#cb35-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-93"><a href="#cb35-93" aria-hidden="true" tabindex="-1"></a><span class="in">thead {</span></span>
+<span id="cb35-94"><a href="#cb35-94" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa;</span></span>
+<span id="cb35-95"><a href="#cb35-95" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 1px solid #212529;</span></span>
+<span id="cb35-96"><a href="#cb35-96" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-97"><a href="#cb35-97" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-98"><a href="#cb35-98" aria-hidden="true" tabindex="-1"></a><span class="in">/* コードブロックをシンプルに */</span></span>
+<span id="cb35-99"><a href="#cb35-99" aria-hidden="true" tabindex="-1"></a><span class="in">pre {</span></span>
+<span id="cb35-100"><a href="#cb35-100" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa !important;</span></span>
+<span id="cb35-101"><a href="#cb35-101" aria-hidden="true" tabindex="-1"></a><span class="in">  border: 1px solid #dee2e6;</span></span>
+<span id="cb35-102"><a href="#cb35-102" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 0;</span></span>
+<span id="cb35-103"><a href="#cb35-103" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 1em;</span></span>
+<span id="cb35-104"><a href="#cb35-104" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.9em;</span></span>
+<span id="cb35-105"><a href="#cb35-105" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-106"><a href="#cb35-106" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-107"><a href="#cb35-107" aria-hidden="true" tabindex="-1"></a><span class="in">/* 数式を強調 */</span></span>
+<span id="cb35-108"><a href="#cb35-108" aria-hidden="true" tabindex="-1"></a><span class="in">.math {</span></span>
+<span id="cb35-109"><a href="#cb35-109" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #212529;</span></span>
+<span id="cb35-110"><a href="#cb35-110" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.05em;</span></span>
+<span id="cb35-111"><a href="#cb35-111" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb35-112"><a href="#cb35-112" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb35-113"><a href="#cb35-113" aria-hidden="true" tabindex="-1"></a><span class="in">&lt;/style&gt;</span></span>
+<span id="cb35-114"><a href="#cb35-114" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-115"><a href="#cb35-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-116"><a href="#cb35-116" aria-hidden="true" tabindex="-1"></a>こちらのページで紹介されているRのコードはいずれもbrmsパッケージのデフォルトの事前分布を仮定していることにご注意ください。</span>
+<span id="cb35-117"><a href="#cb35-117" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-118"><a href="#cb35-118" aria-hidden="true" tabindex="-1"></a><span class="fu"># はじめに</span></span>
+<span id="cb35-119"><a href="#cb35-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-120"><a href="#cb35-120" aria-hidden="true" tabindex="-1"></a>混合モデルを実装するlme4パッケージでは、引数familyにbinomial (2値ロジスティック回帰 = 目的変数が2値データ)、poisson (ポアソン回帰 = 目的変数がカウントデータ)、Gamma (ガンマ回帰 = 目的変数が自然数となるデータ)、gaussian (線型混合モデル = 目的変数が連続データ) などが含まれています。なお、ポアソン回帰の一種である負の二項分布 (negative binomial distribution) に基づく回帰分析 (混合モデル) の場合には、glmer()関数ではなくglmer.nb()関数を使います。</span>
+<span id="cb35-121"><a href="#cb35-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-122"><a href="#cb35-122" aria-hidden="true" tabindex="-1"></a>これらの混合モデルはいずれもlme4やmgcv、gammパッケージなどを使うことで実装することができますが、目的変数が3水準以上のダミーコードとなる場合や順序データ、多変量の分析などの自由なモデリングには対応していません。(もしかしたら今後改善されるかもしれません)</span>
+<span id="cb35-123"><a href="#cb35-123" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-124"><a href="#cb35-124" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3水準以上のカテゴリカル変数</span></span>
+<span id="cb35-125"><a href="#cb35-125" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-126"><a href="#cb35-126" aria-hidden="true" tabindex="-1"></a>3水準以上のカテゴリカル変数は、例えば、語彙連想課題の分野などで使われます。語彙連想課題とは、目標語から連想される語を書き出す (or 口頭で述べる) という課題で、メンタルレキシコンの構造を検討する際に用いられてきました。例えば、appleから連想される語としてはbanana、fruit、red、pie、Newtonなどがあります。語彙連想課題の分析の際にはこれらの連想語をいくつかのカテゴリーに分けていきます。apple-bananaの関係は同位語、apple-fruitの関係は上位語・下位語、apple-redの関係はシンタグマティック (コロケーション・統語)、apple-Newtonの関係はfree associationとなります。このようなカテゴリーの間には順序関係がありません。そのため、「正解・不正解」「成功・失敗」のような2値データと同じダミーコードが付与されます。</span>
+<span id="cb35-127"><a href="#cb35-127" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-128"><a href="#cb35-128" aria-hidden="true" tabindex="-1"></a>2024年現在、lme4パッケージのfamilyではこのmultinomialのデータを分析することができません。</span>
+<span id="cb35-129"><a href="#cb35-129" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-130"><a href="#cb35-130" aria-hidden="true" tabindex="-1"></a><span class="fu">## 順序データ</span></span>
+<span id="cb35-131"><a href="#cb35-131" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-132"><a href="#cb35-132" aria-hidden="true" tabindex="-1"></a>lme4パッケージで分析することができないデータの2つ目は順序データです。順序データの典型例はアンケートなどのリッカートスケールです。アンケートの結果は因子分析などでまとめられてしまうことが多いですが、例えば、生徒のスピーチを5段階で評価するなどのデータでは有用です。パフォーマンス評価を行う際には、評価者と受験者をファセットとした多層ラッシュモデルで分析することもできます。多相ラッシュモデルは評価者の厳しさや受験者の能力を含めたモデリングであり、現在のデータを説明することが目的です。一方、順序ロジスティック回帰では、未来のデータを予測することが目的となります。例えば、受験者の授業中の様子からスピーチの評価を予測するなどが挙げられます。</span>
+<span id="cb35-133"><a href="#cb35-133" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-134"><a href="#cb35-134" aria-hidden="true" tabindex="-1"></a>lme4パッケージのfamilyではこのordinal logistic regressionは実装できません。ランダム効果も含めたcumulative link mixed effect modelの場合はclmmパッケージを使うことができます。</span>
+<span id="cb35-135"><a href="#cb35-135" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-136"><a href="#cb35-136" aria-hidden="true" tabindex="-1"></a><span class="fu">## 多変量のデータ</span></span>
+<span id="cb35-137"><a href="#cb35-137" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-138"><a href="#cb35-138" aria-hidden="true" tabindex="-1"></a>MANOVAのように目的変数が複数ある場合、lme4パッケージでは混合効果を含めたMANOVAを実装することができません。例えば、recallとrecognitionの語彙テストで得られた正解・不正解のデータはrecallで1つの2値ロジスティック回帰、recognitionで1つの2値ロジスティック回帰という具合に、2つのGLMMでモデルが作成されます。</span>
+<span id="cb35-139"><a href="#cb35-139" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-140"><a href="#cb35-140" aria-hidden="true" tabindex="-1"></a><span class="fu"># brmsパッケージとベイズアプローチ</span></span>
+<span id="cb35-141"><a href="#cb35-141" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-142"><a href="#cb35-142" aria-hidden="true" tabindex="-1"></a>上記のように、lme4パッケージで分析することができないデータはbrmsパッケージを使うことで全て解決可能です。brmsパッケージはベイズ推定を行うためのパッケージです。以下ではベイズアプローチに基づく回帰分析について簡単に紹介します。</span>
+<span id="cb35-143"><a href="#cb35-143" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-144"><a href="#cb35-144" aria-hidden="true" tabindex="-1"></a><span class="fu">### ベイズ推定</span></span>
+<span id="cb35-145"><a href="#cb35-145" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-146"><a href="#cb35-146" aria-hidden="true" tabindex="-1"></a>ベイズアプローチとは、物事について、どれくらい知っているのか、あるいは知らないのかを、確率で表現するものです。例えば、明日が雨なのか晴れなのかよくわからないという場合でも、「よくわからない」ではなく、「雨が降る確率は40%くらいだろうか」と確率を使って定量的に評価することが試みられます。</span>
+<span id="cb35-147"><a href="#cb35-147" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-148"><a href="#cb35-148" aria-hidden="true" tabindex="-1"></a>ベイズアプローチはベイズの定理に基づき、事前確率を事後確率に更新します。事前確率とは、データが得られる前に想定された確率のことで、データが得られた後に想定する確率です。例えば、先行研究で得られている効果量を事前確率とし、手元のデータに当てはめてパラメータの推定値やデータの予測値を得ることができます。</span>
+<span id="cb35-149"><a href="#cb35-149" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-150"><a href="#cb35-150" aria-hidden="true" tabindex="-1"></a>事前確率を事後確率に更新する際には尤度と周辺尤度の比を使います。尤度とはパラメータが所与であるという条件における、標本が得られる確率のことで、条件付き確率として表現されます。一方で周辺尤度とはデータが得られる平均的な確率です。例えば、語彙テストにおいて、ある単語の意味を正しく回答できるかどうかの確率は正解か不正解かで50%であると想定されます。ただし、appleやorangeのように具体的な語彙は75%の確率で正解し、amazingやdoubtfulのような抽象的な語彙の正解率は50%であることが先行研究で示されているとします。この状況を数式としてまとめると、以下のようになります。</span>
+<span id="cb35-151"><a href="#cb35-151" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-152"><a href="#cb35-152" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>テスト項目が具体的な単語であるときに、テストで正解するというデータが得られる確率：P(D|H1) = 0.75</span>
+<span id="cb35-153"><a href="#cb35-153" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>テスト項目が抽象的な単語であるときに、テストで正解するというデータが得られる確率：P(D|H2) = 0.50</span>
+<span id="cb35-154"><a href="#cb35-154" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>周辺尤度：P(D) = P(D|H1)P(H1) + P(D|H2)P(H2) = 0.75 × 0.5 + 0.5 × 0.5 = 0.625</span>
+<span id="cb35-155"><a href="#cb35-155" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-156"><a href="#cb35-156" aria-hidden="true" tabindex="-1"></a>これらの確率を使い、ベイズの定理に基づくと、事前確率を事後確率に更新することができます。ベイズの定理は以下のように表されます。</span>
+<span id="cb35-157"><a href="#cb35-157" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-158"><a href="#cb35-158" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb35-159"><a href="#cb35-159" aria-hidden="true" tabindex="-1"></a>P(H_1|D) = \frac{P(D|H1)P(H_1)}{P(D)}</span>
+<span id="cb35-160"><a href="#cb35-160" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb35-161"><a href="#cb35-161" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-162"><a href="#cb35-162" aria-hidden="true" tabindex="-1"></a>このベイズの定理を用いた事前確率から事後確率への更新はベイズ更新と呼ばれています。語彙テストの例を続けると、学習者が語彙テストに正解した後に想定する「テスト項目が具象語であると想定する確率」、すなわち事後確率は以下のように計算されます。</span>
+<span id="cb35-163"><a href="#cb35-163" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-164"><a href="#cb35-164" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb35-165"><a href="#cb35-165" aria-hidden="true" tabindex="-1"></a>Posterior Probability = P(H_1|D) = P(H_1) × \frac{P(D|H_1)}{P(D)} = 0.5 × \frac{0.75}{0.625} = 0.5 × 1.2 = 0.6</span>
+<span id="cb35-166"><a href="#cb35-166" aria-hidden="true" tabindex="-1"></a>$$</span>
+<span id="cb35-167"><a href="#cb35-167" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-168"><a href="#cb35-168" aria-hidden="true" tabindex="-1"></a>このベイズ更新を用いて確率を更新していくことにより、パラメータや予測結果の不確実性が確率で定量化されます。パラメータは確率分布として扱うことができることから、データが得られる前に想定される確率分布は事前分布、データが得られた後に想定される確率分布は事後分布と呼ばれます。この事後分布に従う乱数を小さいものから順番に並べ、2.5%点から97.5%点に該当する範囲を調べることで95%ベイズ信用区間を得ることができます。つまり、95%Credible Interval (CrI) はNull Hypothesis Significant Testingにおける95%Confidence Interval (CI) と異なり、95%の確率で母集団のパラメータを推定することが可能です。</span>
+<span id="cb35-169"><a href="#cb35-169" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-170"><a href="#cb35-170" aria-hidden="true" tabindex="-1"></a><span class="fu"># ポアソン回帰分析</span></span>
+<span id="cb35-171"><a href="#cb35-171" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-172"><a href="#cb35-172" aria-hidden="true" tabindex="-1"></a>ベイズ推定について紹介するため紹介するため、ポアソン回帰分析を例としてコードを見ていきましょう。</span>
+<span id="cb35-173"><a href="#cb35-173" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-176"><a href="#cb35-176" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-177"><a href="#cb35-177" aria-hidden="true" tabindex="-1"></a><span class="co"># パッケージの読み込み</span></span>
+<span id="cb35-178"><a href="#cb35-178" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(</span>
+<span id="cb35-179"><a href="#cb35-179" aria-hidden="true" tabindex="-1"></a>  brms, rstan, rstanarm, loo, tidybayes, tidyverse,</span>
+<span id="cb35-180"><a href="#cb35-180" aria-hidden="true" tabindex="-1"></a>  bayesplot, sjPlot, performance)</span>
+<span id="cb35-181"><a href="#cb35-181" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-182"><a href="#cb35-182" aria-hidden="true" tabindex="-1"></a><span class="co"># プロットのテーマの設定</span></span>
+<span id="cb35-183"><a href="#cb35-183" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_bw</span>())</span>
+<span id="cb35-184"><a href="#cb35-184" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-185"><a href="#cb35-185" aria-hidden="true" tabindex="-1"></a><span class="co"># 処理の高速化</span></span>
+<span id="cb35-186"><a href="#cb35-186" aria-hidden="true" tabindex="-1"></a><span class="fu">rstan_options</span>(<span class="at">auto_write =</span> T)</span>
+<span id="cb35-187"><a href="#cb35-187" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">mc.cores=</span>parallel<span class="sc">::</span><span class="fu">detectCores</span>())</span>
+<span id="cb35-188"><a href="#cb35-188" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-189"><a href="#cb35-189" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-190"><a href="#cb35-190" aria-hidden="true" tabindex="-1"></a>パッケージとして主に用いるのはbrmsとなります。brmsはBayesian Regression Models using 'Stan' のことを指しています。Stanとは、ベイズ推定で必要となるMCMCサンプリングを行うプログラムのことです。デフォルトで4,000回のコンパイルがあるため、処理を高速化する必要があります。</span>
+<span id="cb35-191"><a href="#cb35-191" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-192"><a href="#cb35-192" aria-hidden="true" tabindex="-1"></a>続いては分析用のデータを確認していきましょう。</span>
+<span id="cb35-193"><a href="#cb35-193" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-196"><a href="#cb35-196" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-197"><a href="#cb35-197" aria-hidden="true" tabindex="-1"></a><span class="co"># ポアソン回帰</span></span>
+<span id="cb35-198"><a href="#cb35-198" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(epilepsy) <span class="co"># データの読み込み</span></span>
+<span id="cb35-199"><a href="#cb35-199" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(epilepsy)</span>
+<span id="cb35-200"><a href="#cb35-200" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-201"><a href="#cb35-201" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(epilepsy, <span class="fu">aes</span>(<span class="at">x =</span> count)) <span class="sc">+</span></span>
+<span id="cb35-202"><a href="#cb35-202" aria-hidden="true" tabindex="-1"></a> <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">1</span>, <span class="at">fill =</span> <span class="st">"blue"</span>, <span class="at">alpha =</span> <span class="fl">0.7</span>) <span class="sc">+</span></span>
+<span id="cb35-203"><a href="#cb35-203" aria-hidden="true" tabindex="-1"></a> <span class="fu">facet_grid</span>(. <span class="sc">~</span> Trt) <span class="sc">+</span></span>
+<span id="cb35-204"><a href="#cb35-204" aria-hidden="true" tabindex="-1"></a> <span class="fu">theme_bw</span>()</span>
+<span id="cb35-205"><a href="#cb35-205" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-206"><a href="#cb35-206" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-207"><a href="#cb35-207" aria-hidden="true" tabindex="-1"></a>データはbrmsパッケージに含まれているepilepsyデータでてんかんにおける抗けいれん薬治療のランダム化試験における発作回数を検討します。目的変数はcount、説明変数はz変換されたAge (zAge)、zBaseとTrtの交互作用となります。</span>
+<span id="cb35-208"><a href="#cb35-208" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-209"><a href="#cb35-209" aria-hidden="true" tabindex="-1"></a><span class="al">![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/c37f0e82-1db9-44a5-b16e-29ff982c00da/d6f1dedc-f343-4272-9c0e-0bf6e9a61d70/Untitled.png)</span></span>
+<span id="cb35-210"><a href="#cb35-210" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-211"><a href="#cb35-211" aria-hidden="true" tabindex="-1"></a>brmsパッケージのbrm関数の記述方法はlme4パッケージと同じように使うことができます。ポアソン回帰分析を実行するにはfamilyにpoissonを用いることとなります。</span>
+<span id="cb35-212"><a href="#cb35-212" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-213"><a href="#cb35-213" aria-hidden="true" tabindex="-1"></a>brm関数の引数にはチェーンの数やバーンインの回数などがありますが、今回は何も指定せずにデフォルトを使用しています。デフォルトではチェーン数は4、iterationは2000、バーンインは1000、thiningは1となっています。また、事前分布としてはget_prior関数を使うと確認することができます。</span>
+<span id="cb35-214"><a href="#cb35-214" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-217"><a href="#cb35-217" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-218"><a href="#cb35-218" aria-hidden="true" tabindex="-1"></a><span class="co"># ポアソン回帰の実行</span></span>
+<span id="cb35-219"><a href="#cb35-219" aria-hidden="true" tabindex="-1"></a>fit1 <span class="ot">&lt;-</span> <span class="fu">brm</span>(count <span class="sc">~</span> zAge <span class="sc">+</span> zBase <span class="sc">*</span> Trt <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>patient),</span>
+<span id="cb35-220"><a href="#cb35-220" aria-hidden="true" tabindex="-1"></a> <span class="at">data =</span> epilepsy, <span class="at">family =</span> <span class="fu">poisson</span>())</span>
+<span id="cb35-221"><a href="#cb35-221" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-222"><a href="#cb35-222" aria-hidden="true" tabindex="-1"></a><span class="co"># 結果の表示</span></span>
+<span id="cb35-223"><a href="#cb35-223" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit1, <span class="at">prob =</span> <span class="fl">0.95</span>)</span>
+<span id="cb35-224"><a href="#cb35-224" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit1)</span>
+<span id="cb35-225"><a href="#cb35-225" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">conditional_effects</span>(fit1), <span class="at">ask =</span> F)</span>
+<span id="cb35-226"><a href="#cb35-226" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-227"><a href="#cb35-227" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-228"><a href="#cb35-228" aria-hidden="true" tabindex="-1"></a>summary関数の結果には推定値などが示されています。重要な指標の解釈は以下の通りです。</span>
+<span id="cb35-229"><a href="#cb35-229" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-230"><a href="#cb35-230" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>R hat：1.1を超えているとモデルの収束に問題あり</span>
+<span id="cb35-231"><a href="#cb35-231" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Estimate：対数変換されているIncidence Rate Ratios (IRR)</span>
+<span id="cb35-232"><a href="#cb35-232" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>95%CI：IRRの95%信用区間 (credible interval) に0が含まれていると実質的に差がない</span>
+<span id="cb35-233"><a href="#cb35-233" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Bulk ESS：MCMCサンプルの中心の有効なサンプルサイズ</span>
+<span id="cb35-234"><a href="#cb35-234" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Tail BSS：MCMCサンプルの尾部の有効なサンプルサイズ</span>
+<span id="cb35-235"><a href="#cb35-235" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-236"><a href="#cb35-236" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb35-237"><a href="#cb35-237" aria-hidden="true" tabindex="-1"></a><span class="fu">### 結果の確認</span></span>
+<span id="cb35-238"><a href="#cb35-238" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-241"><a href="#cb35-241" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-242"><a href="#cb35-242" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit1, <span class="at">prob =</span> <span class="fl">0.95</span>)</span>
+<span id="cb35-243"><a href="#cb35-243" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-244"><a href="#cb35-244" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-245"><a href="#cb35-245" aria-hidden="true" tabindex="-1"></a><span class="fu">### tab_modelでの出力結果</span></span>
+<span id="cb35-246"><a href="#cb35-246" aria-hidden="true" tabindex="-1"></a>tab_model関数の出力結果は、summary関数のEstimateがIRRへと指数変換されています。そのため、95%CIに1が含まれている際には実質的な差が見られないと解釈できます。そのため、zAgeの主効果、zBaseとTrtの交互作用、Trtの主効果は発生率に影響を与えていないと言えます。onditional_effects関数とplot関数を使うと予測プロットを描画することができます。</span>
+<span id="cb35-247"><a href="#cb35-247" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-250"><a href="#cb35-250" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-251"><a href="#cb35-251" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit1)</span>
+<span id="cb35-252"><a href="#cb35-252" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-253"><a href="#cb35-253" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-254"><a href="#cb35-254" aria-hidden="true" tabindex="-1"></a><span class="fu">### トレースプロット</span></span>
+<span id="cb35-255"><a href="#cb35-255" aria-hidden="true" tabindex="-1"></a>トレースプロットはベイズ推定で用いられるMCMCサンプルの安定性を各パラメータごとに可視化しています。b_で始まるパラメータは固定効果、sd_で始まるパラメータはランダム効果の推定結果となります。iterationが1〜4であり、それぞれが安定しているかを視覚的に捉えることができます。今回は比較的安定しているように思われます。</span>
+<span id="cb35-256"><a href="#cb35-256" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-259"><a href="#cb35-259" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-260"><a href="#cb35-260" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fit1, <span class="at">combo =</span> <span class="fu">c</span>(<span class="st">"trace"</span>, <span class="st">"dens_overlay"</span>), <span class="at">ask =</span> F)</span>
+<span id="cb35-261"><a href="#cb35-261" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-262"><a href="#cb35-262" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-263"><a href="#cb35-263" aria-hidden="true" tabindex="-1"></a><span class="fu">### モデルの予測</span></span>
+<span id="cb35-264"><a href="#cb35-264" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-265"><a href="#cb35-265" aria-hidden="true" tabindex="-1"></a>モデルの予測について、事後分布を確認することができます。左側がヒストグラム、右側が確率密度で目的変数の事後分布をプロットしています。Bulk ESS、Tail ESSで700〜1400のシミュレーションの平均に基づくと、目的変数は8.0〜8.5あたりになるようです。左側のヒストグラムの$T(y)$ はシミュレーションの最小値となり、ヒストグラムの山と重なっていることから、実際のデータとシミュレーションの結果が一致していることを表しています。</span>
+<span id="cb35-266"><a href="#cb35-266" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-269"><a href="#cb35-269" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-270"><a href="#cb35-270" aria-hidden="true" tabindex="-1"></a><span class="co"># モデルの予測の確認</span></span>
+<span id="cb35-271"><a href="#cb35-271" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit1, <span class="at">ndraws =</span> <span class="dv">1000</span>, <span class="at">type =</span> <span class="st">"stat"</span>, <span class="at">stat =</span> <span class="st">"mean"</span>) <span class="sc">+</span></span>
+<span id="cb35-272"><a href="#cb35-272" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Frequency"</span>)</span>
+<span id="cb35-273"><a href="#cb35-273" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-274"><a href="#cb35-274" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit1, <span class="at">ndraws =</span> <span class="dv">100</span>) <span class="sc">+</span></span>
+<span id="cb35-275"><a href="#cb35-275" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Density"</span>)</span>
+<span id="cb35-276"><a href="#cb35-276" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-277"><a href="#cb35-277" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-278"><a href="#cb35-278" aria-hidden="true" tabindex="-1"></a><span class="fu">### モデルの適合度</span></span>
+<span id="cb35-279"><a href="#cb35-279" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-280"><a href="#cb35-280" aria-hidden="true" tabindex="-1"></a>モデルの適合度は以下の通りです。回帰モデルの適合度を計算する際には、観測値と回帰直線の残差を使うこととなります。この残差を用いると、モデルの決定係数 ($R^2 = 1 - 残差標準誤差$) を計算することや、逸脱度 (パラメータが所与の目的変数の確率密度を対数変換し、-2をかけたもの) を計算することができます。逸脱度は低いほどモデルの当てはまりがよくなります。</span>
+<span id="cb35-281"><a href="#cb35-281" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-282"><a href="#cb35-282" aria-hidden="true" tabindex="-1"></a>逸脱度では、確率密度を対数変換を行なっています。確率密度は掛け合わせるものですが、対数変換をすることにより確率を足し合わせることができるようになります。 leave-one-out (LOO) cross validationを用いたLOO残差を対数変換したexpected log predictive density (ELPD) は、小さいほどモデルの当てはまりがよいとされます。また、事前情報を組み込んだモデルを用いるとか学習は防がれます。このモデルを比較する際には、ELPDやLOOIC、WAICなどを用います。LOOICはELPD_LOOに-2をかけたものであり、高いほど当てはまりが良いと言えます。WAICはAICと同じように低いほど当てはまりが良いと言えます。WAICはモデルの予測尤度の対数を計算し、これらの値の平均を取ります。</span>
+<span id="cb35-283"><a href="#cb35-283" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-286"><a href="#cb35-286" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-287"><a href="#cb35-287" aria-hidden="true" tabindex="-1"></a><span class="fu">model_performance</span>(fit1)</span>
+<span id="cb35-288"><a href="#cb35-288" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-289"><a href="#cb35-289" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-290"><a href="#cb35-290" aria-hidden="true" tabindex="-1"></a><span class="fu">### 事前分布とStanコード</span></span>
+<span id="cb35-291"><a href="#cb35-291" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-292"><a href="#cb35-292" aria-hidden="true" tabindex="-1"></a>事前分布はget_prior関数を使うと確認することができます。</span>
+<span id="cb35-293"><a href="#cb35-293" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-296"><a href="#cb35-296" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-297"><a href="#cb35-297" aria-hidden="true" tabindex="-1"></a><span class="fu">get_prior</span>(count <span class="sc">~</span> zAge <span class="sc">+</span> zBase <span class="sc">*</span> Trt <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>patient), </span>
+<span id="cb35-298"><a href="#cb35-298" aria-hidden="true" tabindex="-1"></a>          <span class="at">data =</span> epilepsy)</span>
+<span id="cb35-299"><a href="#cb35-299" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-300"><a href="#cb35-300" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-301"><a href="#cb35-301" aria-hidden="true" tabindex="-1"></a>flatは無情報分布と呼ばれるものです。多くの場合、平均0、分散100の正規分布のような平らな分布となります。こちらはclassがbのパラメータ (固定効果) に対して用いられています。</span>
+<span id="cb35-302"><a href="#cb35-302" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-303"><a href="#cb35-303" aria-hidden="true" tabindex="-1"></a>事前分布は先行研究でどのようなパラメータが用いられているかを踏まえて推定されます。例えば、身長はマイナスの値にはならないなど、分析者の専門知識を活用することが必要となります。基本的にはデフォルトの事前分布を用いて良いかと思います。</span>
+<span id="cb35-304"><a href="#cb35-304" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-307"><a href="#cb35-307" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-308"><a href="#cb35-308" aria-hidden="true" tabindex="-1"></a><span class="fu">stancode</span>(fit1)</span>
+<span id="cb35-309"><a href="#cb35-309" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-310"><a href="#cb35-310" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-311"><a href="#cb35-311" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb35-312"><a href="#cb35-312" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-313"><a href="#cb35-313" aria-hidden="true" tabindex="-1"></a><span class="fu"># 順序ロジスティック回帰</span></span>
+<span id="cb35-314"><a href="#cb35-314" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-315"><a href="#cb35-315" aria-hidden="true" tabindex="-1"></a>目的変数が順序尺度 (例：とてもそう思う・そう思う・どちらでもない・あまりそう思わない・全くそう思わない) の場合、順序ロジスティック回帰分析を用いることとなります。なお、順序ロジスティック回帰には累積ロジスティック回帰分析と隣接ロジスティック回帰分析の2種類があります。</span>
+<span id="cb35-316"><a href="#cb35-316" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-317"><a href="#cb35-317" aria-hidden="true" tabindex="-1"></a><span class="fu">## 累積ロジスティック回帰分析</span></span>
+<span id="cb35-318"><a href="#cb35-318" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-319"><a href="#cb35-319" aria-hidden="true" tabindex="-1"></a>目的変数が2値のロジスティック回帰分析では「成功の確率」と「失敗の確率」を比較するものでした。目的変数が順序尺度の場合、5件法のアンケートを例とすると、1の確率と2以上の確率の比較、2以下の確率と3以上の確率の比較、3以下の確率と4以上の確率の比較、4以下の確率と5の確率の比較を行なっています。つまり、累積ロジスティック回帰は目的変数が複数の順序尺度を2つの比較へと縮小していると言えます。一方、隣接ロジスティック回帰は、1の確率と2の確率の比較、2の確率と3の確率の比較、3の確率と4の確率の比較、4の確率と5の確率の比較などを行います。</span>
+<span id="cb35-320"><a href="#cb35-320" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-321"><a href="#cb35-321" aria-hidden="true" tabindex="-1"></a>それでは具体例で見ていきましょう。</span>
+<span id="cb35-322"><a href="#cb35-322" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-325"><a href="#cb35-325" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-326"><a href="#cb35-326" aria-hidden="true" tabindex="-1"></a><span class="co"># パッケージの読み込み</span></span>
+<span id="cb35-327"><a href="#cb35-327" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(brms)</span>
+<span id="cb35-328"><a href="#cb35-328" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstan)</span>
+<span id="cb35-329"><a href="#cb35-329" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstanarm)</span>
+<span id="cb35-330"><a href="#cb35-330" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(loo)</span>
+<span id="cb35-331"><a href="#cb35-331" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidybayes)</span>
+<span id="cb35-332"><a href="#cb35-332" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb35-333"><a href="#cb35-333" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(bayesplot)</span>
+<span id="cb35-334"><a href="#cb35-334" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sjPlot)</span>
+<span id="cb35-335"><a href="#cb35-335" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(performance)</span>
+<span id="cb35-336"><a href="#cb35-336" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-337"><a href="#cb35-337" aria-hidden="true" tabindex="-1"></a><span class="co"># プロットのテーマの設定</span></span>
+<span id="cb35-338"><a href="#cb35-338" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_bw</span>())</span>
+<span id="cb35-339"><a href="#cb35-339" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-340"><a href="#cb35-340" aria-hidden="true" tabindex="-1"></a><span class="co"># 処理の高速化</span></span>
+<span id="cb35-341"><a href="#cb35-341" aria-hidden="true" tabindex="-1"></a><span class="fu">rstan_options</span>(<span class="at">auto_write =</span> T)</span>
+<span id="cb35-342"><a href="#cb35-342" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">mc.cores=</span>parallel<span class="sc">::</span><span class="fu">detectCores</span>())</span>
+<span id="cb35-343"><a href="#cb35-343" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-344"><a href="#cb35-344" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ordinal) <span class="co"># wineデータの読み込みのためのパッケージ</span></span>
+<span id="cb35-345"><a href="#cb35-345" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(wine) <span class="co"># データの読み込み</span></span>
+<span id="cb35-346"><a href="#cb35-346" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(wine)</span>
+<span id="cb35-347"><a href="#cb35-347" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-348"><a href="#cb35-348" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(wine, <span class="fu">aes</span>(<span class="at">x =</span> rating, <span class="at">y =</span> response, <span class="at">fill =</span> temp)) <span class="sc">+</span></span>
+<span id="cb35-349"><a href="#cb35-349" aria-hidden="true" tabindex="-1"></a>   <span class="fu">geom_boxplot</span>()</span>
+<span id="cb35-350"><a href="#cb35-350" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-351"><a href="#cb35-351" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-352"><a href="#cb35-352" aria-hidden="true" tabindex="-1"></a>今回使用するデータはordinalパッケージに含まれるワインの苦味を5段階で評定するwineというデータです。9人の審査員が2本ずつワインをテイスティングし、5段階で苦味を報告しています。この評定にワインを作成する際の温度 (2水準：warm vs. cold)、果汁と果皮の接触 (2水準：Yes vs. No) が影響するかを検討します。</span>
+<span id="cb35-353"><a href="#cb35-353" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-354"><a href="#cb35-354" aria-hidden="true" tabindex="-1"></a>プロットを見てみると、warmの場合は2〜5が多く、coldの場合は1〜4が多いように思われます。また、ratingは1が少なく、5が最もおおいようです。</span>
+<span id="cb35-355"><a href="#cb35-355" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-356"><a href="#cb35-356" aria-hidden="true" tabindex="-1"></a>それではbrmsパッケージを使って累積ロジスティック回帰分析を実行してみます。familyにcumulativeを設定しています。なお、link = “logit” の部分はリンク関数を明示しており、省略可能です。</span>
+<span id="cb35-357"><a href="#cb35-357" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-360"><a href="#cb35-360" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-361"><a href="#cb35-361" aria-hidden="true" tabindex="-1"></a><span class="co"># 順序ロジスティック回帰の実行</span></span>
+<span id="cb35-362"><a href="#cb35-362" aria-hidden="true" tabindex="-1"></a>fit2 <span class="ot">&lt;-</span> <span class="fu">brm</span>(rating <span class="sc">~</span> temp <span class="sc">+</span> contact <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>judge),</span>
+<span id="cb35-363"><a href="#cb35-363" aria-hidden="true" tabindex="-1"></a><span class="at">data =</span> wine, <span class="at">family =</span> <span class="fu">cumulative</span>(<span class="at">link =</span> <span class="st">"logit"</span>))</span>
+<span id="cb35-364"><a href="#cb35-364" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-365"><a href="#cb35-365" aria-hidden="true" tabindex="-1"></a><span class="co"># 結果の表示</span></span>
+<span id="cb35-366"><a href="#cb35-366" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit2, <span class="at">prob =</span> <span class="fl">0.95</span>)</span>
+<span id="cb35-367"><a href="#cb35-367" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-368"><a href="#cb35-368" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit2)</span>
+<span id="cb35-369"><a href="#cb35-369" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_model</span>(fit2,</span>
+<span id="cb35-370"><a href="#cb35-370" aria-hidden="true" tabindex="-1"></a> <span class="at">type =</span> <span class="st">"pred"</span>,</span>
+<span id="cb35-371"><a href="#cb35-371" aria-hidden="true" tabindex="-1"></a> <span class="at">terms =</span> <span class="fu">c</span>(<span class="st">"temp"</span>, <span class="st">"contact"</span>))</span>
+<span id="cb35-372"><a href="#cb35-372" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">conditional_effects</span>(fit2), <span class="at">ask =</span> F)</span>
+<span id="cb35-373"><a href="#cb35-373" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-374"><a href="#cb35-374" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-375"><a href="#cb35-375" aria-hidden="true" tabindex="-1"></a>ポアソン回帰ではEstimateが対数変換されていないIncidence Rate Ratios (IRR) でした。ロジスティック回帰分析絵は対数変換されているオッズ比 (Odds Ratio: OR) であるロジットが表示されています。ロジットが0であることは基準と比べて差がないことを表しています。</span>
+<span id="cb35-376"><a href="#cb35-376" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-377"><a href="#cb35-377" aria-hidden="true" tabindex="-1"></a>ロジットの95%CIを確認すると、tempは0が含まれていないため、ratingに影響を与えているようです。ベースラインはcoldであるため、coldに比べてwarmは高く評定されるようにあります。また、contactはNoに比べ、Yesの方が高く評定されるようです。</span>
+<span id="cb35-378"><a href="#cb35-378" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-379"><a href="#cb35-379" aria-hidden="true" tabindex="-1"></a>tab_model関数の出力結果は指数変換されており、ロジットがオッズ比へと変換されています。そのため、CIに1.00が含まれているとベースラインと比べて差がないことを意味しています。今回はtempもcontactも影響を与えているようです。この結果はplot_model関数の結果を確認すると視覚的に分かります。</span>
+<span id="cb35-380"><a href="#cb35-380" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-381"><a href="#cb35-381" aria-hidden="true" tabindex="-1"></a>::: {.panel-tabset}</span>
+<span id="cb35-382"><a href="#cb35-382" aria-hidden="true" tabindex="-1"></a><span class="fu">### 結果の確認</span></span>
+<span id="cb35-383"><a href="#cb35-383" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-386"><a href="#cb35-386" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-387"><a href="#cb35-387" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit2, <span class="at">prob =</span> <span class="fl">0.95</span>)</span>
+<span id="cb35-388"><a href="#cb35-388" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-389"><a href="#cb35-389" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-390"><a href="#cb35-390" aria-hidden="true" tabindex="-1"></a><span class="fu">### tab_modelでの出力結果</span></span>
+<span id="cb35-391"><a href="#cb35-391" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-394"><a href="#cb35-394" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-395"><a href="#cb35-395" aria-hidden="true" tabindex="-1"></a><span class="fu">tab_model</span>(fit2)</span>
+<span id="cb35-396"><a href="#cb35-396" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-397"><a href="#cb35-397" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-398"><a href="#cb35-398" aria-hidden="true" tabindex="-1"></a>1と評定する左上のプロットはwarmよりもcoldの方が多く、contactがyesよりnoの方が多いようです。この傾向は逆に、5の評定をみると逆転しています。つまり、tempがwarmであると評定が高くなり、contactがyesであると評定が高くなる傾向が見られます。</span>
+<span id="cb35-399"><a href="#cb35-399" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-400"><a href="#cb35-400" aria-hidden="true" tabindex="-1"></a><span class="fu">### 予測プロット</span></span>
+<span id="cb35-401"><a href="#cb35-401" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-402"><a href="#cb35-402" aria-hidden="true" tabindex="-1"></a>予測モデルでは分かりにくい場合、以下のコードを使ってみましょう。</span>
+<span id="cb35-403"><a href="#cb35-403" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-406"><a href="#cb35-406" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-407"><a href="#cb35-407" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">conditional_effects</span>(fit2), <span class="at">ask =</span> F)</span>
+<span id="cb35-408"><a href="#cb35-408" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-409"><a href="#cb35-409" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-410"><a href="#cb35-410" aria-hidden="true" tabindex="-1"></a>conditional_effects関数を使うとratingがwarmおよびyesであると高くなることがわかります。</span>
+<span id="cb35-411"><a href="#cb35-411" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-414"><a href="#cb35-414" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-415"><a href="#cb35-415" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_model</span>(fit2)</span>
+<span id="cb35-416"><a href="#cb35-416" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-417"><a href="#cb35-417" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-418"><a href="#cb35-418" aria-hidden="true" tabindex="-1"></a>こちらは予測プロットを作成する際のtypeとtermsを削除したsjPlotパッケージのplot_model関数で、フォレストプロットを作成するものです。x軸には効果量であるオッズ比を示しており、Interceptとの比較が示されています。それぞれの比較の解釈は以下の通りです。</span>
+<span id="cb35-419"><a href="#cb35-419" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-420"><a href="#cb35-420" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Intercept<span class="co">[</span><span class="ot">1</span><span class="co">]</span>：評定が1と2以上の比較</span>
+<span id="cb35-421"><a href="#cb35-421" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Intercept<span class="co">[</span><span class="ot">2</span><span class="co">]</span>：評定が2以下と3以上の比較</span>
+<span id="cb35-422"><a href="#cb35-422" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Intercept<span class="co">[</span><span class="ot">3</span><span class="co">]</span>：評定が3以下と4以上の比較</span>
+<span id="cb35-423"><a href="#cb35-423" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Intercept<span class="co">[</span><span class="ot">4</span><span class="co">]</span>：評定が4以下と5の比較</span>
+<span id="cb35-424"><a href="#cb35-424" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-425"><a href="#cb35-425" aria-hidden="true" tabindex="-1"></a>それぞれオッズ比が1よりも小さい場合には赤、1より大きい場合には青で示されます。95%CIが1を跨いでいると目的変数に影響を与えないという解釈となります。</span>
+<span id="cb35-426"><a href="#cb35-426" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-427"><a href="#cb35-427" aria-hidden="true" tabindex="-1"></a><span class="fu">### トレースプロット</span></span>
+<span id="cb35-428"><a href="#cb35-428" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-429"><a href="#cb35-429" aria-hidden="true" tabindex="-1"></a>それではトレースプロットやモデル指標などを確認し、これらの結果が信頼できるものか確認してみましょう。</span>
+<span id="cb35-430"><a href="#cb35-430" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-433"><a href="#cb35-433" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-434"><a href="#cb35-434" aria-hidden="true" tabindex="-1"></a><span class="co"># トレースプロット</span></span>
+<span id="cb35-435"><a href="#cb35-435" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fit2, <span class="at">combo =</span> <span class="fu">c</span>(<span class="st">"trace"</span>, <span class="st">"dens_overlay"</span>), <span class="at">ask =</span> F)</span>
+<span id="cb35-436"><a href="#cb35-436" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-437"><a href="#cb35-437" aria-hidden="true" tabindex="-1"></a><span class="co"># モデルの予測の確認</span></span>
+<span id="cb35-438"><a href="#cb35-438" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit2, <span class="at">ndraws =</span> <span class="dv">1000</span>, <span class="at">type =</span> <span class="st">"stat"</span>, <span class="at">stat =</span> <span class="st">"mean"</span>) <span class="sc">+</span></span>
+<span id="cb35-439"><a href="#cb35-439" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Frequency"</span>)</span>
+<span id="cb35-440"><a href="#cb35-440" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-441"><a href="#cb35-441" aria-hidden="true" tabindex="-1"></a><span class="fu">pp_check</span>(<span class="at">object =</span> fit2, <span class="at">ndraws =</span> <span class="dv">100</span>) <span class="sc">+</span></span>
+<span id="cb35-442"><a href="#cb35-442" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_test</span>() <span class="sc">+</span> <span class="fu">ylab</span>(<span class="st">"Density"</span>)</span>
+<span id="cb35-443"><a href="#cb35-443" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-444"><a href="#cb35-444" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-445"><a href="#cb35-445" aria-hidden="true" tabindex="-1"></a>トレースプロットなどを確認すると、モデルの収束に問題はなかったようです。事後分布を確認すると、評定は3であることが多いようです。</span>
+<span id="cb35-446"><a href="#cb35-446" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-447"><a href="#cb35-447" aria-hidden="true" tabindex="-1"></a><span class="fu">### モデルの指標</span></span>
+<span id="cb35-448"><a href="#cb35-448" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-449"><a href="#cb35-449" aria-hidden="true" tabindex="-1"></a>それではモデルの指標を確認していきましょう。警告メッセージとして、ベイズ決定係数は順序尺度には不適切であることが述べられています。</span>
+<span id="cb35-450"><a href="#cb35-450" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-453"><a href="#cb35-453" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb35-454"><a href="#cb35-454" aria-hidden="true" tabindex="-1"></a><span class="fu">model_performance</span>(fit2)</span>
+<span id="cb35-455"><a href="#cb35-455" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb35-456"><a href="#cb35-456" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb35-457"><a href="#cb35-457" aria-hidden="true" tabindex="-1"></a>:::</span>
+</code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

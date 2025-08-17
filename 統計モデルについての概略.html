@@ -1,0 +1,2022 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="小室竜也">
+
+<title>2&nbsp; 統計モデルについての概略 – Rによる統計解析実戦ガイド</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./1_T検定と効果量.html" rel="next">
+<link href="./Rの基本的な使い方.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-5f5948b16bc3df4d260423ec79d744c2.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "一致なし",
+    "search-matching-documents-text": "一致した文書",
+    "search-copy-link-title": "検索へのリンクをコピー",
+    "search-hide-matches-text": "追加の検索結果を非表示",
+    "search-more-match-text": "追加の検索結果",
+    "search-more-matches-text": "追加の検索結果",
+    "search-clear-button-title": "消去",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "取消",
+    "search-submit-button-title": "検索",
+    "search-label": "サーチ"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./統計モデルについての概略.html">第I部：統計モデルの基礎</a></li><li class="breadcrumb-item"><a href="./統計モデルについての概略.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">統計モデルについての概略</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="サーチ" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Rによる統計解析実戦ガイド</a> 
+        <div class="sidebar-tools-main">
+  <a href="" class="quarto-reader-toggle quarto-navigation-tool px-1" onclick="window.quartoToggleReader(); return false;" title="リーダーモードの切り替え">
+  <div class="quarto-reader-toggle-btn">
+  <i class="bi"></i>
+  </div>
+</a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="サーチ"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">はじめに</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./Rの基本的な使い方.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Rの基本的な使い方</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">第I部：統計モデルの基礎</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./統計モデルについての概略.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">統計モデルについての概略</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./1_T検定と効果量.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">T検定と効果量</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./2_ANOVAとカテゴリカル変数のコーディング.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">ANOVA・カテゴリカル変数のコーディング</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./3_MANOVA_判別分析.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">MANOVA・判別分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">第II部：回帰分析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./4_重回帰分析_simple_slope_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">重回帰分析</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./5_一般化線形モデル_一般化加法モデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">一般化線形モデル・一般化加法モデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./6_混合効果モデル_2値ロジスティック回帰.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">混合効果モデル：2値ロジスティック回帰分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">第III部：ベイズ統計と機械学習</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./7_ベイズ推定.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">ベイズ推定</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./8_ROC曲線_ツリーモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">ROC曲線・ツリーモデル</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">第IV部：多変量解析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10_一般化可能性理論.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">一般化可能性理論</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_項目応答理論とラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">項目応答理論とラッシュモデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_拡張ラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">T検定と効果量</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./参考文献_おすすめの書籍.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">参考文献・おすすめの書籍</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+    <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">目次</h2>
+   
+  <ul>
+  <li><a href="#はじめに" id="toc-はじめに" class="nav-link active" data-scroll-target="#はじめに"><span class="header-section-number">3</span> はじめに</a>
+  <ul class="collapse">
+  <li><a href="#尺度水準" id="toc-尺度水準" class="nav-link" data-scroll-target="#尺度水準"><span class="header-section-number">3.1</span> 尺度水準</a></li>
+  <li><a href="#変数の種類" id="toc-変数の種類" class="nav-link" data-scroll-target="#変数の種類"><span class="header-section-number">3.2</span> 変数の種類</a></li>
+  <li><a href="#相関関係回帰関係因果関係" id="toc-相関関係回帰関係因果関係" class="nav-link" data-scroll-target="#相関関係回帰関係因果関係"><span class="header-section-number">3.3</span> 相関関係・回帰関係・因果関係</a></li>
+  </ul></li>
+  <li><a href="#構造方程式モデリング" id="toc-構造方程式モデリング" class="nav-link" data-scroll-target="#構造方程式モデリング"><span class="header-section-number">4</span> 構造方程式モデリング</a>
+  <ul class="collapse">
+  <li><a href="#説明変数目的変数が観測変数の場合" id="toc-説明変数目的変数が観測変数の場合" class="nav-link" data-scroll-target="#説明変数目的変数が観測変数の場合"><span class="header-section-number">4.1</span> 説明変数・目的変数が観測変数の場合</a></li>
+  <li><a href="#説明変数が潜在変数目的変数が観測変数の場合" id="toc-説明変数が潜在変数目的変数が観測変数の場合" class="nav-link" data-scroll-target="#説明変数が潜在変数目的変数が観測変数の場合"><span class="header-section-number">4.2</span> 説明変数が潜在変数、目的変数が観測変数の場合</a></li>
+  <li><a href="#説明変数が観測変数目的変数が潜在変数の場合" id="toc-説明変数が観測変数目的変数が潜在変数の場合" class="nav-link" data-scroll-target="#説明変数が観測変数目的変数が潜在変数の場合"><span class="header-section-number">4.3</span> 説明変数が観測変数、目的変数が潜在変数の場合</a></li>
+  <li><a href="#モデルの評価指標" id="toc-モデルの評価指標" class="nav-link" data-scroll-target="#モデルの評価指標"><span class="header-section-number">4.4</span> モデルの評価指標</a>
+  <ul class="collapse">
+  <li><a href="#情報量基準" id="toc-情報量基準" class="nav-link" data-scroll-target="#情報量基準"><span class="header-section-number">4.4.1</span> 情報量基準</a></li>
+  <li><a href="#root-mean-square-error-of-approximation-rmsea" id="toc-root-mean-square-error-of-approximation-rmsea" class="nav-link" data-scroll-target="#root-mean-square-error-of-approximation-rmsea"><span class="header-section-number">4.4.2</span> Root Mean Square Error of Approximation (RMSEA)</a></li>
+  <li><a href="#comparative-fit-index-cfi-tucker-lewis-index-tli" id="toc-comparative-fit-index-cfi-tucker-lewis-index-tli" class="nav-link" data-scroll-target="#comparative-fit-index-cfi-tucker-lewis-index-tli"><span class="header-section-number">4.4.3</span> Comparative Fit Index (CFI) / Tucker-Lewis Index (TLI)</a></li>
+  <li><a href="#standardized-root-mean-square-residual-srmr" id="toc-standardized-root-mean-square-residual-srmr" class="nav-link" data-scroll-target="#standardized-root-mean-square-residual-srmr"><span class="header-section-number">4.4.4</span> Standardized Root Mean square Residual (SRMR)</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#統計モデリングと回帰分析" id="toc-統計モデリングと回帰分析" class="nav-link" data-scroll-target="#統計モデリングと回帰分析"><span class="header-section-number">5</span> 統計モデリングと回帰分析</a>
+  <ul class="collapse">
+  <li><a href="#線型モデル" id="toc-線型モデル" class="nav-link" data-scroll-target="#線型モデル"><span class="header-section-number">5.1</span> 線型モデル</a></li>
+  <li><a href="#一般化線型モデル" id="toc-一般化線型モデル" class="nav-link" data-scroll-target="#一般化線型モデル"><span class="header-section-number">5.2</span> 一般化線型モデル</a></li>
+  <li><a href="#一般化線型混合効果モデル" id="toc-一般化線型混合効果モデル" class="nav-link" data-scroll-target="#一般化線型混合効果モデル"><span class="header-section-number">5.3</span> 一般化線型混合効果モデル</a></li>
+  </ul></li>
+  <li><a href="#回帰分析における重要な用語" id="toc-回帰分析における重要な用語" class="nav-link" data-scroll-target="#回帰分析における重要な用語"><span class="header-section-number">6</span> 回帰分析における重要な用語</a>
+  <ul class="collapse">
+  <li><a href="#切片と傾き" id="toc-切片と傾き" class="nav-link" data-scroll-target="#切片と傾き"><span class="header-section-number">6.1</span> 切片と傾き</a></li>
+  <li><a href="#ポアソン分布" id="toc-ポアソン分布" class="nav-link" data-scroll-target="#ポアソン分布"><span class="header-section-number">6.2</span> ポアソン分布</a></li>
+  <li><a href="#ロジスティック回帰" id="toc-ロジスティック回帰" class="nav-link" data-scroll-target="#ロジスティック回帰"><span class="header-section-number">6.3</span> ロジスティック回帰</a></li>
+  <li><a href="#情報量基準-1" id="toc-情報量基準-1" class="nav-link" data-scroll-target="#情報量基準-1"><span class="header-section-number">6.4</span> 情報量基準</a></li>
+  </ul></li>
+  <li><a href="#統計モデリングに関する参考文献" id="toc-統計モデリングに関する参考文献" class="nav-link" data-scroll-target="#統計モデリングに関する参考文献"><span class="header-section-number">7</span> 統計モデリングに関する参考文献</a></li>
+  </ul>
+</nav>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./統計モデルについての概略.html">第I部：統計モデルの基礎</a></li><li class="breadcrumb-item"><a href="./統計モデルについての概略.html"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">統計モデルについての概略</span></a></li></ol></nav>
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">統計モデルについての概略</span></h1><button type="button" class="btn code-tools-button" id="quarto-code-tools-source"><i class="bi"></i> コード</button></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">作者</div>
+    <div class="quarto-title-meta-contents">
+             <p>小室竜也 </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">公開</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">2025年8月17日</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+.quarto-title-banner .author {
+  color: #495057 !important;
+  font-size: 1.2em;
+  margin-top: 1em;
+  font-style: italic;
+}
+
+.quarto-title-banner .date {
+  color: #6c757d !important;
+  font-size: 1em;
+  margin-top: 0.5em;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  padding-left: 0;
+  border-left: none;
+  background: none;
+  position: relative;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+  padding-left: 0;
+}
+
+h3:before {
+  content: "";
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  box-shadow: none;
+  border-radius: 0;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+thead th {
+  color: #212529 !important;
+  font-weight: 600;
+  padding: 0.8em !important;
+  text-align: left;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+tbody tr {
+  border-bottom: 1px solid #dee2e6;
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(0,0,0,0.02);
+}
+
+tbody tr:hover {
+  background: rgba(0,0,0,0.05);
+  transition: background 0.2s ease;
+}
+
+tbody td {
+  padding: 0.6em;
+}
+
+/* 引用ブロックを論文風に */
+blockquote {
+  border-left: 3px solid #495057;
+  margin: 1.5em 2em;
+  padding: 0.5em 1em;
+  font-style: italic;
+  background: #f8f9fa;
+  border-radius: 0;
+  font-size: 0.95em;
+  color: #495057;
+}
+
+/* リンクを控えめに */
+a {
+  color: #0066cc;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-bottom 0.2s;
+}
+
+a:hover {
+  border-bottom: 1px solid #0066cc;
+}
+
+/* サイドバーの目次をシンプルに */
+.sidebar {
+  background: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+.sidebar nav[role=doc-toc] ul > li {
+  margin: 0.3em 0;
+}
+
+.sidebar nav[role=doc-toc] ul > li > a {
+  color: #495057;
+  font-size: 0.95em;
+}
+
+.sidebar nav[role=doc-toc] ul > li > a.active {
+  background: #212529;
+  color: white !important;
+  padding: 0.2em 0.5em;
+  border-radius: 0;
+  font-weight: 600;
+}
+
+.sidebar nav[role=doc-toc] ul > li > a:hover {
+  background: #e9ecef;
+  padding: 0.2em 0.5em;
+}
+
+/* コードブロックをシンプルに */
+code {
+  background: #f8f9fa;
+  padding: 0.15em 0.3em;
+  border-radius: 2px;
+  color: #d63384;
+  font-size: 0.9em;
+  border: 1px solid #dee2e6;
+}
+
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+
+/* 脚注スタイル */
+.footnotes {
+  margin-top: 3em;
+  padding-top: 1em;
+  border-top: 1px solid #dee2e6;
+  font-size: 0.9em;
+  color: #6c757d;
+}
+
+/* セクション間のスペース */
+section {
+  margin: 1.5em 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+</style>
+<section id="はじめに" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> はじめに</h1>
+<p>プラモデルは本物の車や飛行機などの実際の重さや材質、機能などを無視して、形や色を模倣しています。つまり、モデルとは不必要な性質を大胆に無視して、必要なエッセンスだけを取り上げたものを指します。統計モデルは確率分布とパラメータを使ってデータの特徴を模倣するものです。このページでは伝統的な統計モデルではどのような手法が用いられているのかを概観していきましょう。</p>
+<section id="尺度水準" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="尺度水準"><span class="header-section-number">3.1</span> 尺度水準</h2>
+<p>統計モデルを理解する上で、データにはいくつかの種類があることを押さえておきましょう。例えば、身長は150センチよりも160センチの方が高く、この10センチの差は170センチと180センチの差と同じです。また、小学生の頃は140センチだった身長が大学生で180センチになった際には、身長が約1.3倍になったと言えます。さらに、長さの単位となっているセンチメートルの長さには原点となる0があります。このように、原点があり、間隔や比率に意味があるデータは比率尺度と呼ばれます。</p>
+<p>気温の5度から10度への変化と15度から20度への変化は、どちらも同じ5度の変化であることから間隔は等しいと言えます。しかし、5度が10度へと変化しても、気温が2倍になったとは言えません。このように、目盛が等間隔となるデータは間隔尺度と呼ばれます。</p>
+<p>データの情報量としては、比率尺度の方が間隔尺度よりも多いと言われています。間隔尺度以上のデータでは平均値や標準偏差などを計算することができます。特に、比率尺度は平均値を標準偏差で割った変動係数を計算することができ、平均値に対する相対的なばらつきの大きさを検討することができます。</p>
+<p>英語教育の分野で用いるデータとしては、テストの点数のような間隔尺度だけでなく、名義尺度と順序尺度があります。</p>
+<p>名義尺度とは、学習条件A・B・Cのように、他と区別するだけのラベルのことを指します。例えば、母語が日本語である場合を1、中国語である場合を2としても、1より2の方が大きいとは言えません。この順序が仮定されるデータ（例：英検の級、CEFRレベル）は順序尺度と呼ばれます。名義尺度の場合は数を数え上げるのみですが、順序尺度は中央値を検討することができます。名義尺度と順序尺度は質的変数やカテゴリカル変数と呼ばれます。一方、間隔尺度や比率尺度は量的変数や連続変数と呼ばれます。</p>
+</section>
+<section id="変数の種類" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="変数の種類"><span class="header-section-number">3.2</span> 変数の種類</h2>
+<p>英語教育の分野では目に見えない変数を扱うことが多いです。例えば、「コミュニケーションで使える語彙知識」とはいったい何を指しているのでしょうか。スピーキングで使われる語彙知識なのでしょうか、ダイアローグにおいて相手が英語で言っていることを理解するためのリスニングで使われる語彙知識も含むのでしょうか、メールの「確かに承りました」を英語で伝える際にcertainlyを使うと嫌味に聞こえてしまうような語用論的知識なのでしょうか、“make”を使えることは作成動詞と使役動詞の2種類があると知っていることなのでしょうか、使役動詞のmakeは受動態では原形不定詞ではなくto不定詞を伴うと知っていることなのでしょうか、使える語彙知識と使える文法知識に違いはあるのでしょうか。</p>
+<p>目に見えない概念を扱うには測定具が必要です。語彙知識の測定には一般的に「語彙サイズテスト」が用いられることがあります。日本語を母語とする英語学習者が英語の語彙知識をどのくらい知っているかを検討する測定具としては、Hamada et al.&nbsp;(2021) のVST-NJ8や相澤・望月 (2010) の望月語彙サイズテストなどがあります。このように、測定具を用いて目に見えるようなデータが得られると、英語学習者の熟達度を検討することができます。目に見える変数を観測変数、目に見えない変数を潜在変数と呼びます。</p>
+</section>
+<section id="相関関係回帰関係因果関係" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="相関関係回帰関係因果関係"><span class="header-section-number">3.3</span> 相関関係・回帰関係・因果関係</h2>
+<p>「風が吹けば桶屋が儲かる」という日本の諺を聞いたことはありますか？以下はWikipediaによる説明です。</p>
+<ol type="1">
+<li>大風が吹けば土埃が立ち、眼病疾患者が増加する</li>
+<li>盲人などが三味線を生業とし、演奏方法を指導したり、門付で三味線を演奏するので、三味線の需要が増える</li>
+<li>三味線製造に猫の皮が欠かせないため、猫が多数減り、鼠が増加する</li>
+<li>鼠は箱の類（桶など）をかじる</li>
+<li>桶の需要も増加して桶屋が儲かるだろう</li>
+</ol>
+<p>この関係性の説明は相当に無理がありますが、気温とアイスクリームの売り上げの関係性はどうでしょうか？夏のような暑い気温ではアイスクリームを購入する人が多くなりそうです。ではアイスクリームの売り上げと溺死の件数の関係はどうでしょうか。夏になると海水浴に行く人が増え、溺死の件数も増えると予想されます。このように、どちらが原因でどちらが結果であるかがはっきりとしない関係性は相関関係と呼ばれます。なお「相関がある」「相関がない」という表現は不適切で、「強い相関がある」「弱い相関がある」「正の相関がある」「負の相関がある」のようなコロケーションを用います。どちらかが高くなればどちらかも高くなるような気温とアイスクリームの売り上げは正の相関、どちらかが高くなればどちらかが低くなるような気温とおでんの売り上げは負の相関と言います。</p>
+<p>変数間の関係には相関以外に回帰関係と因果関係があります。例えば、中間テストが終わった高校生に対して、土曜日補講を行う効果を検討してみましょう。補講への参加は任意とすると、参加する生徒と参加しない生徒が出てきます。補講に参加する生徒を1、参加しない生徒を0という名義尺度で考えてみましょう。補講の効果は英語の期末テストで測定することとします。この期末テストの結果は観測変数となります。補講が期末テストに与える影響を考える時、影響を受けると考える側（期末テスト）を目的変数・応答変数・従属変数と呼び、影響を与えると考える側（補講への参加生徒1、0）を説明変数・予測変数・独立変数・共変量・特徴量と呼びます。目的変数と説明変数によって、「目的変数 = 傾き × 説明変数 + 切片 + 誤差」のような式で表す関係を回帰関係と呼びます。</p>
+<p>上記の土曜日補講と期末テストの回帰関係は「ナイーブな」比較と言えます。なぜなら、生徒Aが補講を受けた際の影響は目的変数として得られる一方で、生徒Aが補講を受けない影響は目的変数として得られません。つまり、潜在的な結果が生じてしまいます。また、土曜日補講に参加しようとする生徒は学習に対する動機づけが高いと考えられ、平日も自主学習を行っていたり、授業に真面目に参加していると考えられます。そのため、補講以外の交絡要因を検討する必要もあります。</p>
+<p>なお、因果関係を検討する上では、性別や動機づけのような属性変数を統計モデルに組み入れ、あたかも原因のように扱うことは不適切です。因果関係を検討する際には、何が操作されており、観測変数は何かを考えることが重要です。</p>
+</section>
+</section>
+<section id="構造方程式モデリング" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> 構造方程式モデリング</h1>
+<p>上記で述べてきた「説明変数」および「目的変数」が「観測変数」か「潜在変数」かによって、統計モデルの名前は変わります。しかし、最終的には構造方程式モデリングと呼ばれる手法が全ての統計モデルを扱うことができます。構造方程式モデリングでは、目的変数が名義尺度でも順序尺度でもよく、ある目的変数が説明変数になるモデル（例えば、語彙サイズがリスニング能力に影響を与え、リスニング能力がリテリングの結果に影響を与えるなど）も分析可能です。つまり、回帰分析も因子分析も構造方程式モデリングの一種であると言えます。以下では主な統計モデルを紹介します。</p>
+<section id="説明変数目的変数が観測変数の場合" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="説明変数目的変数が観測変数の場合"><span class="header-section-number">4.1</span> 説明変数・目的変数が観測変数の場合</h2>
+<p>まずは説明変数も目的変数も観測変数の場合を考えてみましょう。例えば、上記の土曜日補講が期末テストに与える影響を与えるかを検討するt検定がこの統計モデルに含まれます。繰り返しになりますが、これらのモデルはすべて構造方程式モデリングの特殊な例です。例えば、回帰分析における目的変数が別の目的変数に影響を与える説明変数となる場合の分析はパス解析と呼ばれますが、パス解析は潜在変数が組み込まれていない構造方程式モデリングです。</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>統計モデルの名前</th>
+<th>説明変数（観測）</th>
+<th>目的変数（観測）</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>回帰分析</td>
+<td>連続・カテゴリカル</td>
+<td>連続</td>
+</tr>
+<tr class="even">
+<td>判別分析</td>
+<td>連続</td>
+<td>名義</td>
+</tr>
+<tr class="odd">
+<td>名義ロジスティック回帰分析</td>
+<td>連続</td>
+<td>名義</td>
+</tr>
+<tr class="even">
+<td>順序ロジスティック回帰分析</td>
+<td>連続</td>
+<td>順序</td>
+</tr>
+<tr class="odd">
+<td>数量化Ⅰ類</td>
+<td>カテゴリカル</td>
+<td>連続</td>
+</tr>
+<tr class="even">
+<td>数量化Ⅱ類</td>
+<td>カテゴリカル</td>
+<td>名義</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="説明変数が潜在変数目的変数が観測変数の場合" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="説明変数が潜在変数目的変数が観測変数の場合"><span class="header-section-number">4.2</span> 説明変数が潜在変数、目的変数が観測変数の場合</h2>
+<p>潜在変数とは目に見えない変数、観測変数とは目に見える変数のことを指します。</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>統計モデルの名前</th>
+<th>説明変数（潜在）</th>
+<th>目的変数（観測）</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>因子分析</td>
+<td>連続</td>
+<td>連続</td>
+</tr>
+<tr class="even">
+<td>段階反応モデル</td>
+<td>連続</td>
+<td>順序</td>
+</tr>
+<tr class="odd">
+<td>2値ラッシュモデル</td>
+<td>連続</td>
+<td>名義（2値）</td>
+</tr>
+<tr class="even">
+<td>潜在プロフィール分析</td>
+<td>カテゴリカル</td>
+<td>連続</td>
+</tr>
+<tr class="odd">
+<td>潜在クラス分析</td>
+<td>カテゴリカル</td>
+<td>名義</td>
+</tr>
+<tr class="even">
+<td>潜在ランク分析</td>
+<td>順序</td>
+<td>カテゴリカル</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="説明変数が観測変数目的変数が潜在変数の場合" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="説明変数が観測変数目的変数が潜在変数の場合"><span class="header-section-number">4.3</span> 説明変数が観測変数、目的変数が潜在変数の場合</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>統計モデルの名前</th>
+<th>説明変数（観測）</th>
+<th>目的変数（潜在）</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>主成分分析</td>
+<td>連続</td>
+<td>連続</td>
+</tr>
+<tr class="even">
+<td>コレスポンデンス分析、多重コレスポンデンス分析</td>
+<td>カテゴリカル</td>
+<td>連続</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="モデルの評価指標" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="モデルの評価指標"><span class="header-section-number">4.4</span> モデルの評価指標</h2>
+<p>作成した統計モデルがどの程度データと一致しているのかを検討する方法として、モデルの適合度指標があります。構造方程式モデリングでは複数の指標が出力されます。</p>
+<section id="情報量基準" class="level3" data-number="4.4.1">
+<h3 data-number="4.4.1" class="anchored" data-anchor-id="情報量基準"><span class="header-section-number">4.4.1</span> 情報量基準</h3>
+<p>情報量基準とは尤度に-2をかけたもので、Akaike Information Criteria (AIC) やBayesian Information Criteria (BIC) があります。情報量基準はモデルがデータにどの程度よくフィットしているかを示します。つまり、複数のモデルA、モデルB、モデルCを同じデータに当てはめた時、これらの情報量基準が低いほど、データによく適合していると判断できます。</p>
+</section>
+<section id="root-mean-square-error-of-approximation-rmsea" class="level3" data-number="4.4.2">
+<h3 data-number="4.4.2" class="anchored" data-anchor-id="root-mean-square-error-of-approximation-rmsea"><span class="header-section-number">4.4.2</span> Root Mean Square Error of Approximation (RMSEA)</h3>
+<p>モデルがデータとどの程度乖離しているかを直接表現した指標です。一般に、0.05より小さければ、そのモデルは当てはまりが良く、0.1以上であれば当てはまりが悪いと判断できます。</p>
+</section>
+<section id="comparative-fit-index-cfi-tucker-lewis-index-tli" class="level3" data-number="4.4.3">
+<h3 data-number="4.4.3" class="anchored" data-anchor-id="comparative-fit-index-cfi-tucker-lewis-index-tli"><span class="header-section-number">4.4.3</span> Comparative Fit Index (CFI) / Tucker-Lewis Index (TLI)</h3>
+<p>観測変数間に全く相関がないという非現実的なモデルに比べ、当該のモデルがどの程度良いかを標準化したものです。1.0に近いほど良いモデルとされます。</p>
+</section>
+<section id="standardized-root-mean-square-residual-srmr" class="level3" data-number="4.4.4">
+<h3 data-number="4.4.4" class="anchored" data-anchor-id="standardized-root-mean-square-residual-srmr"><span class="header-section-number">4.4.4</span> Standardized Root Mean square Residual (SRMR)</h3>
+<p>標準化された残差平方平均平方根のことで、モデルで説明できなかったデータの分散がどれほどあったかを表します。0に近ければ近いほど当てはまりが良いことを表します。</p>
+</section>
+</section>
+</section>
+<section id="統計モデリングと回帰分析" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> 統計モデリングと回帰分析</h1>
+<p>回帰分析は1つの目的変数（従属変数・応答変数とも）を説明変数（独立変数・固定効果とも）から予測する統計手法です。大きく以下の3つに分けることができます。</p>
+<ul>
+<li>線形モデル：t検定、ANOVA、単回帰分析、重回帰分析など</li>
+<li>一般化線形モデル：ロジスティック回帰、ポアソン回帰、ガンマ回帰、ベータ回帰など</li>
+<li>一般化線形混合効果モデル：ロジスティック混合回帰モデル、ポアソン回帰混合効果モデルなど</li>
+</ul>
+<section id="線型モデル" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="線型モデル"><span class="header-section-number">5.1</span> 線型モデル</h2>
+<p>線形モデルは目的変数が<a href="https://ai-trend.jp/basic-study/normal-distribution/normal-distribution/">正規分布</a>であることを分析の前提としています。この正規性の前提は<a href="http://data-science.gr.jp/implementation/ist_r_levene_test.html">ルビーン検定</a>や<a href="https://data-science.gr.jp/implementation/ist_r_kolmogorov_smirnov_test.html">コルモゴロフ・スミルノフ検定</a>、<a href="https://qiita.com/TSeri/items/e0228f877ccb22f5dbc9">Q-Qプロット</a>などで確認することができます。つまり、線型モデルで扱うことができるデータの種類は連続変数と呼ばれる間隔尺度以上の変数となります。具体的には、テストの点数（0〜100点）や反応時間（ミリ秒）などが連続値として扱われることから、線型モデルで検討することができます。</p>
+<p>線型モデルの中で最も典型的なモデルが単回帰分析です。こちらは1つの連続値を目的変数、1つの連続値を説明変数とするモデルで、主に目的変数の予測に使われることが多いです。例えば、期末テストの得点を予測する際、テスト期間中の勉強時間を説明変数とするなどが考えられます。</p>
+<p>単回帰分析では説明変数として1つの変数のみが含まれていました。複数の説明変数を含む統計モデルは重回帰分析と呼ばれます。例えば、英語の期末テストの得点を目的変数として、中間テストの英語の得点や小テストの点数などを追加で含めるモデルが考えられます。重回帰分析に含まれる複数の説明変数は相関が低いことが前提となります。この説明変数同士の相関が高いことはモデルの作成において、<a href="https://best-biostatistics.com/correlation_regression/multi-co.html">多重共線性</a>と呼ばれる問題を引き起こしてしまいます。複数の説明変数をモデルに組み込むことができる一方で、理論的に適切な説明変数を選択することができるかが鍵となります。</p>
+<p>重回帰分析における説明変数は、連続変数でもカテゴリカル変数でも問題なく目的変数を推定することができます。連続変数とは、テストの得点のように数字で大小を比べることができ、平均値などを計算することに意味を持つ変数のことです。一方、カテゴリカル変数は性別や正解・不正解のように平均値を計算することに意味を持たない変数のことです。正解・不正解のように2水準となる場合もあれば、母語が日本語・韓国語・中国語・英語など多水準になる場合もあります。なお、Rのようなプログラミング言語では正解を1、不正解を0とするようにダミーコーディングされます。この0や1の値に大小関係が存在しないため、Rではfactor型にしておくことが必要です。</p>
+<p>説明変数が2つでいずれも2水準のカテゴリカルである重回帰分析は2 way ANOVAと呼ばれます。つまり、分散分析は重回帰分析の特殊な場合ということになります。t検定も同様に、目的変数が1つで、説明変数が2水準の1つのカテゴリカル変数である回帰分析であると言えます。</p>
+<p>線型モデルの概要については<a href="https://youtu.be/7ArmBVF2dCs?si=XLdwV4zUDIYZLCa9">こちらの動画</a>がとても参考になります。</p>
+</section>
+<section id="一般化線型モデル" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="一般化線型モデル"><span class="header-section-number">5.2</span> 一般化線型モデル</h2>
+<p>線型モデル (linear model) は目的変数が連続値で正規分布に従うことが前提です。しかし、試験の合格・不合格や思考発話の中で現れる特定の方略の数などの特殊なデータを扱うことができません。このような目的変数の確率分布に応じて回帰分析を行う手法が一般化線型モデル (generalized linear model; GLM) です。</p>
+<p>コインの表・裏、成功・失敗、合格・不合格のように、2つの値だけを取るデータは「2値データ」と呼ばれます。このようなデータは<a href="https://bellcurve.jp/statistics/course/6979.html">二項分布</a>と呼ばれる確率分布に従っています。二項分布に従う2値データは正規性を満たしません。そのため、重回帰分析やt検定で分析することは不適切です。そこで<a href="https://cacco.co.jp/datascience/blog/data-analysis/1274/">ロジスティック回帰</a>という分析方法を用いることとなります。ロジスティック回帰分析は重回帰分析のように複数の説明変数をモデルに組み込むことができます。具体例としては、中間テストのリスニングの点数とリーディングの点数の2つを説明変数として、試験に合格するかどうかを目的変数として予測するなどがあります。</p>
+<p>一般化線型モデルには2値データ以外にもカウントデータを扱う統計モデルも存在します。カウントデータは出現頻度のことを表しており、例えば、英文の要約で書き手のパラフレーズが何回登場するか、思考発話のプロトコルに特定の方略が何回登場するか、視線計測による読み戻り回数などがカウントデータに該当します。このカウントデータの平均はλ（ラムダ）と呼ばれ、「平均と分散が等しい」という前提に基づいた<a href="http://www.snap-tck.com/room04/c01/stat/stat15/stat1501.html">ポアソン回帰</a>や、出現頻度0が多い・過分散に対応した<a href="https://best-biostatistics.com/correlation_regression/negative-binomial.html">負の二項回帰</a>などがあります。</p>
+<p>先行研究ではたまに「正規性が満たされなかったため、<a href="https://www.ibm.com/support/pages/ノンパラメトリック検定">ノンパラメトリック検定</a>を用いた」という表記があります。ノンパラメトリック検定は母集団の確率分布が事前にわからないものを推定する際に有用ですが、事前に二項分布やポアソン分布に従うデータであることがわかる場合には、ノンパラメトリック検定よりもGLMを用いる方が適切です。具体的には以下のようなGLMを用いることができます。</p>
+<ul>
+<li>目的変数が2値データ：ロジスティック回帰 (e.g., 正解 vs.&nbsp;不正解，成功 vs.&nbsp;失敗)</li>
+<li>目的変数が確率データ：2値ロジスティック回帰 (e.g., 10回の施行で3回起きる確率)</li>
+<li>目的変数が順序データ：順序ロジスティック回帰 (e.g., リッカートスケール)</li>
+<li>目的変数がカウントデータ：ポアソン回帰、負の二項回帰 (e.g., 思考発話の各カテゴリに関する発話回数)</li>
+<li>目的変数が非負の連続データ：重回帰分析、ガンマ回帰 (e.g., 0〜10点のテスト)</li>
+<li>目的変数が連続データ：t検定、ANOVA、重回帰分析 (e.g., 反応時間)</li>
+</ul>
+<p>目的変数が連続データの場合は正規分布に従うため、線型モデルで分析できます。つまり、一般化線型モデルは線型モデルを包含した概念であると言えます。</p>
+</section>
+<section id="一般化線型混合効果モデル" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="一般化線型混合効果モデル"><span class="header-section-number">5.3</span> 一般化線型混合効果モデル</h2>
+<p>一般化線型混合効果モデル (Generalized Linear Mixed effect Model; GLMM) は、マルチレベルモデルや階層線型モデルとも呼ばれ、階層性のあるデータ (e.g., 自治体 - 学校 - 生徒) を分析することができます。GLMMの文脈では説明変数は固定効果、階層性のレベルはランダム効果と呼ばれており、これらを混合させて分析することから混合効果モデルという名前がついています。</p>
+<p>ランダム効果の関係性はいくつかのパターンがあります。例えば、3つの学校から30人の生徒の実力テストの結果が得られたとします。この時、学校Aの生徒と学校Bの生徒は別の生徒であり、生徒は学校の中にネストされています。表にすると以下のようになります。</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>学校</th>
+<th>生徒</th>
+<th>テスト得点</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>A</td>
+<td>A1</td>
+<td>70</td>
+</tr>
+<tr class="even">
+<td>A</td>
+<td>A2</td>
+<td>75</td>
+</tr>
+<tr class="odd">
+<td>A</td>
+<td>A3</td>
+<td>60</td>
+</tr>
+<tr class="even">
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr class="odd">
+<td>A</td>
+<td>A29</td>
+<td>95</td>
+</tr>
+<tr class="even">
+<td>A</td>
+<td>A30</td>
+<td>80</td>
+</tr>
+<tr class="odd">
+<td>B</td>
+<td>B1</td>
+<td>80</td>
+</tr>
+<tr class="even">
+<td>B</td>
+<td>B2</td>
+<td>65</td>
+</tr>
+<tr class="odd">
+<td>…</td>
+<td>…</td>
+<td></td>
+</tr>
+<tr class="even">
+<td>B</td>
+<td>B30</td>
+<td>90</td>
+</tr>
+<tr class="odd">
+<td>C</td>
+<td>C1</td>
+<td>40</td>
+</tr>
+<tr class="even">
+<td>…</td>
+<td>…</td>
+<td>…</td>
+</tr>
+<tr class="odd">
+<td>C</td>
+<td>C30</td>
+<td>35</td>
+</tr>
+</tbody>
+</table>
+<p>一方、30人の実験参加者に20語の単語を学習してもらう場合は、単語は参加者ごとに共通しているため、クロスしたランダム効果と言えます。</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>参加者</th>
+<th>単語</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>A</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>B</td>
+</tr>
+<tr class="odd">
+<td>1</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>1</td>
+<td>S</td>
+</tr>
+<tr class="odd">
+<td>1</td>
+<td>T</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>A</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>B</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>…</td>
+</tr>
+<tr class="odd">
+<td>2</td>
+<td>S</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>T</td>
+</tr>
+<tr class="odd">
+<td>…</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>A</td>
+</tr>
+<tr class="odd">
+<td>30</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>T</td>
+</tr>
+</tbody>
+</table>
+<p>GLMでは参加者や単語を分析の単位として扱っていなかったことから、データセット作成の際には20点満点のテストとして扱い、以下のような表を作成しました。</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>参加者</th>
+<th>テスト</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>15</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>10</td>
+</tr>
+<tr class="odd">
+<td>…</td>
+<td>…</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>20</td>
+</tr>
+</tbody>
+</table>
+<p>GLMで考慮しなかった参加者や単語などのランダム効果を考慮するのがGLMMであると言えます。GLMMはGLMにランダム効果を組み込んだ統計モデルであるため、ロジスティック回帰やポアソン回帰などを包括した呼び方となります。先行研究で「分析にはGLMMを用いた」と書かれていた場合、目的変数が何かを踏まえて分析手法にはどの回帰分析を用いたのかを確認することが必要です。</p>
+</section>
+</section>
+<section id="回帰分析における重要な用語" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> 回帰分析における重要な用語</h1>
+<section id="切片と傾き" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="切片と傾き"><span class="header-section-number">6.1</span> 切片と傾き</h2>
+<p>回帰分析は基本的に<span class="math inline">\(y = a + β_1x_1 + error\)</span>という形で表現されます。aは切片、βは傾きと呼ばれます。切片は説明変数<span class="math inline">\(x = 0\)</span>の時の目的変数yの値を指しており、傾きは説明変数xが1単位増えた際の目的変数yの増加率を指しています。説明変数の数が増えれば係数である傾きの値も変化します。</p>
+<p>回帰式は関数であるとみなせるため、<span class="math inline">\(f(y_i) = β_1 + β_2x_i+β_3f_i +...\)</span>と表すことができます。左辺は目的変数はリンク関数、右辺は線形予測子と呼ばれます。</p>
+<p>切片と傾きは観測データから回帰線との差（誤差）を最小とするように設定されます。これが最小二乗法と呼ばれる方法です。</p>
+</section>
+<section id="ポアソン分布" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="ポアソン分布"><span class="header-section-number">6.2</span> ポアソン分布</h2>
+<p>ポアソン回帰分析は頻度データの分析に使える回帰分析です。発生頻度は負の値を取らない整数であるという特徴があります。ポアソン分布の確率分布は<span class="math inline">\(p(y|λ)=\frac{λ^yexp(-λ)}{y!}\)</span>と表すことができます。このλ（ラムダ）はポアソン回帰における唯一の変数で、<span class="math inline">\(λ = exp(β_1 + β_2x_1)\)</span>で表されます。正規分布では平均<span class="math inline">\(μ\)</span>と分散<span class="math inline">\(σ\)</span>がパラメータとなっていました。今回のポアソン回帰分析は平均も分散も同じλで表されます。</p>
+<p>ポアソン分布における特徴は以下の通りです。</p>
+<ul>
+<li>目的変数<span class="math inline">\(y\)</span>は自然数を取る</li>
+<li>全ての<span class="math inline">\(y\)</span>の発生確率を足し合わせると1となる</li>
+<li>確率分布のλは平均を表す</li>
+<li>平均と分散は等しい：λ = 平均 = 分散</li>
+</ul>
+<p>母集団のλを推定する際、得られたデータからその値を推定することとなります。その推定の際、得られたデータが真の値にどのくらい当てはまっているのかは尤度と呼ばれるパラメータの関数で推定されます。尤度は手元のデータで得られた確率の条件付き確率であることから、その計算には掛け算が用いられます。尤度はそのままでは扱いづらいため、対数が取られます。この対数尤度を最大とする推定方法が最尤法です。</p>
+</section>
+<section id="ロジスティック回帰" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="ロジスティック回帰"><span class="header-section-number">6.3</span> ロジスティック回帰</h2>
+<p>ポアソン回帰分析では頻度データを扱っていますが、上限がないデータを扱っています。ロジスティック回帰分析では上限があるデータに加え、二項分布による2値データを扱えます。上限があるデータのように「N個のうち、y個で事象が生じる確率」はオフセット項とみなして扱うことができます。二項分布の確率分布は<span class="math inline">\(p(y|N,q)= \begin{pmatrix}N\\y\\\end{pmatrix}q^y(1-q)^{N-y}\)</span>と定義されます。</p>
+<p>ロジスティック回帰分析を理解・解釈する上で「オッズ」という概念を理解することが重要です。オッズとは、ある事象が起こる確率の怒らない確率に対する割合のことをさします。<span class="math inline">\(odds = \frac{probability}{1-probability}\)</span>となります。例えば、4択問題にランダムに解答して正解する確率は<span class="math inline">\(1/4\)</span>であるため、正解するオッズは<span class="math inline">\(odds =\frac{\frac{1}{4}}{1-\frac{1}{4}}=\frac{1}{3}\)</span>となります。つまり、確率が「全体の中でのその事象の起こりやすさの割合」であるのに対し、オッズは「起こらない確率に対する、起こる確率の割合」です。オッズから確率を計算するには以下を使います：<span class="math inline">\(probability = \frac{odds}{1+odds}\)</span></p>
+<p>オッズが1の時は確率がちょうど0.5になります。もし生じる機会が生じない機会よりも小さいなら、オッズは1よりも小さくなります（確率0.5よりも小さい）。生じる確率が等しいのあればオッズはちょうど1となります。確率が上限が1であるのに対し、オッズは無限大となり、オッズに上限はありません。そのため、非対称性があることから関係性の強さの尺度として使いにくく、オッズ比の対数（ロジット）を用いることが多いです。ロジットは1よりも大きなオッズ比（50%より大きい）の際に正の値、1よりも小さなオッズ比の際に負の値（50%より小さい）、オッズ比が1の際に0となります。</p>
+<p>（対数について補足です）ある数値の常用対数とは、10を何乗すればその数と等しくなるのかという数のことです。例えば100は10を2乗するため、2は100の対数です。0乗した数は1に等しいため、1の対数は0、1よりも大きな数の対数は0よりも大きくなり、0より大き1よりも小さな値の対数は0よりも小さくなります。</p>
+<p>オッズという概念は条件付きオッズ比の解釈が効果的であるため、複数の説明変数間の関係性について検討できます。さらに、ロジットを使う利点は2つあります。1つはオッズ比に比べてタイプSエラーが起こりにくいという点です。タイプSエラーは係数の解釈に関わるもので、統計的に有意差があり、解釈の際にどちらが高い値であるかの符号が逆になってしまうという誤りです。オッズ比は1を基準としていますが、ロジットは0を基準として正か負かで判断することができます。ロジットを使う利点の2つ目は、</p>
+<p>ロジスティック回帰ではロジットリンク関数をリンク関数として用いています。ロジットリンク関数は<span class="math inline">\(log(q_i) = log\frac{q_i}{1-q_i}\)</span>と表されます。ロジット関数はロジスティック関数<span class="math inline">\(q_i = logistic(z_i) = \frac{1}{1+exp(-z_i)}\)</span>で表されます。</p>
+</section>
+<section id="情報量基準-1" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="情報量基準-1"><span class="header-section-number">6.4</span> 情報量基準</h2>
+<p>統計モデルの当てはまりの良さを表す指標にはいくつかあります。上記の対数尤度を変形した統計量である逸脱度 (deviance) は「当てはまりの悪さ」を表します。つまり、この値が高いほど悪いモデルであると言えます。対数尤度とχ二乗分布との対応関係が良くなるため、逸脱度Dは最大対数尤度logL*に-2をかけて算出されます：<span class="math inline">\(D = -2logL^*\)</span>。また、Dから最小逸脱度を引いた値は残差逸脱度と呼ばれます。残差逸脱度は統計モデルに含まれるパラメータの数が多くなるほど小さくなる（当てはまりがよい）という傾向にあります。</p>
+<p>パラメータの数が多くなるほど、モデルの当てはまりが良くなるのであれば、目的変数に関係のない変数をたくさん含めればよくなってしまいます（つまり、過学習に陥ってしまうこととなります）。Akaike Information Criteria (AIC) を使うと、予測の良さを検討することができます。最尤推定したパラメータの個数がkであるときにAICは以下のように定義される：</p>
+<p><span class="math inline">\(AIC = -2{(最大対数尤度) - (最尤推定したパラメータ数)} = -2(logL^* -k) = D +2k\)</span>。</p>
+<p>AICをはじめとした情報量基準は、モデルの当てはまりの良さを表す指標であり、複数のモデルを比較する相対的な値です。パラメータの数が多いモデルよりも、パラメータの数が少ないモデルのAICが低い場合、多重共線性を回避できたと言えます。</p>
+<p>モデル選択については<a href="https://logics-of-blue.com/モデル選択_理論編/">こちら</a>を参照。</p>
+</section>
+</section>
+<section id="統計モデリングに関する参考文献" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> 統計モデリングに関する参考文献</h1>
+<p>久保拓弥. (2012). データ解析のための統計モデリング入門――一般化線形モデル・階層ベイズモデル・MCMC (確率と情報の科学). 岩波書店.</p>
+<p>小杉考司, 清水裕士, 押江隆, 山根嵩史, 平川真, 浅野良輔, 竹林由武, 藤原翔, 大谷和大, 森敦広, 林真広. (2014). M-plusとRによる構造方程式モデリング入門. 北大路書房.</p>
+<p>馬場真哉. (2019). 実践Data Scienceシリーズ　RとStanではじめる　ベイズ統計モデリングによるデータ分析入門 (ＫＳ情報科学専門書). 講談社</p>
+<p>松浦健太郎. (2016). StanとRでベイズ統計モデリング (Wonderful R 2). 共立出版.</p>
+
+
+<!-- -->
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "コピーしました");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "コピーしました");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+        for (let i=0; i<detailsSrc.length; i++) {
+          const details = detailsSrc[i].parentElement;
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./Rの基本的な使い方.html" class="pagination-link" aria-label="Rの基本的な使い方">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Rの基本的な使い方</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./1_T検定と効果量.html" class="pagination-link" aria-label="T検定と効果量">
+        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">T検定と効果量</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">ソースコード</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="sourceCode" id="cb1" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "統計モデルについての概略"</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="an">author:</span><span class="co"> "小室竜也"</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="an">date:</span><span class="co"> today</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="an">format:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">  html:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">    toc: true</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-depth: 3</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-location: left</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">    toc-title: "目次"</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    number-sections: true</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    code-fold: true</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    theme: journal</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    fontsize: 1.1em</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    linestretch: 1.8</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    mainfont: "Noto Serif JP"</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="an">lang:</span><span class="co"> ja</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="in">```{=html}</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="in">&lt;style&gt;</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="in">/* journalテーマ用のアカデミックなカスタムスタイル */</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="in">body {</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="in">  font-family: 'Noto Serif JP', 'Times New Roman', serif;</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #2c3e50;</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="in">  line-height: 1.8;</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="in">/* タイトルブロックをジャーナル風に */</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner {</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="in">  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 4px double #495057;</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 2.5em 2em;</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="in">  text-align: center;</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner .title {</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #212529 !important;</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 2.2em !important;</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 700;</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="in">  letter-spacing: 0.02em;</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="in">  text-transform: uppercase;</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="in">  font-family: 'Noto Sans JP', sans-serif;</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner .author {</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #495057 !important;</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.2em;</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 1em;</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="in">.quarto-title-banner .date {</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #6c757d !important;</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1em;</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 0.5em;</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="in">/* 見出しのアカデミックスタイル */</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="in">h1 {</span></span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.8em;</span></span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 700;</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #1a1a1a;</span></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 2px solid #212529;</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="in">  padding-bottom: 0.5em;</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 2em;</span></span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 1em;</span></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="in">  text-transform: uppercase;</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="in">  letter-spacing: 0.03em;</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a><span class="in">h2 {</span></span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.4em;</span></span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #343a40;</span></span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 1.5em;</span></span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 0.8em;</span></span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a><span class="in">  padding-left: 0;</span></span>
+<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a><span class="in">  border-left: none;</span></span>
+<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a><span class="in">  background: none;</span></span>
+<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a><span class="in">  position: relative;</span></span>
+<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a><span class="in">h2:before {</span></span>
+<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a><span class="in">  content: "§";</span></span>
+<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-right: 0.5em;</span></span>
+<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #6c757d;</span></span>
+<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 400;</span></span>
+<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a><span class="in">h3 {</span></span>
+<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.2em;</span></span>
+<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #495057;</span></span>
+<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 1.2em;</span></span>
+<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-bottom: 0.6em;</span></span>
+<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a><span class="in">  padding-left: 0;</span></span>
+<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a><span class="in">h3:before {</span></span>
+<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a><span class="in">  content: "";</span></span>
+<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a><span class="in">/* テーブルを学術論文風に */</span></span>
+<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a><span class="in">table {</span></span>
+<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a><span class="in">  margin: 2em auto;</span></span>
+<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a><span class="in">  border-collapse: collapse;</span></span>
+<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.95em;</span></span>
+<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a><span class="in">  width: 90%;</span></span>
+<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a><span class="in">  box-shadow: none;</span></span>
+<span id="cb1-112"><a href="#cb1-112" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 0;</span></span>
+<span id="cb1-113"><a href="#cb1-113" aria-hidden="true" tabindex="-1"></a><span class="in">  border-top: 2px solid #212529;</span></span>
+<span id="cb1-114"><a href="#cb1-114" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 2px solid #212529;</span></span>
+<span id="cb1-115"><a href="#cb1-115" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-116"><a href="#cb1-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-117"><a href="#cb1-117" aria-hidden="true" tabindex="-1"></a><span class="in">thead {</span></span>
+<span id="cb1-118"><a href="#cb1-118" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa;</span></span>
+<span id="cb1-119"><a href="#cb1-119" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 1px solid #212529;</span></span>
+<span id="cb1-120"><a href="#cb1-120" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-121"><a href="#cb1-121" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-122"><a href="#cb1-122" aria-hidden="true" tabindex="-1"></a><span class="in">thead th {</span></span>
+<span id="cb1-123"><a href="#cb1-123" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #212529 !important;</span></span>
+<span id="cb1-124"><a href="#cb1-124" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb1-125"><a href="#cb1-125" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 0.8em !important;</span></span>
+<span id="cb1-126"><a href="#cb1-126" aria-hidden="true" tabindex="-1"></a><span class="in">  text-align: left;</span></span>
+<span id="cb1-127"><a href="#cb1-127" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.9em;</span></span>
+<span id="cb1-128"><a href="#cb1-128" aria-hidden="true" tabindex="-1"></a><span class="in">  text-transform: uppercase;</span></span>
+<span id="cb1-129"><a href="#cb1-129" aria-hidden="true" tabindex="-1"></a><span class="in">  letter-spacing: 0.05em;</span></span>
+<span id="cb1-130"><a href="#cb1-130" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-131"><a href="#cb1-131" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-132"><a href="#cb1-132" aria-hidden="true" tabindex="-1"></a><span class="in">tbody tr {</span></span>
+<span id="cb1-133"><a href="#cb1-133" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 1px solid #dee2e6;</span></span>
+<span id="cb1-134"><a href="#cb1-134" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-135"><a href="#cb1-135" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-136"><a href="#cb1-136" aria-hidden="true" tabindex="-1"></a><span class="in">tbody tr:nth-child(even) {</span></span>
+<span id="cb1-137"><a href="#cb1-137" aria-hidden="true" tabindex="-1"></a><span class="in">  background: rgba(0,0,0,0.02);</span></span>
+<span id="cb1-138"><a href="#cb1-138" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-139"><a href="#cb1-139" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-140"><a href="#cb1-140" aria-hidden="true" tabindex="-1"></a><span class="in">tbody tr:hover {</span></span>
+<span id="cb1-141"><a href="#cb1-141" aria-hidden="true" tabindex="-1"></a><span class="in">  background: rgba(0,0,0,0.05);</span></span>
+<span id="cb1-142"><a href="#cb1-142" aria-hidden="true" tabindex="-1"></a><span class="in">  transition: background 0.2s ease;</span></span>
+<span id="cb1-143"><a href="#cb1-143" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-144"><a href="#cb1-144" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-145"><a href="#cb1-145" aria-hidden="true" tabindex="-1"></a><span class="in">tbody td {</span></span>
+<span id="cb1-146"><a href="#cb1-146" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 0.6em;</span></span>
+<span id="cb1-147"><a href="#cb1-147" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-148"><a href="#cb1-148" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-149"><a href="#cb1-149" aria-hidden="true" tabindex="-1"></a><span class="in">/* 引用ブロックを論文風に */</span></span>
+<span id="cb1-150"><a href="#cb1-150" aria-hidden="true" tabindex="-1"></a><span class="in">blockquote {</span></span>
+<span id="cb1-151"><a href="#cb1-151" aria-hidden="true" tabindex="-1"></a><span class="in">  border-left: 3px solid #495057;</span></span>
+<span id="cb1-152"><a href="#cb1-152" aria-hidden="true" tabindex="-1"></a><span class="in">  margin: 1.5em 2em;</span></span>
+<span id="cb1-153"><a href="#cb1-153" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 0.5em 1em;</span></span>
+<span id="cb1-154"><a href="#cb1-154" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb1-155"><a href="#cb1-155" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa;</span></span>
+<span id="cb1-156"><a href="#cb1-156" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 0;</span></span>
+<span id="cb1-157"><a href="#cb1-157" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.95em;</span></span>
+<span id="cb1-158"><a href="#cb1-158" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #495057;</span></span>
+<span id="cb1-159"><a href="#cb1-159" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-160"><a href="#cb1-160" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-161"><a href="#cb1-161" aria-hidden="true" tabindex="-1"></a><span class="in">/* リンクを控えめに */</span></span>
+<span id="cb1-162"><a href="#cb1-162" aria-hidden="true" tabindex="-1"></a><span class="in">a {</span></span>
+<span id="cb1-163"><a href="#cb1-163" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #0066cc;</span></span>
+<span id="cb1-164"><a href="#cb1-164" aria-hidden="true" tabindex="-1"></a><span class="in">  text-decoration: none;</span></span>
+<span id="cb1-165"><a href="#cb1-165" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 1px solid transparent;</span></span>
+<span id="cb1-166"><a href="#cb1-166" aria-hidden="true" tabindex="-1"></a><span class="in">  transition: border-bottom 0.2s;</span></span>
+<span id="cb1-167"><a href="#cb1-167" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-168"><a href="#cb1-168" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-169"><a href="#cb1-169" aria-hidden="true" tabindex="-1"></a><span class="in">a:hover {</span></span>
+<span id="cb1-170"><a href="#cb1-170" aria-hidden="true" tabindex="-1"></a><span class="in">  border-bottom: 1px solid #0066cc;</span></span>
+<span id="cb1-171"><a href="#cb1-171" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-172"><a href="#cb1-172" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-173"><a href="#cb1-173" aria-hidden="true" tabindex="-1"></a><span class="in">/* サイドバーの目次をシンプルに */</span></span>
+<span id="cb1-174"><a href="#cb1-174" aria-hidden="true" tabindex="-1"></a><span class="in">.sidebar {</span></span>
+<span id="cb1-175"><a href="#cb1-175" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa;</span></span>
+<span id="cb1-176"><a href="#cb1-176" aria-hidden="true" tabindex="-1"></a><span class="in">  border-right: 1px solid #dee2e6;</span></span>
+<span id="cb1-177"><a href="#cb1-177" aria-hidden="true" tabindex="-1"></a><span class="in">  font-family: 'Noto Sans JP', sans-serif;</span></span>
+<span id="cb1-178"><a href="#cb1-178" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-179"><a href="#cb1-179" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-180"><a href="#cb1-180" aria-hidden="true" tabindex="-1"></a><span class="in">.sidebar nav[role=doc-toc] ul &gt; li {</span></span>
+<span id="cb1-181"><a href="#cb1-181" aria-hidden="true" tabindex="-1"></a><span class="in">  margin: 0.3em 0;</span></span>
+<span id="cb1-182"><a href="#cb1-182" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-183"><a href="#cb1-183" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-184"><a href="#cb1-184" aria-hidden="true" tabindex="-1"></a><span class="in">.sidebar nav[role=doc-toc] ul &gt; li &gt; a {</span></span>
+<span id="cb1-185"><a href="#cb1-185" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #495057;</span></span>
+<span id="cb1-186"><a href="#cb1-186" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.95em;</span></span>
+<span id="cb1-187"><a href="#cb1-187" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-188"><a href="#cb1-188" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-189"><a href="#cb1-189" aria-hidden="true" tabindex="-1"></a><span class="in">.sidebar nav[role=doc-toc] ul &gt; li &gt; a.active {</span></span>
+<span id="cb1-190"><a href="#cb1-190" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #212529;</span></span>
+<span id="cb1-191"><a href="#cb1-191" aria-hidden="true" tabindex="-1"></a><span class="in">  color: white !important;</span></span>
+<span id="cb1-192"><a href="#cb1-192" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 0.2em 0.5em;</span></span>
+<span id="cb1-193"><a href="#cb1-193" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 0;</span></span>
+<span id="cb1-194"><a href="#cb1-194" aria-hidden="true" tabindex="-1"></a><span class="in">  font-weight: 600;</span></span>
+<span id="cb1-195"><a href="#cb1-195" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-196"><a href="#cb1-196" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-197"><a href="#cb1-197" aria-hidden="true" tabindex="-1"></a><span class="in">.sidebar nav[role=doc-toc] ul &gt; li &gt; a:hover {</span></span>
+<span id="cb1-198"><a href="#cb1-198" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #e9ecef;</span></span>
+<span id="cb1-199"><a href="#cb1-199" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 0.2em 0.5em;</span></span>
+<span id="cb1-200"><a href="#cb1-200" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-201"><a href="#cb1-201" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-202"><a href="#cb1-202" aria-hidden="true" tabindex="-1"></a><span class="in">/* コードブロックをシンプルに */</span></span>
+<span id="cb1-203"><a href="#cb1-203" aria-hidden="true" tabindex="-1"></a><span class="in">code {</span></span>
+<span id="cb1-204"><a href="#cb1-204" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa;</span></span>
+<span id="cb1-205"><a href="#cb1-205" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 0.15em 0.3em;</span></span>
+<span id="cb1-206"><a href="#cb1-206" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 2px;</span></span>
+<span id="cb1-207"><a href="#cb1-207" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #d63384;</span></span>
+<span id="cb1-208"><a href="#cb1-208" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.9em;</span></span>
+<span id="cb1-209"><a href="#cb1-209" aria-hidden="true" tabindex="-1"></a><span class="in">  border: 1px solid #dee2e6;</span></span>
+<span id="cb1-210"><a href="#cb1-210" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-211"><a href="#cb1-211" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-212"><a href="#cb1-212" aria-hidden="true" tabindex="-1"></a><span class="in">pre {</span></span>
+<span id="cb1-213"><a href="#cb1-213" aria-hidden="true" tabindex="-1"></a><span class="in">  background: #f8f9fa !important;</span></span>
+<span id="cb1-214"><a href="#cb1-214" aria-hidden="true" tabindex="-1"></a><span class="in">  border: 1px solid #dee2e6;</span></span>
+<span id="cb1-215"><a href="#cb1-215" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 0;</span></span>
+<span id="cb1-216"><a href="#cb1-216" aria-hidden="true" tabindex="-1"></a><span class="in">  box-shadow: none;</span></span>
+<span id="cb1-217"><a href="#cb1-217" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 1em;</span></span>
+<span id="cb1-218"><a href="#cb1-218" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.9em;</span></span>
+<span id="cb1-219"><a href="#cb1-219" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-220"><a href="#cb1-220" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-221"><a href="#cb1-221" aria-hidden="true" tabindex="-1"></a><span class="in">/* 数式を強調 */</span></span>
+<span id="cb1-222"><a href="#cb1-222" aria-hidden="true" tabindex="-1"></a><span class="in">.math {</span></span>
+<span id="cb1-223"><a href="#cb1-223" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #212529;</span></span>
+<span id="cb1-224"><a href="#cb1-224" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 1.05em;</span></span>
+<span id="cb1-225"><a href="#cb1-225" aria-hidden="true" tabindex="-1"></a><span class="in">  font-style: italic;</span></span>
+<span id="cb1-226"><a href="#cb1-226" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-227"><a href="#cb1-227" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-228"><a href="#cb1-228" aria-hidden="true" tabindex="-1"></a><span class="in">/* 脚注スタイル */</span></span>
+<span id="cb1-229"><a href="#cb1-229" aria-hidden="true" tabindex="-1"></a><span class="in">.footnotes {</span></span>
+<span id="cb1-230"><a href="#cb1-230" aria-hidden="true" tabindex="-1"></a><span class="in">  margin-top: 3em;</span></span>
+<span id="cb1-231"><a href="#cb1-231" aria-hidden="true" tabindex="-1"></a><span class="in">  padding-top: 1em;</span></span>
+<span id="cb1-232"><a href="#cb1-232" aria-hidden="true" tabindex="-1"></a><span class="in">  border-top: 1px solid #dee2e6;</span></span>
+<span id="cb1-233"><a href="#cb1-233" aria-hidden="true" tabindex="-1"></a><span class="in">  font-size: 0.9em;</span></span>
+<span id="cb1-234"><a href="#cb1-234" aria-hidden="true" tabindex="-1"></a><span class="in">  color: #6c757d;</span></span>
+<span id="cb1-235"><a href="#cb1-235" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-236"><a href="#cb1-236" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-237"><a href="#cb1-237" aria-hidden="true" tabindex="-1"></a><span class="in">/* セクション間のスペース */</span></span>
+<span id="cb1-238"><a href="#cb1-238" aria-hidden="true" tabindex="-1"></a><span class="in">section {</span></span>
+<span id="cb1-239"><a href="#cb1-239" aria-hidden="true" tabindex="-1"></a><span class="in">  margin: 1.5em 0;</span></span>
+<span id="cb1-240"><a href="#cb1-240" aria-hidden="true" tabindex="-1"></a><span class="in">  padding: 0;</span></span>
+<span id="cb1-241"><a href="#cb1-241" aria-hidden="true" tabindex="-1"></a><span class="in">  background: transparent;</span></span>
+<span id="cb1-242"><a href="#cb1-242" aria-hidden="true" tabindex="-1"></a><span class="in">  border-radius: 0;</span></span>
+<span id="cb1-243"><a href="#cb1-243" aria-hidden="true" tabindex="-1"></a><span class="in">  box-shadow: none;</span></span>
+<span id="cb1-244"><a href="#cb1-244" aria-hidden="true" tabindex="-1"></a><span class="in">}</span></span>
+<span id="cb1-245"><a href="#cb1-245" aria-hidden="true" tabindex="-1"></a><span class="in">&lt;/style&gt;</span></span>
+<span id="cb1-246"><a href="#cb1-246" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb1-247"><a href="#cb1-247" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-248"><a href="#cb1-248" aria-hidden="true" tabindex="-1"></a><span class="fu"># はじめに</span></span>
+<span id="cb1-249"><a href="#cb1-249" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-250"><a href="#cb1-250" aria-hidden="true" tabindex="-1"></a>プラモデルは本物の車や飛行機などの実際の重さや材質、機能などを無視して、形や色を模倣しています。つまり、モデルとは不必要な性質を大胆に無視して、必要なエッセンスだけを取り上げたものを指します。統計モデルは確率分布とパラメータを使ってデータの特徴を模倣するものです。このページでは伝統的な統計モデルではどのような手法が用いられているのかを概観していきましょう。</span>
+<span id="cb1-251"><a href="#cb1-251" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-252"><a href="#cb1-252" aria-hidden="true" tabindex="-1"></a><span class="fu">## 尺度水準</span></span>
+<span id="cb1-253"><a href="#cb1-253" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-254"><a href="#cb1-254" aria-hidden="true" tabindex="-1"></a>統計モデルを理解する上で、データにはいくつかの種類があることを押さえておきましょう。例えば、身長は150センチよりも160センチの方が高く、この10センチの差は170センチと180センチの差と同じです。また、小学生の頃は140センチだった身長が大学生で180センチになった際には、身長が約1.3倍になったと言えます。さらに、長さの単位となっているセンチメートルの長さには原点となる0があります。このように、原点があり、間隔や比率に意味があるデータは比率尺度と呼ばれます。</span>
+<span id="cb1-255"><a href="#cb1-255" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-256"><a href="#cb1-256" aria-hidden="true" tabindex="-1"></a>気温の5度から10度への変化と15度から20度への変化は、どちらも同じ5度の変化であることから間隔は等しいと言えます。しかし、5度が10度へと変化しても、気温が2倍になったとは言えません。このように、目盛が等間隔となるデータは間隔尺度と呼ばれます。</span>
+<span id="cb1-257"><a href="#cb1-257" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-258"><a href="#cb1-258" aria-hidden="true" tabindex="-1"></a>データの情報量としては、比率尺度の方が間隔尺度よりも多いと言われています。間隔尺度以上のデータでは平均値や標準偏差などを計算することができます。特に、比率尺度は平均値を標準偏差で割った変動係数を計算することができ、平均値に対する相対的なばらつきの大きさを検討することができます。</span>
+<span id="cb1-259"><a href="#cb1-259" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-260"><a href="#cb1-260" aria-hidden="true" tabindex="-1"></a>英語教育の分野で用いるデータとしては、テストの点数のような間隔尺度だけでなく、名義尺度と順序尺度があります。</span>
+<span id="cb1-261"><a href="#cb1-261" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-262"><a href="#cb1-262" aria-hidden="true" tabindex="-1"></a>名義尺度とは、学習条件A・B・Cのように、他と区別するだけのラベルのことを指します。例えば、母語が日本語である場合を1、中国語である場合を2としても、1より2の方が大きいとは言えません。この順序が仮定されるデータ（例：英検の級、CEFRレベル）は順序尺度と呼ばれます。名義尺度の場合は数を数え上げるのみですが、順序尺度は中央値を検討することができます。名義尺度と順序尺度は質的変数やカテゴリカル変数と呼ばれます。一方、間隔尺度や比率尺度は量的変数や連続変数と呼ばれます。</span>
+<span id="cb1-263"><a href="#cb1-263" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-264"><a href="#cb1-264" aria-hidden="true" tabindex="-1"></a><span class="fu">## 変数の種類</span></span>
+<span id="cb1-265"><a href="#cb1-265" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-266"><a href="#cb1-266" aria-hidden="true" tabindex="-1"></a>英語教育の分野では目に見えない変数を扱うことが多いです。例えば、「コミュニケーションで使える語彙知識」とはいったい何を指しているのでしょうか。スピーキングで使われる語彙知識なのでしょうか、ダイアローグにおいて相手が英語で言っていることを理解するためのリスニングで使われる語彙知識も含むのでしょうか、メールの「確かに承りました」を英語で伝える際にcertainlyを使うと嫌味に聞こえてしまうような語用論的知識なのでしょうか、"make"を使えることは作成動詞と使役動詞の2種類があると知っていることなのでしょうか、使役動詞のmakeは受動態では原形不定詞ではなくto不定詞を伴うと知っていることなのでしょうか、使える語彙知識と使える文法知識に違いはあるのでしょうか。</span>
+<span id="cb1-267"><a href="#cb1-267" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-268"><a href="#cb1-268" aria-hidden="true" tabindex="-1"></a>目に見えない概念を扱うには測定具が必要です。語彙知識の測定には一般的に「語彙サイズテスト」が用いられることがあります。日本語を母語とする英語学習者が英語の語彙知識をどのくらい知っているかを検討する測定具としては、Hamada et al. (2021) のVST-NJ8や相澤・望月 (2010) の望月語彙サイズテストなどがあります。このように、測定具を用いて目に見えるようなデータが得られると、英語学習者の熟達度を検討することができます。目に見える変数を観測変数、目に見えない変数を潜在変数と呼びます。</span>
+<span id="cb1-269"><a href="#cb1-269" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-270"><a href="#cb1-270" aria-hidden="true" tabindex="-1"></a><span class="fu">## 相関関係・回帰関係・因果関係</span></span>
+<span id="cb1-271"><a href="#cb1-271" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-272"><a href="#cb1-272" aria-hidden="true" tabindex="-1"></a>「風が吹けば桶屋が儲かる」という日本の諺を聞いたことはありますか？以下はWikipediaによる説明です。</span>
+<span id="cb1-273"><a href="#cb1-273" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-274"><a href="#cb1-274" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>大風が吹けば土埃が立ち、眼病疾患者が増加する</span>
+<span id="cb1-275"><a href="#cb1-275" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>盲人などが三味線を生業とし、演奏方法を指導したり、門付で三味線を演奏するので、三味線の需要が増える</span>
+<span id="cb1-276"><a href="#cb1-276" aria-hidden="true" tabindex="-1"></a><span class="ss">3. </span>三味線製造に猫の皮が欠かせないため、猫が多数減り、鼠が増加する</span>
+<span id="cb1-277"><a href="#cb1-277" aria-hidden="true" tabindex="-1"></a><span class="ss">4. </span>鼠は箱の類（桶など）をかじる</span>
+<span id="cb1-278"><a href="#cb1-278" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>桶の需要も増加して桶屋が儲かるだろう</span>
+<span id="cb1-279"><a href="#cb1-279" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-280"><a href="#cb1-280" aria-hidden="true" tabindex="-1"></a>この関係性の説明は相当に無理がありますが、気温とアイスクリームの売り上げの関係性はどうでしょうか？夏のような暑い気温ではアイスクリームを購入する人が多くなりそうです。ではアイスクリームの売り上げと溺死の件数の関係はどうでしょうか。夏になると海水浴に行く人が増え、溺死の件数も増えると予想されます。このように、どちらが原因でどちらが結果であるかがはっきりとしない関係性は相関関係と呼ばれます。なお「相関がある」「相関がない」という表現は不適切で、「強い相関がある」「弱い相関がある」「正の相関がある」「負の相関がある」のようなコロケーションを用います。どちらかが高くなればどちらかも高くなるような気温とアイスクリームの売り上げは正の相関、どちらかが高くなればどちらかが低くなるような気温とおでんの売り上げは負の相関と言います。</span>
+<span id="cb1-281"><a href="#cb1-281" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-282"><a href="#cb1-282" aria-hidden="true" tabindex="-1"></a>変数間の関係には相関以外に回帰関係と因果関係があります。例えば、中間テストが終わった高校生に対して、土曜日補講を行う効果を検討してみましょう。補講への参加は任意とすると、参加する生徒と参加しない生徒が出てきます。補講に参加する生徒を1、参加しない生徒を0という名義尺度で考えてみましょう。補講の効果は英語の期末テストで測定することとします。この期末テストの結果は観測変数となります。補講が期末テストに与える影響を考える時、影響を受けると考える側（期末テスト）を目的変数・応答変数・従属変数と呼び、影響を与えると考える側（補講への参加生徒1、0）を説明変数・予測変数・独立変数・共変量・特徴量と呼びます。目的変数と説明変数によって、「目的変数 = 傾き × 説明変数 + 切片 + 誤差」のような式で表す関係を回帰関係と呼びます。</span>
+<span id="cb1-283"><a href="#cb1-283" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-284"><a href="#cb1-284" aria-hidden="true" tabindex="-1"></a>上記の土曜日補講と期末テストの回帰関係は「ナイーブな」比較と言えます。なぜなら、生徒Aが補講を受けた際の影響は目的変数として得られる一方で、生徒Aが補講を受けない影響は目的変数として得られません。つまり、潜在的な結果が生じてしまいます。また、土曜日補講に参加しようとする生徒は学習に対する動機づけが高いと考えられ、平日も自主学習を行っていたり、授業に真面目に参加していると考えられます。そのため、補講以外の交絡要因を検討する必要もあります。</span>
+<span id="cb1-285"><a href="#cb1-285" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-286"><a href="#cb1-286" aria-hidden="true" tabindex="-1"></a>なお、因果関係を検討する上では、性別や動機づけのような属性変数を統計モデルに組み入れ、あたかも原因のように扱うことは不適切です。因果関係を検討する際には、何が操作されており、観測変数は何かを考えることが重要です。</span>
+<span id="cb1-287"><a href="#cb1-287" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-288"><a href="#cb1-288" aria-hidden="true" tabindex="-1"></a><span class="fu"># 構造方程式モデリング</span></span>
+<span id="cb1-289"><a href="#cb1-289" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-290"><a href="#cb1-290" aria-hidden="true" tabindex="-1"></a>上記で述べてきた「説明変数」および「目的変数」が「観測変数」か「潜在変数」かによって、統計モデルの名前は変わります。しかし、最終的には構造方程式モデリングと呼ばれる手法が全ての統計モデルを扱うことができます。構造方程式モデリングでは、目的変数が名義尺度でも順序尺度でもよく、ある目的変数が説明変数になるモデル（例えば、語彙サイズがリスニング能力に影響を与え、リスニング能力がリテリングの結果に影響を与えるなど）も分析可能です。つまり、回帰分析も因子分析も構造方程式モデリングの一種であると言えます。以下では主な統計モデルを紹介します。</span>
+<span id="cb1-291"><a href="#cb1-291" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-292"><a href="#cb1-292" aria-hidden="true" tabindex="-1"></a><span class="fu">## 説明変数・目的変数が観測変数の場合</span></span>
+<span id="cb1-293"><a href="#cb1-293" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-294"><a href="#cb1-294" aria-hidden="true" tabindex="-1"></a>まずは説明変数も目的変数も観測変数の場合を考えてみましょう。例えば、上記の土曜日補講が期末テストに与える影響を与えるかを検討するt検定がこの統計モデルに含まれます。繰り返しになりますが、これらのモデルはすべて構造方程式モデリングの特殊な例です。例えば、回帰分析における目的変数が別の目的変数に影響を与える説明変数となる場合の分析はパス解析と呼ばれますが、パス解析は潜在変数が組み込まれていない構造方程式モデリングです。</span>
+<span id="cb1-295"><a href="#cb1-295" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-296"><a href="#cb1-296" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 統計モデルの名前 <span class="pp">|</span> 説明変数（観測） <span class="pp">|</span> 目的変数（観測） <span class="pp">|</span></span>
+<span id="cb1-297"><a href="#cb1-297" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb1-298"><a href="#cb1-298" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 回帰分析 <span class="pp">|</span> 連続・カテゴリカル <span class="pp">|</span> 連続 <span class="pp">|</span></span>
+<span id="cb1-299"><a href="#cb1-299" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 判別分析 <span class="pp">|</span> 連続 <span class="pp">|</span> 名義 <span class="pp">|</span></span>
+<span id="cb1-300"><a href="#cb1-300" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 名義ロジスティック回帰分析 <span class="pp">|</span> 連続 <span class="pp">|</span> 名義 <span class="pp">|</span></span>
+<span id="cb1-301"><a href="#cb1-301" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 順序ロジスティック回帰分析 <span class="pp">|</span> 連続 <span class="pp">|</span> 順序 <span class="pp">|</span></span>
+<span id="cb1-302"><a href="#cb1-302" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 数量化Ⅰ類 <span class="pp">|</span> カテゴリカル <span class="pp">|</span> 連続 <span class="pp">|</span></span>
+<span id="cb1-303"><a href="#cb1-303" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 数量化Ⅱ類 <span class="pp">|</span> カテゴリカル <span class="pp">|</span> 名義 <span class="pp">|</span></span>
+<span id="cb1-304"><a href="#cb1-304" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-305"><a href="#cb1-305" aria-hidden="true" tabindex="-1"></a><span class="fu">## 説明変数が潜在変数、目的変数が観測変数の場合</span></span>
+<span id="cb1-306"><a href="#cb1-306" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-307"><a href="#cb1-307" aria-hidden="true" tabindex="-1"></a>潜在変数とは目に見えない変数、観測変数とは目に見える変数のことを指します。</span>
+<span id="cb1-308"><a href="#cb1-308" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-309"><a href="#cb1-309" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 統計モデルの名前 <span class="pp">|</span> 説明変数（潜在） <span class="pp">|</span> 目的変数（観測） <span class="pp">|</span></span>
+<span id="cb1-310"><a href="#cb1-310" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb1-311"><a href="#cb1-311" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 因子分析 <span class="pp">|</span> 連続 <span class="pp">|</span> 連続 <span class="pp">|</span></span>
+<span id="cb1-312"><a href="#cb1-312" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 段階反応モデル <span class="pp">|</span> 連続 <span class="pp">|</span> 順序 <span class="pp">|</span></span>
+<span id="cb1-313"><a href="#cb1-313" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2値ラッシュモデル <span class="pp">|</span> 連続 <span class="pp">|</span> 名義（2値） <span class="pp">|</span></span>
+<span id="cb1-314"><a href="#cb1-314" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 潜在プロフィール分析 <span class="pp">|</span> カテゴリカル <span class="pp">|</span> 連続 <span class="pp">|</span></span>
+<span id="cb1-315"><a href="#cb1-315" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 潜在クラス分析 <span class="pp">|</span> カテゴリカル <span class="pp">|</span> 名義 <span class="pp">|</span></span>
+<span id="cb1-316"><a href="#cb1-316" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 潜在ランク分析 <span class="pp">|</span> 順序 <span class="pp">|</span> カテゴリカル <span class="pp">|</span></span>
+<span id="cb1-317"><a href="#cb1-317" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-318"><a href="#cb1-318" aria-hidden="true" tabindex="-1"></a><span class="fu">## 説明変数が観測変数、目的変数が潜在変数の場合</span></span>
+<span id="cb1-319"><a href="#cb1-319" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-320"><a href="#cb1-320" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 統計モデルの名前 <span class="pp">|</span> 説明変数（観測） <span class="pp">|</span> 目的変数（潜在） <span class="pp">|</span></span>
+<span id="cb1-321"><a href="#cb1-321" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb1-322"><a href="#cb1-322" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 主成分分析 <span class="pp">|</span> 連続 <span class="pp">|</span> 連続 <span class="pp">|</span></span>
+<span id="cb1-323"><a href="#cb1-323" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> コレスポンデンス分析、多重コレスポンデンス分析 <span class="pp">|</span> カテゴリカル <span class="pp">|</span> 連続 <span class="pp">|</span></span>
+<span id="cb1-324"><a href="#cb1-324" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-325"><a href="#cb1-325" aria-hidden="true" tabindex="-1"></a><span class="fu">## モデルの評価指標</span></span>
+<span id="cb1-326"><a href="#cb1-326" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-327"><a href="#cb1-327" aria-hidden="true" tabindex="-1"></a>作成した統計モデルがどの程度データと一致しているのかを検討する方法として、モデルの適合度指標があります。構造方程式モデリングでは複数の指標が出力されます。</span>
+<span id="cb1-328"><a href="#cb1-328" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-329"><a href="#cb1-329" aria-hidden="true" tabindex="-1"></a><span class="fu">### 情報量基準</span></span>
+<span id="cb1-330"><a href="#cb1-330" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-331"><a href="#cb1-331" aria-hidden="true" tabindex="-1"></a>情報量基準とは尤度に-2をかけたもので、Akaike Information Criteria (AIC) やBayesian Information Criteria (BIC) があります。情報量基準はモデルがデータにどの程度よくフィットしているかを示します。つまり、複数のモデルA、モデルB、モデルCを同じデータに当てはめた時、これらの情報量基準が低いほど、データによく適合していると判断できます。</span>
+<span id="cb1-332"><a href="#cb1-332" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-333"><a href="#cb1-333" aria-hidden="true" tabindex="-1"></a><span class="fu">### Root Mean Square Error of Approximation (RMSEA)</span></span>
+<span id="cb1-334"><a href="#cb1-334" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-335"><a href="#cb1-335" aria-hidden="true" tabindex="-1"></a>モデルがデータとどの程度乖離しているかを直接表現した指標です。一般に、0.05より小さければ、そのモデルは当てはまりが良く、0.1以上であれば当てはまりが悪いと判断できます。</span>
+<span id="cb1-336"><a href="#cb1-336" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-337"><a href="#cb1-337" aria-hidden="true" tabindex="-1"></a><span class="fu">### Comparative Fit Index (CFI) / Tucker-Lewis Index (TLI)</span></span>
+<span id="cb1-338"><a href="#cb1-338" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-339"><a href="#cb1-339" aria-hidden="true" tabindex="-1"></a>観測変数間に全く相関がないという非現実的なモデルに比べ、当該のモデルがどの程度良いかを標準化したものです。1.0に近いほど良いモデルとされます。</span>
+<span id="cb1-340"><a href="#cb1-340" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-341"><a href="#cb1-341" aria-hidden="true" tabindex="-1"></a><span class="fu">### Standardized Root Mean square Residual (SRMR)</span></span>
+<span id="cb1-342"><a href="#cb1-342" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-343"><a href="#cb1-343" aria-hidden="true" tabindex="-1"></a>標準化された残差平方平均平方根のことで、モデルで説明できなかったデータの分散がどれほどあったかを表します。0に近ければ近いほど当てはまりが良いことを表します。</span>
+<span id="cb1-344"><a href="#cb1-344" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-345"><a href="#cb1-345" aria-hidden="true" tabindex="-1"></a><span class="fu"># 統計モデリングと回帰分析</span></span>
+<span id="cb1-346"><a href="#cb1-346" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-347"><a href="#cb1-347" aria-hidden="true" tabindex="-1"></a>回帰分析は1つの目的変数（従属変数・応答変数とも）を説明変数（独立変数・固定効果とも）から予測する統計手法です。大きく以下の3つに分けることができます。</span>
+<span id="cb1-348"><a href="#cb1-348" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-349"><a href="#cb1-349" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>線形モデル：t検定、ANOVA、単回帰分析、重回帰分析など</span>
+<span id="cb1-350"><a href="#cb1-350" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>一般化線形モデル：ロジスティック回帰、ポアソン回帰、ガンマ回帰、ベータ回帰など</span>
+<span id="cb1-351"><a href="#cb1-351" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>一般化線形混合効果モデル：ロジスティック混合回帰モデル、ポアソン回帰混合効果モデルなど</span>
+<span id="cb1-352"><a href="#cb1-352" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-353"><a href="#cb1-353" aria-hidden="true" tabindex="-1"></a><span class="fu">## 線型モデル</span></span>
+<span id="cb1-354"><a href="#cb1-354" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-355"><a href="#cb1-355" aria-hidden="true" tabindex="-1"></a>線形モデルは目的変数が<span class="co">[</span><span class="ot">正規分布</span><span class="co">](https://ai-trend.jp/basic-study/normal-distribution/normal-distribution/)</span>であることを分析の前提としています。この正規性の前提は<span class="co">[</span><span class="ot">ルビーン検定</span><span class="co">](http://data-science.gr.jp/implementation/ist_r_levene_test.html)</span>や<span class="co">[</span><span class="ot">コルモゴロフ・スミルノフ検定</span><span class="co">](https://data-science.gr.jp/implementation/ist_r_kolmogorov_smirnov_test.html)</span>、<span class="co">[</span><span class="ot">Q-Qプロット</span><span class="co">](https://qiita.com/TSeri/items/e0228f877ccb22f5dbc9)</span>などで確認することができます。つまり、線型モデルで扱うことができるデータの種類は連続変数と呼ばれる間隔尺度以上の変数となります。具体的には、テストの点数（0〜100点）や反応時間（ミリ秒）などが連続値として扱われることから、線型モデルで検討することができます。</span>
+<span id="cb1-356"><a href="#cb1-356" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-357"><a href="#cb1-357" aria-hidden="true" tabindex="-1"></a>線型モデルの中で最も典型的なモデルが単回帰分析です。こちらは1つの連続値を目的変数、1つの連続値を説明変数とするモデルで、主に目的変数の予測に使われることが多いです。例えば、期末テストの得点を予測する際、テスト期間中の勉強時間を説明変数とするなどが考えられます。</span>
+<span id="cb1-358"><a href="#cb1-358" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-359"><a href="#cb1-359" aria-hidden="true" tabindex="-1"></a>単回帰分析では説明変数として1つの変数のみが含まれていました。複数の説明変数を含む統計モデルは重回帰分析と呼ばれます。例えば、英語の期末テストの得点を目的変数として、中間テストの英語の得点や小テストの点数などを追加で含めるモデルが考えられます。重回帰分析に含まれる複数の説明変数は相関が低いことが前提となります。この説明変数同士の相関が高いことはモデルの作成において、<span class="co">[</span><span class="ot">多重共線性</span><span class="co">](https://best-biostatistics.com/correlation_regression/multi-co.html)</span>と呼ばれる問題を引き起こしてしまいます。複数の説明変数をモデルに組み込むことができる一方で、理論的に適切な説明変数を選択することができるかが鍵となります。</span>
+<span id="cb1-360"><a href="#cb1-360" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-361"><a href="#cb1-361" aria-hidden="true" tabindex="-1"></a>重回帰分析における説明変数は、連続変数でもカテゴリカル変数でも問題なく目的変数を推定することができます。連続変数とは、テストの得点のように数字で大小を比べることができ、平均値などを計算することに意味を持つ変数のことです。一方、カテゴリカル変数は性別や正解・不正解のように平均値を計算することに意味を持たない変数のことです。正解・不正解のように2水準となる場合もあれば、母語が日本語・韓国語・中国語・英語など多水準になる場合もあります。なお、Rのようなプログラミング言語では正解を1、不正解を0とするようにダミーコーディングされます。この0や1の値に大小関係が存在しないため、Rではfactor型にしておくことが必要です。</span>
+<span id="cb1-362"><a href="#cb1-362" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-363"><a href="#cb1-363" aria-hidden="true" tabindex="-1"></a>説明変数が2つでいずれも2水準のカテゴリカルである重回帰分析は2 way ANOVAと呼ばれます。つまり、分散分析は重回帰分析の特殊な場合ということになります。t検定も同様に、目的変数が1つで、説明変数が2水準の1つのカテゴリカル変数である回帰分析であると言えます。</span>
+<span id="cb1-364"><a href="#cb1-364" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-365"><a href="#cb1-365" aria-hidden="true" tabindex="-1"></a>線型モデルの概要については<span class="co">[</span><span class="ot">こちらの動画</span><span class="co">](https://youtu.be/7ArmBVF2dCs?si=XLdwV4zUDIYZLCa9)</span>がとても参考になります。</span>
+<span id="cb1-366"><a href="#cb1-366" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-367"><a href="#cb1-367" aria-hidden="true" tabindex="-1"></a><span class="fu">## 一般化線型モデル</span></span>
+<span id="cb1-368"><a href="#cb1-368" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-369"><a href="#cb1-369" aria-hidden="true" tabindex="-1"></a>線型モデル (linear model) は目的変数が連続値で正規分布に従うことが前提です。しかし、試験の合格・不合格や思考発話の中で現れる特定の方略の数などの特殊なデータを扱うことができません。このような目的変数の確率分布に応じて回帰分析を行う手法が一般化線型モデル (generalized linear model; GLM) です。</span>
+<span id="cb1-370"><a href="#cb1-370" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-371"><a href="#cb1-371" aria-hidden="true" tabindex="-1"></a>コインの表・裏、成功・失敗、合格・不合格のように、2つの値だけを取るデータは「2値データ」と呼ばれます。このようなデータは<span class="co">[</span><span class="ot">二項分布</span><span class="co">](https://bellcurve.jp/statistics/course/6979.html)</span>と呼ばれる確率分布に従っています。二項分布に従う2値データは正規性を満たしません。そのため、重回帰分析やt検定で分析することは不適切です。そこで<span class="co">[</span><span class="ot">ロジスティック回帰</span><span class="co">](https://cacco.co.jp/datascience/blog/data-analysis/1274/)</span>という分析方法を用いることとなります。ロジスティック回帰分析は重回帰分析のように複数の説明変数をモデルに組み込むことができます。具体例としては、中間テストのリスニングの点数とリーディングの点数の2つを説明変数として、試験に合格するかどうかを目的変数として予測するなどがあります。</span>
+<span id="cb1-372"><a href="#cb1-372" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-373"><a href="#cb1-373" aria-hidden="true" tabindex="-1"></a>一般化線型モデルには2値データ以外にもカウントデータを扱う統計モデルも存在します。カウントデータは出現頻度のことを表しており、例えば、英文の要約で書き手のパラフレーズが何回登場するか、思考発話のプロトコルに特定の方略が何回登場するか、視線計測による読み戻り回数などがカウントデータに該当します。このカウントデータの平均はλ（ラムダ）と呼ばれ、「平均と分散が等しい」という前提に基づいた<span class="co">[</span><span class="ot">ポアソン回帰</span><span class="co">](http://www.snap-tck.com/room04/c01/stat/stat15/stat1501.html)</span>や、出現頻度0が多い・過分散に対応した<span class="co">[</span><span class="ot">負の二項回帰</span><span class="co">](https://best-biostatistics.com/correlation_regression/negative-binomial.html)</span>などがあります。</span>
+<span id="cb1-374"><a href="#cb1-374" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-375"><a href="#cb1-375" aria-hidden="true" tabindex="-1"></a>先行研究ではたまに「正規性が満たされなかったため、<span class="co">[</span><span class="ot">ノンパラメトリック検定</span><span class="co">](https://www.ibm.com/support/pages/ノンパラメトリック検定)</span>を用いた」という表記があります。ノンパラメトリック検定は母集団の確率分布が事前にわからないものを推定する際に有用ですが、事前に二項分布やポアソン分布に従うデータであることがわかる場合には、ノンパラメトリック検定よりもGLMを用いる方が適切です。具体的には以下のようなGLMを用いることができます。</span>
+<span id="cb1-376"><a href="#cb1-376" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-377"><a href="#cb1-377" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>目的変数が2値データ：ロジスティック回帰 (e.g., 正解 vs. 不正解，成功 vs. 失敗)</span>
+<span id="cb1-378"><a href="#cb1-378" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>目的変数が確率データ：2値ロジスティック回帰 (e.g., 10回の施行で3回起きる確率)</span>
+<span id="cb1-379"><a href="#cb1-379" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>目的変数が順序データ：順序ロジスティック回帰 (e.g., リッカートスケール)</span>
+<span id="cb1-380"><a href="#cb1-380" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>目的変数がカウントデータ：ポアソン回帰、負の二項回帰 (e.g., 思考発話の各カテゴリに関する発話回数)</span>
+<span id="cb1-381"><a href="#cb1-381" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>目的変数が非負の連続データ：重回帰分析、ガンマ回帰 (e.g., 0〜10点のテスト)</span>
+<span id="cb1-382"><a href="#cb1-382" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>目的変数が連続データ：t検定、ANOVA、重回帰分析 (e.g., 反応時間)</span>
+<span id="cb1-383"><a href="#cb1-383" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-384"><a href="#cb1-384" aria-hidden="true" tabindex="-1"></a>目的変数が連続データの場合は正規分布に従うため、線型モデルで分析できます。つまり、一般化線型モデルは線型モデルを包含した概念であると言えます。</span>
+<span id="cb1-385"><a href="#cb1-385" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-386"><a href="#cb1-386" aria-hidden="true" tabindex="-1"></a><span class="fu">## 一般化線型混合効果モデル</span></span>
+<span id="cb1-387"><a href="#cb1-387" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-388"><a href="#cb1-388" aria-hidden="true" tabindex="-1"></a>一般化線型混合効果モデル (Generalized Linear Mixed effect Model; GLMM) は、マルチレベルモデルや階層線型モデルとも呼ばれ、階層性のあるデータ (e.g., 自治体 - 学校 - 生徒) を分析することができます。GLMMの文脈では説明変数は固定効果、階層性のレベルはランダム効果と呼ばれており、これらを混合させて分析することから混合効果モデルという名前がついています。</span>
+<span id="cb1-389"><a href="#cb1-389" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-390"><a href="#cb1-390" aria-hidden="true" tabindex="-1"></a>ランダム効果の関係性はいくつかのパターンがあります。例えば、3つの学校から30人の生徒の実力テストの結果が得られたとします。この時、学校Aの生徒と学校Bの生徒は別の生徒であり、生徒は学校の中にネストされています。表にすると以下のようになります。</span>
+<span id="cb1-391"><a href="#cb1-391" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-392"><a href="#cb1-392" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 学校 <span class="pp">|</span> 生徒 <span class="pp">|</span> テスト得点 <span class="pp">|</span></span>
+<span id="cb1-393"><a href="#cb1-393" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb1-394"><a href="#cb1-394" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> A <span class="pp">|</span> A1 <span class="pp">|</span> 70 <span class="pp">|</span></span>
+<span id="cb1-395"><a href="#cb1-395" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> A <span class="pp">|</span> A2 <span class="pp">|</span> 75 <span class="pp">|</span></span>
+<span id="cb1-396"><a href="#cb1-396" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> A <span class="pp">|</span> A3 <span class="pp">|</span> 60 <span class="pp">|</span></span>
+<span id="cb1-397"><a href="#cb1-397" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> … <span class="pp">|</span> … <span class="pp">|</span> … <span class="pp">|</span></span>
+<span id="cb1-398"><a href="#cb1-398" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> A <span class="pp">|</span> A29 <span class="pp">|</span> 95 <span class="pp">|</span></span>
+<span id="cb1-399"><a href="#cb1-399" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> A <span class="pp">|</span> A30 <span class="pp">|</span> 80 <span class="pp">|</span></span>
+<span id="cb1-400"><a href="#cb1-400" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> B <span class="pp">|</span> B1 <span class="pp">|</span> 80 <span class="pp">|</span></span>
+<span id="cb1-401"><a href="#cb1-401" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> B <span class="pp">|</span> B2 <span class="pp">|</span> 65 <span class="pp">|</span></span>
+<span id="cb1-402"><a href="#cb1-402" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> … <span class="pp">|</span> … <span class="pp">|</span>  <span class="pp">|</span></span>
+<span id="cb1-403"><a href="#cb1-403" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> B <span class="pp">|</span> B30 <span class="pp">|</span> 90 <span class="pp">|</span></span>
+<span id="cb1-404"><a href="#cb1-404" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> C <span class="pp">|</span> C1 <span class="pp">|</span> 40 <span class="pp">|</span></span>
+<span id="cb1-405"><a href="#cb1-405" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> … <span class="pp">|</span> … <span class="pp">|</span> … <span class="pp">|</span></span>
+<span id="cb1-406"><a href="#cb1-406" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> C <span class="pp">|</span> C30 <span class="pp">|</span> 35 <span class="pp">|</span></span>
+<span id="cb1-407"><a href="#cb1-407" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-408"><a href="#cb1-408" aria-hidden="true" tabindex="-1"></a>一方、30人の実験参加者に20語の単語を学習してもらう場合は、単語は参加者ごとに共通しているため、クロスしたランダム効果と言えます。</span>
+<span id="cb1-409"><a href="#cb1-409" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-410"><a href="#cb1-410" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 参加者 <span class="pp">|</span> 単語 <span class="pp">|</span></span>
+<span id="cb1-411"><a href="#cb1-411" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
+<span id="cb1-412"><a href="#cb1-412" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> A <span class="pp">|</span></span>
+<span id="cb1-413"><a href="#cb1-413" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> B <span class="pp">|</span></span>
+<span id="cb1-414"><a href="#cb1-414" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> … <span class="pp">|</span></span>
+<span id="cb1-415"><a href="#cb1-415" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> S <span class="pp">|</span></span>
+<span id="cb1-416"><a href="#cb1-416" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> T <span class="pp">|</span></span>
+<span id="cb1-417"><a href="#cb1-417" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> A <span class="pp">|</span></span>
+<span id="cb1-418"><a href="#cb1-418" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> B <span class="pp">|</span></span>
+<span id="cb1-419"><a href="#cb1-419" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> … <span class="pp">|</span></span>
+<span id="cb1-420"><a href="#cb1-420" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> S <span class="pp">|</span></span>
+<span id="cb1-421"><a href="#cb1-421" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> T <span class="pp">|</span></span>
+<span id="cb1-422"><a href="#cb1-422" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> … <span class="pp">|</span> … <span class="pp">|</span></span>
+<span id="cb1-423"><a href="#cb1-423" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 30 <span class="pp">|</span> A <span class="pp">|</span></span>
+<span id="cb1-424"><a href="#cb1-424" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 30 <span class="pp">|</span> … <span class="pp">|</span></span>
+<span id="cb1-425"><a href="#cb1-425" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 30 <span class="pp">|</span> T <span class="pp">|</span></span>
+<span id="cb1-426"><a href="#cb1-426" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-427"><a href="#cb1-427" aria-hidden="true" tabindex="-1"></a>GLMでは参加者や単語を分析の単位として扱っていなかったことから、データセット作成の際には20点満点のテストとして扱い、以下のような表を作成しました。</span>
+<span id="cb1-428"><a href="#cb1-428" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-429"><a href="#cb1-429" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 参加者 <span class="pp">|</span> テスト <span class="pp">|</span></span>
+<span id="cb1-430"><a href="#cb1-430" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
+<span id="cb1-431"><a href="#cb1-431" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 1 <span class="pp">|</span> 15 <span class="pp">|</span></span>
+<span id="cb1-432"><a href="#cb1-432" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 2 <span class="pp">|</span> 10 <span class="pp">|</span></span>
+<span id="cb1-433"><a href="#cb1-433" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> … <span class="pp">|</span> … <span class="pp">|</span></span>
+<span id="cb1-434"><a href="#cb1-434" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> 30 <span class="pp">|</span> 20 <span class="pp">|</span></span>
+<span id="cb1-435"><a href="#cb1-435" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-436"><a href="#cb1-436" aria-hidden="true" tabindex="-1"></a>GLMで考慮しなかった参加者や単語などのランダム効果を考慮するのがGLMMであると言えます。GLMMはGLMにランダム効果を組み込んだ統計モデルであるため、ロジスティック回帰やポアソン回帰などを包括した呼び方となります。先行研究で「分析にはGLMMを用いた」と書かれていた場合、目的変数が何かを踏まえて分析手法にはどの回帰分析を用いたのかを確認することが必要です。</span>
+<span id="cb1-437"><a href="#cb1-437" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-438"><a href="#cb1-438" aria-hidden="true" tabindex="-1"></a><span class="fu"># 回帰分析における重要な用語</span></span>
+<span id="cb1-439"><a href="#cb1-439" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-440"><a href="#cb1-440" aria-hidden="true" tabindex="-1"></a><span class="fu">## 切片と傾き</span></span>
+<span id="cb1-441"><a href="#cb1-441" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-442"><a href="#cb1-442" aria-hidden="true" tabindex="-1"></a>回帰分析は基本的に$y = a + β_1x_1 + error$という形で表現されます。aは切片、βは傾きと呼ばれます。切片は説明変数$x = 0$の時の目的変数yの値を指しており、傾きは説明変数xが1単位増えた際の目的変数yの増加率を指しています。説明変数の数が増えれば係数である傾きの値も変化します。</span>
+<span id="cb1-443"><a href="#cb1-443" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-444"><a href="#cb1-444" aria-hidden="true" tabindex="-1"></a>回帰式は関数であるとみなせるため、$f(y_i) = β_1 + β_2x_i+β_3f_i +...$と表すことができます。左辺は目的変数はリンク関数、右辺は線形予測子と呼ばれます。</span>
+<span id="cb1-445"><a href="#cb1-445" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-446"><a href="#cb1-446" aria-hidden="true" tabindex="-1"></a>切片と傾きは観測データから回帰線との差（誤差）を最小とするように設定されます。これが最小二乗法と呼ばれる方法です。</span>
+<span id="cb1-447"><a href="#cb1-447" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-448"><a href="#cb1-448" aria-hidden="true" tabindex="-1"></a><span class="fu">## ポアソン分布</span></span>
+<span id="cb1-449"><a href="#cb1-449" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-450"><a href="#cb1-450" aria-hidden="true" tabindex="-1"></a>ポアソン回帰分析は頻度データの分析に使える回帰分析です。発生頻度は負の値を取らない整数であるという特徴があります。ポアソン分布の確率分布は$p(y|λ)=\frac{λ^yexp(-λ)}{y!}$と表すことができます。このλ（ラムダ）はポアソン回帰における唯一の変数で、$λ = exp(β_1 + β_2x_1)$で表されます。正規分布では平均$μ$と分散$σ$がパラメータとなっていました。今回のポアソン回帰分析は平均も分散も同じλで表されます。</span>
+<span id="cb1-451"><a href="#cb1-451" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-452"><a href="#cb1-452" aria-hidden="true" tabindex="-1"></a>ポアソン分布における特徴は以下の通りです。</span>
+<span id="cb1-453"><a href="#cb1-453" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-454"><a href="#cb1-454" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>目的変数$y$は自然数を取る</span>
+<span id="cb1-455"><a href="#cb1-455" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>全ての$y$の発生確率を足し合わせると1となる</span>
+<span id="cb1-456"><a href="#cb1-456" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>確率分布のλは平均を表す</span>
+<span id="cb1-457"><a href="#cb1-457" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>平均と分散は等しい：λ = 平均 = 分散</span>
+<span id="cb1-458"><a href="#cb1-458" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-459"><a href="#cb1-459" aria-hidden="true" tabindex="-1"></a>母集団のλを推定する際、得られたデータからその値を推定することとなります。その推定の際、得られたデータが真の値にどのくらい当てはまっているのかは尤度と呼ばれるパラメータの関数で推定されます。尤度は手元のデータで得られた確率の条件付き確率であることから、その計算には掛け算が用いられます。尤度はそのままでは扱いづらいため、対数が取られます。この対数尤度を最大とする推定方法が最尤法です。</span>
+<span id="cb1-460"><a href="#cb1-460" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-461"><a href="#cb1-461" aria-hidden="true" tabindex="-1"></a><span class="fu">## ロジスティック回帰</span></span>
+<span id="cb1-462"><a href="#cb1-462" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-463"><a href="#cb1-463" aria-hidden="true" tabindex="-1"></a>ポアソン回帰分析では頻度データを扱っていますが、上限がないデータを扱っています。ロジスティック回帰分析では上限があるデータに加え、二項分布による2値データを扱えます。上限があるデータのように「N個のうち、y個で事象が生じる確率」はオフセット項とみなして扱うことができます。二項分布の確率分布は$p(y|N,q)= \begin{pmatrix}N<span class="sc">\\</span>y<span class="sc">\\</span>\end{pmatrix}q^y(1-q)^{N-y}$と定義されます。</span>
+<span id="cb1-464"><a href="#cb1-464" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-465"><a href="#cb1-465" aria-hidden="true" tabindex="-1"></a>ロジスティック回帰分析を理解・解釈する上で「オッズ」という概念を理解することが重要です。オッズとは、ある事象が起こる確率の怒らない確率に対する割合のことをさします。$odds = \frac{probability}{1-probability}$となります。例えば、4択問題にランダムに解答して正解する確率は$1/4$であるため、正解するオッズは$odds =\frac{\frac{1}{4}}{1-\frac{1}{4}}=\frac{1}{3}$となります。つまり、確率が「全体の中でのその事象の起こりやすさの割合」であるのに対し、オッズは「起こらない確率に対する、起こる確率の割合」です。オッズから確率を計算するには以下を使います：$probability = \frac{odds}{1+odds}$</span>
+<span id="cb1-466"><a href="#cb1-466" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-467"><a href="#cb1-467" aria-hidden="true" tabindex="-1"></a>オッズが1の時は確率がちょうど0.5になります。もし生じる機会が生じない機会よりも小さいなら、オッズは1よりも小さくなります（確率0.5よりも小さい）。生じる確率が等しいのあればオッズはちょうど1となります。確率が上限が1であるのに対し、オッズは無限大となり、オッズに上限はありません。そのため、非対称性があることから関係性の強さの尺度として使いにくく、オッズ比の対数（ロジット）を用いることが多いです。ロジットは1よりも大きなオッズ比（50%より大きい）の際に正の値、1よりも小さなオッズ比の際に負の値（50%より小さい）、オッズ比が1の際に0となります。</span>
+<span id="cb1-468"><a href="#cb1-468" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-469"><a href="#cb1-469" aria-hidden="true" tabindex="-1"></a>（対数について補足です）ある数値の常用対数とは、10を何乗すればその数と等しくなるのかという数のことです。例えば100は10を2乗するため、2は100の対数です。0乗した数は1に等しいため、1の対数は0、1よりも大きな数の対数は0よりも大きくなり、0より大き1よりも小さな値の対数は0よりも小さくなります。</span>
+<span id="cb1-470"><a href="#cb1-470" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-471"><a href="#cb1-471" aria-hidden="true" tabindex="-1"></a>オッズという概念は条件付きオッズ比の解釈が効果的であるため、複数の説明変数間の関係性について検討できます。さらに、ロジットを使う利点は2つあります。1つはオッズ比に比べてタイプSエラーが起こりにくいという点です。タイプSエラーは係数の解釈に関わるもので、統計的に有意差があり、解釈の際にどちらが高い値であるかの符号が逆になってしまうという誤りです。オッズ比は1を基準としていますが、ロジットは0を基準として正か負かで判断することができます。ロジットを使う利点の2つ目は、</span>
+<span id="cb1-472"><a href="#cb1-472" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-473"><a href="#cb1-473" aria-hidden="true" tabindex="-1"></a>ロジスティック回帰ではロジットリンク関数をリンク関数として用いています。ロジットリンク関数は$log(q_i) = log\frac{q_i}{1-q_i}$と表されます。ロジット関数はロジスティック関数$q_i = logistic(z_i) = \frac{1}{1+exp(-z_i)}$で表されます。</span>
+<span id="cb1-474"><a href="#cb1-474" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-475"><a href="#cb1-475" aria-hidden="true" tabindex="-1"></a><span class="fu">## 情報量基準</span></span>
+<span id="cb1-476"><a href="#cb1-476" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-477"><a href="#cb1-477" aria-hidden="true" tabindex="-1"></a>統計モデルの当てはまりの良さを表す指標にはいくつかあります。上記の対数尤度を変形した統計量である逸脱度 (deviance) は「当てはまりの悪さ」を表します。つまり、この値が高いほど悪いモデルであると言えます。対数尤度とχ二乗分布との対応関係が良くなるため、逸脱度Dは最大対数尤度logL<span class="sc">\*</span>に-2をかけて算出されます：$D = -2logL^*$。また、Dから最小逸脱度を引いた値は残差逸脱度と呼ばれます。残差逸脱度は統計モデルに含まれるパラメータの数が多くなるほど小さくなる（当てはまりがよい）という傾向にあります。</span>
+<span id="cb1-478"><a href="#cb1-478" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-479"><a href="#cb1-479" aria-hidden="true" tabindex="-1"></a>パラメータの数が多くなるほど、モデルの当てはまりが良くなるのであれば、目的変数に関係のない変数をたくさん含めればよくなってしまいます（つまり、過学習に陥ってしまうこととなります）。Akaike Information Criteria (AIC) を使うと、予測の良さを検討することができます。最尤推定したパラメータの個数がkであるときにAICは以下のように定義される：</span>
+<span id="cb1-480"><a href="#cb1-480" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-481"><a href="#cb1-481" aria-hidden="true" tabindex="-1"></a>$AIC = -2{(最大対数尤度) - (最尤推定したパラメータ数)} = -2(logL^* -k) = D +2k$。</span>
+<span id="cb1-482"><a href="#cb1-482" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-483"><a href="#cb1-483" aria-hidden="true" tabindex="-1"></a>AICをはじめとした情報量基準は、モデルの当てはまりの良さを表す指標であり、複数のモデルを比較する相対的な値です。パラメータの数が多いモデルよりも、パラメータの数が少ないモデルのAICが低い場合、多重共線性を回避できたと言えます。</span>
+<span id="cb1-484"><a href="#cb1-484" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-485"><a href="#cb1-485" aria-hidden="true" tabindex="-1"></a>モデル選択については<span class="co">[</span><span class="ot">こちら</span><span class="co">](https://logics-of-blue.com/モデル選択_理論編/)</span>を参照。</span>
+<span id="cb1-486"><a href="#cb1-486" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-487"><a href="#cb1-487" aria-hidden="true" tabindex="-1"></a><span class="fu"># 統計モデリングに関する参考文献</span></span>
+<span id="cb1-488"><a href="#cb1-488" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-489"><a href="#cb1-489" aria-hidden="true" tabindex="-1"></a>久保拓弥. (2012). データ解析のための統計モデリング入門――一般化線形モデル・階層ベイズモデル・MCMC (確率と情報の科学). 岩波書店.</span>
+<span id="cb1-490"><a href="#cb1-490" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-491"><a href="#cb1-491" aria-hidden="true" tabindex="-1"></a>小杉考司, 清水裕士, 押江隆, 山根嵩史, 平川真, 浅野良輔, 竹林由武, 藤原翔, 大谷和大, 森敦広, 林真広. (2014). M-plusとRによる構造方程式モデリング入門. 北大路書房.</span>
+<span id="cb1-492"><a href="#cb1-492" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-493"><a href="#cb1-493" aria-hidden="true" tabindex="-1"></a>馬場真哉. (2019). 実践Data Scienceシリーズ　RとStanではじめる　ベイズ統計モデリングによるデータ分析入門 (ＫＳ情報科学専門書). 講談社</span>
+<span id="cb1-494"><a href="#cb1-494" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-495"><a href="#cb1-495" aria-hidden="true" tabindex="-1"></a>松浦健太郎. (2016). StanとRでベイズ統計モデリング (Wonderful R 2). 共立出版.</span></code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
