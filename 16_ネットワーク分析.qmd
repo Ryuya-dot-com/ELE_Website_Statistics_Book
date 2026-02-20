@@ -11,1562 +11,542 @@ format:
     number-sections: true
     code-fold: show
     theme: journal
-    fontsize: 1.1em
-    linestretch: 1.8
+    fontsize: 1.05em
+    linestretch: 1.75
     mainfont: "Noto Serif JP"
 lang: ja
-description: "igraphによるネットワーク分析"
+description: "英語教育研究のためのネットワーク分析入門（igraph / tidygraph / ggraph）"
 ---
-
-```{=html}
-<style>
-/* journalテーマ用のアカデミックなカスタムスタイル */
-body {
-  font-family: 'Noto Serif JP', 'Times New Roman', serif;
-  color: #2c3e50;
-  line-height: 1.8;
-}
-
-/* タイトルブロックをジャーナル風に */
-.quarto-title-banner {
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  border-bottom: 4px double #495057;
-  padding: 2.5em 2em;
-  text-align: center;
-}
-
-.quarto-title-banner .title {
-  color: #212529 !important;
-  font-size: 2.2em !important;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-family: 'Noto Sans JP', sans-serif;
-}
-
-/* 見出しのアカデミックスタイル */
-h1 {
-  font-size: 1.8em;
-  font-weight: 700;
-  color: #1a1a1a;
-  border-bottom: 2px solid #212529;
-  padding-bottom: 0.5em;
-  margin-top: 2em;
-  margin-bottom: 1em;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-h2 {
-  font-size: 1.4em;
-  font-weight: 600;
-  color: #343a40;
-  margin-top: 1.5em;
-  margin-bottom: 0.8em;
-}
-
-h2:before {
-  content: "§";
-  margin-right: 0.5em;
-  color: #6c757d;
-  font-weight: 400;
-}
-
-h3 {
-  font-size: 1.2em;
-  font-weight: 600;
-  color: #495057;
-  font-style: italic;
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
-}
-
-/* テーブルを学術論文風に */
-table {
-  margin: 2em auto;
-  border-collapse: collapse;
-  font-size: 0.95em;
-  width: 90%;
-  border-top: 2px solid #212529;
-  border-bottom: 2px solid #212529;
-}
-
-thead {
-  background: #f8f9fa;
-  border-bottom: 1px solid #212529;
-}
-
-/* コードブロックをシンプルに */
-pre {
-  background: #f8f9fa !important;
-  border: 1px solid #dee2e6;
-  border-radius: 0;
-  padding: 1em;
-  font-size: 0.9em;
-}
-
-/* 数式を強調 */
-.math {
-  color: #212529;
-  font-size: 1.05em;
-  font-style: italic;
-}
-</style>
-```
 
 # イントロダクション
 
-ネットワーク分析は、対象（ノード）と関係（エッジ）を扱う手法です。英語教育・SLAの文脈では、例えば次のようなネットワークが考えられます。
+ネットワーク分析は、**「個体の属性」ではなく「個体間の関係」**を分析単位に置く方法です。英語教育研究では、たとえば次の問いに直接答えられます。
 
-- 学習者同士の協働・相談関係（ソーシャル/協働ネットワーク）
-- 教師—学習者—課題の相互作用（多部/二部ネットワーク）
-- 語彙・表現の共起関係（語彙ネットワーク）
+- 誰が協働学習のハブになっているか
+- クラス内の交流がクラス外へどの程度広がっているか
+- 介入後に、学習者コミュニティの分断が弱まったか
 
-本章では、R の `igraph` パッケージのみを用い、学習者同士の「協働ネットワーク」を想定したデータをシミュレーションし、作成→可視化→指標計算→コミュニティ検出までの基本を一通り体験します。
+本章は、英語教育専攻の大学院生（回帰分析の基礎既習）を対象に、以下の流れで進みます。
 
-::: {.callout-tip}
-## この章の読み方（初心者向け）
-- まず「協働ネットワーク（無向・重み付き）」の最小例を実行して雰囲気を掴む。
-- 次に「有向（相談→被相談）」「二部（学習者×課題）」で関係の種類を体験する。
-- 応用として「語彙共起→投影→しきい値」「t1/t2比較」「15週の時系列」「空間ネットワーク」を順に確認する。
-- 各所に「読み取り方」「つまずきポイント」を用意。迷ったら図・表の見かたに立ち戻る。
+1. 研究設計: ネットワーク分析で何を定義すべきか
+2. 実装: `igraph` / `tidygraph` / `ggraph` による再現可能な分析
+3. 解釈: 中心性・コミュニティの読み方と誤読の回避
+4. 接続: ネットワーク指標を回帰分析へつなぐ最小パイプライン
+
+::: {.callout-important}
+## この章の立場
+- 本章は「協働ネットワーク（学習者間）」に焦点を絞ります。
+- 語彙共起・空間ネットワーク・長期時系列は、別章の発展トピックとして切り分けます。
+- 目的は「多機能なコード集」ではなく、**研究で使える分析思考**を身につけることです。
 :::
 
-# この章で学べること
+# 回帰分析との対応で理解する
 
-- ノード/エッジの基本と、英語教育での典型例
-- エッジリストから `igraph` グラフを作る方法
-- 可視化（レイアウト、サイズ・色の調整）
-- 中心性（degree, betweenness, closeness, eigenvector）の計算と解釈
-- コミュニティ検出（Louvain）とモジュラリティ
+回帰分析との対応関係を明確にしておくと、ネットワーク分析の導入が速くなります。
 
-::: {.callout-tip}
-### Plot labels
-All figures use English labels to avoid mojibake across environments. Japanese explanations accompany each plot in the text.
-:::
+| 回帰分析の発想 | ネットワーク分析での対応 |
+|---|---|
+| 観測単位は個体（学生） | 観測単位は関係（学生 i - 学生 j） |
+| 説明変数は属性（性別・得点など） | 説明変数は関係特性（同クラスか、熟達差など） |
+| 目的変数は個体のアウトカム | 目的変数はリンク有無・重み、またはネットワーク指標 |
+| 独立性の仮定が重要 | 相互依存が本質（独立性が壊れやすい） |
 
-## ネットワークの基本（超短縮ガイド）
+この違いにより、ネットワーク分析では、次の設計判断が最初に必要です。
 
-- オブジェクト: ノード（点）とエッジ（線）。属性（例: class, proficiency, weight 等）を持てます。
-- 方向: 無向（協働）/ 有向（相談→被相談）。目的に合わせて選択。
-- 重み: 回数・強さなど。なければ二値（ある/ない）。
-- 二部: 異なる2集合（例: 学習者×課題, 文書×語）。必要なら一模投影（sharedの数など）で解釈。
-- 指標: degree（つながりの数）, betweenness（橋渡し）, closeness（到達しやすさ）, eigenvector（影響の連鎖）。
+- **境界（boundary）**: どこまでをネットワークに含めるか
+- **関係定義（tie definition）**: 何をエッジとみなすか
+- **方向（directed/undirected）**: 相談「する/される」を区別するか
+- **重み（weighted/unweighted）**: 回数・強度を保持するか
 
-## データ形式と変換（edge list ↔ adjacency ↔ bipartite）
-
-```{r}
-#| label: data-forms
-#| eval: false
-library(igraph)
-
-# 1) Edge list → graph
-edges <- data.frame(from = c("A","A","B"), to = c("B","C","C"))
-g1 <- graph_from_data_frame(edges, directed = FALSE)
-
-# 2) Adjacency matrix → graph
-Adj <- matrix(c(0,1,1,
-                1,0,1,
-                1,1,0), nrow = 3, byrow = TRUE,
-              dimnames = list(c("A","B","C"), c("A","B","C")))
-g2 <- graph_from_adjacency_matrix(Adj, mode = "undirected")
-
-# 3) Bipartite incidence → graph（students×tasks）
-Inc <- matrix(c(1,0,1,  0,1,1), nrow = 2, byrow = TRUE,
-              dimnames = list(c("S1","S2"), c("T1","T2","T3")))
-g_bi <- graph_from_incidence_matrix(Inc)  # type属性で二部を保持
-
-# 逆変換（取得）
-as_data_frame(g1, what = "edges")        # edge listへ
-as_adjacency_matrix(g2, sparse = FALSE)   # adjacencyへ
-```
-
-## 最小例：3ノードを可視化してみる（仕組み理解）
-
-```{r}
-#| label: tiny-graph
-library(igraph)
-A <- matrix(c(0,1,1,
-              1,0,0,
-              1,0,0), nrow = 3, byrow = TRUE,
-            dimnames = list(c("A","B","C"), c("A","B","C")))
-g0 <- graph_from_adjacency_matrix(A, mode = "undirected")
-plot(g0,
-     vertex.color = "#1f77b4", vertex.size = 25, vertex.label.cex = 1,
-     edge.color = "#2c3e50",
-     main = "Tiny graph (undirected)")
-# What is connected?
-E(g0); as_data_frame(g0, what = "edges")
-```
-
-::: {.callout-tip}
-### 中心性の選び方（使い分け）
-- 影響の「多さ」→ degree（まずはここから）。
-- 橋渡し・ハブ→ betweenness（部門/クラス間をつなぐ人）。
-- 到達性→ closeness（全体に素早く情報が行き渡る位置）。
-- 影響の連鎖→ eigenvector（重要な人とつながるほど高い）。
-:::
+# 研究設計チェックリスト（実装前）
 
 ::: {.callout-note}
-### 可視化のコツ（読み間違い防止）
-- レイアウトは「見やすさ」の座標。地理的距離ではありません（地図と混同しない）。
-- 色=カテゴリ、サイズ=指標（たとえばdegree）、辺の太さ=重み を一貫させる。
-- ラベルは最小限。上位ノードや注目ノードにだけ表示すると読みやすい。
+## 最低限の設計項目
+1. ノード集合: 誰を含めるか（授業履修者のみか、TAを含むか）
+2. エッジ定義: 例「共同課題を一緒に行った回数」
+3. 観測窓: いつの関係か（第1-4週、学期全体など）
+4. 欠測処理: 未回答者・欠席者をどう扱うか
+5. 解釈範囲: 構造記述か、因果推論か
 :::
 
-::: {.callout-note}
-### しきい値の決め方（実務指針）
-1. 目的を決める（コア構造の把握／弱い関係も残すか）。
-2. 候補を数値で検討（例：共起≥2,3,…、分位点 0.7 など）。
-3. 連結性を維持する最小閾値／密度の妥当範囲（例：0.05〜0.20）で調整。
-4. 比較（t1/t2や群間）では同じしきい値・規則を使う。
+::: {.callout-warning}
+## よくある誤り
+- レイアウト図の距離を、実際の心理的距離や地理距離と誤解する
+- 中心性の高低を、因果的な「能力の高さ」と直結させる
+- しきい値の変更で結論が変わる可能性を報告しない
 :::
+
+# セットアップ
 
 ```{r}
 #| label: setup
 #| include: false
-if (!requireNamespace("igraph", quietly = TRUE)) {
-  stop("パッケージ 'igraph' が必要です。install.packages('igraph') を実行してください。")
+required_pkgs <- c("igraph", "tidygraph", "ggraph", "dplyr", "ggplot2", "tibble")
+missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+
+if (length(missing_pkgs) > 0) {
+  stop(
+    paste0(
+      "次のパッケージが必要です: ",
+      paste(missing_pkgs, collapse = ", "),
+      "。install.packages() でインストールしてください。"
+    )
+  )
 }
+
 library(igraph)
-set.seed(1234)
+library(tidygraph)
+library(ggraph)
+library(dplyr)
+library(ggplot2)
+library(tibble)
+
+set.seed(2026)
+
+scale01 <- function(x) {
+  if (length(unique(x)) == 1) return(rep(0.5, length(x)))
+  (x - min(x)) / (max(x) - min(x))
+}
+
+# 連結成分が複数ある場合も解釈可能な平均距離（最大連結成分で計算）
+giant_mean_distance <- function(graph, weight_inv = NULL) {
+  if (vcount(graph) <= 1 || ecount(graph) == 0) return(NA_real_)
+  comps <- components(graph)
+  g_gc <- induced_subgraph(graph, V(graph)[comps$membership == which.max(comps$csize)])
+  if (vcount(g_gc) <= 1 || ecount(g_gc) == 0) return(NA_real_)
+  mean_distance(g_gc, directed = FALSE, weights = weight_inv)
+}
+
+# igraphのバージョン差異を吸収（古い版では harmonic_centrality がない場合がある）
+robust_harmonic <- function(graph, inv_weights) {
+  if ("harmonic_centrality" %in% getNamespaceExports("igraph")) {
+    harmonic_centrality(graph, weights = inv_weights, normalized = TRUE)
+  } else {
+    closeness(graph, weights = inv_weights, normalized = TRUE)
+  }
+}
 ```
 
-# サンプルデータのシミュレーション（英語教育）
+# 例題データ: 協働ネットワークをシミュレーション
 
-想定：3クラス（A/B/C）、各10名、合計30名の学習者。クラス内で協働しやすく、熟達度が近いほどつながりやすいネットワークを生成します。エッジの重みは「共同作業回数」を表します（無向・重み付き）。
+想定:
 
-::: {.callout-note}
-### ここで作るものと前提
-- ノード=学習者、エッジ=協働関係（重み=回数）。
-- 「同じクラス×熟達が近いほど」確率が上がる生成ルール。
-- 乱数に依存するため結果は少し揺れます（`set.seed` で固定可能）。
-:::
+- 3クラス（A/B/C）
+- 各20名、計60名
+- エッジは「共同作業の関係」
+- 同クラス・熟達が近いほど、関係ができやすい
+- エッジ重みは「共同作業回数」
 
 ```{r}
-#| label: simulate-data
-# 学習者ノードの作成
-n_per_class <- 10
+#| label: simulate-nodes-edges
+# 学習者ノード
+n_per_class <- 20
 classes <- rep(c("A", "B", "C"), each = n_per_class)
 ids <- sprintf("S%02d", seq_along(classes))
 
-# CEFRに相当する熟達カテゴリ（簡易）：A2/B1/B2
-cefr_levels <- c("A2", "B1", "B2")
-proficiency <- sample(cefr_levels, size = length(ids), replace = TRUE, prob = c(0.3, 0.5, 0.2))
-
-nodes <- data.frame(
+nodes <- tibble(
   id = ids,
   class = classes,
-  proficiency = factor(proficiency, levels = cefr_levels),
-  stringsAsFactors = FALSE
+  proficiency = sample(c("A2", "B1", "B2"), size = length(ids), replace = TRUE, prob = c(0.25, 0.5, 0.25)),
+  baseline_score = round(rnorm(length(ids), mean = 60, sd = 8), 1)
 )
 
-# エッジの作成（無向・重み付き）
-cefr_numeric <- as.numeric(nodes$proficiency)  # A2=1,B1=2,B2=3
+prof_map <- c(A2 = 1, B1 = 2, B2 = 3)
+nodes <- nodes %>% mutate(prof_num = unname(prof_map[proficiency]))
 
-edge_list <- list()
-idx <- 1
-for (i in 1:(nrow(nodes) - 1)) {
-  for (j in (i + 1):nrow(nodes)) {
-    same_class <- as.integer(nodes$class[i] == nodes$class[j])
-    prof_gap <- abs(cefr_numeric[i] - cefr_numeric[j])
+# 全ペア（i < j）を作成
+pair_mat <- t(utils::combn(nodes$id, 2))
+pairs <- tibble(from = pair_mat[, 1], to = pair_mat[, 2]) %>%
+  left_join(nodes %>% select(id, class, prof_num, baseline_score), by = c("from" = "id")) %>%
+  rename(class_from = class, prof_from = prof_num, baseline_from = baseline_score) %>%
+  left_join(nodes %>% select(id, class, prof_num, baseline_score), by = c("to" = "id")) %>%
+  rename(class_to = class, prof_to = prof_num, baseline_to = baseline_score) %>%
+  mutate(
+    same_class = as.integer(class_from == class_to),
+    prof_gap = abs(prof_from - prof_to),
+    baseline_gap = abs(baseline_from - baseline_to),
+    # ロジット: 同クラスで増加、ギャップで減少
+    p_link = plogis(-2.8 + 2.0 * same_class - 0.8 * prof_gap - 0.08 * baseline_gap),
+    has_link = rbinom(n(), size = 1, prob = p_link),
+    # 重み: 同クラスほど共同回数が増えやすい
+    weight = ifelse(
+      has_link == 1,
+      1 + rpois(n(), lambda = exp(0.2 + 0.7 * same_class - 0.2 * prof_gap)),
+      NA_real_
+    )
+  )
 
-    # リンク確率：同クラスで上がり、熟達差が大きいと下がる
-    p_link <- plogis(-2 + 1.8 * same_class - 0.9 * prof_gap)
+edges <- pairs %>%
+  filter(has_link == 1) %>%
+  transmute(from, to, weight = as.numeric(weight))
 
-    if (runif(1) < p_link) {
-      # 重み：同クラスほど共同回数が増えやすい
-      w <- 1 + rpois(1, lambda = 1 + 2 * same_class)
-      edge_list[[idx]] <- c(nodes$id[i], nodes$id[j], w)
-      idx <- idx + 1
-    }
-  }
-}
-
-edges <- do.call(rbind, edge_list)
-if (!is.null(edges)) {
-  edges <- data.frame(from = edges[,1], to = edges[,2], weight = as.numeric(edges[,3]))
-} else {
-  edges <- data.frame(from = character(), to = character(), weight = numeric())
-}
-
-# 最低限つながるよう、疎すぎる場合は補強（任意）
-if (nrow(edges) < 20) {
-  extra_pairs <- combn(nodes$id, 2)
-  add_idx <- sample(ncol(extra_pairs), size = 20 - nrow(edges))
-  add_edges <- data.frame(from = extra_pairs[1, add_idx], to = extra_pairs[2, add_idx], weight = 1)
-  edges <- unique(rbind(edges, add_edges))
-}
-
-# 保存（再利用できるように）
+# 保存（再利用用）
 dir.create("data/network", recursive = TRUE, showWarnings = FALSE)
-utils::write.csv(nodes, "data/network/nodes.csv", row.names = FALSE)
-utils::write.csv(edges, "data/network/edges.csv", row.names = FALSE)
+write.csv(nodes %>% select(-prof_num), "data/network/nodes_collaboration.csv", row.names = FALSE)
+write.csv(edges, "data/network/edges_collaboration.csv", row.names = FALSE)
 
 head(nodes)
 head(edges)
 ```
 
-# グラフの作成と基本情報
-
-```{r}
-#| label: graph-build
-g <- graph_from_data_frame(d = edges, vertices = nodes, directed = FALSE)
-
-g  # サマリ
-cat("ノード数:", gorder(g), "\n")
-cat("エッジ数:", gsize(g), "\n")
-cat("密度   :", round(edge_density(g), 3), "\n")
-```
-
-# 可視化（初心者向けの最小例）
-
-`igraph` のレイアウト（`layout_with_fr` など）を使い、クラスで色、次数でサイズ、重みで辺の太さを変えます。
-
-```{r}
-#| label: plot-basic
-layout_fr <- layout_with_fr(g, weights = E(g)$weight)
-
-# クラス別の色
-class_palette <- c(A = "#1f77b4", B = "#2ca02c", C = "#d62728")
-vcol <- class_palette[V(g)$class]
-
-# 次数に応じてサイズをスケール
-deg <- degree(g)
-scale01 <- function(x) if (length(unique(x)) == 1) rep(0.5, length(x)) else (x - min(x)) / (max(x) - min(x))
-vsize <- 8 + 12 * scale01(deg)
-
-# 重みに応じてエッジ幅をスケール
-ew <- 1 + 3 * scale01(E(g)$weight)
-
-plot(
-  g,
-  layout = layout_fr,
-  vertex.color = vcol,
-  vertex.size = vsize,
-  vertex.label = V(g)$name,
-  vertex.label.cex = 0.7,
-  edge.width = ew,
-  edge.color = adjustcolor("grey40", alpha.f = 0.6),
-  main = "Learner collaboration network (color=class; size=degree)"
-)
-
-legend(
-  "topleft",
-  legend = names(class_palette),
-  col = class_palette,
-  pch = 19, pt.cex = 1.5,
-  bty = "n", title = "Class"
-)
-```
-
 ::: {.callout-tip}
-### 図の読み取り方（最小例）
-- サイズ=次数、太さ=重み。大きく太いほど中心的で結束が強い。
-- 色=クラス。色の塊=クラス内のまとまり（高モジュール性）の示唆。
-- レイアウト（FR）は見やすさのための座標で、地理的距離ではありません。
+## 実データで置き換えるとき
+- `nodes`: 学習者属性（ID, クラス, 既習度など）
+- `edges`: `from`, `to`, `weight`（回数や強度）
+- 調査票で複数回答を許す場合、重みの設計（単純回数 / 正規化回数）を先に決める
 :::
 
-# 中心性の計算と上位ノード
+# グラフを構築する
 
 ```{r}
-#| label: centralities
-bet <- betweenness(g, normalized = TRUE)
-clo <- closeness(g, normalized = TRUE)
-eig <- eigen_centrality(g, weights = E(g)$weight)$vector
-
-node_stats <- data.frame(
-  id = V(g)$name,
-  class = V(g)$class,
-  proficiency = V(g)$proficiency,
-  degree = deg,
-  betweenness = round(bet, 3),
-  closeness = round(clo, 3),
-  eigen = round(eig, 3),
-  stringsAsFactors = FALSE
+#| label: build-graph
+g <- graph_from_data_frame(
+  d = edges,
+  vertices = nodes %>% select(id, class, proficiency, baseline_score),
+  directed = FALSE
 )
 
-node_stats[order(-node_stats$degree), ][1:5, ]  # 次数上位5
+# 念のため属性型を明示
+E(g)$weight <- as.numeric(E(g)$weight)
+V(g)$class <- as.character(V(g)$class)
+V(g)$proficiency <- as.character(V(g)$proficiency)
+
+cat("ノード数:", gorder(g), "\n")
+cat("エッジ数:", gsize(g), "\n")
+cat("密度:", round(edge_density(g), 3), "\n")
+cat("連結成分数:", components(g)$no, "\n")
 ```
 
-## 表で確認（gt: 上位10件）
+# 可視化（ggraph）
+
+可視化の規則を固定します。
+
+- ノード色: クラス
+- ノードサイズ: 強度（重み付き次数）
+- エッジ太さ: 協働回数（重み）
 
 ```{r}
-#| label: centrality-gt
-if (requireNamespace("gt", quietly = TRUE)) {
-  top10 <- node_stats[order(-node_stats$degree), ][1:min(10, nrow(node_stats)), ]
-  pal_num <- function(x) {
-    rng <- range(x, na.rm = TRUE)
-    if (!is.finite(diff(rng)) || diff(rng) == 0) return(rep("#efefef", length(x)))
-    cols <- colorRampPalette(c("#e6f2ff", "#08519c"))(100)
-    z <- (x - rng[1])/(rng[2] - rng[1])
-    idx <- pmax(1, pmin(100, as.integer(z * 99) + 1))
-    cols[idx]
-  }
-  gt::gt(top10) |>
-    gt::tab_header(title = "中心性 指標（上位10）") |>
-    gt::fmt_number(columns = c(degree, betweenness, closeness, eigen), decimals = 3) |>
-    gt::data_color(columns = c(degree, betweenness, closeness, eigen), fn = pal_num) |>
-    gt::tab_options(table.font.size = gt::px(14))
-} else {
-  head(node_stats[order(-node_stats$degree), ], 10)
-}
+#| label: plot-network-ggraph
+V(g)$strength <- strength(g, weights = E(g)$weight)
+
+class_palette <- c(A = "#1f77b4", B = "#2ca02c", C = "#d62728")
+
+g_tbl <- as_tbl_graph(g)
+
+set.seed(2026)
+ggraph(g_tbl, layout = "fr") +
+  geom_edge_link(aes(width = weight), color = "grey45", alpha = 0.35, show.legend = FALSE) +
+  geom_node_point(aes(size = strength, color = class), alpha = 0.95) +
+  geom_node_text(aes(label = name), size = 2.7, vjust = -0.9, check_overlap = TRUE, family = "Noto Sans JP") +
+  scale_color_manual(values = class_palette) +
+  scale_size_continuous(range = c(2.5, 10)) +
+  scale_edge_width(range = c(0.2, 2.8)) +
+  labs(
+    title = "Learner Collaboration Network",
+    subtitle = "Node size = strength, edge width = collaboration frequency",
+    color = "Class",
+    size = "Strength"
+  ) +
+  theme_graph(base_family = "Noto Sans JP")
 ```
 
 ::: {.callout-note}
-### 用語ミニ辞典（中心性）
-- degree: つながりの本数（人気度）。
-- betweenness: 橋渡し度（集団間の連絡役）。
-- closeness: 他ノードまでの平均距離の近さ。
-- eigenvector: 重要な相手と結びつくほど高得点。
+## 図の読み方
+- 近接配置は「レイアウト上の見やすさ」であり、物理距離ではありません。
+- 大きいノードは、回数を含めて多くの協働を持つ学習者です。
+- 太いエッジは、同じペアで繰り返し協働していることを示します。
 :::
 
-> 解釈のヒント：
-> - degree（次数）: 協働相手の数。多いほど「人気者」や情報流通の起点になりやすい。
-> - betweenness: 橋渡しの度合い。クラス間や集団間をつなぐハブに高い。
-> - closeness: 他ノードへの平均距離の逆数。全体に素早くアクセスできる位置。
-> - eigenvector: 重要なノードとつながっているほど高い影響度。
+# ネットワーク全体の指標
+
+ここでは、全体構造をまず押さえます。
+
+- 密度（density）
+- 平均次数（mean degree）
+- 平均強度（mean strength）
+- 推移性（global transitivity）
+- 最大連結成分内の平均距離
+
+```{r}
+#| label: graph-level-metrics
+inv_w <- 1 / E(g)$weight
+
+graph_stats <- tibble(
+  nodes = gorder(g),
+  edges = gsize(g),
+  density = edge_density(g),
+  mean_degree = mean(degree(g)),
+  mean_strength = mean(strength(g, weights = E(g)$weight)),
+  transitivity = transitivity(g, type = "global"),
+  n_components = components(g)$no,
+  largest_component = max(components(g)$csize),
+  avg_path_giant = giant_mean_distance(g, weight_inv = inv_w)
+)
+
+graph_stats %>%
+  mutate(across(where(is.numeric), ~ round(., 3)))
+```
+
+# ノード中心性を計算する
+
+中心性は「何を重要とみなすか」の定義です。目的に応じて使い分けます。
+
+- `degree`: 関係の本数
+- `strength`: 重み付きの関係量
+- `betweenness`: 橋渡しの多さ
+- `closeness`（ここでは harmonic を優先）: 到達のしやすさ
+- `eigenvector`: 重要な相手との接続を重視した中心性
+
+```{r}
+#| label: node-centrality
+node_stats <- tibble(
+  id = V(g)$name,
+  class = V(g)$class,
+  proficiency = V(g)$proficiency,
+  baseline_score = as.numeric(V(g)$baseline_score),
+  degree = degree(g),
+  strength = strength(g, weights = E(g)$weight),
+  betweenness = betweenness(g, directed = FALSE, weights = inv_w, normalized = TRUE),
+  closeness_harmonic = robust_harmonic(g, inv_weights = inv_w),
+  eigen = eigen_centrality(g, directed = FALSE, weights = E(g)$weight)$vector
+) %>%
+  mutate(
+    betweenness = round(betweenness, 3),
+    closeness_harmonic = round(closeness_harmonic, 3),
+    eigen = round(eigen, 3)
+  ) %>%
+  arrange(desc(strength))
+
+# 上位10名
+node_stats %>%
+  slice_head(n = 10)
+```
+
+```{r}
+#| label: node-centrality-gt
+if (requireNamespace("gt", quietly = TRUE)) {
+  top10 <- node_stats %>% slice_head(n = 10)
+  gt::gt(top10) |>
+    gt::tab_header(title = "中心性上位10（strengthでソート）") |>
+    gt::fmt_number(columns = c(degree, strength, betweenness, closeness_harmonic, eigen), decimals = 3)
+}
+```
+
+::: {.callout-important}
+## 解釈の順序（推奨）
+1. まず `strength` で活動量の大きい学習者を確認する
+2. 次に `betweenness` でクラス間ブリッジを確認する
+3. 最後に `eigen` で「重要ノードとの接続」を確認する
+:::
+
+::: {.callout-warning}
+## closeness の注意
+非連結グラフでは通常の closeness が不安定になります。`igraph` 公式ドキュメントでも、解釈と前処理（連結成分の扱い）に注意が必要です。本章では harmonic ベースを優先しています。
+:::
 
 # コミュニティ検出（Louvain）
 
+Louvain法は、ネットワークをモジュール（コミュニティ）に分割し、モジュラリティを最大化する代表的手法です。
+
 ```{r}
-#| label: community
-com <- cluster_louvain(g, weights = E(g)$weight)
-mod <- modularity(com)
-cat("モジュラリティ:", round(mod, 3), "\n")
+#| label: community-louvain
+com_louvain <- cluster_louvain(g, weights = E(g)$weight)
+V(g)$community_louvain <- as.factor(membership(com_louvain))
+mod_louvain <- modularity(com_louvain)
 
-membership_vec <- membership(com)
-V(g)$community <- membership_vec
+cat("Louvain modularity:", round(mod_louvain, 3), "\n")
 
-layout_fr2 <- layout_fr  # 同じレイアウトを再利用
-vcol2 <- rainbow(max(membership_vec))[membership_vec]
+g_comm <- as_tbl_graph(g)
 
-plot(
-  g,
-  layout = layout_fr2,
-  vertex.color = vcol2,
-  vertex.size = vsize,
-  vertex.label = V(g)$name,
-  vertex.label.cex = 0.7,
-  edge.width = ew,
-  edge.color = adjustcolor("grey40", alpha.f = 0.5),
-  main = sprintf("Louvain communities (modularity=%.3f)", mod)
-)
+set.seed(2026)
+ggraph(g_comm, layout = "fr") +
+  geom_edge_link(color = "grey80", alpha = 0.35) +
+  geom_node_point(aes(color = community_louvain, size = strength), alpha = 0.95) +
+  geom_node_text(aes(label = name), size = 2.6, vjust = -0.9, check_overlap = TRUE, family = "Noto Sans JP") +
+  scale_size_continuous(range = c(2.5, 9)) +
+  labs(
+    title = "Louvain Community Structure",
+    subtitle = paste0("Modularity = ", round(mod_louvain, 3)),
+    color = "Community",
+    size = "Strength"
+  ) +
+  theme_graph(base_family = "Noto Sans JP")
 ```
 
-> モジュラリティが高いほど、ネットワークがよく分割された集団構造を持つことを示します。教育現場では、クラスやグループ活動の設計との整合を検討できます。
+```{r}
+#| label: community-summary
+community_summary <- tibble(
+  id = V(g)$name,
+  class = V(g)$class,
+  community = V(g)$community_louvain
+) %>%
+  count(community, class, name = "n") %>%
+  arrange(community, class)
 
-::: {.callout-tip}
-### つまずきポイント（クラスタの解釈）
-- Louvain は初期値や乱数で分割が少し変わることがあります。
-- 外的情報（クラス・役割）と照合し、過度に確定的に解釈しない。
+community_summary
+```
+
+::: {.callout-note}
+## Louvainの解釈
+- 高モジュラリティは「内部で密・外部で疎」の傾向を示します。
+- ただし、コミュニティ検出はアルゴリズム依存です。単一解を絶対視せず、外部情報（クラス編成、活動設計）と照合してください。
 :::
 
-# 有向ネットワーク（相談→被相談）
+```{r}
+#| label: community-leiden-optional
+# 参考: igraphにLeiden実装がある場合のみ比較
+if ("cluster_leiden" %in% getNamespaceExports("igraph")) {
+  com_leiden <- cluster_leiden(g, weights = E(g)$weight)
+  mod_leiden <- modularity(g, membership(com_leiden), weights = E(g)$weight)
+  cat("Leiden modularity:", round(mod_leiden, 3), "\n")
+} else {
+  cat("この igraph バージョンでは cluster_leiden() が利用できません。\n")
+}
+```
 
-実務では、関係に方向があるケース（例：AがBに相談する）がよくあります。有向ネットワークでは、入次数（in-degree: 受ける数）と出次数（out-degree: 送る数）を区別します。また、相互性（reciprocity）や推移性（transitivity）といった性質を扱います。
+# 有向ネットワークへの拡張（相談ネットワーク）
 
-ここでは、先ほどの30名を使い、「低い熟達度ほど相談を送りやすく、同じクラス内で相談が起きやすい」パターンをシミュレートします（有向・重みなし）。
+協働（無向）だけではなく、相談行動（有向）を扱うと、次のような問いに答えられます。
+
+- 誰が相談を受ける中心か（in-degree）
+- 誰が相談を多く送るか（out-degree）
+- 参照の連鎖を考慮した重要性は誰が高いか（PageRank）
 
 ```{r}
-#| label: simulate-directed
+#| label: directed-network
+set.seed(2027)
+
 edge_list_dir <- list()
 idx <- 1
-for (i in 1:nrow(nodes)) {
-  for (j in 1:nrow(nodes)) {
+for (i in seq_len(nrow(nodes))) {
+  for (j in seq_len(nrow(nodes))) {
     if (i == j) next
+
     same_class <- as.integer(nodes$class[i] == nodes$class[j])
-    # i -> j （iが相談を送る）。iの熟達が低く、jの熟達が高いほど確率アップ
-    prof_diff <- as.numeric(nodes$proficiency[j]) - as.numeric(nodes$proficiency[i])
-    p_link <- plogis(-2.2 + 1.4 * same_class + 0.9 * prof_diff)
-    if (runif(1) < p_link) {
+    prof_diff <- nodes$prof_num[j] - nodes$prof_num[i]  # 受信者の熟達が高いほど相談先になりやすい
+
+    p_ij <- plogis(-3.0 + 1.2 * same_class + 0.9 * prof_diff)
+
+    if (runif(1) < p_ij) {
       edge_list_dir[[idx]] <- c(nodes$id[i], nodes$id[j])
       idx <- idx + 1
     }
   }
 }
 
-edges_dir <- if (length(edge_list_dir)) {
-  as.data.frame(do.call(rbind, edge_list_dir), stringsAsFactors = FALSE)
+edges_dir <- if (length(edge_list_dir) > 0) {
+  out <- as.data.frame(do.call(rbind, edge_list_dir), stringsAsFactors = FALSE)
+  names(out) <- c("from", "to")
+  out
 } else {
-  data.frame(V1 = character(), V2 = character())
+  data.frame(from = character(), to = character())
 }
-names(edges_dir) <- c("from", "to")
 
-g_dir <- graph_from_data_frame(d = edges_dir, vertices = nodes, directed = TRUE)
-
-# 念のため自己ループ・多重辺を整理
+g_dir <- graph_from_data_frame(
+  d = edges_dir,
+  vertices = nodes %>% select(id, class, proficiency, baseline_score),
+  directed = TRUE
+)
 g_dir <- simplify(g_dir, remove.multiple = TRUE, remove.loops = TRUE)
 
-# 指標
-indeg <- degree(g_dir, mode = "in")    # 相談を受ける多さ
-outdeg <- degree(g_dir, mode = "out")  # 相談を送る多さ
-recip <- reciprocity(g_dir)             # 相互性
-trans <- transitivity(g_dir, type = "global") # 推移性（閉三角形の多さ）
-
-cat("ノード数:", gorder(g_dir), " エッジ数:", gsize(g_dir), "\n")
-cat("相互性:", round(recip, 3), " 推移性:", round(trans, 3), "\n")
-
-# 可視化（有向）
-layout_dir <- layout_with_fr(as.undirected(g_dir, mode = "collapse"))
-vcol <- class_palette[V(g_dir)$class]
-vsize <- 8 + 12 * scale01(indeg)
-
-plot(
-  g_dir,
-  layout = layout_dir,
-  vertex.color = vcol,
-  vertex.size = vsize,
-  vertex.label = V(g_dir)$name,
-  vertex.label.cex = 0.7,
-  edge.color = adjustcolor("grey30", alpha.f = 0.6),
-  edge.arrow.size = 0.4,
-  edge.curved = 0.15,
-  main = "Advice network (size=in-degree; arrows=direction)"
-)
-
-legend(
-  "topleft",
-  legend = names(class_palette),
-  col = class_palette,
-  pch = 19, pt.cex = 1.5,
-  bty = "n", title = "Class"
-)
-
-# 追加の中心性：PageRank, HITS（権威/ハブ）
-pr <- page_rank(g_dir)$vector
-auth <- authority.score(g_dir)$vector
-hub <- hub.score(g_dir)$vector
-
-head(data.frame(
+dir_stats <- tibble(
   id = V(g_dir)$name,
-  indeg, outdeg,
-  pagerank = round(pr, 3),
-  authority = round(auth, 3),
-  hub = round(hub, 3)
-)[order(-indeg), ], 5)
+  class = V(g_dir)$class,
+  indegree = degree(g_dir, mode = "in"),
+  outdegree = degree(g_dir, mode = "out"),
+  pagerank = page_rank(g_dir)$vector,
+  authority = authority.score(g_dir)$vector,
+  hub = hub.score(g_dir)$vector
+) %>%
+  arrange(desc(indegree))
 
-# 保存
-utils::write.csv(edges_dir, "data/network/edges_directed_advice.csv", row.names = FALSE)
+head(dir_stats, 10)
 ```
 
-## 表で確認（gt: 有向中心性 上位10件）
+::: {.callout-tip}
+## 有向データの読み方
+- `indegree` が高い: 相談される側（知識の集積点）
+- `outdegree` が高い: 相談する側（探索行動が多い）
+- `pagerank` が高い: 重要ノードから参照される中心
+:::
+
+# ネットワーク指標を回帰へ接続する
+
+回帰分析既習者向けに、最小接続例を示します。ここでは、ネットワーク中心性が「学期中の伸び（gain）」と関連するかを確認します。
+
+重要: これは**方法理解のためのシミュレーション**であり、因果推論を行う例ではありません。
 
 ```{r}
-#| label: directed-centrality-gt
-if (requireNamespace("gt", quietly = TRUE)) {
-  df_dir <- data.frame(
-    id = V(g_dir)$name,
-    class = V(g_dir)$class,
-    indegree = indeg,
-    outdegree = outdeg,
-    pagerank = round(pr, 3),
-    authority = round(auth, 3),
-    hub = round(hub, 3)
+#| label: regression-bridge
+set.seed(2028)
+
+analysis_df <- node_stats %>%
+  transmute(
+    id,
+    class = factor(class),
+    baseline_score,
+    strength,
+    betweenness,
+    # 説明用にアウトカムを合成
+    gain = 4 +
+      1.1 * as.numeric(scale(strength)) +
+      0.7 * as.numeric(scale(betweenness)) +
+      0.4 * as.numeric(scale(baseline_score)) +
+      rnorm(n(), sd = 1.2)
   )
-  top10 <- df_dir[order(-df_dir$indegree), ][1:min(10, nrow(df_dir)), ]
-  pal_num <- function(x) {
-    rng <- range(x, na.rm = TRUE)
-    if (!is.finite(diff(rng)) || diff(rng) == 0) return(rep("#efefef", length(x)))
-    cols <- colorRampPalette(c("#fde0dd", "#c51b8a"))(100)
-    z <- (x - rng[1])/(rng[2] - rng[1])
-    idx <- pmax(1, pmin(100, as.integer(z * 99) + 1))
-    cols[idx]
-  }
-  gt::gt(top10) |>
-    gt::tab_header(title = "有向中心性（入次数でソート：上位10）") |>
-    gt::fmt_number(columns = c(indegree, outdegree, pagerank, authority, hub), decimals = 3) |>
-    gt::data_color(columns = c(indegree, outdegree), fn = pal_num) |>
-    gt::tab_options(table.font.size = gt::px(14))
-}
+
+m_gain <- lm(gain ~ scale(baseline_score) + scale(strength) + scale(betweenness) + class, data = analysis_df)
+summary(m_gain)
 ```
 
-> 解釈のヒント：
-> - in-degree が大きい学習者は「相談されやすい」人物（知識の集積点）。
-> - out-degree が大きい学習者は「相談を多く送る」人物（助けを求める積極性）。
-> - reciprocity（相互性）が高いほど、互いに相談し合う関係が多いことを意味します。
-> - PageRank/Authority は「影響の連鎖」を考慮した重要度で、参照（相談）の集まるノードが高くなります。
+```{r}
+#| label: regression-coef-table
+coef_tbl <- as.data.frame(summary(m_gain)$coefficients)
+coef_tbl$term <- rownames(coef_tbl)
+rownames(coef_tbl) <- NULL
+coef_tbl <- coef_tbl %>%
+  select(term, Estimate, `Std. Error`, `t value`, `Pr(>|t|)`) %>%
+  arrange(desc(abs(`t value`)))
+
+coef_tbl
+```
 
 ::: {.callout-warning}
-### 注意（有向グラフ）
-- 入次数=受ける多さ、出次数=送る多さ。向きを取り違えない。
-- 自己ループ・多重辺は `simplify()` で整理してから解析。
-- 座標は無向化して計算したFRレイアウトを流用（矢印で向きを表現）。
+## 研究で使うときの注意
+- ネットワークデータは相互依存を持つため、通常の回帰仮定（独立性）が崩れやすいです。
+- 厳密な推論には、置換法（QAP）やネットワーク依存を考慮したモデリングが必要です。
+- したがって、上の回帰は「探索的・補助的」と位置づけるのが妥当です。
 :::
 
-# 二部ネットワーク（学習者×課題）と一模投影
-
-二部（bipartite）ネットワークは、2種類のノード集合（例：学習者と課題）間にのみエッジがある構造です。`igraph` では、頂点属性 `type`（TRUE/FALSE）で集合を区別します。二部ネットワークから、学習者どうしの一模（one-mode）ネットワークに射影すると、「共通課題をどれだけ共有したか」を重みとするネットワークが得られます。
-
-```{r}
-#| label: simulate-bipartite
-# タスク側のノード
-tasks <- data.frame(
-  id = sprintf("T%02d", 1:8),
-  domain = rep(c("speaking", "listening", "reading", "writing"), each = 2),
-  stringsAsFactors = FALSE
-)
-
-# 学習者×課題の割当（同クラスの学習者が同じタスクを選びやすい）
-edges_bi <- list()
-idx <- 1
-for (i in seq_len(nrow(nodes))) {
-  # 基本は3つのタスクを選ぶ
-  k <- sample(2:4, 1)
-  # クラスごとに好まれやすいタスクをバイアス
-  pref <- switch(nodes$class[i],
-                 A = c(1,2,5),
-                 B = c(3,6,7),
-                 C = c(4,8,2))
-  base <- sample(1:nrow(tasks), k, replace = FALSE,
-                 prob = ifelse(seq_len(nrow(tasks)) %in% pref, 1.5, 1))
-  for (t in base) {
-    edges_bi[[idx]] <- c(nodes$id[i], tasks$id[t])
-    idx <- idx + 1
-  }
-}
-
-edges_bi <- as.data.frame(do.call(rbind, edges_bi), stringsAsFactors = FALSE)
-names(edges_bi) <- c("student", "task")
-
-# 二部グラフの構築
-verts_bi <- rbind(
-  data.frame(name = nodes$id, type = FALSE, class = nodes$class, proficiency = nodes$proficiency),
-  data.frame(name = tasks$id, type = TRUE,  class = NA,           proficiency = NA)
-)
-
-g_bi <- graph_from_data_frame(d = edges_bi, vertices = verts_bi, directed = FALSE)
-stopifnot(is.bipartite(g_bi))
-
-# 可視化（左右に二部を配置）
-layout_bi <- layout_as_bipartite(g_bi, types = V(g_bi)$type)
-vcol_bi <- ifelse(V(g_bi)$type, "#9467bd", class_palette[V(g_bi)$class])
-vsize_bi <- ifelse(V(g_bi)$type, 10, 8)
-
-plot(
-  g_bi,
-  layout = layout_bi[, 2:1],  # 縦に配置（見やすさのため）
-  vertex.color = vcol_bi,
-  vertex.size = vsize_bi,
-  vertex.label = V(g_bi)$name,
-  vertex.label.cex = 0.7,
-  edge.color = adjustcolor("grey40", alpha.f = 0.6),
-  main = "Bipartite network (bottom=students; top=tasks)"
-)
-
-# 一模投影：学習者どうし（共通課題の数が重み）
-proj <- bipartite_projection(g_bi, which = "both")
-g_students <- proj[[1]]
-E(g_students)$weight[is.na(E(g_students)$weight)] <- 0
-
-cat("投影後（学習者）: ノード", gorder(g_students), "エッジ", gsize(g_students), "\n")
-
-layout_stu <- layout_with_fr(g_students, weights = E(g_students)$weight)
-vcol_stu <- class_palette[V(g_students)$class]
-deg_stu <- degree(g_students)
-vsize_stu <- 8 + 12 * scale01(deg_stu)
-ew_stu <- 1 + 3 * scale01(E(g_students)$weight)
-
-plot(
-  g_students,
-  layout = layout_stu,
-  vertex.color = vcol_stu,
-  vertex.size = vsize_stu,
-  vertex.label = V(g_students)$name,
-  vertex.label.cex = 0.7,
-  edge.width = ew_stu,
-  edge.color = adjustcolor("grey40", alpha.f = 0.6),
-  main = "Student projection (weight=#shared tasks)"
-)
-
-# 保存
-utils::write.csv(verts_bi,  "data/network/nodes_bipartite.csv", row.names = FALSE)
-utils::write.csv(edges_bi,  "data/network/edges_bipartite.csv", row.names = FALSE)
-```
-
-> 読み方の例：共通課題を多く共有する学習者どうしは、投影ネットワークで強い結びつき（太い線）として現れます。クラス内でまとまりやすい課題選択の傾向があると、クラス単位のモジュールが形成されやすくなります。
-
-::: {.callout-note}
-### 二部→投影の注意
-- 同じ課題への参加が多いと、投影後に擬似的な完全グラフが出来やすい。
-- Jaccard/cosine 等の正規化を用いると、頻度の偏りを補正可能。
-- 読みにくいほど密な場合は、しきい値やスパース化で調整。
-:::
-
-# 語彙共起（二部: 文書×語 → 語×語）としきい値
-
-語彙共起ネットワークは、文書（ここでは各学習者の短い作文）と語の二部ネットワークから、語どうしの共起（同じ文書に一緒に現れる回数）で投影して作成します。重み（エッジの太さ）は「共起回数」で、しきい値（threshold）を設けて弱いエッジを間引くと、構造が読みやすくなります。
-
-ここでは、各学習者 `S01..S30` を1つの文書とみなし、4領域（skill/strategy/activity/tech）に属する語を用意します。クラスごとに語の選好にバイアスをかけ、文書×語の二部データをシミュレーションします。
-
-```{r}
-#| label: simulate-lexical-bipartite
-# 語彙リスト（16語×4領域）
-words <- data.frame(
-  word = c("speaking","listening","reading","writing",
-           "vocabulary","grammar","practice","feedback",
-           "pairwork","groupwork","presentation","discussion",
-           "online","app","video","audio"),
-  domain = c(rep("skill",4), rep("strategy",4), rep("activity",4), rep("tech",4)),
-  stringsAsFactors = FALSE
-)
-
-# 学習者文書（S01..S30）: 既存の nodes を流用
-docs <- nodes$id
-
-# クラス別の語彙選好（確率を上げる）
-pref_A <- c("speaking","pairwork","feedback","video")
-pref_B <- c("reading","grammar","discussion","online")
-pref_C <- c("writing","vocabulary","groupwork","app")
-
-edges_lex <- list(); idx <- 1
-for (i in seq_along(docs)) {
-  s <- docs[i]
-  cls <- nodes$class[nodes$id == s]
-  base_prob <- rep(1, nrow(words))
-  if (cls == "A") base_prob[words$word %in% pref_A] <- 1.8
-  if (cls == "B") base_prob[words$word %in% pref_B] <- 1.8
-  if (cls == "C") base_prob[words$word %in% pref_C] <- 1.8
-
-  k <- sample(5:8, 1)  # 文書あたり語彙 5〜8 語
-  chosen <- sample(words$word, size = k, replace = FALSE, prob = base_prob)
-  for (w in chosen) {
-    edges_lex[[idx]] <- c(s, w); idx <- idx + 1
-  }
-}
-
-edges_lex <- as.data.frame(do.call(rbind, edges_lex), stringsAsFactors = FALSE)
-names(edges_lex) <- c("doc", "word")
-edges_lex <- unique(edges_lex)
-
-# 二部グラフの構築（type: FALSE=doc, TRUE=word）
-verts_lex <- rbind(
-  data.frame(name = docs, type = FALSE, class = nodes$class, domain = NA),
-  data.frame(name = words$word, type = TRUE,  class = NA,          domain = words$domain)
-)
-
-g_lex <- graph_from_data_frame(d = edges_lex, vertices = verts_lex, directed = FALSE)
-stopifnot(is.bipartite(g_lex))
-
-# 可視化（上下に二部を配置）
-layout_lex <- layout_as_bipartite(g_lex, types = V(g_lex)$type)
-pal_domain <- c(skill = "#1f77b4", strategy = "#2ca02c", activity = "#d62728", tech = "#9467bd")
-vcol_lex <- ifelse(V(g_lex)$type, pal_domain[as.character(V(g_lex)$domain)], class_palette[V(g_lex)$class])
-vsize_lex <- ifelse(V(g_lex)$type, 11, 7)
-
-plot(
-  g_lex,
-  layout = layout_lex[, 2:1],
-  vertex.color = vcol_lex,
-  vertex.size = vsize_lex,
-  vertex.label = V(g_lex)$name,
-  vertex.label.cex = 0.7,
-  edge.color = adjustcolor("grey40", alpha.f = 0.6),
-  main = "Doc-word bipartite (bottom=docs/students; top=words)"
-)
-
-legend("topleft", legend = names(class_palette), col = class_palette, pch = 19, pt.cex = 1.2, bty = "n", title = "Class (docs)")
-legend("topright", legend = names(pal_domain), col = pal_domain, pch = 19, pt.cex = 1.2, bty = "n", title = "Domain (words)")
-
-# 語×語の一模投影（重み=共起文書数）
-proj_lex <- bipartite_projection(g_lex)
-g_words <- proj_lex[[2]]  # type=TRUE 側（語）
-
-E(g_words)$weight[is.na(E(g_words)$weight)] <- 0
-str_w <- strength(g_words, vids = V(g_words), mode = "all", weights = E(g_words)$weight)
-
-layout_w <- layout_with_fr(g_words, weights = E(g_words)$weight)
-vcol_w <- pal_domain[V(g_words)$domain]
-vsize_w <- 8 + 10 * scale01(str_w)
-ew_w <- 0.5 + 3 * scale01(E(g_words)$weight)
-
-plot(
-  g_words,
-  layout = layout_w,
-  vertex.color = vcol_w,
-  vertex.size = vsize_w,
-  vertex.label = V(g_words)$name,
-  vertex.label.cex = 0.8,
-  edge.width = ew_w,
-  edge.color = adjustcolor("grey40", alpha.f = 0.6),
-  main = "Word-word projection (weight=co-occurrence)"
-)
-
-# しきい値処理：弱いエッジを間引く
-threshold <- 3  # 例：共起3回以上のみ残す
-g_words_thr <- subgraph.edges(g_words, E(g_words)[weight >= threshold], delete.vertices = TRUE)
-
-layout_wt <- layout_with_fr(g_words_thr, weights = E(g_words_thr)$weight)
-str_wt <- strength(g_words_thr, vids = V(g_words_thr), mode = "all", weights = E(g_words_thr)$weight)
-vcol_wt <- pal_domain[V(g_words_thr)$domain]
-vsize_wt <- 8 + 10 * scale01(str_wt)
-ew_wt <- 1 + 3 * scale01(E(g_words_thr)$weight)
-
-plot(
-  g_words_thr,
-  layout = layout_wt,
-  vertex.color = vcol_wt,
-  vertex.size = vsize_wt,
-  vertex.label = V(g_words_thr)$name,
-  vertex.label.cex = 0.9,
-  edge.width = ew_wt,
-  edge.color = adjustcolor("grey20", alpha.f = 0.7),
-  main = sprintf("Word-word (threshold: co-occ ≥ %d)", threshold)
-)
-
-# 保存
-utils::write.csv(words,      "data/network/words.csv", row.names = FALSE)
-utils::write.csv(edges_lex,  "data/network/doc_word_edges.csv", row.names = FALSE)
-```
-
-> しきい値の考え方：しきい値を上げるほど、強い関係（頻繁に同時に使われる語）に焦点が当たり、グラフは疎になって読みやすくなります。一方で、弱いが潜在的に重要な関係を取りこぼす可能性もあります。研究目的（例：コア語彙の同定 vs. 語彙多様性の把握）に応じて調整してください。
-
-> 参考（発展）：共起回数の代わりに正規化指標（Jaccard など）を用いると、語の出現頻度の違いを補正できます。二部グラフのインシデンス行列 B を用いて、`crossprod(B)` から共起行列を求め、`c_ij / (c_i + c_j - c_ij)` でJaccard類似度を計算し、しきい値を設定する手法がよく使われます。
-
-::: {.callout-tip}
-### 安定比較のコツ
-- 週・学期比較では同じしきい値・同じルールで抽出する。
-- 文書数が変わる場合は割合ベース（Jaccard等）を検討する。
-- 指標はNAが混ざりやすいので、可視化前に欠損を確認する。
-:::
-
-# 応用と次の一歩
-
-- 二部ネットワーク（学習者×課題）から、一模（学習者—学習者）へ投影して比較。
-- 時点別ネットワークの比較（密度、平均距離、モジュラリティの変化）。
-- 中心性の上位者を用いた介入設計（情報伝播、ピア支援など）。
-
-付録や応用章では、QAP・ERGM/TERGM などのモデル化にも触れる予定です。
-
-# 参考
-
-- igraph: https://igraph.org/r/
-- 参考書（心理学・教育分野のネットワーク分析の概説等）
-
-# ネットワークと空間データのつながり（sf で座標からグラフ）
-
-英語教育のフィールドワークでは、学習者や学校・教室の位置情報（座標）と、関係性（交流・共同学習・情報伝播）を同時に扱う場面があります。ここでは、`sf` でポイント（座標）を作り、そこから2種類の空間ネットワークを構築します。
-
-- 距離しきい値ネットワーク：一定距離以内の点どうしを結ぶ（例：徒歩圏内）
-- k近傍（kNN）ネットワーク：各点が最も近いk個の点に結ぶ（孤立を避けたい場合に有効）
-
-さらに、`sf` でエッジを `LINESTRING` に変換し、地図上に重ねて可視化します（簡易例）。
-
-```{r}
-#| label: spatial-setup
-if (!requireNamespace("sf", quietly = TRUE)) {
-  stop("パッケージ 'sf' が必要です。install.packages('sf') を実行してください。")
-}
-library(sf)
-
-set.seed(2468)
-
-# ダミー座標：キャンパス近辺（緯度経度）に30点を発生（実データでは観測座標を使用）
-lat0 <- 35.68; lon0 <- 139.76  # 東京中心付近
-pts <- data.frame(
-  id = sprintf("S%02d", 1:30),
-  lon = lon0 + rnorm(30, sd = 0.02),
-  lat = lat0 + rnorm(30, sd = 0.02)
-)
-pts_sf <- st_as_sf(pts, coords = c("lon","lat"), crs = 4326)
-
-# 距離計算用にメートル単位へ投影（Webメルカトル）
-pts_m <- st_transform(pts_sf, 3857)  # 単位: おおよそメートル
-
-# 距離行列（m）
-Dmat <- as.matrix(st_distance(pts_m))
-diag(Dmat) <- Inf  # 自己距離を無限大にして除外
-
-# 1) 距離しきい値ネットワーク（例：半径 1.5km）
-radius_m <- units::set_units(1500, "m")
-edge_list_radius <- which(Dmat <= radius_m, arr.ind = TRUE)
-# 無向化（i<j のペアに限定）
-edge_list_radius <- edge_list_radius[edge_list_radius[,1] < edge_list_radius[,2], , drop = FALSE]
-
-edges_radius <- data.frame(
-  from = pts$id[edge_list_radius[,1]],
-  to   = pts$id[edge_list_radius[,2]],
-  dist_km = round(as.numeric(Dmat[edge_list_radius]) / 1000, 3)
-)
-
-# 2) k近傍ネットワーク（例：k=3）
-k <- 3
-edge_list_knn <- do.call(rbind, lapply(1:nrow(Dmat), function(i){
-  nbrs <- order(Dmat[i, ])[1:k]
-  cbind(from = i, to = nbrs)
-}))
-
-# 無向にするため、整列キーを作って重複除去
-edge_list_knn <- unique(t(apply(edge_list_knn, 1, function(ab){ sort(ab) })))
-edges_knn <- data.frame(
-  from = pts$id[edge_list_knn[,1]],
-  to   = pts$id[edge_list_knn[,2]],
-  dist_km = round(as.numeric(apply(edge_list_knn, 1, function(idx){ Dmat[idx[1], idx[2]] })) / 1000, 3)
-)
-
-# igraph グラフ
-g_radius <- igraph::graph_from_data_frame(edges_radius, directed = FALSE, vertices = pts)
-g_knn    <- igraph::graph_from_data_frame(edges_knn,    directed = FALSE, vertices = pts)
-
-# レイアウトを座標に固定
-coords <- as.matrix(st_coordinates(pts_sf))
-
-par(mfrow = c(1,2), mar = c(2,2,3,1))
-plot(g_radius, layout = coords, vertex.size = 6, vertex.label = NA,
-     edge.color = adjustcolor("#2c3e50", 0.5), main = "Distance-threshold network (≤1.5 km)")
-plot(g_knn, layout = coords, vertex.size = 6, vertex.label = NA,
-     edge.color = adjustcolor("#9467bd", 0.6), main = sprintf("k-NN network (k=%d)", k))
-par(mfrow = c(1,1))
-
-# sfのLINESTRINGに変換して地図重ね（ggplot2 + geom_sf）
-mk_lines <- function(edges_df, pts_sf){
-  m <- match(edges_df$from, pts$id); n <- match(edges_df$to, pts$id)
-  segs <- lapply(seq_len(nrow(edges_df)), function(i){
-    st_linestring(rbind(st_coordinates(pts_sf)[m[i], ], st_coordinates(pts_sf)[n[i], ]))
-  })
-  st_sf(edges_df, geometry = st_sfc(segs, crs = st_crs(pts_sf)))
-}
-
-edges_radius_sf <- mk_lines(edges_radius, pts_sf)
-edges_knn_sf    <- mk_lines(edges_knn,    pts_sf)
-
-if (requireNamespace("ggplot2", quietly = TRUE)) {
-  library(ggplot2)
-  p1 <- ggplot() +
-    geom_sf(data = edges_radius_sf, color = "#2c3e50", alpha = .5) +
-    geom_sf(data = pts_sf, color = "#d62728", size = 2) +
-    ggtitle("Distance-threshold network (map)") +
-    theme_minimal()
-  p2 <- ggplot() +
-    geom_sf(data = edges_knn_sf, color = "#9467bd", alpha = .6) +
-    geom_sf(data = pts_sf, color = "#d62728", size = 2) +
-    ggtitle(sprintf("k-NN network (map, k=%d)", k)) +
-    theme_minimal()
-  print(p1); print(p2)
-}
-
-# 保存
-dir.create("data/network", showWarnings = FALSE, recursive = TRUE)
-sf::st_write(pts_sf, "data/network/student_points.geojson", delete_dsn = TRUE, quiet = TRUE)
-utils::write.csv(edges_radius, "data/network/spatial_edges_radius.csv", row.names = FALSE)
-utils::write.csv(edges_knn,    "data/network/spatial_edges_knn.csv", row.names = FALSE)
-```
-
-> ポイント：
-> - 「距離しきい値」は地理的近接の実体的な意味（徒歩圏、同キャンパス内など）がある場合に向きますが、孤立ノードが出やすいです。
-> - 「k近傍」は孤立を避けられますが、長距離の不自然なエッジが入ることがあります。研究目的に応じて選択・組み合わせてください。
-
-::: {.callout-warning}
-### CRSと距離の注意
-- 表示はWGS84（EPSG:4326）、距離は投影座標（3857やJGD2011系）で計算する。
-- 直線距離は移動時間を反映しない。必要に応じて道路ネットワーク等のコスト距離を検討。
-:::
-
-## 空間重み（spdep）との橋渡し（概念）
-
-14–15章では、空間自己相関や空間回帰で `spdep` の隣接オブジェクト（`nb`）と重み（`listw`）を扱います。これらは「ノード間の隣接関係」を表す点でネットワークと親和性が高く、相互に変換できます。
-
-```{r}
-#| label: spdep-bridge
-#| eval: false
-# if (!requireNamespace("spdep", quietly = TRUE)) install.packages("spdep")
-library(spdep)
-
-# k近傍（座標行列から）
-xy <- as.matrix(st_coordinates(pts_m))
-knn3 <- knearneigh(xy, k = 3)
-nb3  <- knn2nb(knn3)
-lw   <- nb2listw(nb3, style = "W")  # 行和1の重み
-
-# spdep::nb を igraph に変換
-to_edgelist <- function(nb){
-  do.call(rbind, lapply(1:length(nb), function(i){
-    if (length(nb[[i]]) == 0) return(NULL)
-    cbind(i, nb[[i]])
-  }))
-}
-el <- unique(t(apply(to_edgelist(nb3), 1, sort)))
-g_from_nb <- igraph::graph_from_edgelist(el, directed = FALSE)
-V(g_from_nb)$name <- pts$id
-```
-
-> 実務では、`sf` で整えた座標・多角形から `spdep::poly2nb`（ポリゴン隣接）や `knearneigh`（点のk近傍）を作り、空間統計（モランのIなど）とネットワーク可視化・中心性を併用することで、地理的分布と関係構造の両面から現象を理解できます。
-
-## 都道府県ポリゴン（pref_sf）を背景に、実データ相当のポイント×ネットワークを重ねる
-
-ここでは、地理章の都道府県ポリゴン（`pref_sf`）を背景に、パッケージデータに含まれる日本の主要都市（`maps::world.cities`）をポイントとして使い、k近傍ネットワークを重ねて表示します。実務では、都市の代わりに学校や学習者の所在地座標を用いれば同様に重ね合わせができます。
-
-```{r}
-#| label: pref-overlay
-# 必要パッケージ確認
-if (!requireNamespace("sf", quietly = TRUE)) stop("'sf' が必要です。install.packages('sf')")
-if (!requireNamespace("ggplot2", quietly = TRUE)) stop("'ggplot2' が必要です。install.packages('ggplot2')")
-
-# 都道府県ポリゴンの取得（14章の方針と整合しつつ、ここでも自己完結）
-load_pref_sf <- function(){
-  # 1) jpndistrict（利用可能なら）
-  if (requireNamespace("jpndistrict", quietly = TRUE)) {
-    try({
-      jp <- jpndistrict::jpn_pref(quality = 40)
-      if (inherits(jp, "sf")) return(sf::st_transform(jp, 4326) |>
-                                        dplyr::rename(pref_name = prefecture) |>
-                                        dplyr::select(pref_name, geometry) |>
-                                        sf::st_make_valid())
-    }, silent = TRUE)
-  }
-  # 2) rnaturalearth
-  if (requireNamespace("rnaturalearth", quietly = TRUE)) {
-    try({
-      ne <- rnaturalearth::ne_states(country = "Japan", returnclass = "sf", scale = "medium")
-      if (inherits(ne, "sf")) return(ne |>
-                                         dplyr::transmute(pref_name = name, geometry = geometry) |>
-                                         sf::st_transform(4326) |>
-                                         sf::st_make_valid())
-    }, silent = TRUE)
-  }
-  # 3) geodata::gadm（ダウンロードを伴う場合あり）
-  if (requireNamespace("geodata", quietly = TRUE)) {
-    try({
-      gd <- geodata::gadm(country = "JPN", level = 1, path = tempdir())
-      gd_sf <- sf::st_as_sf(gd)
-      name_col <- intersect(names(gd_sf), c("NAME_1", "NAME_1_", "VARNAME_1"))
-      if (length(name_col) == 0) name_col <- names(gd_sf)[1]
-      return(gd_sf |>
-               dplyr::transmute(pref_name = .data[[name_col[1]]], geometry = geometry) |>
-               sf::st_make_valid() |>
-               sf::st_transform(4326))
-    }, silent = TRUE)
-  }
-  stop("都道府県ポリゴンの取得に失敗。'jpndistrict' または 'rnaturalearth' の導入をご検討ください。")
-}
-
-pref_sf <- load_pref_sf()
-
-# 都市ポイント（maps::world.cities があれば利用。なければ都道府県重心で代替）
-get_cities_sf <- function(pref_sf){
-  if (requireNamespace("maps", quietly = TRUE)) {
-    data("world.cities", package = "maps", envir = environment())
-    cities_jp <- subset(world.cities, country.etc == "Japan")
-    cities_top <- cities_jp[order(-cities_jp$pop), ][1:min(30, nrow(cities_jp)), ]
-    sf::st_as_sf(cities_top, coords = c("long", "lat"), crs = 4326, remove = FALSE)
-  } else {
-    message("'maps' 未インストールのため、都道府県の重心を代替として使用します。")
-    cent <- sf::st_centroid(pref_sf)
-    cent$name <- cent$pref_name
-    cent$pop <- NA_real_
-    cent
-  }
-}
-cities_sf <- get_cities_sf(pref_sf)
-
-# 都市側に既存の pref_name がある場合は削除して重複列を避ける（st_join の安全策）
-if ("pref_name" %in% names(cities_sf)) {
-  cities_sf$pref_name <- NULL
-}
-
-# k近傍ネットワークを作成（距離計算用に投影）
-cities_m <- sf::st_transform(cities_sf, 3857)
-D <- as.matrix(sf::st_distance(cities_m))
-diag(D) <- Inf
-k <- 4
-edge_idx <- do.call(rbind, lapply(1:nrow(D), function(i){ cbind(i, order(D[i, ])[1:k]) }))
-edge_idx <- unique(t(apply(edge_idx, 1, sort)))  # 無向化
-edges_ct <- data.frame(
-  from = cities_sf$name[edge_idx[,1]],
-  to   = cities_sf$name[edge_idx[,2]],
-  dist_km = round(as.numeric(mapply(function(i,j) D[i,j], edge_idx[,1], edge_idx[,2])) / 1000, 1)
-)
-
-# igraph と中心性
-g_ct <- igraph::graph_from_data_frame(edges_ct, directed = FALSE, vertices = sf::st_drop_geometry(cities_sf))
-deg_ct <- igraph::degree(g_ct)
-bet_ct <- igraph::betweenness(g_ct, normalized = TRUE)
-
-# prefecture名を付与（ポイント→ポリゴンの空間結合）
-cities_joined <- sf::st_join(cities_sf, pref_sf, left = TRUE)
-# 列名の揺れを吸収（pref_name は確実に作る）
-if (!"pref_name" %in% names(cities_joined)) {
-  if ("pref_name.y" %in% names(cities_joined)) cities_joined$pref_name <- cities_joined$pref_name.y
-  else if ("pref_name.x" %in% names(cities_joined)) cities_joined$pref_name <- cities_joined$pref_name.x
-}
-cities_joined$degree <- deg_ct[ match(cities_joined$name, names(deg_ct)) ]
-cities_joined$betweenness <- bet_ct[ match(cities_joined$name, names(bet_ct)) ]
-
-# エッジをLINESTRING化
-mk_lines <- function(edges_df, pts_sf){
-  m <- match(edges_df$from, pts_sf$name); n <- match(edges_df$to, pts_sf$name)
-  segs <- lapply(seq_len(nrow(edges_df)), function(i){
-    sf::st_linestring(rbind(sf::st_coordinates(pts_sf)[m[i], ], sf::st_coordinates(pts_sf)[n[i], ]))
-  })
-  sf::st_sf(edges_df, geometry = sf::st_sfc(segs, crs = sf::st_crs(pts_sf)))
-}
-edges_ct_sf <- mk_lines(edges_ct, cities_sf)
-
-# 地図に重ねて可視化
-library(ggplot2)
-gg <- ggplot() +
-  geom_sf(data = pref_sf, fill = "gray95", color = "gray70", linewidth = .2) +
-  geom_sf(data = edges_ct_sf, color = "#6a3d9a", alpha = .6) +
-  geom_sf(data = cities_joined, aes(size = degree), color = "#e31a1c") +
-  scale_size_continuous(name = "Degree", range = c(1.5, 5)) +
-  coord_sf(xlim = range(sf::st_coordinates(pref_sf)[,1]) + c(-1,1),
-           ylim = range(sf::st_coordinates(pref_sf)[,2]) + c(-1,1)) +
-    ggtitle(sprintf("Japan major cities k-NN network (k=%d)", k)) +
-  theme_minimal()
-print(gg)
-
-# 表（gt）：中心性 上位10
-if (requireNamespace("gt", quietly = TRUE)) {
-  dfc <- data.frame(
-    city = cities_joined$name,
-    prefecture = cities_joined$pref_name,
-    population = cities_joined$pop,
-    degree = as.numeric(cities_joined$degree),
-    betweenness = round(as.numeric(cities_joined$betweenness), 3)
-  )
-  top10 <- dfc[order(-dfc$degree, -dfc$betweenness), ][1:min(10, nrow(dfc)), ]
-  gt::gt(top10) |>
-    gt::tab_header(title = "主要都市ネットワーク：中心性（上位10）") |>
-    gt::fmt_number(columns = c(population, degree, betweenness), decimals = 3) |>
-    gt::tab_options(table.font.size = gt::px(14))
-}
-
-# 保存
-dir.create("data/network", showWarnings = FALSE, recursive = TRUE)
-sf::st_write(cities_sf, "data/network/japan_cities_points.geojson", delete_dsn = TRUE, quiet = TRUE)
-utils::write.csv(edges_ct, "data/network/japan_cities_network_edges.csv", row.names = FALSE)
-```
-
-> 使い方のヒント：実運用では学校や学習者の座標をポイントに置き換え、kや距離しきい値を調整してください。`st_join()` で所属都道府県を付与し、地域差の分析（例：中心性の地域分布）につなげられます。
-
-::: {.callout-tip}
-### 実データ差し替えの手順
-1. 生データに `lon/lat` 列を用意し、`st_as_sf(..., crs=4326)` で `sf` 化。
-2. 距離計算が必要なら `st_transform()` で投影座標へ変換してから行列計算。
-3. kや半径を設定し、エッジを作成→LINESTRINGに変換→ `geom_sf()` で重ね描画。
-4. `st_join()` で地域名を付与し、`gt` で上位一覧や `ggplot2` で分布を可視化。
-:::
-
-
-# 時間比較（t1 と t2）と時系列分析とのつながり
-
-ここでは、2時点（t1, t2）で収集されたネットワークを比較し、全体構造がどう変化したかを見ます。教育実践の前後（介入前後）での協働ネットワークの変化を想定します。
-
-注意：2時点では、時系列モデル（ARIMAなど）を適用するには十分な時系列長がありません。より多くの時点があれば、各時点で計算したネットワーク指標（密度、モジュラリティ、平均距離など）を「時系列データ」として扱い、`13_時系列データ分析_ARIMA.qmd` で扱う枠組みを適用できます。ここでは、pre-post の記述比較に留めます。
-
-::: {.callout-note}
-### 図の見かた（t1/t2）
-- 同一レイアウト（座標固定）にすると差が直観的に見えます。
-- 差分図（赤=追加、青=削除）で、増減の位置と傾向を素早く把握できます。
-:::
-
-```{r}
-#| label: time-compare-simulate
-# t1: 既存の無向・重み付きモデルとほぼ同様の生成
-# t2: クラス間コラボを促す介入で、異クラス結合をやや増加させる
-
-simulate_edges <- function(nodes, cross_bonus = 0, base_intercept = -2, same_class_coef = 1.8, prof_gap_coef = -0.9) {
-  set.seed(2345 + round(100 * cross_bonus))
-  cefr_numeric <- as.numeric(nodes$proficiency)
-  edge_list <- list(); idx <- 1
-  for (i in 1:(nrow(nodes) - 1)) {
-    for (j in (i + 1):nrow(nodes)) {
-      same_class <- as.integer(nodes$class[i] == nodes$class[j])
-      prof_gap <- abs(cefr_numeric[i] - cefr_numeric[j])
-      # 異クラスにボーナスを与える（cross_bonus）
-      cross <- as.integer(nodes$class[i] != nodes$class[j])
-      p_link <- plogis(base_intercept + same_class_coef * same_class + prof_gap_coef * prof_gap + cross_bonus * cross)
-      if (runif(1) < p_link) {
-        w <- 1 + rpois(1, lambda = 1 + 2 * same_class + 0.5 * cross)
-        edge_list[[idx]] <- c(nodes$id[i], nodes$id[j], w); idx <- idx + 1
-      }
-    }
-  }
-  if (length(edge_list)) {
-    out <- as.data.frame(do.call(rbind, edge_list), stringsAsFactors = FALSE)
-    names(out) <- c("from", "to", "weight")
-    out$weight <- as.numeric(out$weight)
-  } else {
-    out <- data.frame(from = character(), to = character(), weight = numeric())
-  }
-  out
-}
-
-edges_t1 <- simulate_edges(nodes, cross_bonus = 0)
-edges_t2 <- simulate_edges(nodes, cross_bonus = 0.8)  # 介入で異クラス連携が増える想定
-
-g_t1 <- graph_from_data_frame(edges_t1, vertices = nodes, directed = FALSE)
-g_t2 <- graph_from_data_frame(edges_t2, vertices = nodes, directed = FALSE)
-
-# メトリクスの計算ユーティリティ
-giant_avg_path <- function(g) {
-  comps <- components(g)
-  gc_id <- which.max(comps$csize)
-  g_gc <- induced_subgraph(g, vids = V(g)[comps$membership == gc_id])
-  mean_distance(g_gc, directed = FALSE)
-}
-
-net_stats <- function(g) {
-  com <- cluster_louvain(g, weights = E(g)$weight)
-  data.frame(
-    nodes = gorder(g),
-    edges = gsize(g),
-    density = round(edge_density(g), 3),
-    avg_path_len_giant = round(giant_avg_path(g), 3),
-    transitivity = round(transitivity(g, type = "global"), 3),
-    modularity = round(modularity(com), 3)
-  )
-}
-
-stats_t1 <- net_stats(g_t1)
-stats_t2 <- net_stats(g_t2)
-stats_t1
-stats_t2
-
-## 表で比較（gt: t1 vs t2 と差分）
-
-```{r}
-#| label: t1t2-gt
-if (requireNamespace("gt", quietly = TRUE)) {
-  t1 <- cbind(time = "t1", stats_t1)
-  t2 <- cbind(time = "t2", stats_t2)
-  diff <- t2; diff$time <- "Δ (t2 - t1)"
-  num_cols <- c("nodes","edges","density","avg_path_len_giant","transitivity","modularity")
-  for (col in num_cols) diff[[col]] <- t2[[col]] - t1[[col]]
-  comp <- rbind(t1, t2, diff)
-  pal_div <- function(x) {
-    rng <- max(abs(range(x, na.rm = TRUE)))
-    cols <- colorRampPalette(c("#2166ac", "#f7f7f7", "#b2182b"))(100)
-    z <- (x + rng)/(2*rng)
-    z[!is.finite(z)] <- 0.5
-    idx <- pmax(1, pmin(100, as.integer(z * 99) + 1))
-    cols[idx]
-  }
-  gt::gt(comp) |>
-    gt::tab_header(title = "t1 vs t2 ネットワーク指標と差分") |>
-    gt::fmt_number(columns = num_cols, decimals = 3) |>
-    gt::data_color(columns = num_cols, fn = pal_div) |>
-    gt::tab_options(table.font.size = gt::px(14))
-}
-```
-
-# 可視化：同一レイアウトで並列比較
-scale01 <- function(x) if (length(unique(x)) == 1) rep(0.5, length(x)) else (x - min(x)) / (max(x) - min(x))
-coords <- layout_with_fr(g_t1, weights = E(g_t1)$weight)
-
-plot_net <- function(g, coords, main_title) {
-  vcol <- class_palette[V(g)$class]
-  vsize <- 8 + 12 * scale01(degree(g))
-  ew <- 1 + 3 * scale01(E(g)$weight)
-  plot(
-    g, layout = coords,
-    vertex.color = vcol,
-    vertex.size = vsize,
-    vertex.label = V(g)$name,
-    vertex.label.cex = 0.7,
-    edge.width = ew,
-    edge.color = adjustcolor("grey40", alpha.f = 0.6),
-    main = main_title
-  )
-}
-
-op <- par(mfrow = c(1, 2), mar = c(2,2,3,1))
-on.exit(par(op), add = TRUE)
-plot_net(g_t1, coords, "t1: pre-intervention")
-plot_net(g_t2, coords, "t2: post-intervention")
-
-# 差分の把握（追加/削除エッジ）
-canon_edges <- function(df) paste(pmin(df$from, df$to), pmax(df$from, df$to), sep = "__")
-e1 <- canon_edges(edges_t1)
-e2 <- canon_edges(edges_t2)
-added <- edges_t2[!(e2 %in% e1), ]
-removed <- edges_t1[!(e1 %in% e2), ]
-
-plot(g_t1, layout = coords, vertex.color = class_palette[V(g_t1)$class], vertex.size = 7,
-     vertex.label = NA, edge.color = adjustcolor("grey80", alpha.f = 0.7), main = "Diff: red=added, blue=removed (t2 vs t1)")
-if (nrow(added)) {
-  gad <- graph_from_data_frame(added, directed = FALSE, vertices = nodes)
-  plot(gad, layout = coords, add = TRUE, edge.color = adjustcolor("red", alpha.f = 0.9), edge.width = 2)
-}
-if (nrow(removed)) {
-  grm <- graph_from_data_frame(removed, directed = FALSE, vertices = nodes)
-  plot(grm, layout = coords, add = TRUE, edge.color = adjustcolor("blue", alpha.f = 0.9), edge.width = 2)
-}
-
-# 保存
-utils::write.csv(edges_t1, "data/network/edges_t1.csv", row.names = FALSE)
-utils::write.csv(edges_t2, "data/network/edges_t2.csv", row.names = FALSE)
-```
-
-> 読み方の例：
-> - 介入（t2）で異クラス間の連携が増えたかどうかは、差分図の赤いエッジ（追加）と、クラス色の混ざり具合で確認できます。
-> - 密度やモジュラリティ、平均距離がどう変わるかは、活動設計の評価に有用です。例えばモジュラリティ低下と平均距離の短縮は、クラス間の壁が低くなった可能性を示唆します。
-
-> 時系列分析とのつながり：
-> - 時点が十分に多い場合（例：毎週のネットワーク）、上記の指標列を時系列として整形し、`13_時系列データ分析_ARIMA.qmd` で示したARIMA/季節性/介入分析（intervention analysis）を適用できます。
-> - 例：`density_t <- ts(c(density_t1, density_t2, ...), frequency = 1)` とし、トレンドや介入効果を時系列で検証します。
-> - 2時点しかない場合は、時系列推定はできないため、記述比較とブートストラップ/置換（QAPなど）による差分の頑健性評価が現実的です（本章では入門のため概説に留めます）。
-
-# 15週間の語彙共起ネットワーク：時系列との接続（入門）
-
-ここでは、学習者の短い英作文を「毎週1本、計15週」収集した想定で、文書×語の二部ネットワークを各週ごとに作り、語×語の共起ネットワークに投影して、ネットワーク指標の時系列（全15点）を作成します。最後に、時系列章（ARIMA）との接続の観点から、基本的な可視化・ACF・簡易AR(1)モデルの当てはめ（`stats::arima`）まで示します。
-
-シナリオ：授業でデジタル教材を徐々に取り入れ、週を追うごとに「tech」ドメインの語（online/app/video/audio）が使われやすくなる、と仮定します。
-
-::: {.callout-tip}
-### 何が時系列になる？
-- ネットワークから派生する指標（密度・平均距離・トランジティビティ・モジュラリティなど）を毎週計算し、数列（ts）として扱います。
-- 複数指標を同時に扱う場合、スケールや欠損処理を統一すると比較が楽になります。
-:::
-
-```{r}
-#| label: lexical-ts-simulate
-# 依存オブジェクト（nodes, words）が未定義なら安全に再定義
-if (!exists("nodes") || !all(c("id","class","proficiency") %in% names(nodes))) {
-  set.seed(1001)
-  n_per_class <- 10
-  classes <- rep(c("A","B","C"), each = n_per_class)
-  ids <- sprintf("S%02d", seq_along(classes))
-  cefr_levels <- c("A2","B1","B2")
-  proficiency <- sample(cefr_levels, size = length(ids), replace = TRUE, prob = c(0.3,0.5,0.2))
-  nodes <- data.frame(id = ids, class = classes, proficiency = factor(proficiency, levels = cefr_levels))
-}
-if (!exists("words") || !all(c("word","domain") %in% names(words))) {
-  words <- data.frame(
-    word = c("speaking","listening","reading","writing",
-             "vocabulary","grammar","practice","feedback",
-             "pairwork","groupwork","presentation","discussion",
-             "online","app","video","audio"),
-    domain = c(rep("skill",4), rep("strategy",4), rep("activity",4), rep("tech",4)),
-    stringsAsFactors = FALSE
-  )
-}
-
-class_palette <- c(A = "#1f77b4", B = "#2ca02c", C = "#d62728")
-pal_domain <- c(skill = "#1f77b4", strategy = "#2ca02c", activity = "#d62728", tech = "#9467bd")
-
-scale01 <- function(x) if (length(unique(x)) == 1) rep(0.5, length(x)) else (x - min(x)) / (max(x) - min(x))
-
-# 週ごとの語彙選好（techが徐々に増える）を反映した文書×語エッジを生成
-set.seed(2024)
-T <- 15
-threshold <- 3  # 共起しきい値（安定したパターンを抽出）
-
-pref_A <- c("speaking","pairwork","feedback","video")
-pref_B <- c("reading","grammar","discussion","online")
-pref_C <- c("writing","vocabulary","groupwork","app")
-
-metrics <- data.frame(week = 1:T,
-                      density = NA_real_,
-                      avg_path_len_giant = NA_real_,
-                      transitivity = NA_real_,
-                      modularity_domain = NA_real_)
-
-giant_avg_path <- function(g) {
-  if (ecount(g) == 0 || vcount(g) == 0) return(NA_real_)
-  comps <- components(g)
-  gc_id <- which.max(comps$csize)
-  g_gc <- induced_subgraph(g, V(g)[comps$membership == gc_id])
-  mean_distance(g_gc, directed = FALSE)
-}
-
-for (w in 1:T) {
-  # tech重み：週が進むほど増やす（1.0 -> 2.0 へ線形）
-  tech_weight <- 1 + (w - 1) / (T - 1)  # 1〜2
-
-  # 文書×語エッジを生成
-  edges_dw <- list(); idx <- 1
-  for (i in seq_len(nrow(nodes))) {
-    s <- nodes$id[i]
-    cls <- nodes$class[i]
-    base_prob <- rep(1, nrow(words))
-    # クラス選好
-    if (cls == "A") base_prob[words$word %in% pref_A] <- 1.6
-    if (cls == "B") base_prob[words$word %in% pref_B] <- 1.6
-    if (cls == "C") base_prob[words$word %in% pref_C] <- 1.6
-    # ドメイン別の週効果（techが増える）
-    base_prob[words$domain == "tech"] <- base_prob[words$domain == "tech"] * tech_weight
-
-    k <- sample(5:8, 1)
-    chosen <- sample(words$word, size = k, replace = FALSE, prob = base_prob)
-    for (ww in chosen) { edges_dw[[idx]] <- c(s, ww); idx <- idx + 1 }
-  }
-  edges_dw <- unique(as.data.frame(do.call(rbind, edges_dw), stringsAsFactors = FALSE))
-  names(edges_dw) <- c("doc","word")
-
-  # 二部→語×語投影
-  verts <- rbind(
-    data.frame(name = nodes$id,  type = FALSE, domain = NA),
-    data.frame(name = words$word, type = TRUE,  domain = words$domain)
-  )
-  g_bi <- graph_from_data_frame(edges_dw, vertices = verts, directed = FALSE)
-  proj <- bipartite_projection(g_bi)
-  g_words <- proj[[2]]
-  E(g_words)$weight[is.na(E(g_words)$weight)] <- 0
-
-  # しきい値でエッジを間引く
-  g_w_thr <- subgraph.edges(g_words, E(g_words)[weight >= threshold], delete.vertices = TRUE)
-
-  # 指標
-  metrics$density[w] <- if (vcount(g_w_thr) > 1) edge_density(g_w_thr) else NA_real_
-  metrics$avg_path_len_giant[w] <- giant_avg_path(g_w_thr)
-  metrics$transitivity[w] <- transitivity(g_w_thr, type = "global")
-  # ドメイン固定分割でのモジュラリティ
-  if (vcount(g_w_thr) > 0) {
-    memb <- as.numeric(factor(V(g_w_thr)$domain))
-    metrics$modularity_domain[w] <- modularity(g_w_thr, membership = memb, weights = E(g_w_thr)$weight)
-  } else {
-    metrics$modularity_domain[w] <- NA_real_
-  }
-}
-
-# 可視化：主要指標の推移
-op <- par(mfrow = c(2,2), mar = c(3,3,2,1))
-plot(metrics$week, metrics$density, type = "b", pch = 19, col = "#1f77b4",
-     xlab = "Week", ylab = "Density", main = "Density over time")
-plot(metrics$week, metrics$avg_path_len_giant, type = "b", pch = 19, col = "#2ca02c",
-     xlab = "Week", ylab = "Avg path (giant)", main = "Average path length (giant)")
-plot(metrics$week, metrics$transitivity, type = "b", pch = 19, col = "#d62728",
-     xlab = "Week", ylab = "Transitivity", main = "Transitivity")
-plot(metrics$week, metrics$modularity_domain, type = "b", pch = 19, col = "#9467bd",
-     xlab = "Week", ylab = "Modularity (domain)", main = "Modularity (domain)")
-par(op)
-
-# ACF と簡易 AR(1)（stats::arima）
-density_ts <- ts(metrics$density, start = 1, frequency = 1)
-acf(density_ts, main = "ACF: density (15 weeks)")
-
-# 注意：15点と短く、推定は不安定。演習では order を変えて試してみる。
-fit_ar1 <- try(stats::arima(na.omit(density_ts), order = c(1,0,0)))
-fit_ar1
-
-# 保存
-dir.create("data/network", showWarnings = FALSE, recursive = TRUE)
-utils::write.csv(metrics, "data/network/lexical_ts_metrics.csv", row.names = FALSE)
-```
-
-## 週次指標の表（gt）
-
-```{r}
-#| label: metrics-gt
-if (requireNamespace("gt", quietly = TRUE)) {
-  pal_num <- function(x) {
-    rng <- range(x, na.rm = TRUE)
-    if (!is.finite(diff(rng)) || diff(rng) == 0) return(rep("#efefef", length(x)))
-    cols <- colorRampPalette(c("#f0f9e8", "#006d2c"))(100)
-    z <- (x - rng[1])/(rng[2] - rng[1])
-    idx <- pmax(1, pmin(100, as.integer(z * 99) + 1))
-    cols[idx]
-  }
-  gt::gt(metrics) |>
-    gt::tab_header(title = "週次ネットワーク指標（語×語：共起しきい値適用）") |>
-    gt::fmt_number(columns = c(density, avg_path_len_giant, transitivity, modularity_domain), decimals = 3) |>
-    gt::data_color(columns = c(density, avg_path_len_giant, transitivity, modularity_domain), fn = pal_num) |>
-    gt::tab_options(table.font.size = gt::px(14))
-}
-```
-
-> 読み方の例：tech語の採用が進むと、語×語ネットワークで異ドメイン間の橋渡しが増え、密度やトランジティビティが上がる（もしくはドメイン分割のモジュラリティが下がる）など、構造変化が観察されます。
-
-> 時系列章との接続：
-> - 週次の指標ベクトル（上の `metrics`）を `ts` に変換し、`13_時系列データ分析_ARIMA.qmd` のフロー（ACF/PACF→ARIMA）を適用できます。
-> - 介入（導入時期）の週にインジケータ（0/1）を立て、外生変数つきARIMA（ARIMAX；`xreg`）でレベルシフトの影響を見るのも有効です（演習向け）。
-> - 本章のシミュレーションはドメイン重みの線形増加のみですが、実データでは季節性（学期イベント）や休講などの外乱も考慮してモデル化します。
-
-## ARIMAXの雛形（介入週ダミーとトレンドを xreg に渡す）
-
-ARIMAXは「回帰＋自己回帰誤差」のモデルです。ここでは、説明変数として「時間トレンド」と「介入ダミー（例：第8週以降=1、それ以前=0）」を渡し、密度系列に対する影響を推定する雛形を示します。短い系列（15点）のため推定は不安定になり得ますが、手順理解には有用です。
-
-```{r}
-#| label: arimax-template
-y <- metrics$density
-n <- length(y)
-
-# 説明変数: 時間トレンドと介入ダミー（第8週以降=1）
-intervention_week <- 8
-xreg <- cbind(
-  trend = 1:n,
-  intervention = as.numeric((1:n) >= intervention_week)
-)
-
-# 欠損がある場合は除外して当てはめ（簡易）
-ok <- !is.na(y)
-fit_arimax <- try(stats::arima(y[ok], order = c(1,0,0), xreg = xreg[ok, ]))
-fit_arimax
-
-# 係数の解釈（例）
-if (!inherits(fit_arimax, "try-error")) {
-  coefs <- coef(fit_arimax)
-  print(round(coefs, 3))
-}
-
-# インサンプル適合値（観測-残差）と可視化
-if (!inherits(fit_arimax, "try-error")) {
-  fitted_vals <- y[ok] - fit_arimax$residuals
-  plot(1:n, y, type = "b", pch = 19, col = "#1f77b4",
-       xlab = "Week", ylab = "Density",
-       main = "ARIMAX fit (blue=obs, black=fit, red=forecast)")
-  lines(which(ok), fitted_vals, type = "b", pch = 19, col = "black")
-
-  # 将来3週の予測（介入後を想定: intervention=1）
-  h <- 3
-  newxreg <- cbind(
-    trend = (n + 1):(n + h),
-    intervention = rep(1, h)
-  )
-  pr <- predict(fit_arimax, n.ahead = h, newxreg = newxreg)
-  lines((n + 1):(n + h), pr$pred, type = "b", pch = 19, col = "red")
-  lines((n + 1):(n + h), pr$pred + 1.96 * pr$se, col = "red", lty = 2)
-  lines((n + 1):(n + h), pr$pred - 1.96 * pr$se, col = "red", lty = 2)
-}
-```
-
-> 読み方の例：`intervention` の係数が正で有意なら、介入週以降、ネットワーク密度の平均水準が上がった可能性を示します。`trend` が正で有意なら、介入に限らず時間とともに徐々に密度が増す傾向が示唆されます。
-
-> 実務上の注意：系列の短さと非定常性、外れ値の影響に留意してください。`13_時系列データ分析_ARIMA.qmd` の流れに沿って、差分化（d>0）や季節要因、介入時点の検討（段階・傾き変化、遅延効果）を追加してモデルを改善します。`forecast::Arima` を使えば同様の指定でより便利な診断・予測が可能です。
-
-::: {.callout-note}
-### ARIMAXの直観
-- `xreg` は外生変数（トレンド/介入）。
-- AR(1) で誤差の自己相関を表現し、連続性を取り込む。
-- 短系列では方向性の確認を主眼にし、過度な推論は避ける。
-:::
-
-### 係数表（gt）
-
-```{r}
-#| label: arimax-coefs-gt
-if (requireNamespace("gt", quietly = TRUE) && !inherits(fit_arimax, "try-error") && !is.null(fit_arimax$var.coef)) {
-  est <- stats::coef(fit_arimax)
-  se <- sqrt(diag(fit_arimax$var.coef))
-  z  <- est / se
-  p  <- 2 * pnorm(abs(z), lower.tail = FALSE)
-  dfc <- data.frame(
-    parameter = names(est),
-    estimate = as.numeric(est),
-    std_error = as.numeric(se),
-    z = as.numeric(z),
-    p_value = as.numeric(p)
-  )
-  gt::gt(dfc) |>
-    gt::tab_header(title = "ARIMAX 係数（密度 ~ trend + intervention）") |>
-    gt::fmt_number(columns = c(estimate, std_error, z, p_value), decimals = 3) |>
-    gt::data_color(columns = c(estimate), fn = function(x){
-      cols <- colorRampPalette(c("#2166ac", "#f7f7f7", "#b2182b"))(100)
-      rng <- max(abs(range(x, na.rm = TRUE)))
-      z <- (x + rng)/(2*rng); z[!is.finite(z)] <- 0.5
-      idx <- pmax(1, pmin(100, as.integer(z * 99) + 1)); cols[idx]
-    }) |>
-    gt::tab_options(table.font.size = gt::px(14))
-}
-```
-
----
-
-::: {.callout-tip}
-## 最終チェックリスト
-- 再現性: `set.seed`、主要パラメータ（k/しきい値/介入週）を明記しておく。
-- 可読性: 図は凡例・タイトル・色分けを統一。表は `gt` で主要指標に色をつける。
-- 妥当性: 指標の解釈は文脈（クラス/地域/課題）と照合。過度な因果解釈は避ける。
-- 拡張性: CSV/GeoJSON の保存で後続分析と共有に備える。関数化して再利用性を上げる。
-:::
+# 結果報告テンプレート（教科書用）
+
+論文・レポートでは、次の順で報告すると再現性と説得性が上がります。
+
+1. データ定義: ノード定義、エッジ定義、重み、観測期間、欠測処理を明記する。
+2. 記述統計: ノード数、エッジ数、密度、連結性、推移性を報告する。
+3. 構造結果: 中心性上位ノードとコミュニティ構造（モジュラリティ）を示す。
+4. 補助分析: 回帰や比較分析では、依存性と限界を明示する。
+5. 感度分析: しきい値や重み定義の変更に対する頑健性を確認する。
+
+# 最終チェックリスト
+
+- 研究質問とネットワーク定義が1対1で対応している
+- 有向/無向、重み有/無の選択理由を説明できる
+- 指標の意味を混同していない（degree と betweenness など）
+- 可視化の美しさではなく、解釈可能性を優先している
+- 結果を因果主張に飛躍させていない
+
+# 参考文献（APA）
+
+- Blondel, V. D., Guillaume, J.-L., Lambiotte, R., & Lefebvre, E. (2008). Fast unfolding of communities in large networks. *Journal of Statistical Mechanics: Theory and Experiment, 2008*(10), P10008. [https://doi.org/10.1088/1742-5468/2008/10/P10008](https://doi.org/10.1088/1742-5468/2008/10/P10008)
+- Dewey, D. P., Bown, J., & Eggett, D. (2013). Japanese language proficiency, social networking, and language use during study abroad: Learners’ perspectives. *System, 41*(4), 913-928. [https://doi.org/10.1016/j.system.2013.08.003](https://doi.org/10.1016/j.system.2013.08.003)
+- Freeman, L. C. (1979). Centrality in social networks: Conceptual clarification. *Social Networks, 1*(3), 215-239. [https://doi.org/10.1016/0378-8733(78)90021-7](https://doi.org/10.1016/0378-8733(78)90021-7)
+- Hanneman, R. A., & Riddle, M. (2005). *Introduction to social network methods*. University of California, Riverside. [https://faculty.ucr.edu/~hanneman/nettext/](https://faculty.ucr.edu/~hanneman/nettext/)
+- Isbell, D. R. (2024). The role of social network ties in language learning abroad. *Language Learning, 74*(S2), 294-322. [https://doi.org/10.1111/lang.12677](https://doi.org/10.1111/lang.12677)
+- Paradowski, M. B., Jonak, Ł., Cierniak, M., & Nęcka, E. (2024). A primer to centrality analysis for investigating communication in language learner groups. *Language Learning, 74*(S2), 169-201. [https://doi.org/10.1111/lang.12681](https://doi.org/10.1111/lang.12681)
+- Pedersen, T. L. (2024). *ggraph: An implementation of grammar of graphics for graphs and networks*. [https://ggraph.data-imaginist.com/](https://ggraph.data-imaginist.com/)
+- Pedersen, T. L. (2024). *tidygraph: A tidy API for graph manipulation*. [https://tidygraph.data-imaginist.com/](https://tidygraph.data-imaginist.com/)
+- Saqr, M., Peeters, W., Fors, U., Viberg, O., & Papamitsiou, Z. (2024). Social network analysis: A primer, a guide and tutorial in R. In M. Saqr, N. D. Gašević, W. Matcha, U. Fors, O. Viberg, M. Jovanović, & V. Kaliisa (Eds.), *Learning analytics methods and tutorials* (pp. 473-511). Springer. [https://doi.org/10.1007/978-3-031-54464-4_15](https://doi.org/10.1007/978-3-031-54464-4_15)
+- Strawbridge, T. (2023). The relationship between social network typology, L2 proficiency growth, and curriculum design in university study abroad. *Studies in Second Language Acquisition, 45*(4), 866-890. [https://doi.org/10.1017/S0272263123000096](https://doi.org/10.1017/S0272263123000096)
+- Traag, V. A., Waltman, L., & van Eck, N. J. (2019). From Louvain to Leiden: Guaranteeing well-connected communities. *Scientific Reports, 9*, 5233. [https://doi.org/10.1038/s41598-019-41695-z](https://doi.org/10.1038/s41598-019-41695-z)
+- igraph developers. (2024). *closeness: The closeness centrality of vertices*. [https://r.igraph.org/reference/closeness.html](https://r.igraph.org/reference/closeness.html)
