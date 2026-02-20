@@ -1,0 +1,701 @@
+---
+title: "地理空間データ分析（応用）：空間自己相関・空間回帰・施策評価"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# はじめに
+
+入門編で学んだ「形状の取得→結合→コロプレス→パネル整形」を踏まえ、本章ではより実務寄りのトピック（空間自己相関の厳密化、重み行列の選択、空間回帰モデル、施策前後差分とDID、簡易スムージング）を扱います。コードは極力ミニマルにしつつ、判断のための指針も添えます。
+
+::: {.callout-tip}
+## 実行前ガイド（ステップ）
+1. 形状とパネルの再構築（jpndistrictが無ければダミー形状）。
+2. 空間重み（queen/rook/k近傍）を作成・点検。
+3. グローバル/ローカル Moran’s I とクラスター図。
+4. OLS の残差検定→SAR/SEM を比較しモデル選択。
+5. 施策前後差分とDID（単純実装）を可視化・推定。
+6. 平滑化（隣接平均）でノイズを抑制し解釈を整理。
+:::
+
+入門編との差分が分かるよう、各コードの「目的・前提・出力の読み方」を明確に記します。まずは本章で使用するパッケージを読み込みます（`pacman::p_load` は未インストールでも自動で導入を試みます）。
+
+::: {.callout-tip}
+## Conventions
+Figures use English labels. All code chunks are R.
+:::
+
+#| label: data_prep
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+pacman::p_load(
+  sf, dplyr, tidyr, ggplot2, classInt, scales, gt,
+  jpndistrict, stringi, sfdep, spdep, spatialreg, units,
+  lubridate, fixest
+)
+```
+
+上記の主な役割（抜粋）
+- sf/sfdep/spdep/spatialreg: 空間データ処理、空間統計、空間計量モデル
+- jpndistrict: 日本の行政区域形状の取得（使えない環境ではダミー形状にフォールバック）
+- fixest: DID を含む高機能な線形モデル（固定効果・ロバストSE）
+- ggplot2/gt: 可視化と表形式の整形
+
+# データの準備（再現性重視）
+
+入門編と同様の都道府県スキームを「jpndistrictが使えれば実データ、無ければダミー形状」で再現します。年は2015–2024、2021年を施策境界とします。
+
+ここで作るパネルはシミュレーション（擬似データ）です。処置群は `pref_id %% 5 == 0` で機械的に割り当て、施策効果 `tau` をポスト期間（`post=1`）にのみ乗せます。実データでは割当の内生性・データ欠損・測定の違いに注意してください。
+
+#| label: weights_build
+#| dependson: [data_prep]
+```{r}
+# 形状：jpndistrict があれば使い、無ければ47セルのヘクス状ダミー
+pref_sf <- tryCatch(
+  {
+    jpndistrict::jpn_pref(quality = 40) |>
+      st_transform(4326) |>
+      dplyr::select(pref_name = prefecture)
+  },
+  error = function(e){
+    grid <- st_make_grid(
+      st_as_sfc(st_bbox(c(xmin=130, xmax=146, ymin=30, ymax=46), crs = 4326)),
+      n = c(7,7), what = 'polygons', square = FALSE
+    )
+    grid <- st_sf(geometry = grid) |>
+      dplyr::mutate(id = dplyr::row_number()) |>
+      dplyr::slice(2:48) |>
+      dplyr::mutate(pref_name = paste0('Pref', sprintf('%02d', dplyr::row_number()))) |>
+      dplyr::select(pref_name)
+    grid
+  }
+)
+
+set.seed(123)
+years <- 2015:2024
+
+# ID と処置割当（例：5の倍数IDを treated=1）
+pref_key <- pref_sf |>
+  st_drop_geometry() |>
+  mutate(pref_id = as.integer(factor(pref_name)))
+
+policy_year <- 2021
+
+panel <- expand.grid(pref_name = pref_key$pref_name, year = years) |>
+  tibble::as_tibble() |>
+  left_join(pref_key, by = 'pref_name') |>
+  mutate(
+    treated = as.integer(pref_id %% 5 == 0),
+    post    = as.integer(year >= policy_year),
+    base    = 55 + (pref_id %% 10),
+    trend   = (year - min(year)) * 0.5 + rnorm(dplyr::n(), sd = 0.6),
+    tau     = 3.0,  # 施策効果の真値（例）
+    eng_score = round(base + trend + tau * treated * post + rnorm(dplyr::n(), sd = 5), 1),
+    teacher_toeic = round(620 + (pref_id %% 12) * 8 + (year - min(year)) * 3 + rnorm(dplyr::n(), sd = 30)),
+    eiken_rate = pmin(pmax(0.12 + (pref_id %% 8) * 0.02 + (year - min(year)) * 0.01 + rnorm(dplyr::n(), sd = 0.03), 0), 1)
+  )
+
+latest_year <- max(years)
+map_df <- pref_sf |>
+  left_join(filter(panel, year == latest_year), by = 'pref_name')
+
+ggplot(map_df) +
+  geom_sf(aes(fill = eng_score), color = 'white') +
+  scale_fill_viridis_c(option = 'C') +
+  theme_minimal() +
+ labs(title = paste0('英語スコア（', latest_year, '年, ダミー/実）'))
+```
+
+確認ポイント
+- `pref_sf`: `pref_name` 列を持つ `sf`（CRS=EPSG:4326）。jpndistrictが失敗した場合は47セルのダミー形状。
+- `panel`: 列 `pref_name, year, treated, post, eng_score, teacher_toeic, eiken_rate` など。
+- `map_df`: 最新年の `sf` + 指標が結合された可視化用データ。
+
+::: {.callout-tip}
+### 用語ミニ辞典（最小限）
+- sf: 形状（ポリゴン/ポイント）と属性が一体化したデータフレーム。
+- nb: 隣接リスト（どの地域がどこと隣か）を持つオブジェクト。
+- listw: nb に重み（標準化など）を付けたもの。回帰や検定は多くが `listw` を要求。
+- queen/rook: 接点共有も隣接なら queen、辺共有のみなら rook。
+:::
+
+# 空間重みの構築と点検
+
+代表的な3種を比較します：ポリゴン隣接（Queen/Rook）と k 近傍。解析に使う `listw` は行和1の行標準化（`style='W'`）。
+Queen は辺・頂点の共有を隣接とみなし、Rook は辺共有のみ。k近傍は重心間距離で最も近い k 個を隣接とします。k は連結性（孤立が出ない）と滑らかさのバランスで調整します。
+
+#| label: moran_global
+#| dependson: [weights_build]
+```{r}
+# Queen / Rook 隣接
+nb_queen <- spdep::poly2nb(map_df)
+nb_rook  <- spdep::poly2nb(map_df, queen = FALSE)
+
+# k近傍（重心ベース）
+coords <- st_coordinates(st_centroid(st_geometry(map_df)))
+nb_knn  <- spdep::knn2nb(spdep::knearneigh(coords, k = 4))
+
+lw_queen <- spdep::nb2listw(nb_queen, style = 'W')
+lw_rook  <- spdep::nb2listw(nb_rook,  style = 'W')
+lw_knn   <- spdep::nb2listw(nb_knn,   style = 'W')
+
+data.frame(
+  type = c('queen','rook','knn4'),
+  mean_degree = c(mean(card(nb_queen)), mean(card(nb_rook)), mean(card(nb_knn)))
+) |>
+  gt() |>
+  tab_header(title = '重みタイプ別の平均次数')
+```
+
+読み方・落とし穴
+- 平均次数（1ノードあたりの隣接数）が極端に小さい/大きいと、検定力や推定の安定性に影響します。
+- 孤立ノードがあると多くの手法が失敗します。必要に応じて k を引き上げるか、距離閾値で接続してください。
+
+::: {.callout-note}
+### よくあるエラーと対処
+- regions with no neighbours: 孤立が発生。`knearneigh(..., k=5 など)` で連結化し、`nb2listw` を作り直す。
+- not a listw object: `nb` をそのまま渡している。`nb2listw(nb, style='W')` に変換して渡す。
+- CRS が合わない: 形状を結合する前に `st_crs()` を確認し、`st_transform()` で揃える。
+:::
+
+::: {.callout-note}
+### 重み行列の選択指針（簡易）
+- 行政区画の比較にはまず Queen。細長い区画が多い場合や接点共有に敏感な場合は Rook も検討。
+- 点データやバラツキの大きいポリゴンには k 近傍や距離閾値を検討（連結性の確保が要点）。
+- 行標準化（W）は解釈が安定しやすい。平均次数の極端な差は避ける。
+:::
+
+# 空間自己相関（厳密化）
+
+## グローバル Moran’s I（モンテカルロ検定）
+
+空間自己相関は「近い地域ほど似ているか？」を数値化します。グローバル Moran’s I は全体の傾向、p 値は置換（モンテカルロ）で評価します。
+
+```{r}
+y <- map_df$eng_score
+mc_queen <- spdep::moran.mc(y, lw_queen, nsim = 999)
+mc_rook  <- spdep::moran.mc(y, lw_rook,  nsim = 999)
+mc_knn   <- spdep::moran.mc(y, lw_knn,   nsim = 999)
+
+list(queen = mc_queen, rook = mc_rook, knn4 = mc_knn)
+```
+
+解釈
+- I > 0 で「類似が近接に集まる」傾向、I < 0 で「不類似が隣り合う」傾向。
+- 重み行列で結果は変わります。妥当な地理過程を仮定し、その仮定に沿った W を選択してください。
+
+見るべき箇所（spdep の出力）
+- statistic / estimate: Moran’s I の値
+- p-value: 置換検定に基づく有意性（`moran.mc` は反復により安定）
+- alternative: 片側/両側の仮説（通常は大きい側＝正の自己相関）
+
+## ローカル Moran と LISA クラスタ図
+
+ローカル Moran’s I（LISA）は、各地域が「高-高（HH）、低-低（LL）、高-低（HL）、低-高（LH）」のどのクラスタに属するかを示します。ここでは Queen を用い、p<.05 を有意とみなします。
+
+```{r}
+#| label: lisa_local
+#| dependson: [weights_build]
+# ローカル Moran（spdepベース；二側p値を自前計算）
+loc <- spdep::localmoran(map_df$eng_score, lw_queen)
+p_two <- 2 * pnorm(-abs(loc[, "Z.Ii"]))
+
+z     <- as.numeric(scale(map_df$eng_score))
+lag_z <- spdep::lag.listw(lw_queen, z)
+sig   <- p_two < 0.05
+
+cluster <- ifelse(!sig, 'Not Sig',
+           ifelse(z>0 & lag_z>0, 'High-High',
+           ifelse(z<0 & lag_z<0, 'Low-Low',
+           ifelse(z>0 & lag_z<0, 'High-Low', 'Low-High'))))
+
+map_df$cluster <- factor(cluster, levels = c('High-High','Low-Low','High-Low','Low-High','Not Sig'))
+
+ggplot(map_df) +
+  geom_sf(aes(fill = cluster), color = 'white') +
+  scale_fill_manual(
+    values = c('High-High'='#d73027','Low-Low'='#4575b4','High-Low'='#fdae61','Low-High'='#74add1','Not Sig'='grey90'),
+    drop = FALSE
+  ) +
+  theme_minimal() +
+  labs(title = 'LISA クラスタ（Queen, p<.05）', fill = 'クラスタ')
+```
+
+読み方
+- HH/LL は正の自己相関のホット/コールドスポット候補。HL/LH はアウトライヤ的な位置。
+- 有意水準は多重比較の問題を孕みます。後述の FDR 調整も併用してください。
+
+補足
+- 凡例で HH=High-High, LL=Low-Low, HL=High-Low, LH=Low-High を明示。
+- 隣接の定義（W）を変えるとクラスタも変わる点に留意（過度な確証バイアス回避）。
+
+## Moran 散布図（標準化値と空間ラグ）
+
+Moran 散布図は標準化スコア z とその空間ラグ Wz の関係を示します。行標準化 W では回帰直線の傾きが Moran’s I に近づきます。
+
+```{r}
+df_moran <- tibble::tibble(z = z, lag_z = lag_z)
+
+ggplot(df_moran, aes(x = z, y = lag_z)) +
+  geom_point(color = '#2c3e50') +
+  geom_smooth(method = 'lm', se = FALSE, color = 'steelblue') +
+  geom_hline(yintercept = 0, color = 'grey60') +
+  geom_vline(xintercept = 0, color = 'grey60') +
+  theme_minimal() +
+  labs(title = 'Moran 散布図', x = '標準化スコア (z)', y = '空間ラグ (Wz)')
+```
+
+読み方
+- 第I象限（+,+）と第III象限（-, -）に点が多いと正の自己相関。
+- 回帰直線の傾きが Moran’s I の大きさと方向感の手掛かりになります。
+
+# 空間回帰モデル（SAR/SEM）
+
+まず OLS の残差で空間自己相関を検定し、有意なら SAR（空間ラグ）や SEM（空間誤差）を比較します。SAR は水準の波及（ρ）、SEM は欠落要因の空間相関（λ）を明示化します。
+
+```{r}
+dat_reg <- map_df |>
+  st_drop_geometry() |>
+  dplyr::select(eng_score, teacher_toeic, eiken_rate)
+
+# OLS と残差の Moran 検定
+ols <- lm(eng_score ~ teacher_toeic + eiken_rate, data = dat_reg)
+spdep::lm.morantest(ols, lw_queen)
+
+# SAR / SEM（W は Queen）
+sar <- spatialreg::lagsarlm(eng_score ~ teacher_toeic + eiken_rate, data = dat_reg, listw = lw_queen)
+sem <- spatialreg::errorsarlm(eng_score ~ teacher_toeic + eiken_rate, data = dat_reg, listw = lw_queen)
+
+list(
+  AIC = c(OLS = AIC(ols), SAR = AIC(sar), SEM = AIC(sem)),
+  SAR_rho = sar$rho,
+  SEM_lambda = sem$lambda
+)
+```
+
+解釈と実務ヒント
+- AIC がより小さいモデルを優先。残差の空間相関が解消されているかも再検定で確認。
+- SAR/SEM の係数は OLS と解釈が異なる場合があります。効果分解には後述の `impacts` を使用。
+
+よくある疑問
+- どちらを選べば良い？ → LM 検定（次節）と AIC、理論的妥当性、残差診断の総合判断。
+- 係数の大きさが変わるのはなぜ？ → 空間ラグが内生化やフィードバックを取り込むため、OLSと異なるスケールになります。
+
+::: {.callout-note}
+### 解釈の要点
+- SAR（ラグ）: 近隣の水準が自身へ波及する（ρ）。政策や情報拡散に近い仮説。
+- SEM（誤差）: 欠落要因が空間的に相関（λ）。測定漏れ/地域固定効果の残差構造。
+- モデル選択は AIC/適合度/残差の空間相関の消失（診断）を併用。
+:::
+
+# 施策前後差分と DID（時空間パネル）
+
+施策境界（例：2021年）で前後の平均差を地図化し、DID を固定効果で推定します（推定量は単純化）。地図で差分の空間分布を直観しつつ、推定では `pref_name` と `year` の固定効果で交絡を抑えます。
+
+```{r}
+prepost <- panel |>
+  mutate(period = ifelse(year < policy_year, 'pre', 'post')) |>
+  group_by(pref_name, period) |>
+  summarise(mean_score = mean(eng_score, na.rm = TRUE), .groups = 'drop') |>
+  tidyr::pivot_wider(names_from = period, values_from = mean_score) |>
+  mutate(diff_post_pre = post - pre)
+
+map_diff <- pref_sf |>
+  left_join(prepost, by = 'pref_name')
+
+ggplot(map_diff) +
+  geom_sf(aes(fill = diff_post_pre), color = 'white') +
+  scale_fill_gradient2(low = '#4575b4', mid = 'white', high = '#d73027', midpoint = 0, name = '差分') +
+  theme_minimal() +
+  labs(title = paste0('施策前後差分（', policy_year, '年境界）'))
+```
+
+固定効果 DID（都道府県・年の FE）を `fixest` で推定：
+
+```{r}
+did <- fixest::feols(
+  eng_score ~ treated:post + teacher_toeic + eiken_rate | pref_name + year,
+  data = panel
+)
+summary(did)
+```
+
+読み方
+- `treated:post` の係数が平均処置効果（ATT）の推定量（本設定）。前提は並行トレンド。
+- 標準誤差はクラスタ化（後述）を推奨。複数期・段階的導入は拡張DID手法を検討。
+
+補足（前提を確認するには）
+- 事前期間だけで処置群・対照群のトレンドを比較（視覚化）。
+- プラセボテスト（架空の境界年）で疑似効果が出ないか確認。
+
+::: {.callout-note}
+### DID の注意
+- 並行トレンドの仮定は可視化で点検（前期間の傾きが近いか）。
+- 施策の割当が内生的なら IV / 合成コントロール等を検討。
+- 地理的スピルオーバーが疑われる場合は SAR-DID など拡張を検討。
+:::
+
+# 平滑化（隣接平均）でノイズを抑える
+
+単純な平滑化として「自身と近隣の平均」を混合。解釈は慎重に（強すぎる平滑化は差を潰す）。推定前の探索可視化に有用ですが、推定値に使う場合はバイアスに注意。
+
+```{r}
+lag_y <- spdep::lag.listw(lw_queen, map_df$eng_score)
+alpha <- 0.5
+map_df <- map_df |>
+  mutate(smooth_score = (1 - alpha) * eng_score + alpha * lag_y)
+
+g1 <- ggplot(map_df) + geom_sf(aes(fill = eng_score), color = 'white') +
+  scale_fill_viridis_c(option = 'C') + theme_minimal() + labs(title = '元値')
+g2 <- ggplot(map_df) + geom_sf(aes(fill = smooth_score), color = 'white') +
+  scale_fill_viridis_c(option = 'C') + theme_minimal() + labs(title = paste0('隣接平滑（α=', alpha, '）'))
+
+g1; g2
+```
+
+::: {.callout-tip}
+### 実務チェックリスト
+- CRS を把握・統一し、計測は投影座標で。`st_crs` / `st_transform` を毎回確認。
+- 重み行列は連結性・次数のバランスを点検（孤立ノード×）。
+- グローバル→ローカル→回帰の順で、残差の自己相関を必ず診断。
+- DID は可視化・前提検討を先に。FE 指定と標準誤差の扱いに注意。
+- 地図は共通スケールで比較し、凡例と注記を明確に。
+:::
+
+# 演習
+
+- 重みを Rook / k=6 に変えて Moran と SAR/SEM を比較。
+- `treated` の割当ルールや効果サイズ `tau` を変えて DID の感度を確認。
+- `teacher_toeic` と `eiken_rate` のスケール・非線形（例：スプライン）を試し AIC を比較。
+- ローカル Moran の有意水準や多重比較の扱いを議論し、クラスター図を代替表現（分位）でも描く。
+
+::: {.callout-note}
+次章の候補：空間計量のより厳密な推定（SAC/SARAR）、ベイズ階層空間モデル、時空間回帰（INLA/BRMS）など。
+:::
+
+
+# 追加トピック（拡張）
+
+## LM 検定（モデル選択の手がかり）
+
+LM 検定は OLS に対し、ラグ（SAR）/誤差（SEM）のどちらが妥当かの手掛かりを与えます。ロバスト版（RLM）は両者が同時に存在する可能性に頑健です。
+
+```{r}
+# OLS のラグ／誤差に対する LM とロバストLM
+lm_tests <- spdep::lm.LMtests(ols, lw_queen, test = c("LMlag","LMerr","RLMlag","RLMerr"))
+lm_tests
+```
+
+::: {.callout-note}
+ラグと誤差の双方が有意→SARAR/SDM を候補に。片方のみなら SAR か SEM を優先検討。
+:::
+
+読み方
+- LMlag が有意 → ラグ（SAR）方向の改善余地がある。
+- LMerr が有意 → 誤差（SEM）方向の改善余地がある。
+- Robust 版（RLM）は両者が同時に真のときの誤判別を緩和。
+
+## 空間Durbin（SDM）と SARAR（SAC）
+
+SDM は説明変数の空間ラグも含め、間接効果（近隣の X が自地域の Y に効く）を明示化できます。SARAR（SAC）は水準のラグと誤差の空間相関を同時に扱います。
+
+```{r}
+# SDM: 説明変数の空間ラグも含める（Durbin=TRUE で全てラグ）
+sdm <- spatialreg::lagsarlm(eng_score ~ teacher_toeic + eiken_rate, data = dat_reg, listw = lw_queen, Durbin = TRUE)
+
+# SARAR(SAC): ラグ + 誤差
+sarar <- spatialreg::sacsarlm(eng_score ~ teacher_toeic + eiken_rate, data = dat_reg, listw = lw_queen)
+
+cbind(
+  Model = c('OLS','SAR','SEM','SDM','SARAR'),
+  AIC   = c(AIC(ols), AIC(sar), AIC(sem), AIC(sdm), AIC(sarar))
+) |>
+  as.data.frame() |>
+  gt() |>
+  tab_header(title = 'モデル比較（AIC）')
+```
+
+注意
+- SDM は説明変数とその空間ラグが強く相関し、推定が不安定になることがあります。変数選択や正則化、理論的根拠に基づく部分Durbinを検討。
+
+補足
+- 部分Durbinの例: `Durbin = ~ eiken_rate` のように、特定の説明変数のみ空間ラグを導入。
+
+## インパクト分解（直接・間接・総効果）
+
+空間モデルの「係数＝解釈」ではなく、ショックの伝播（直接・間接・総効果）を `impacts` で要約します。報告には総効果や間接効果の区別を明示しましょう。
+
+```{r}
+# SAR / SDM の効果分解（モンテカルロ）
+imp_sar <- spatialreg::impacts(sar, listw = lw_queen, R = 1000)
+imp_sdm <- spatialreg::impacts(sdm, listw = lw_queen, R = 1000)
+
+summary(imp_sar, zstats = TRUE)
+summary(imp_sdm, zstats = TRUE)
+```
+
+## LISA の多重比較調整（FDR）
+
+LISA は地点ごとに多数の検定を行うため、偽陽性が増えます。BH 法（FDR）で有意判定を調整し、過度なクラスタ検出を抑えます。
+
+```{r}
+#| label: lisa_fdr
+#| dependson: [weights_build]
+# sfdep::local_moran_perm はエクスポートされていない環境があるため、
+# spdep::localmoran のZ統計から両側p値を算出し、BHでFDR補正します。
+loc2 <- spdep::localmoran(map_df$eng_score, lw_queen)
+# 両側p値（正規近似）
+p_two <- 2 * pnorm(-abs(loc2[, "Z.Ii"]))
+# FDR (Benjamini-Hochberg)
+pii_fdr <- p.adjust(p_two, method = 'BH')
+
+# z と空間ラグを再計算（安全のため）
+z     <- as.numeric(scale(map_df$eng_score))
+lag_z <- spdep::lag.listw(lw_queen, z)
+
+cluster_fdr <- ifelse(pii_fdr >= 0.05, 'Not Sig (FDR)',
+                 ifelse(z>0 & lag_z>0, 'High-High',
+                 ifelse(z<0 & lag_z<0, 'Low-Low',
+                 ifelse(z>0 & lag_z<0, 'High-Low', 'Low-High'))))
+
+map_df$cluster_fdr <- factor(
+  cluster_fdr,
+  levels = c('High-High','Low-Low','High-Low','Low-High','Not Sig (FDR)')
+)
+
+ggplot(map_df) +
+  geom_sf(aes(fill = cluster_fdr), color = 'white') +
+  scale_fill_manual(
+    values = c('High-High'='#d73027','Low-Low'='#4575b4','High-Low'='#fdae61','Low-High'='#74add1','Not Sig (FDR)'='grey85'),
+    drop = FALSE
+  ) +
+  theme_minimal() +
+  labs(title = 'LISA クラスタ（BH補正後）', fill = 'クラスタ')
+```
+
+補足
+- FDR は家族化誤差率（FWER）より緩やかで、探索的分析に向きます。厳格さが必要なら Bonferroni-Holm なども検討。
+
+凡例の読み方
+- Not Sig (FDR): 多重比較を考慮すると有意とは言えない地点。
+- High-Low / Low-High: 周辺と反対傾向のアウトライヤ候補。
+
+## 重み感度の簡易比較
+
+重みの選び方に正解はありません。Moran’s I やモデル適合（AIC）の感度を見て、現象のメカニズムと整合的な W を選びます。
+
+```{r}
+summarize_w <- function(lw, name){
+  mi <- unname(spdep::moran.test(y, lw)$estimate[1])
+  s1 <- spatialreg::lagsarlm(eng_score ~ teacher_toeic + eiken_rate, data = dat_reg, listw = lw)
+  s2 <- spatialreg::errorsarlm(eng_score ~ teacher_toeic + eiken_rate, data = dat_reg, listw = lw)
+  tibble::tibble(type = name, MoranI = mi, AIC_SAR = AIC(s1), AIC_SEM = AIC(s2))
+}
+
+bind_rows(
+  summarize_w(lw_queen, 'queen'),
+  summarize_w(lw_rook,  'rook'),
+  summarize_w(lw_knn,   'knn4')
+) |>
+  gt() |>
+  tab_header(title = '重みタイプの感度（MoranI/AIC）')
+```
+
+ヒント
+- どれか1つに「正解」を求めず、複数の W で頑健性を確認。
+- 結果の一貫性が高い W を主要分析として採用し、付録で感度分析を提示。
+
+## DID の標準誤差（クラスタ・二方向）
+
+標準誤差の過小推定を避けるため、少なくとも地域クラスタでのロバスト化を用います。二方向クラスタ（地域×年）も検討価値があります。
+
+```{r}
+# 地域クラスタで頑健化
+summary(did, cluster = ~ pref_name)
+
+# 地域×年の二方向クラスタ
+summary(did, cluster = ~ pref_name + year)
+```
+
+注意
+- 二方向クラスタは自由度が下がり保守的になりやすい一方、擬似相関を抑制。
+- サンプル数が少ない場合はワイルドブートストラップも検討。
+
+## 空間パネル（within, two-ways）
+
+空間パネル（`splm::spml`）は「固定効果×空間ラグ/誤差」の同時推定が可能です。実データでは計算コスト・識別性の点で調整が必要になるため、雛形として示します（eval=FALSE）。
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(splm, plm)
+  # index を与えて within + two-ways、ラグ + 誤差（Baltagiの分類 b）
+  spml_mod <- splm::spml(
+    eng_score ~ teacher_toeic + eiken_rate + treated:post,
+    data = panel, listw = lw_queen,
+    model = 'within', effect = 'twoways', lag = TRUE, spatial.error = 'b',
+    index = c('pref_name','year')
+  )
+  summary(spml_mod)
+} else {
+  message("CI環境のため空間パネルをスキップ")
+}
+```
+
+## ベイズ階層/INLA/GWR（雛形）
+
+ベイズ階層（INLA/BRMS）や GWR はより柔軟ですが、モデリング選択と計算資源が必要です。実務導入時は目的（予測/因果/探索）に合わせて慎重に設計してください（eval=FALSE）。
+
+```{r}
+# INLA: BYM/ICAR（要:INLAのセットアップ）
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(INLA)
+  nb <- nb_queen; W <- spdep::nb2mat(nb, style = 'B')
+  # 例: ICAR ランダム効果（擬似コード）
+  # formula <- eng_score ~ teacher_toeic + eiken_rate + f(pref_name, model='icar', graph=W)
+  # fit_inla <- INLA::inla(formula, family='gaussian', data = as.data.frame(dat_reg))
+} else {
+  message("INLA 未インストールのためスキップ")
+}
+
+# brms: CAR（要:rstan/brmsセットアップ）
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(brms)
+  # fit_brms <- brm(eng_score ~ teacher_toeic + eiken_rate + car(adj = W), data = dat_reg)
+} else {
+  message("brms 未インストールのためスキップ")
+}
+
+# GWR: 局所回帰（sp系クラスに変換）
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(GWmodel)
+  spobj <- as(map_df, 'Spatial')
+  bw <- GWmodel::bw.gwr(eng_score ~ teacher_toeic + eiken_rate, data = spobj, approach='AICc', kernel='bisquare', adaptive=TRUE)
+  gwr <- GWmodel::gwr.basic(eng_score ~ teacher_toeic + eiken_rate, data = spobj, bw = bw, kernel='bisquare', adaptive=TRUE)
+} else {
+  message("GWmodel 未インストールのためスキップ")
+}
+```
+
+---
+
+## トラブルシューティング（初心者向け）
+
+- パッケージが入らない: `install.packages('spatialreg')` など個別に導入。Macでビルドが必要な場合は Xcode Command Line Tools を導入。
+- 日本語フォントが出ない: Quarto/PDF の場合は `_quarto.yml` のフォント設定を確認（本プロジェクトは Noto 系を使用）。
+- 地図が崩れる: CRS を `st_crs()` で確認し、`st_transform()` で統一。Web地図は 4326/3857、計測は投影座標。
+- 検定がエラー: `nb` と `listw` の取り違いが多い。`nb2listw()` を挟む。
+- DID の効果が不安定: 並行トレンドの破れやアウトライヤの影響。前処理（トリム）やロバストSE、感度分析を。

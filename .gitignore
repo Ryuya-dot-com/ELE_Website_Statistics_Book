@@ -1,0 +1,25 @@
+# Quarto build and cache
+/.quarto/
+/_book/
+/_freeze/
+/*_cache/
+/*_files/
+/site_libs*/
+/search.json
+
+# OS / Editor
+/.DS_Store
+/.Rhistory
+/.Rproj.user/
+
+# Large artifacts
+*.html
+*.pdf
+*.rds
+*.rda
+
+# Local data artifacts (keep raw CSVs)
+data/**/*.rds
+data/**/*.RDS
+data/**/*.rda
+data/**/*.RData

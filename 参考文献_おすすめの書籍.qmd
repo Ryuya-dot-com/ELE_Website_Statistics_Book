@@ -1,0 +1,231 @@
+---
+title: "参考文献・おすすめの書籍"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+こちらのページではRを使った統計モデリングでおすすめの書籍や参考となるwebサイトを紹介していきます。
+
+## 初心者向け
+
+### Analyzing linguistic data: A practical introduction to statistics using R
+- **著者**: Baayen, R. H. (2008)
+- **出版社**: Cambridge University Press
+- **リンク**: [Cambridge University Press](https://www.cambridge.org/highereducation/books/analyzing-linguistic-data/B2AF752A30911F4144CA35E075C6B233#overview)
+- **概要**: 言語データを用いた分析について述べた統計モデリングの入門書となります。[こちら](https://www.sciencedirect.com/journal/journal-of-memory-and-language/vol/59/issue/4)と合わせ、この時期から混合効果モデルが言語研究でも着目されるようになりました。
+- **備考**: [第一版が無料で公開](http://www.sfs.uni-tuebingen.de/~hbaayen/publications/baayenCUPstats.pdf)されています。一般化加法モデルについて含めた第二版が出版されるという噂です。
+
+### How to do Linguistics with R
+- **著者**: Levshina, N. (2015)
+- **出版社**: John Benjamins
+- **リンク**: [John Benjamins](https://benjamins.com/catalog/z.195)
+- **概要**: 言語データを用いた分析について幅広いトピックを扱った入門書となります。決定木分析やランダムフォレストについても言及しています。
+
+### Statistics for linguistics: An introduction using R
+- **著者**: Winter, B. (2019)
+- **出版社**: Routledge
+- **リンク**: [Routledge](https://www.routledge.com/Statistics-for-Linguists-An-Introduction-Using-R/Winter/p/book/9781138056091)
+- **概要**: 回帰分析の入門書となります。個人的にとてもおすすめです。混合効果についても言及しています。
+
+## 中級者向け
+
+### データ解析のための統計モデリング入門
+- **著者**: 久保拓弥 (2012)
+- **出版社**: 岩波書店
+- **リンク**: [岩波書店](https://www.iwanami.co.jp/book/b257893.html)
+- **概要**: GLM、GLMM、ベイズなど幅広く統計モデリングについて解説しています。
+
+### 個人と集団のマルチレベル分析
+- **著者**: 清水裕士 (2014)
+- **出版社**: ナカニシヤ出版
+- **リンク**: [ナカニシヤ出版](https://www.nakanishiya.co.jp/book/b183308.html)
+- **概要**: 混合効果について解説しています。
+
+### Essential Statistics for the Behavioral Sciences
+- **著者**: Gregory J. Privitera
+
+### MplusとRによる構造方程式モデリング入門
+- **著者**: 小杉考司・清水裕士 (2014)
+- **出版社**: 北大路書房
+- **リンク**: [北大路書房](https://www.kitaohji.com/book/b579998.html)
+- **概要**: 回帰分析から混合効果モデリングをRとMplusで実行するコードについて解説しています。潜在変数と観測変数、説明変数と目的変数という分類に基づき、さまざまな統計モデリングを網羅しています。
+
+### Learning statistical models through simulation in R
+- **著者**: Barr, D. (2021)
+- **リンク**: [オンライン版](https://psyteachr.github.io/stat-models-v1/)
+- **概要**: 混合効果について言及しています。オンライン版のみ。
+
+### The elements of statistical learning
+- **著者**: Hastie, T., Tibshirani, R., & Friedman, J. (2009)
+- **出版社**: Springer
+- **リンク**: [オンライン版](https://www.statlearning.com/)
+- **概要**: 回帰分析や機械学習の手法などについて扱っています。オンライン上で読むことが可能。
+
+### Statistics for linguistics with R: A practical introduction (3rd edition)
+- **著者**: Gries, S. Th. (2021)
+- **出版社**: De Gruyter Mouton
+- **リンク**: [De Gruyter](https://www.degruyter.com/document/doi/10.1515/9783110718256/html)
+- **概要**: コーパスデータを例として扱った入門書となります。混合効果や決定木分析などについても扱っています。
+
+### Linear mixed models in linguistics and psychology
+- **著者**: Vasishth, S., Schad, D., Bürki, A., & Kliegl, R. (in progress)
+- **リンク**: [オンライン版](https://vasishth.github.io/Freq_CogSci/)
+- **概要**: 視線計測や反応時間などの例を用いているものです。書籍としては未完 (2024年3月)
+
+### An R companion to applied regression (3rd edition)
+- **著者**: Fox, J., & Weisberg, S. (2019)
+- **出版社**: Sage Publications
+- **リンク**: [Sage Publications](https://us.sagepub.com/en-us/nam/an-r-companion-to-applied-regression/book246125)
+- **概要**: 一般化線型モデルについて分かりやすく書かれたものです。carやeffectなどのよく使うパッケージの例もあります。
+
+### Regression and other stories
+- **著者**: Gelman, G., Hill, J., & Vehtari, A. (2020)
+- **出版社**: Cambridge University Press
+- **リンク**: [Examples](https://avehtari.github.io/ROS-Examples/)
+- **概要**: 回帰分析から統計的因果推論を網羅したものです。シミュレーションベースのベイズの考え方に基づいています。
+
+## 上級者向け
+
+### Multilevel analysis: Techniques and applications (3rd edition)
+- **著者**: Hox, J., Moerbeek, M., & van de Schoot, R. (2018)
+- **出版社**: Routledge
+- **リンク**: [オンライン版](https://multilevel-analysis.sites.uu.nl/)
+- **概要**: 混合効果モデルについて書かれたものです。後半は難しめという印象。
+
+### Ｒで学ぶデータサイエンス〈８〉ネットワーク分析
+- **著者**: 鈴木 努 (2017)
+- **出版社**: 共立出版
+- **リンク**: [共立出版](https://www.kyoritsu-pub.co.jp/book/b10003845.html)
+- **概要**: ネットワーク分析について扱ったものです。Rのコードもwebサイトに公開されています。
+
+### Applied longitudinal data analysis
+- **著者**: Singer, J. D., & Willett, J. B. (2003)
+- **出版社**: Oxford University Press
+- **リンク**: [Oxford University Press](https://academic.oup.com/book/41753)
+- **概要**: 縦断 (時系列) データについて書かれたものです。混合効果と生存分析について、時系列データの観点から述べています。
+
+## その他、参考となるwebサイト
+
+### Statistical Rethinking with brms, ggplot2, and the tidyverse
+- **著者**: A. S. Kurz
+- **リンク**: [Bookdown](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)
+- **概要**: [Statistical Rethinking](https://xcelab.net/rm/statistical-rethinking/) (ベイズ統計についての入門) をbrmsとtidyverseパッケージを使って書き直したもの
+
+### Rasch Measurement Theory Analysis in R
+- **著者**: Stefanie Wind & Cheng Hua
+- **リンク**: [Bookdown](https://bookdown.org/connect/#/apps/5286/access/1060)
+- **概要**: ラッシュモデルについてRで扱ったもの
+
+### An Introduction to Bayesian Data Analysis for Cognitive Science
+- **著者**: Bruno Nicenboim, Daniel Schad, and Shravan Vasishth
+- **リンク**: [オンライン版](https://vasishth.github.io/bayescogsci/book/)
+- **概要**: 認知心理学のデータでベイズ統計について扱ったもの

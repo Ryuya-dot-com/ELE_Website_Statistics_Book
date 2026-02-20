@@ -1,0 +1,832 @@
+---
+title: "地理空間データ分析（入門）：sf・地図作成・パネル整形"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# はじめに
+
+都道府県別の学力調査や英語力指標（受検率、英検級、TOEICスコアなど）を**地理空間データ**として可視化・分析する入門です。Rの `sf` を軸に、形状データの取得、結合、**コロプレス図**、ダミーデータでの**パネル（都道府県×年）**整形までを最小コードでまとめます。
+
+::: {.callout-tip}
+## 実行前ガイド（ステップ）
+1. 形状データ（都道府県ポリゴン）を `sf` で取得（外部取得 or ダミー生成）。
+2. 指標データ（都道府県別×年）を作成・整形。
+3. `left_join()` で結合し、`ggplot2::geom_sf()` でコロプレス。
+4. 年次比較（小 multiples）や簡単な統計（平均・順位）をパネルで行う。
+5. 必要に応じて座標参照系（CRS）を変換（`st_transform`）。
+:::
+
+::: {.callout-tip}
+### 用語ミニ辞典（初心者向け）
+- CRS: 座標参照系。EPSG:4326（WGS84）=緯度経度、EPSG:3857=Web地図、JGD2011系=日本の投影座標。
+- nb/listw: 隣接リスト（nb）と重み付き隣接（listw）。空間自己相関や空間回帰で使用。
+- queen/rook: 隣接の定義。queen=辺/頂点共有、rook=辺共有のみ。
+- k近傍: 重心間距離で近い順にk個を隣接にする方法。孤立ノードの回避に有効。
+:::
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+pacman::p_load(
+  sf, dplyr, tidyr, ggplot2, classInt, scales, gt,
+  stringi, stringr, units, lubridate
+)
+
+# macOS の日本語文字化け対策（可能ならUTF-8ロケールを選択）
+invisible(try(Sys.setlocale(category = "LC_CTYPE", locale = "ja_JP.UTF-8"), silent = TRUE))
+options(encoding = "UTF-8")
+
+# knitr の表示を日本語フォントに合わせて控えめに（任意）
+knitr::opts_chunk$set(dev = 'png')
+```
+
+::: {.callout-tip}
+## Conventions
+Figures use English labels. All code chunks are R.
+:::
+
+# 形状データの用意
+
+## 形状取得（jpndistrict 失敗時は rnaturalearth にフォールバック）
+
+```{r}
+load_pref_sf <- function(){
+  # 1) jpndistrict（推奨）
+  jp_try <- try({ jpndistrict::jpn_pref(quality = 40) }, silent = TRUE)
+  if (!inherits(jp_try, "try-error") && inherits(jp_try, "sf")) {
+    return(jp_try |>
+             st_transform(4326) |>
+             dplyr::rename(pref_name = prefecture) |>
+             dplyr::select(pref_name, geometry) |>
+             sf::st_make_valid())
+  }
+
+  # 2) rnaturalearth（Admin-1, medium scale 明示）
+  ne_try <- try({ rnaturalearth::ne_states(country = "Japan", returnclass = "sf", scale = "medium") }, silent = TRUE)
+  if (!inherits(ne_try, "try-error") && inherits(ne_try, "sf")) {
+    return(ne_try |>
+             dplyr::transmute(pref_name = name, geometry = geometry) |>
+             st_transform(4326) |>
+             sf::st_make_valid())
+  }
+
+  # 3) geodata::gadm（GADM level-1：都道府県）
+  gd_try <- try({ geodata::gadm(country = "JPN", level = 1, path = tempdir()) }, silent = TRUE)
+  if (!inherits(gd_try, "try-error")) {
+    gd_sf <- sf::st_as_sf(gd_try)
+    # 一般的な列名を合わせる（NAME_1 が都道府県名）
+    name_col <- intersect(names(gd_sf), c("NAME_1", "NAME_1_", "VARNAME_1"))
+    if (length(name_col) == 0) name_col <- names(gd_sf)[1]
+    return(gd_sf |>
+             dplyr::transmute(pref_name = .data[[name_col[1]]], geometry = geometry) |>
+             sf::st_make_valid() |>
+             sf::st_transform(4326))
+  }
+
+  stop("都道府県ポリゴンの取得に失敗しました。'jpndistrict' または 'rnaturalearth' の利用可能性をご確認ください。")
+}
+
+# 実境界のみを使用（ダミーhexには絶対フォールバックしない）
+pref_sf <- load_pref_sf()
+
+# 確認（geometry列・CRSなど）
+st_geometry_type(pref_sf)[1]
+st_crs(pref_sf)
+
+# プレビュー
+ggplot(pref_sf) + geom_sf(fill = 'gray95', color = 'gray40', linewidth = .2) +
+  theme_minimal()
+```
+
+::: {.callout-note}
+- jpndistrict の `quality` は、概ね 20/40/500m 相当の簡略度。より滑らかな境界が必要なら数値を小さく。
+- 面積・距離などの幾何計算は、目的に適した投影座標へ `st_transform()` の上で実施してください（例：JGD2011 系）。
+:::
+
+::: {.callout-tip}
+### sf の基礎メモ（最短理解）
+- データ構造: `sf` は「データフレーム + 幾何列（`geometry`）」。`dplyr` 動詞は概ねそのまま使える。
+- 形状の落とし穴: `st_drop_geometry()` で非空間テーブルに戻せる。集計で形状が邪魔な時に便利。
+- 集約の挙動: `summarise()` すると、同じグループの形状は `st_union()` で結合される（意図せぬ結合に注意）。
+- CRS 確認/変換: `st_crs()` で確認、`st_transform()` で変換。測地座標（EPSG:4326）と投影座標の使い分けが重要。
+:::
+
+## 隣接の定義：Queen と Rook の違い（初心者向け）
+
+- **Queen 型（クイーン）**: **辺または頂点**を共有していれば隣接とみなします。チェスのクイーンが斜めにも動けるイメージ。境界でちょっとだけ角同士が触れているだけでも「隣」と数えるので、**つながりが増えやすい**のが特徴です。
+- **Rook 型（ルーク）**: **辺（境界線）を共有**している場合だけ隣接。チェスのルークが縦横だけ動くイメージ。角が触れているだけでは**隣とみなさない**ので、つながりはやや少なめになります。
+- **k 近傍（距離ベース）**: 幾何中心の距離が近い順に **k 個を隣接**とする方法。島や飛地など「境界が接しない」ケースでも必ず近傍が定義でき、**孤立ノードを回避**できます（k を 1 以上に設定）。
+
+### どれを選べばいい？（実務の目安）
+- **行政区分の地続き性を強調したい** → まずは **Rook** を検討（共有境界が実質的な交流をより反映）。
+- **空間的な影響を広めに拾いたい／角接触も影響ありとみなす** → **Queen** を検討。
+- **島嶼・飛地や非連結ポリゴンがある**／**均一な次数（隣接数）**が欲しい → **k 近傍**（例: k=4〜8）。
+
+::: {.callout-tip}
+**チェックリスト**
+- 隣接がほとんど無い自治体がないか（`summary(card(nb))` などで次数を確認）。
+- 孤立ノード（次数 0）がある場合は、**k 近傍**や**距離閾値**の併用を検討。
+- 主要な分析結果（例: Moran's I, 回帰の有意性）が **Queen/Rook/k** の選択で変わらないか、**感度分析**をとる。
+:::
+
+### R での作り方（確認用、実行はしなくてOK）
+
+```{r}
+#| eval: false
+# Queen（既定は queen=TRUE）
+nb_queen <- spdep::poly2nb(pref_sf, queen = TRUE)
+lw_queen <- spdep::nb2listw(nb_queen, style = 'W')
+
+# Rook（辺共有のみ）
+nb_rook  <- spdep::poly2nb(pref_sf, queen = FALSE)
+lw_rook  <- spdep::nb2listw(nb_rook,  style = 'W')
+
+# k 近傍（例: k=6）
+knn      <- spdep::knearneigh(sf::st_coordinates(sf::st_centroid(pref_sf)), k = 6)
+nb_knn   <- spdep::knn2nb(knn)
+lw_knn   <- spdep::nb2listw(nb_knn, style = 'W')
+```
+
+# 都道府県名の正規化（名寄せ）
+
+```{r}
+# 正規化関数：全角/半角・空白・末尾の都/道/府/県の扱い
+norm_pref <- function(x){
+  x |>
+    stringi::stri_trans_nfkc() |>
+    stringr::str_replace_all("\\s+", "") |>
+    stringr::str_replace("(東京都|北海道|京都府|大阪府)$", "") |>
+    stringr::str_replace("県$", "")
+}
+
+# 形状側の正規化キー
+jpn_key <- pref_sf |>
+  st_drop_geometry() |>
+  transmute(pref_name,
+            pref_key = norm_pref(pref_name))
+```
+
+::: {.callout-note}
+### 名寄せのポイント
+- 全角/半角や余分な空白、末尾の「都・道・府・県」を揃えると結合ミスが激減します。
+- 実データに旧字体表記や略称が混ざる場合は、`norm_pref()` に置換表（辞書）を追加してください。
+:::
+
+# ダミーデータ（英語指標：都道府県×年）
+
+```{r}
+set.seed(123)
+years <- 2018:2024
+pref_panel <- expand.grid(pref_name = jpn_key$pref_name, year = years) |>
+  as_tibble() |>
+  mutate(
+    eng_score = round(rnorm(n(), mean = 55 + as.numeric(factor(pref_name))%%10, sd = 7) + (year-2018)*0.6, 1),
+    teacher_toeic = round(rnorm(n(), mean = 650 + as.numeric(factor(pref_name))%%15, sd = 45) + (year-2018)*5, 0),
+    eiken_rate = pmin(pmax(round(runif(n(), .15, .65) + (year-2018)*.01, 2), 0), 1)
+  )
+
+pref_latest <- pref_panel |> filter(year == max(year))
+
+# 結合前のミスマッチ検出（anti_join）
+pref_panel_keyed <- pref_panel |> mutate(pref_key = norm_pref(pref_name))
+anti_data_vs_shape <- dplyr::anti_join(pref_panel_keyed, jpn_key, by = 'pref_key')
+anti_shape_vs_data <- dplyr::anti_join(jpn_key, pref_panel_keyed, by = 'pref_key')
+
+head(anti_data_vs_shape)
+head(anti_shape_vs_data)
+```
+
+::: {.callout-tip}
+### 使い方の目安
+- まずはダミーデータで流れを確認。
+- 実データ（CSV等）を導入するときは、`pref_name` を `norm_pref()` で正規化してから `left_join()`。
+- 年次比較は可能なら共通スケールで描画。年ごとスケールが異なる場合は注意書きを。
+ 
+ さらに：`anti_join` の件数を見て、名寄せ辞書の追加や手修正が必要か判断しましょう。
+:::
+
+# 結合（形状 + 最新年の指標）
+
+```{r}
+#| label: join_latest
+pref_map <- pref_sf |>
+  left_join(pref_latest, by = 'pref_name')
+```
+
+# コロプレス（最新年）
+
+```{r}
+#| label: choropleth_latest
+#| dependson: [join_latest]
+# 分位点で階級化
+cls <- classInt::classIntervals(pref_map$eng_score, n = 5, style = 'quantile')
+cuts <- cut(pref_map$eng_score, breaks = cls$brks, include.lowest = TRUE)
+
+ggplot(pref_map) +
+  geom_sf(aes(fill = cuts), color = 'gray40', size = .2) +
+  scale_fill_brewer(palette = 'Blues', na.value = 'grey90', name = '英語スコア（分位）') +
+  labs(title = paste0('英語スコア（', max(years), '年）'), caption = 'ダミーデータ') +
+  theme_minimal()
+```
+
+::: {.callout-note}
+### コロプレスの階級化（使い分け）
+- quantile: 分位で均等に塗り分け。順位比較に向くが数値差は歪む。
+- equal: 値域を等間隔に。外れ値の影響を受けやすいが直感的。
+- jenks: 自動的に自然なクラス分割。分布のまとまりを強調したい時に。
+:::
+
+## 小さな倍図（年次比較）
+
+```{r}
+pref_panel_map <- pref_sf |>
+  left_join(pref_panel, by = 'pref_name')
+
+# 年ごとに色域がブレないよう、全年の値域で固定
+global_limits <- range(pref_panel$eng_score, na.rm = TRUE)
+
+ggplot(pref_panel_map) +
+  geom_sf(aes(fill = eng_score), color = 'white', size = .1) +
+  scale_fill_viridis_c(option = 'C', name = '英語スコア',
+                       limits = global_limits, oob = scales::squish) +
+  facet_wrap(~ year, ncol = 4) +
+  theme_minimal() +
+  labs(title = '英語スコア：年次比較（共通スケール）')
+```
+
+::: {.callout-note}
+### 年次比較の色スケール
+- 年間比較は基本的に共通スケール（limits）で固定し、見かけの差のブレを抑える。
+- 年ごとにスケールを変える場合は、解釈の注意を明記する。
+:::
+
+::: {.callout-tip}
+### まずはここを見る（年次小倍図）
+- 年間で色の濃さが全体的に上がっているか（平均の変化）。
+- 特定の地域だけ色が急変していないか（外れ値/測定変更の兆候）。
+- 凡例の範囲が年ごとに違わないか（共通スケールで比較）。
+:::
+
+# パネル整形と要約表
+
+```{r}
+summary_tbl <- pref_panel |>
+  group_by(year) |>
+  summarise(
+    mean_score = mean(eng_score, na.rm = TRUE),
+    sd_score   = sd(eng_score, na.rm = TRUE),
+    avg_toeic  = mean(teacher_toeic, na.rm = TRUE),
+    avg_eiken  = mean(eiken_rate, na.rm = TRUE)
+  )
+
+summary_tbl |>
+  gt() |> tab_header(title = '年次の要約（ダミー）') |> fmt_number(columns = where(is.numeric), decimals = 2)
+```
+
+## パネル整形の落とし穴（チェックリスト）
+
+```{r}
+# 欠損年の補完（都道府県×年の完全な格子に）
+pref_panel_complete <- pref_panel |>
+  group_by(pref_name) |>
+  tidyr::complete(year = seq(min(year), max(year), by = 1)) |>
+  ungroup()
+
+# キー重複の検出（pref_name×year が1行か？）
+dup_check <- pref_panel |>
+  count(pref_name, year, name = 'n') |>
+  filter(n > 1)
+dup_check
+
+# 伸び率のゼロ割対策と代替（対数差分）
+growth_safe <- pref_panel |>
+  arrange(pref_name, year) |>
+  group_by(pref_name) |>
+  mutate(
+    prev = dplyr::lag(eng_score),
+    growth_pct = dplyr::if_else(is.na(prev) | prev == 0, NA_real_, 100 * (eng_score - prev) / prev),
+    log_diff_pct = dplyr::if_else(eng_score > 0 & prev > 0, 100 * (log(eng_score) - log(prev)), NA_real_)
+  ) |>
+  ungroup()
+
+growth_safe |> select(pref_name, year, eng_score, growth_pct, log_diff_pct) |> head()
+```
+
+::: {.callout-note}
+### CRS（座標参照系）メモ
+- Web地図: **WGS84（EPSG:4326）** or **Webメルカトル（EPSG:3857）**。
+- 計測用途: 面積・距離・バッファは**投影座標**（例：JGD2011 / 平面直角座標）で計算。
+- 変換の基本: `st_transform(x, 4326)` で WGS84、`st_transform(x, 6668)` で JGD2011。
+- チェック: `st_crs(x)` で CRS を都度確認。異なる CRS のオブジェクト同士は結合前に揃える。
+:::
+
+## 初心者がつまづきやすいポイント
+
+### 1) 形状×表データの結合がうまくいかない
+- **症状**: `left_join()` したのに値が全部 `NA`、または観測数が合わない。
+- **主因**: キー列の表記ゆれ（全角/半角、空白、末尾の「県/府/道/都」、旧字体）。
+- **対処**: すでに用意した `norm_pref()` で**両側**を正規化。結合前後に `anti_join()` で**ミスマッチを可視化**し、辞書表を追加する。
+- **チェック**: `nrow(pref_sf)`, `n_distinct(pref_name)` が 47 か、`count(pref_name)` で重複がないか。
+
+### 2) CRS が揃っていない（投影）
+- **症状**: 点とポリゴンの**場所が合わない**、面積/距離が**変**。
+- **対処**: 可視化は WGS84（EPSG:4326）で良いが、**計測**（面積・距離・バッファなど）は**投影座標**に `st_transform()` してから実施。
+- **早見**: `st_crs(x)` で都度確認。異なる CRS 同士は**結合前に揃える**。
+
+### 3) チャンクの**実行順序**が原因の未定義エラー
+- **症状**: `object 'pref_map' not found` など。
+- **対処**: Quartoのメタ（YAML）で `#| label:` と `#| dependson:` を付け **依存順序を明示**。手動再実行でも安全。
+- **例**: `choropleth_latest` は `dependson: [join_latest]`。
+
+### 4) `sfdep` と `spdep` の関数名の違い
+- **症状**: `sfdep::local_moran_perm` が見つからない等。
+- **対処**: **最小構成**では `spdep::localmoran()` を使用し、Z統計から**両側 p 値**を計算（`2*pnorm(-abs(Z))`）。置換検定が必要なら `spdep` の perm 関数か**自作シャッフル**を検討。
+
+### 5) 図の色分けの“罠”
+- **症状**: 年ごとの比較で**色の濃淡の解釈がブレる**。
+- **対処**: ファセット比較は**共通の `limits`** を固定（本稿では `global_limits`）。分位（`quantile`）は順位に強いが、**値幅の解釈**は歪むと心得る。
+- **補足**: 自治体数が少ない区割りでは **`jenks`** が自然なまとまりを与える場合もある。
+
+### 6) 欠損とゼロ割（伸び率）
+- **症状**: `Inf` や `NaN` が混入。
+- **対処**: 対前年ゼロ割は `if_else(prev==0, NA, ...)` で回避。**対数差分**（`log_diff_pct`）の導入は堅牢。
+
+### 7) `geom_sf()` が重い / 形状が複雑
+- **症状**: 描画が遅い。
+- **対処**: 試作段階では `st_simplify()`（**トポロジ保持に注意**）や低解像度形状（`quality`を大きく）を使う。出力用は元の滑らかさに戻す。
+
+### 8) 無効ジオメトリ（self-intersection など）
+- **症状**: 解析でエラー。
+- **対処**: `st_is_valid()` で点検し、`st_make_valid()`（`lwgeom`）で修復。
+
+### 9) 文字化け・フォント
+- **症状**: 日本語が豆腐化。
+- **対処**: YAML の `mainfont` や本文のフォント指定を Noto 系に。R セッションのロケール（`Sys.setlocale`）も見直す。
+
+### 10) 島や飛地の扱い
+- **症状**: 隣接が 0 の自治体が出る。
+- **対処**: Queen/Rook の代わりに **k 近傍**や**距離閾値**を併用。次数の分布を確認し、過度な孤立を避ける。
+
+::: {.callout-tip}
+#### **チェックリスト（実行前/提出前）**
+- [ ] `anti_join` の結果を0件にできているか
+- [ ] `st_crs()` が揃っているか（計測では投影に変換したか）
+- [ ] 主要チャンクに `label` / `dependson` を付けたか
+- [ ] ファセット比較でカラースケールを共通化したか
+- [ ] `st_is_valid()` を一度はチェックしたか
+:::
+
+### 11) “値の大小”と“良し悪し”は別
+- **注意**: 地図の濃淡は**大小**を示すのみで、**優劣**や政策評価を直接意味しない。**解釈の文脈**（母集団・尺度・測定法）を必ず明示する。
+
+### 12) 再現性確保のミニTips
+- `execute.freeze: auto`（`_quarto.yml`）で出力を固定 → **後から本文復元の足がかり**に。
+- 画像は `dpi`/サイズを明示、表は `gt` の `fmt_number` 等で**表記を固定**。
+- 乱数は `set.seed()` を必ず一箇所にまとめる。
+
+### 13) 実データに置き換えるとき
+- 列名・単位・集計レベル（都道府県/市区町村）が**入門のダミーと一致**しているかを最初に揃える。
+- **基準年度**や**指標の定義変更**がないか、注釈を入れる（年次比較の落とし穴）。
+
+```{r}
+#| eval: false
+# 例：市区町村版に差し替えるときの最小骨格
+# mesh_sf  … 市区町村ポリゴン
+# stats_df … 市区町村×年の指標
+mesh_map <- mesh_sf |> left_join(stats_df |> filter(year==2024), by='city_name')
+nb_q <- spdep::poly2nb(mesh_map)
+lw_q <- spdep::nb2listw(nb_q, style='W')
+# あとは pref_map と同じ流れで可視化/検定
+```
+
+# 空間自己相関（Moran's I）
+
+::: {.callout-note}
+## なぜ空間相関を考慮しなければならないのか（初心者向けの直感）
+- **近くの地域は似やすい**: 生活圏・行政サービス・産業構造・文化などが似るため、**値が空間的に連動**しやすい（例: 学力、所得、感染率）。
+- **独立性の仮定が壊れる**: 通常の回帰や t 検定は「観測が独立」を前提とします。空間相関があると **標準誤差が過小**になり、**有意になりすぎる（第Ⅰ種の過誤が増える）**ことがあります。
+- **空間交絡（spatial confounding）**: 立地や地理的条件と説明変数が重なり、**効果の解釈が歪む**ことがある。
+
+### どう対応する？（最初の一歩）
+1. **まずは測る**: Moran's I（全体）、Local Moran/LISA（局所）の指標で**空間自己相関の有無と場所**を把握。
+2. **重み行列を吟味**: Queen/Rook/k 近傍で**仮説に合う接続**を選び、感度分析を行う。
+3. **モデル化**（必要に応じて）:
+   - **空間ラグ/誤差モデル**（SAR/SEM）
+   - **地理加重回帰（GWR）**や**空間固定効果**（地区ダミー）
+   - **残差の空間相関**を抑える対策（例: 空間 HAC 標準誤差）
+:::
+
+```{r}
+#| label: moran_local
+#| dependson: [join_latest]
+dat_moran <- pref_map |>
+  filter(!is.na(eng_score))
+
+# 隣接（まず Queen）。孤立があれば k近傍で補完し、zero.policy を有効化
+nb <- spdep::poly2nb(dat_moran, queen = TRUE)
+deg <- spdep::card(nb)
+augmented <- FALSE
+if (any(deg == 0)) {
+  coords <- sf::st_coordinates(sf::st_centroid(dat_moran))
+  k <- 1
+  repeat {
+    nb_knn <- spdep::knn2nb(spdep::knearneigh(coords, k = k))
+    nb <- spdep::union.nb(nb, nb_knn)
+    if (all(spdep::card(nb) > 0) || k >= 8) break
+    k <- k + 1
+  }
+  augmented <- TRUE
+}
+lw <- spdep::nb2listw(nb, style = 'W', zero.policy = TRUE)
+
+# グローバル Moran（孤立許容）
+moran_res <- spdep::moran.test(dat_moran$eng_score, lw, zero.policy = TRUE)
+moran_res
+
+# ローカル Moran（孤立許容）
+loc <- spdep::localmoran(dat_moran$eng_score, lw, zero.policy = TRUE)
+dat_moran$Ii <- loc[, 'Ii']
+
+if (augmented) message('[注意] 隣接に孤立があったため、k近傍で補完しました。')
+
+ggplot(dat_moran) +
+  geom_sf(aes(fill = Ii), color = 'white') +
+  scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red', midpoint = 0) +
+  theme_minimal() + labs(title = 'Local Moran’s I（最新年）')
+```
+
+## 表で要点を一目で把握（gt）
+
+### 年次の要約（見やすい表）
+```{r}
+#| label: gt_year_summary
+#| dependson: [join_latest]
+summary_tbl |>
+  dplyr::select(year, mean_score, sd_score, avg_toeic, avg_eiken) |>
+  gt::gt() |>
+  gt::tab_header(
+    title = gt::md("**年次の要約（ダミー）**"),
+    subtitle = "平均・ばらつき・教師TOEIC・英検率の年次推移"
+  ) |>
+  gt::fmt_number(columns = c(mean_score, sd_score), decimals = 2) |>
+  gt::fmt_number(columns = c(avg_toeic), decimals = 0) |>
+  gt::fmt_percent(columns = c(avg_eiken), decimals = 1) |>
+  gt::cols_label(
+    year = "年",
+    mean_score = "平均スコア",
+    sd_score = "SD",
+    avg_toeic = "教師TOEIC（平均）",
+    avg_eiken = "英検率（平均）"
+  ) |>
+  gt::tab_style(
+    style = gt::cell_text(weight = "bold"),
+    locations = gt::cells_column_labels(everything())
+  ) |>
+  gt::opt_row_striping()
+```
+
+### グローバル Moran の要約（検定結果）
+```{r}
+#| label: gt_moran_global
+#| dependson: [moran_local]
+# moran_res は moran_local チャンクで作成済み
+moran_tbl <- tibble::tibble(
+  重み = if (exists("augmented") && isTRUE(augmented)) "Queen + kNN補完" else "Queen",
+  `Moran's I` = unname(moran_res$estimate[["Moran I statistic"]]),
+  期待値 = unname(moran_res$estimate[["Expectation"]]),
+  分散 = unname(moran_res$estimate[["Variance"]]),
+  `p値` = moran_res$p.value
+)
+
+moran_tbl |>
+  gt::gt() |>
+  gt::tab_header(title = gt::md("**グローバル Moran’s I 検定結果**")) |>
+  gt::fmt_number(columns = c(`Moran's I`, 期待値, 分散), decimals = 4) |>
+  gt::fmt_number(columns = c(`p値`), decimals = 4) |>
+  gt::data_color(
+    columns = c(`Moran's I`),
+    colors = scales::col_bin(palette = c("#74add1", "#fdae61", "#d73027"),
+                             domain = c(-1, 1), bins = c(-1, -0.2, 0.2, 1))
+  )
+```
+
+### LISA（ホット/コールドスポット上位）
+```{r}
+#| label: gt_lisa_top
+#| dependson: [moran_local]
+# ここで z と lag_z、および p 値を算出し、クラスタを作成
+z      <- as.numeric(scale(dat_moran$eng_score))
+lag_z  <- spdep::lag.listw(lw, z, zero.policy = TRUE)
+loc2   <- spdep::localmoran(dat_moran$eng_score, lw, zero.policy = TRUE)
+p_two  <- 2 * pnorm(-abs(loc2[, "Z.Ii"]))
+
+cluster <- ifelse(p_two >= 0.05, 'Not Sig',
+           ifelse(z>0 & lag_z>0, 'High-High',
+           ifelse(z<0 & lag_z<0, 'Low-Low',
+           ifelse(z>0 & lag_z<0, 'High-Low', 'Low-High'))))
+
+lisa_df <- dplyr::bind_cols(
+  dat_moran |> sf::st_drop_geometry() |> dplyr::select(pref_name, eng_score),
+  tibble::tibble(Ii = loc2[, "Ii"], Z = loc2[, "Z.Ii"], p_two = p_two, cluster = cluster)
+)
+
+hot_top <- lisa_df |>
+  dplyr::filter(cluster == 'High-High') |>
+  dplyr::arrange(dplyr::desc(Ii)) |>
+  dplyr::slice_head(n = 10)
+
+cold_top <- lisa_df |>
+  dplyr::filter(cluster == 'Low-Low') |>
+  dplyr::arrange(Ii) |>
+  dplyr::slice_head(n = 10)
+
+# 2つのテーブルを上下に表示
+hot_tbl <- hot_top |>
+  gt::gt() |>
+  gt::tab_header(title = gt::md("**LISA: High-High 上位10**")) |>
+  gt::fmt_number(columns = c(eng_score, Ii, Z, p_two), decimals = 3) |>
+  gt::cols_label(pref_name = "都道府県", eng_score = "スコア", Ii = "Local I", Z = "Z", p_two = "p(両側)") |>
+  gt::tab_style(style = gt::cell_text(weight = "bold"), locations = gt::cells_column_labels(everything())) |>
+  gt::opt_row_striping()
+
+cold_tbl <- cold_top |>
+  gt::gt() |>
+  gt::tab_header(title = gt::md("**LISA: Low-Low 上位10**")) |>
+  gt::fmt_number(columns = c(eng_score, Ii, Z, p_two), decimals = 3) |>
+  gt::cols_label(pref_name = "都道府県", eng_score = "スコア", Ii = "Local I", Z = "Z", p_two = "p(両側)") |>
+  gt::tab_style(style = gt::cell_text(weight = "bold"), locations = gt::cells_column_labels(everything())) |>
+  gt::opt_row_striping()
+
+list(hot_tbl, cold_tbl)
+```
+
+::: {.callout-note}
+### Moran's I の超入門
+- I>0: 似た値が近隣に集まる（正の自己相関）。I<0: 似ていない値が隣り合う（負の自己相関）。
+- p値は置換検定で評価。重み行列（queen/rook/k近傍）により結果が変わるので、仮説に合うWを選ぶ。
+:::
+
+# 時空間パネル：伸び率と施策前後差分
+
+本章では流れのみ示し、詳細は次章で扱います。
+
+```{r}
+# 伸び率（年ごとの対前年伸び率 %）
+growth <- pref_panel |>
+  arrange(pref_name, year) |>
+  group_by(pref_name) |>
+  mutate(growth_rate = 100 * (eng_score - lag(eng_score)) / lag(eng_score)) |>
+  ungroup()
+
+# 施策前後（例：2021年を境に平均差を計算）
+policy_year <- 2021
+prepost <- pref_panel |>
+  mutate(period = if_else(year <= policy_year, 'pre', 'post')) |>
+  group_by(pref_name, period) |>
+  summarise(mean_score = mean(eng_score, na.rm = TRUE), .groups = 'drop') |>
+  tidyr::pivot_wider(names_from = period, values_from = mean_score) |>
+  mutate(diff_post_pre = post - pre)
+
+map_diff <- pref_sf |>
+  left_join(prepost, by = 'pref_name')
+
+ggplot(map_diff) +
+  geom_sf(aes(fill = diff_post_pre), color = 'white') +
+  scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red', midpoint = 0, name = '差分（post-pre）') +
+  theme_minimal() + labs(title = paste0('施策前後差分（境界年=', policy_year, '）'))
+```
+
+# （任意）インタラクティブ地図（leaflet；eval=FALSE）
+
+```{r}
+#| label: leaflet_demo
+#| eval: false
+pacman::p_load(leaflet)
+pal <- leaflet::colorBin('Blues', domain = pref_map$eng_score, bins = 5)
+leaflet::leaflet(pref_map) |>
+  leaflet::addProviderTiles(leaflet::providers$CartoDB.Positron) |>
+  leaflet::addPolygons(fillColor = ~pal(eng_score), color = '#777', weight = 1,
+              popup = ~paste0(pref_name, '<br>Score: ', eng_score)) |>
+  leaflet::addLegend(pal = pal, values = ~eng_score, title = '英語スコア')
+```
+
+::: {.callout-note}
+### トラブルシューティング（初心者向け）
+- regions with no neighbours: 孤立ノード。k近傍でkを増やす、または距離閾値で接続。
+- 文字化け/フォント: `_quarto.yml` のフォント設定を見直す（Noto系を推奨）。
+- 結合でNAが多い: 名寄せ（`norm_pref()`）や辞書置換を追加。`anti_join`でミスを特定。
+- CRS不一致: `st_crs()`で確認し、`st_transform()`で揃える。測地/投影の使い分けに注意。
+:::
+
+::: {.callout-tip}
+この入門編では、**形状の取得→結合→コロプレス→パネル整形**までを駆け足で体験しました。空間自己相関や施策前後差分などの発展内容は**次章**で扱います。
+:::
+
+::: {.callout-note}
+## 次の一歩（応用編の前に“さわり”を押さえる）
+本入門では基礎を通し稼働確認まで行いました。**第15章（応用）ではより実務的な深掘り**を行いますが、橋渡しのためにここで概要と“最小コードの雛形（eval: false）”を示します。
+
+### 1) 実データの空間自己相関（グローバル/ローカル）
+- **ねらい**: 観測値の空間的まとまりを定量化し、どこで集積/分散が起きているか把握。
+- **指標**: グローバル Moran’s I、ローカル Moran（LISA）。
+- **注意**: 重み行列（Queen/Rook/k）で結果が変わるため**感度分析**を実施。
+
+```{r}
+#| eval: false
+# （雛形）最新年データで LISA を描く
+nb_q <- spdep::poly2nb(pref_map, queen = TRUE)
+lw_q <- spdep::nb2listw(nb_q, style = 'W', zero.policy = TRUE)
+loc  <- spdep::localmoran(pref_map$eng_score, lw_q, zero.policy = TRUE)
+Ii   <- loc[, 'Ii']  # ローカル統計
+```
+
+### 2) 空間ラグ/空間誤差モデル（SAR/SEM）の導入
+- **課題**: 通常回帰の独立性仮定が壊れると、推定や有意性判定が歪む恐れ。
+- **対策**: **SAR（空間ラグ）**: 目的変数の空間ラグを明示的に組み込む。**SEM（空間誤差）**: 誤差項の空間相関をモデル化。
+- **実装**: `spatialreg` パッケージ（`lagsarlm()`, `errorsarlm()`）。
+
+```{r}
+#| label: sar_sem_demo
+#| dependson: [join_latest]
+#| eval: false
+# install.packages('spatialreg')
+# 入門データに存在する予測子を使用（teacher_toeic, eiken_rate）。
+nb_q <- spdep::poly2nb(pref_map, queen = TRUE)
+lw_q <- spdep::nb2listw(nb_q, style = 'W', zero.policy = TRUE)
+
+SAR <- spatialreg::lagsarlm(
+  eng_score ~ scale(teacher_toeic) + scale(eiken_rate),
+  data = pref_map, listw = lw_q, zero.policy = TRUE, na.action = na.exclude
+)
+SEM <- spatialreg::errorsarlm(
+  eng_score ~ scale(teacher_toeic) + scale(eiken_rate),
+  data = pref_map, listw = lw_q, zero.policy = TRUE, na.action = na.exclude
+)
+summary(SAR); summary(SEM)
+```
+
+> **どちらを選ぶ？** 目的変数そのものが周辺に引きずられる理屈が強いなら **SAR**、未観測要因が空間的に漏れ込むなら **SEM** を優先。情報量基準（AIC）や残差診断も併用。
+
+### 3) 施策前後差分の可視化と簡易検定
+- **可視化**: `post-pre` の差分地図（すでに実装済）。
+- **統計**: まずは**置換検定**や**ランダム化推論**で頑健に差の有無を確認。
+
+```{r}
+#| eval: false
+# （雛形）単純化した置換検定（pref ごとに post-pre の平均差）
+set.seed(123)
+diff_vec <- prepost$diff_post_pre
+B <- 5000
+T0 <- mean(diff_vec, na.rm = TRUE)
+perm_T <- replicate(B, mean(sample(diff_vec, replace = FALSE), na.rm = TRUE))
+p_perm <- mean(abs(perm_T) >= abs(T0))
+```
+
+> **注意**: 真の施策割当が空間的に偏っていれば**空間的交絡**に要注意。実務では DID + 空間固定効果や、マッチング＋空間 SE を検討。
+
+### 4) 重み行列パラメータの調整と感度分析
+- **論点**: k を 4→6→8 と変えたときに Moran や回帰の結果が頑健か？
+
+```{r}
+#| eval: false
+# k 近傍の感度分析：重心ではなく代表点（point_on_surface）を使って警告を回避
+coords <- sf::st_coordinates(sf::st_point_on_surface(sf::st_geometry(pref_sf)))
+for (k in c(4,6,8)) {
+  nbk <- spdep::knn2nb(spdep::knearneigh(coords, k = k))
+  lwk <- spdep::nb2listw(nbk, style = 'W')
+  mt  <- spdep::moran.test(pref_map$eng_score, lwk)
+  cat('k =', k, ' Moran I =', unname(mt$estimate[["Moran I statistic"]]), '\n')
+}
+```
+
+### 5) 時系列の平滑化（時空間の“ノイズ落とし”）
+- **目的**: 年次のばらつきを**移動平均**等で平滑化し傾向を把握。
+
+```{r}
+#| eval: false
+pref_panel |>
+  arrange(pref_name, year) |>
+  group_by(pref_name) |>
+  mutate(eng_ma3 = zoo::rollmean(eng_score, k = 3, fill = NA, align = 'right')) |>
+  ungroup() |> 
+  gt::gt() |>
+  gt::tab_header(title = gt::md("**3年移動平均の例（ダミー）**"))
+```
+
+> **実務Tips**: 平滑化だけで結論づけない。平滑化前後の**双方**を提示し、解釈の透明性を確保。
+:::
+---

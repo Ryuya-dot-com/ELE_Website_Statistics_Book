@@ -1,0 +1,918 @@
+---
+title: "メタ分析"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+description: "英語教育の事例で始める metafor によるメタ分析"
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# イントロダクション
+
+本章では、R の `metafor` を用いて、効果量の計算（Hedges g）、ランダム効果モデル（REML）、異質性評価（Q, tau^2, I^2）、出版バイアス（Funnel/Egger）、サブグループ/メタ回帰、ロバスト分散（clubSandwich）の一連の流れを、英語教育（EFL/ESL）を想定したダミーデータで体験します。
+
+::: {.callout-tip}
+## この章の読み方（初心者向け）
+- まず「2群平均→Hedges g→ランダム効果」の最小ワークフローを実行。
+- 次に「出版バイアス」「サブグループ/メタ回帰」「ロバスト分散」を段階的に追加。
+- 用語（tau^2, I^2 など）は「読み取り方」に絞って解説。数式は文献に譲ります。
+:::
+
+::: {.callout-tip}
+### Quick workflow（超短縮）
+1. 効果量タイプを決める（連続=SMD/MD、二値=logOR/logRR、相関=z）。
+2. `escalc()` で `yi/vi` を作る（向きは正=介入有利）。
+3. `rma(..., method="REML")` を適合し、`estimate / tau^2 / I^2 / k` を読む。
+4. `forest()` と `funnel()`、`regtest()` で可視化・出版バイアスを点検。
+5. 必要に応じてモデレーター（`mods=~`）とロバスト分散（clubSandwich）。
+:::
+
+::: {.callout-tip}
+### Plot labels
+All figures use English labels to avoid mojibake. Japanese reading guides are provided in the text nearby.
+:::
+
+::: {.callout-note}
+### 用語ミニ辞典（最小セット）
+- 効果量（effect size）：研究間で比較できるように統一した差の尺度（MD/SMD など）。
+- `yi/vi`：各研究の効果量（yi）とその分散（vi）。メタ分析の入力。
+- tau^2 / I^2：研究間のばらつき（分散）と、その割合（%）。
+- 固定効果/ランダム効果：真の効果が1つか（固定）、研究ごとに分布か（ランダム）。
+- 出版バイアス：有意な結果が公表されやすい偏り。ファンネル/ Eggerで点検。
+- モデレーター：効果を左右しうる要因（教育段階、介入週数など）。
+:::
+
+::: {.callout-tip}
+## 関連章へのリンク
+効果量の直観や個別の計算例は「`1_T検定と効果量.qmd`」も参照してください（Cohen's d などの基礎を解説）。本章ではメタ分析で必要な効果量の統一と読み方に焦点を当てます。
+:::
+
+# 効果量の基礎（種類と選び方）
+
+メタ分析では、研究間で指標が異なっても比較できるように「効果量」を統一します。連続・二値・相関といったアウトカム別に、代表的な効果量と `metafor::escalc()` の指定例を示します。
+
+::: {.callout-note}
+### まず決める3点
+- 方向の定義：何が「有利（正）」かを明確に（本章では介入有利=正）。
+- アウトカムの型：連続（平均・SD）/二値（成功数）/相関（r）。
+- 効果量の型：MD/SMD（連続）、log(OR)/log(RR)/RD（二値）、Fisher z（相関）。
+:::
+
+## 連続アウトカム
+
+- MD（Mean Difference）：単位が共通（点数など）の場合に使う。解釈が直感的。
+- SMD（Standardized Mean Difference；Hedges g）：尺度が異なる研究を混ぜる際に使う。小標本補正Jを含むのがHedges g（`measure = "SMDH"`）。
+
+```{r}
+#| label: escalc-continuous
+#| eval: false
+library(metafor)
+dat <- data.frame(
+  m1 = c(78, 70), sd1 = c(10, 9), n1 = c(40, 30),  # 介入
+  m2 = c(70, 68), sd2 = c(11, 8), n2 = c(38, 32)   # 統制
+)
+
+# 平均差（MD）
+es_md  <- escalc(measure = "MD",   m1i=m1, sd1i=sd1, n1i=n1, m2i=m2, sd2i=sd2, n2i=n2, data=dat)
+
+# 標準化平均差（Hedges g）
+es_smd <- escalc(measure = "SMDH", m1i=m1, sd1i=sd1, n1i=n1, m2i=m2, sd2i=sd2, n2i=n2, data=dat)
+head(es_md[, c("yi","vi")]); head(es_smd[, c("yi","vi")])
+```
+
+## 二値アウトカム
+
+- 相対リスク（RR）、オッズ比（OR）、リスク差（RD）などを使用。モデルは通常、logスケールの効果量（logRR, logOR）を扱い、必要なら指数変換して報告します。
+
+```{r}
+#| label: escalc-binary
+#| eval: false
+library(metafor)
+dat <- data.frame(
+  tpos = c(30, 25), tneg = c(10, 15),  # 介入群：成功/失敗
+  cpos = c(20, 18), cneg = c(20, 22)   # 統制群：成功/失敗
+)
+
+es_or <- escalc(measure = "OR", ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat)  # yi=log(OR)
+es_rr <- escalc(measure = "RR", ai=tpos, bi=tneg, ci=cpos, di=cneg, data=dat)  # yi=log(RR)
+exp(cbind(OR = es_or$yi, RR = es_rr$yi))  # 指数で OR/RR に戻す
+```
+
+## 相関アウトカム
+
+- 相関係数rは分散が非対称のため、Fisherのz変換を用います（yi=z, vi≈1/(n-3)）。
+
+```{r}
+#| label: escalc-correlation
+#| eval: false
+library(metafor)
+dat <- data.frame(r = c(.20, .35, .10), n = c(80, 120, 60))
+es_z <- escalc(measure = "ZCOR", ri = r, ni = n, data = dat)  # yi=Fisher z, vi=1/(n-3)
+head(es_z[, c("yi","vi")])
+# 結果を r に戻す: r = tanh(yi)
+```
+
+::: {.callout-tip}
+### 使い分けの目安
+- 同一尺度のテスト得点のみ → MD。異なる尺度が混在 → SMD（Hedges g）。
+- 二値（合否など） → log(OR)/log(RR)。
+- 関連の強さ（相関） → Fisher z。
+:::
+
+# 固定効果 vs ランダム効果（最小の直観）
+
+- 固定効果：全研究が同一の真値を共有すると仮定。重み=1/vi。研究が同質である前提。
+- ランダム効果：研究ごとに真値が分布（研究間分散 tau^2）。重み=1/(vi+tau^2)。通常はこちらを既定に。
+
+::: {.callout-note}
+### 異質性の指標
+- Q：観測効果量のばらつきの大きさ。
+- tau^2：研究間分散（推定法：REML, DL, Paule–Mandel など）。
+- I^2：観測ばらつきのうち、真の差に起因する割合（%）。
+:::
+
+# セットアップ
+
+```{r}
+#| label: setup
+if (!requireNamespace("metafor", quietly = TRUE)) {
+  stop("パッケージ 'metafor' が必要です。install.packages('metafor') を実行してください。")
+}
+library(metafor)
+set.seed(1234)
+```
+
+# データのシミュレーション（英語教育）
+
+想定：介入群（明示的指導）と統制群（通常授業）の2群比較を行った研究が30件。アウトカムは英作文スコア。研究ごとに母平均差と分散が異なり、介入期間（週数）と教育段階（中等/高等）をモデレーターとして付与します。正の効果量は「介入が有利」を意味します。
+
+```{r}
+#| label: simulate
+n_study <- 30
+study_id <- sprintf("Study_%02d", 1:n_study)
+
+# モデレーター
+level <- sample(c("secondary","tertiary"), n_study, replace = TRUE, prob = c(0.6, 0.4))
+duration <- sample(4:16, n_study, replace = TRUE)  # 介入週数
+year <- sample(2010:2024, n_study, replace = TRUE)  # 公表年（可視化に利用）
+
+# 真の効果（ランダム効果）：ベース 0.35、大学 +0.10、週数 0.01/週、研究間分散 tau^2=0.04
+tau <- sqrt(0.04)
+theta <- 0.35 + ifelse(level=="tertiary", 0.10, 0) + 0.01*(duration-10) + rnorm(n_study, 0, tau)
+
+# 各研究のサンプルサイズと集計量
+set.seed(5678)
+n1 <- sample(25:60, n_study, replace = TRUE)  # 介入
+n2 <- sample(25:60, n_study, replace = TRUE)  # 統制
+sd_pooled <- runif(n_study, 8, 15)
+
+m2 <- rnorm(n_study, 70, 8)
+m1 <- m2 + theta * sd_pooled
+sd1 <- sd_pooled * runif(n_study, .9, 1.1)
+sd2 <- sd_pooled * runif(n_study, .9, 1.1)
+
+raw <- data.frame(study_id, level, duration, year, m1, sd1, n1, m2, sd2, n2)
+
+# 効果量（Hedges g）と分散（vi）
+es <- escalc(
+  measure = "SMDH",
+  m1i = m1, sd1i = sd1, n1i = n1,
+  m2i = m2, sd2i = sd2, n2i = n2,
+  data = raw
+)
+
+dat <- cbind(raw, yi = es$yi, vi = es$vi)
+
+dir.create("data/meta", recursive = TRUE, showWarnings = FALSE)
+utils::write.csv(dat, "data/meta/effects_simulated.csv", row.names = FALSE)
+head(dat)
+```
+
+::: {.callout-note}
+### ここでの前提と符号
+- Hedges g（SMDH）は平均差を標準偏差で割った標準化効果量（小標本補正込み）。
+- 正の効果は「介入の平均が統制より高い」= 介入有利。
+- 実務では効果の向き（正/負）を定義し、データ整形段階で統一します。
+:::
+
+# ランダム効果モデル（REML）
+
+```{r}
+#| label: reml
+m <- rma(yi, vi, data = dat, method = "REML")
+summary(m)
+```
+
+::: {.callout-tip}
+### 読み取り方（最小）
+- `estimate`（平均効果）が正なら介入有利。（g で 0.2/0.5/0.8 ≈ 小/中/大）
+- `tau^2` は研究間分散、`I^2` は異質性の割合（25/50/75% ≈ 小/中/大）。
+- ランダム効果（REML）は研究間のばらつきを考慮した代表的推定法です。
+:::
+
+::: {.callout-warning}
+### 初心者のつまずきポイント（要確認）
+- 95%CI が 0 をまたぐ → 「差があると言い切れない」が、効果の大きさ自体は報告する。
+- 大きな I^2 → ばらつきが大きい。サブグループやメタ回帰で理由を探索。
+- p値のみに依存 → 効果量とCI、実質的な意味（教育的妥当性）も併記。
+:::
+
+# 可視化（フォレスト、ファンネル、Egger）
+
+```{r}
+#| label: plots
+par(mfrow = c(1,2))
+forest(m, slab = dat$study_id, xlab = "Hedges g", refline = 0)
+title("Forest plot", line = 1)
+funnel(m, xlab = "Hedges g")
+title("Funnel plot", line = 1)
+par(mfrow = c(1,1))
+
+# Egger検定（漏斗非対称の回帰）
+regtest(m, model = "rma")
+```
+
+::: {.callout-tip}
+### Plot labels
+To avoid mojibake, all plot labels/titles are in English. The narrative here explains how to read them in Japanese.
+:::
+
+> 読み方の要点：
+> - Forest plot: 各研究の推定値（点）と95%CI（横線）。縦線0より右が介入有利。総合効果（菱形/下部）が主結果。
+> - Funnel plot: 左右対称なら出版バイアスが小さい可能性。非対称の場合、Egger検定や補助手法で判断を補強します。
+
+::: {.callout-note}
+### 出版バイアスの注意
+- Egger検定は点数が少ないと不安定。補助的に使い、判断は複数の根拠で。
+- `trimfill(m)` による調整推定や、事前登録データの活用も検討。
+:::
+
+# サブグループ分析とメタ回帰
+
+```{r}
+#| label: moderators
+# サブグループ（教育段階）
+m_grp <- rma(yi, vi, mods = ~ 0 + factor(level), data = dat, method = "REML")
+summary(m_grp)
+
+# メタ回帰（連続モデレーター：duration）
+m_reg <- rma(yi, vi, mods = ~ scale(duration), data = dat, method = "REML")
+summary(m_reg)
+```
+
+::: {.callout-tip}
+### 読み取り方（モデレーター）
+- サブグループ：`factor(level)secondary` と `factor(level)tertiary` が各群の平均効果。
+- メタ回帰：`scale(duration)` の正の係数は「週数が長いほど効果増」を示唆（標準化単位）。
+- モデレーターは観測研究では交絡の可能性。解釈は慎重に。
+:::
+
+# ロバスト分散推定（clubSandwich, 例）
+
+```{r}
+#| label: robust
+if (requireNamespace("clubSandwich", quietly = TRUE)) {
+  library(clubSandwich)
+  cs <- coef_test(m, vcov = "CR2", cluster = dat$study_id)
+  cs
+}
+```
+
+::: {.callout-note}
+### いつロバストが必要？
+- 同一研究から複数効果量を抽出した場合（非独立）。クラスタ=研究IDで `CR2` を用いると頑健。
+- 本デモは1研究=1効果量なので差は小さいはず。多効果量では `rma.mv` など多層モデルも検討。
+:::
+
+# 影響度の確認（外れ/影響点）
+
+```{r}
+#| label: influence
+inf <- influence(m)
+plot(inf)
+```
+
+# 可視化の拡張（診断・モデレーター・時系列）
+
+::: {.callout-tip}
+### Plot labels
+以下の図も英語ラベルで描画しています（文字化け回避のため）。直後に日本語で解説を付しています。
+:::
+
+より深く理解・報告するための追加可視化を紹介します（すべて `metafor` で実行可能）。
+
+::: {.callout-note}
+### 図の読み取り（最小の流れ）
+1. Forest: 研究ごとの点と横線（95%CI）→ 総合効果の位置と幅を確認。
+2. Funnel: 左右対称性 → 非対称なら出版バイアス等を追加点検。
+3. Baujat / Radial: 影響の大きい研究・外れ値を把握 → 感度分析へ。
+4. サブグループ / メタ回帰: ばらつきの理由を仮説検証。
+:::
+
+## Baujatプロット（影響度×不均一性）
+
+```{r}
+#| label: viz-baujat
+baujat(m)
+```
+
+> 読み方：右上（influence, heterogeneity ともに大）の研究は、結果に強い影響を持つ可能性があり、感度分析での確認対象になります。
+
+## Radial（Galbraith）プロット
+
+```{r}
+#| label: viz-radial
+radial(m)
+```
+
+> 読み方：中心から離れた点や回帰線から大きく外れた点は要注意。測定誤差やデータ入力の確認候補になります。
+
+## サブグループ別フォレスト
+
+```{r}
+#| label: viz-forest-subgroup
+par(mfrow = c(1,2))
+forest(rma(yi, vi, data = subset(dat, level == "secondary"), method = "REML"),
+       slab = subset(dat, level == "secondary")$study_id, xlab = "Hedges g", main = "secondary")
+forest(rma(yi, vi, data = subset(dat, level == "tertiary"),  method = "REML"),
+       slab = subset(dat, level == "tertiary")$study_id,  xlab = "Hedges g", main = "tertiary")
+par(mfrow = c(1,1))
+```
+
+> 読み方：群ごとの効果の大きさや一貫性を視覚的に比較します。群内でCIが広い/狭い、総合効果の相違などを確認します。
+
+## バブルプロット（メタ回帰の可視化）
+
+```{r}
+#| label: viz-bubble
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  library(ggplot2)
+  # 予測線（メタ回帰）
+  xseq <- seq(min(dat$duration), max(dat$duration), length.out = 50)
+  # 学習データの中心・尺度を用いて xseq を標準化
+  sc_dur <- scale(dat$duration)
+  xseq_scaled <- (xseq - attr(sc_dur, "scaled:center")) / attr(sc_dur, "scaled:scale")
+  pred <- predict(m_reg, newmods = xseq_scaled)
+  df_pred <- data.frame(
+    duration = xseq,
+    pred = as.numeric(pred$pred),
+    ci.lb = as.numeric(pred$ci.lb),
+    ci.ub = as.numeric(pred$ci.ub)
+  )
+  ggplot(dat, aes(x = duration, y = yi)) +
+    geom_point(aes(size = 1/sqrt(vi)), alpha = .6) +
+    geom_line(data = df_pred, aes(x = duration, y = pred), color = "#2c3e50", linewidth = 1, inherit.aes = FALSE) +
+    geom_ribbon(data = df_pred, aes(x = duration, ymin = ci.lb, ymax = ci.ub), fill = "#2c3e50", alpha = .15, inherit.aes = FALSE) +
+    scale_size_continuous(name = "precision (1/SE)") +
+    labs(x = "Intervention duration (weeks)", y = "Hedges g", title = "Meta-regression bubble plot") +
+    theme_minimal()
+}
+```
+
+> 読み方：点の大きさは精度（1/SE）。線は予測、帯は95%CI。右上がりならモデレーター（週数）の増加で効果が高まる傾向を示します。
+
+## 累積メタ分析（年順）
+
+```{r}
+#| label: viz-cumulative
+o <- order(dat$year, dat$study_id)
+mc <- cumul(m, order = o)
+forest(mc, xlab = "Cumulative Hedges g", refline = 0)
+```
+
+> 読み方：早期の研究に左右されていないか、年を追って効果が安定していくか（あるいは変動するか）を確認します。
+
+## コンター補強ファンネルと trim-and-fill
+
+```{r}
+#| label: viz-funnel-advanced
+funnel(m, xlab = "Hedges g", level = c(90, 95, 99))  # コンター補強
+
+# trim-and-fill 比較
+tf <- trimfill(m)
+par(mfrow = c(1,2))
+funnel(m,  main = "Observed")
+funnel(tf, main = "Trim-and-fill")
+par(mfrow = c(1,1))
+```
+
+> 読み方：コンター（有意帯）で「どの領域に点が集まるか」を確認しやすくします。trim-and-fill は欠測を仮補完した場合の推定差を比較する探索的手法です。
+
+## Leave-one-out（感度）
+
+```{r}
+#| label: viz-leave1out
+loo <- leave1out(m)
+df_loo <- as.data.frame(loo)
+df_loo$study <- dat$study_id
+df_loo$idx <- seq_len(nrow(df_loo))
+
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  library(ggplot2)
+  ggplot(df_loo, aes(x = idx, y = estimate)) +
+    geom_hline(yintercept = as.numeric(coef(m)), linetype = "dashed", color = "gray50") +
+    geom_errorbar(aes(ymin = ci.lb, ymax = ci.ub), width = 0.2, color = "#2c3e50", alpha = .6) +
+    geom_point(color = "#e31a1c", size = 2) +
+    scale_x_continuous(breaks = df_loo$idx, labels = df_loo$study) +
+    labs(x = "Left-out study", y = "Leave-one-out estimate (Hedges g)",
+         title = "Leave-one-out sensitivity") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8))
+} else {
+  plot(df_loo$idx, df_loo$estimate, pch = 19, col = "#e31a1c",
+       xlab = "Left-out study", ylab = "Leave-one-out estimate (Hedges g)", xaxt = "n")
+  segments(x0 = df_loo$idx, y0 = df_loo$ci.lb, x1 = df_loo$idx, y1 = df_loo$ci.ub,
+           col = adjustcolor("#2c3e50", alpha.f = 0.6))
+  abline(h = as.numeric(coef(m)), lty = 2, col = "gray50")
+  axis(1, at = df_loo$idx, labels = df_loo$study, las = 2, cex.axis = 0.6)
+}
+```
+
+> 読み方：各研究を除外した場合の総合効果の変動を可視化。大きく動く研究は結果への寄与が大きい可能性があります。
+
+::: {.callout-tip}
+### さらに発展（計算コストに注意）
+- GOSHプロット（`gosh(m)`）で多様な包含セットの分布を可視化（計算が重い）。
+- Orchardプロット（要 `orchard` パッケージ）で効果量と不確実性を直感的に表示。
+:::
+
+# Network Meta-Analysis (NMA)
+
+When comparing more than two interventions (e.g., CTRL, GLOSS, WRIT, SRS), network meta-analysis combines direct and indirect evidence under consistency. We use `netmeta` (frequentist) with standardized mean differences (SMD).
+
+::: {.callout-note}
+### Assumptions (quick)
+- Consistency: direct and indirect estimates agree statistically.
+- Transitivity: studies are comparable in baseline characteristics and effect modifiers.
+- Multi-arm correlations are handled by `netmeta::pairwise()`.
+:::
+
+::: {.callout-note}
+### NMA 用語ミニ辞典
+- Direct / Indirect: 直接比較 / 間接比較（共通の比較対象を介した推定）。
+- Consistency: direct と indirect が統計的に整合。
+- League table: 全組合せの相対効果表（行 vs 列）。
+- P-score: 「よさ」の高低（0〜1）。ランキング指標の一種。
+:::
+
+```{r}
+#| label: nma-setup
+if (!requireNamespace("netmeta", quietly = TRUE)) {
+  stop("Package 'netmeta' is required. Please install.packages('netmeta')")
+}
+library(netmeta)
+set.seed(2025)
+```
+
+## Simulated multi-arm trials (continuous outcome)
+
+```{r}
+#| label: nma-simulate
+treatments <- c("CTRL","GLOSS","WRIT","SRS")
+true_delta <- c(CTRL = 0.00, GLOSS = 0.25, WRIT = 0.45, SRS = 0.60) # vs CTRL in SMD units
+
+make_study <- function(id, arms = sample(2:3, 1)){
+  tr <- sample(treatments, arms, replace = FALSE)
+  n  <- sample(30:80, arms, replace = TRUE)
+  sd <- runif(arms, 8, 14)
+  base <- rnorm(1, 70, 6)
+  mu <- sapply(tr, function(t) base + true_delta[t] * mean(sd))
+  data.frame(study = sprintf("NMA_%02d", id), treat = tr, n = n,
+             mean = mu + rnorm(arms, 0, 1.0), sd = sd)
+}
+
+studies <- do.call(rbind, lapply(1:16, make_study))
+studies$arm <- ave(studies$treat, studies$study, FUN = seq_along)
+
+library(tidyr); library(dplyr)
+wide <- studies |>
+  pivot_wider(names_from = arm, values_from = c(treat, n, mean, sd), names_sep = "") |>
+  arrange(study)
+head(wide)
+```
+
+## Fit NMA (SMD, REML)
+
+```{r}
+#| label: nma-fit
+pw <- pairwise(treat = list(treat1, treat2, treat3),
+               mean  = list(mean1,  mean2,  mean3),
+               sd    = list(sd1,    sd2,    sd3),
+               n     = list(n1,     n2,     n3),
+               data = wide,
+               studlab = study,
+               sm = "SMD")
+
+net <- netmeta(TE, seTE, treat1, treat2, studlab, data = pw,
+               sm = "SMD", method.tau = "REML",
+               reference.group = "CTRL", random = TRUE)
+summary(net)
+```
+
+## Network graph and summary vs CTRL
+
+```{r}
+#| label: nma-graphs
+netgraph(net, number.of.studies = TRUE, points = TRUE,
+         plastic = FALSE, thickness = "se.random", cex.points = 1.1,
+         col.points = "#2c3e50", col = "#2c3e50",
+         cex = 1.0, multiarm = TRUE)
+
+forest(net, ref = "CTRL", xlab = "SMD (Hedges g)")
+```
+
+> 読み方：ネットワーク図は比較の有無と精度（線の太さ）を表示。Forestは基準（CTRL）に対する平均効果と95%CIを示します。
+
+## League table and ranking
+
+```{r}
+#| label: nma-league
+L <- netleague(net, digits = 2, bracket = "(", separator = " to ")
+L  # nicely printed in console
+
+if (requireNamespace("gt", quietly = TRUE)) {
+  library(gt)
+  # Use the random-effects league matrix directly
+  Lm <- as.data.frame(L$random)
+  Lm <- cbind(comp = rownames(Lm), Lm)
+  gt(Lm) |>
+    tab_header(title = "League table (SMD): row vs column") |>
+    tab_options(table.font.size = px(14))
+}
+```
+
+```{r}
+#| label: nma-rank
+rk <- netrank(net, small.values = "good")
+rk
+```
+
+> 読み方：リーグ表は全組合せの相対効果、`netrank` はP-scoresによるランキングを返します。
+
+```{r}
+#| label: nma-rank-plot
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  library(ggplot2)
+  psvec <- if (!is.null(rk$Pscore.random)) rk$Pscore.random else rk$Pscore
+  df_rank <- data.frame(treatment = names(psvec), Pscore = as.numeric(psvec))
+  ggplot(df_rank, aes(x = reorder(treatment, Pscore), y = Pscore)) +
+    geom_col(fill = "#2c3e50") +
+    coord_flip() +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    labs(title = "Treatment ranking (P-score)", x = "Treatment", y = "P-score") +
+    theme_minimal()
+}
+```
+
+> 読み方：P-score は0〜1（0%〜100%）の指標で、高いほど有利。差が小さい場合は実質差がない可能性も考慮します。
+
+## Compact NMA summary table (vs CTRL + P-score)
+
+```{r}
+#| label: nma-summary-gt
+if (requireNamespace("gt", quietly = TRUE)) {
+  library(gt)
+  # Extract numeric effects vs CTRL from the model object
+  TE_mat <- net$TE.random  # numeric matrix [row vs col]
+  ref <- "CTRL"
+  tr_all <- rownames(TE_mat)
+  keep <- setdiff(tr_all, ref)
+  effects <- data.frame(
+    treatment = keep,
+    TE = as.numeric(TE_mat[keep, ref]),
+    stringsAsFactors = FALSE
+  )
+  # Merge with P-scores (prefer random-effects P-scores when available)
+  if (exists("rk")) {
+    if (!is.null(rk$Pscore.random)) {
+      ps <- data.frame(treatment = names(rk$Pscore.random), Pscore = as.numeric(rk$Pscore.random))
+      effects <- merge(effects, ps, by = "treatment", all.x = TRUE)
+    } else if (!is.null(rk$Pscore)) {
+      ps <- data.frame(treatment = names(rk$Pscore), Pscore = as.numeric(rk$Pscore))
+      effects <- merge(effects, ps, by = "treatment", all.x = TRUE)
+    }
+  }
+  effects <- effects[order(-effects$Pscore), ]
+  gt(effects) |>
+    tab_header(title = "NMA summary: effect vs CTRL (SMD) and P-score") |>
+    fmt_number(columns = c(TE, Pscore), decimals = 3) |>
+    tab_options(table.font.size = px(14))
+}
+```
+
+> 読み方：正のTEはCTRLより有利。P-scoreは0〜1の範囲（大きいほど良い）。
+
+## Consistency checks (global / local)
+
+```{r}
+#| label: nma-consistency
+dd <- decomp.design(net)  # global design-by-treatment test
+dd
+ns <- netsplit(net)       # node-splitting (direct vs indirect)
+ns
+```
+
+> 読み方：pが小さい比較は前提の見直し（集団の違い、効果修飾因子）や感度分析が必要です。
+
+::: {.callout-warning}
+### Data-format pitfalls for NMA（よくある落とし穴）
+- Multi-arm trials: 3群以上の試験は1行にまとめ、arm1..k（treat/mean/sd/n, または event/n）で整形。腕を別行に分割しない。
+- Reference consistency: 参照群（CTRL）を誤って混在させない（ラベルの揺れを統一）。
+- Outcome scale: 連続はSMD/MD、二値はlogOR/logRR。報告時には元スケール（ORなど）に戻すと直観的。
+- Labeling: 文字化け防止のため図のラベルは英語、本文で日本語解説。
+:::
+
+```{r}
+#| label: nma-netsplit-plot
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  library(ggplot2)
+  # netsplit() returns a list; use direct/indirect (random) components
+  dr <- ns$direct.random
+  ir <- ns$indirect.random
+  if (!is.null(dr) && !is.null(ir)) {
+    d1 <- dr[, c("comparison", "TE")]; names(d1)[2] <- "TE.direct"
+    d2 <- ir[, c("comparison", "TE")]; names(d2)[2] <- "TE.indirect"
+    nsdf <- merge(d1, d2, by = "comparison", all = FALSE)
+    ggplot(nsdf, aes(x = TE.direct, y = TE.indirect, label = comparison)) +
+      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey60") +
+      geom_point(color = "#2c3e50", alpha = 0.7) +
+      labs(title = "Node-splitting: direct vs indirect",
+           x = "Direct estimate", y = "Indirect estimate") +
+      theme_minimal()
+  }
+}
+```
+
+> 読み方：点が対角線（direct=indirect）から大きく外れる比較は不整合の疑いがあります。
+
+## Comparison-adjusted funnel and inconsistency heat
+
+```{r}
+#| label: nma-funnel-heat
+# Comparison-adjusted funnel (small-study effects in NMA)
+# Requires a meaningful order of treatments; derive from P-scores (random) if available
+ord <- {
+  if (exists("rk") && !is.null(rk$Pscore.random)) {
+    names(sort(rk$Pscore.random, decreasing = TRUE))
+  } else if (exists("rk") && !is.null(rk$Pscore)) {
+    names(sort(rk$Pscore, decreasing = TRUE))
+  } else if (!is.null(net$seq)) {
+    net$seq
+  } else {
+    net$trts
+  }
+}
+funnel(net, order = ord)
+
+# Inconsistency heat plot
+netheat(net)
+```
+
+> 読み方：comparison-adjusted funnel はネットワーク全体の小規模研究バイアスを概観します。`netheat` は整合性の悪い箇所を熱図で示します（赤みが強いほど不整合）。
+
+## Save league and ranking (CSV)
+
+```{r}
+#| label: nma-export
+dir.create("data/meta", showWarnings = FALSE, recursive = TRUE)
+# Export league (random-effects matrix)
+try(utils::write.csv(L$random, "data/meta/nma_league.csv", row.names = TRUE))
+# Export ranking/P-scores (prefer random-effects P-scores)
+if (!is.null(rk$Pscore.random)) {
+  rkdf <- data.frame(treatment = names(rk$Pscore.random), Pscore = as.numeric(rk$Pscore.random))
+} else if (!is.null(rk$Pscore)) {
+  rkdf <- data.frame(treatment = names(rk$Pscore), Pscore = as.numeric(rk$Pscore))
+} else {
+  rkdf <- NULL
+}
+if (!is.null(rkdf)) try(utils::write.csv(rkdf, "data/meta/nma_ranking.csv", row.names = FALSE))
+```
+
+---
+
+# Network Meta-Analysis (binary outcome example)
+
+For binary outcomes (e.g., success/failure), use log odds ratio (logOR) or log risk ratio (logRR). Below is a small simulated example (OR; English labels in plots).
+
+```{r}
+#| label: nma-binary-sim
+set.seed(2026)
+treatments_b <- c("CTRL","GLOSS","WRIT","SRS")
+logOR_true <- c(CTRL = 0.00, GLOSS = 0.40, WRIT = 0.70, SRS = 0.90)  # vs CTRL
+
+make_study_bin <- function(id, arms = sample(2:3, 1)){
+  tr <- sample(treatments_b, arms, replace = FALSE)
+  n  <- sample(60:140, arms, replace = TRUE)
+  p0 <- plogis(rnorm(1, qlogis(0.45), 0.4))
+  p  <- sapply(tr, function(t) plogis(qlogis(p0) + logOR_true[t]))
+  ev <- rbinom(arms, size = n, prob = p)
+  data.frame(study = sprintf("BIN_%02d", id), treat = tr, n = n, event = ev)
+}
+
+studies_b <- do.call(rbind, lapply(1:14, make_study_bin))
+studies_b$arm <- ave(studies_b$treat, studies_b$study, FUN = seq_along)
+
+library(tidyr); library(dplyr)
+wide_b <- studies_b |>
+  pivot_wider(names_from = arm, values_from = c(treat, n, event), names_sep = "") |>
+  arrange(study)
+head(wide_b)
+```
+
+```{r}
+#| label: nma-binary-fit
+pw_b <- pairwise(treat = list(treat1, treat2, treat3),
+                 event = list(event1, event2, event3),
+                 n     = list(n1,     n2,     n3),
+                 data = wide_b,
+                 studlab = study,
+                 sm = "OR")
+
+net_b <- netmeta(TE, seTE, treat1, treat2, studlab, data = pw_b,
+                 sm = "OR", method.tau = "REML",
+                 reference.group = "CTRL", random = TRUE)
+summary(net_b)
+
+forest(net_b, ref = "CTRL", xlab = "log(OR) vs CTRL")
+```
+
+> 読み方：log(OR) > 0 は治療がCTRLより有利。報告時は `exp()` で OR に戻すと直感的です。
+
+# 結果の表（gt）
+
+```{r}
+#| label: tables-gt
+if (requireNamespace("gt", quietly = TRUE)) {
+  library(gt)
+  # モデル要約（抜粋）
+  summ <- data.frame(
+    estimate = m$b[,1], se = m$se, z = m$zval, p = m$pval,
+    ci_lb = m$ci.lb, ci_ub = m$ci.ub,
+    tau2 = m$tau2, I2 = m$I2, k = m$k
+  )
+  gt(summ) |>
+    tab_header(title = "ランダム効果モデル（REML）要約") |>
+    fmt_number(everything(), decimals = 3) |>
+    tab_options(table.font.size = px(14))
+
+  # 研究別の効果量（上位10）
+  top <- dat[order(-abs(dat$yi)), ][1:min(10, nrow(dat)), c("study_id","yi","vi","level","duration")]
+  gt(top) |>
+    tab_header(title = "効果量（|g|が大きい順 上位10）") |>
+    fmt_number(columns = c(yi, vi, duration), decimals = 3) |>
+    tab_options(table.font.size = px(14))
+} else {
+  head(dat[order(-abs(dat$yi)), c("study_id","yi","vi","level","duration")], 10)
+}
+```
+
+# 実データでも試す（任意：metafor 付属データ）
+
+`metafor` には練習用データが付属しています。例としてBCGワクチンの研究（`dat.bcg`）を相対リスクで統合するコードを紹介します（本章では詳細解説は割愛）。
+
+```{r}
+#| label: metafor-data
+#| eval: false
+data(dat.bcg, package = "metafor")
+dat.bcg <- escalc(measure = "RR", ai = tpos, bi = tneg, ci = cpos, di = cneg, data = dat.bcg)
+m_bcg <- rma(yi, vi, data = dat.bcg, method = "REML")
+summary(m_bcg)
+forest(m_bcg, slab = paste(dat.bcg$author, dat.bcg$year))
+funnel(m_bcg)
+```
+
+# 注意点とベストプラクティス
+
+- 効果量の向き（正/負）を定義し、データ整形段階で統一する。
+- ランダム効果（REML）を既定としつつ、感度分析として推定法や固定効果を比較。
+- 研究間の非独立性（多効果量）では、RVE（clubSandwich）や多層モデル（`rma.mv`）を検討。
+- 出版バイアスは複数の指標・可視化で判断（Egger, trim-and-fill, p-curve等）。
+- 透明性：事前登録（プロトコル）、PRISMA準拠のレポート、データ共有を推奨。
+
+::: {.callout-tip}
+## レポート書式（最小テンプレ）
+- Pairwise meta-analysis: “Hedges g = 0.42, 95% CI [0.18, 0.66], tau^2 = 0.03, I^2 = 48%, k = 30; Egger p = .12.”
+- NMA (vs CTRL): “WRIT vs CTRL: SMD = 0.48 [0.22, 0.74]; P-score = 0.82. Global inconsistency: p = .21; key nodes consistent by netsplit.”
+（効果方向の定義と実質的含意を短く添えると親切です）
+:::
+
+::: {.callout-tip}
+## 最終チェックリスト（初心者向け）
+- 方向の定義（正=介入有利）と尺度（SMD/MD/logORなど）は明記したか？
+- 図は英語ラベルで描画し、本文で日本語の読み方を説明したか？
+- 効果量と95%CI、tau^2/I^2、kを報告したか？（p値に依存しすぎない）
+- ばらつきの理由（サブグループ/メタ回帰）や出版バイアスを点検したか？
+- NMA ではリーグ表・P-score・整合性（global/local）を確認したか？
+:::
+
+::: {.callout-tip}
+## プロンプトとステップ（再掲）
+`prompts/meta_analysis_ja.md` に「うまく動く」依頼テンプレートとチェックリストを用意しています。実データに差し替える際は、効果量の型（SMD/logOR/r など）と向きの定義、非独立性の有無、モデレーター候補を最初に確認しましょう。
+:::

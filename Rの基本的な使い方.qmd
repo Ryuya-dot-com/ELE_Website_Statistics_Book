@@ -1,0 +1,679 @@
+---
+title: "Rの基本的な使い方"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    code-summary: "コード"
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# RとRStudioの導入
+
+## Rのインストール
+
+RはCRAN (Comprehensive R Archive Network) から無料でダウンロードできます。
+
+1. [CRAN](https://cran.r-project.org/) にアクセス
+2. お使いのOS（Windows/Mac/Linux）を選択
+3. 最新版をダウンロードしてインストール
+
+## RStudioのインストール
+
+RStudioは、Rを使いやすくする統合開発環境（IDE）です。
+
+1. [RStudio Desktop](https://posit.co/download/rstudio-desktop/) にアクセス
+2. 無料版をダウンロード
+3. インストール後、RStudioを起動
+
+## RStudioの画面構成
+
+RStudioは4つのペインで構成されています：
+
+- **Source（左上）**：スクリプトエディタ
+- **Console（左下）**：コマンド実行と結果表示
+- **Environment（右上）**：変数とデータの確認
+- **Files/Plots（右下）**：ファイル管理と図の表示
+
+# Rの基本操作
+
+## 電卓として使う
+
+```{r}
+#| label: calculator
+# 四則演算
+1 + 2
+10 - 3
+4 * 5
+20 / 4
+
+# べき乗
+2^3
+sqrt(16)
+```
+
+## 変数への代入
+
+```{r}
+#| label: assignment
+# 代入演算子 <- を使用
+x <- 10
+y <- 20
+z <- x + y
+z
+
+# = も使えるが、<- が推奨
+a = 5  # 動作するが非推奨
+b <- 5  # 推奨
+```
+
+## データ型
+
+Rには主に以下のデータ型があります：
+
+```{r}
+#| label: data-types
+# 数値（numeric）
+age <- 25
+class(age)
+
+# 文字列（character）
+name <- "田中太郎"
+class(name)
+
+# 論理値（logical）
+is_student <- TRUE
+class(is_student)
+
+# 因子（factor）
+gender <- factor(c("男", "女", "男", "女"))
+class(gender)
+levels(gender)
+```
+
+# データ構造
+
+## ベクトル
+
+最も基本的なデータ構造です。同じ型の要素を持つ1次元配列です。
+
+```{r}
+#| label: vectors
+# 数値ベクトル
+scores <- c(85, 90, 78, 92, 88)
+scores
+
+# 文字列ベクトル
+names <- c("Alice", "Bob", "Charlie", "David")
+names
+
+# 連続した数値の生成
+1:10
+seq(from = 0, to = 100, by = 10)
+rep(1:3, times = 3)
+```
+
+## マトリックス（行列）
+
+2次元の配列です。
+
+```{r}
+#| label: matrix
+# 3×3の行列を作成
+mat <- matrix(1:9, nrow = 3, ncol = 3)
+mat
+
+# 行名・列名の設定
+rownames(mat) <- c("Row1", "Row2", "Row3")
+colnames(mat) <- c("Col1", "Col2", "Col3")
+mat
+
+# 要素へのアクセス
+mat[2, 3]  # 2行3列の要素
+mat[2, ]   # 2行目全体
+mat[, 3]   # 3列目全体
+```
+
+## データフレーム
+
+異なる型の列を持つことができる表形式のデータ構造です。統計解析で最もよく使います。
+
+```{r}
+#| label: dataframe
+# データフレームの作成
+students <- data.frame(
+  id = 1:5,
+  name = c("田中", "佐藤", "鈴木", "高橋", "渡辺"),
+  score = c(85, 90, 78, 92, 88),
+  pass = c(TRUE, TRUE, FALSE, TRUE, TRUE),
+  stringsAsFactors = FALSE
+)
+
+students
+
+# データフレームの構造を確認
+str(students)
+
+# 要約統計量
+summary(students)
+
+# 列へのアクセス
+students$score
+students[, "score"]
+students[["score"]]
+
+# 行の選択
+students[students$score > 80, ]
+```
+
+## リスト
+
+異なる型・構造のオブジェクトを格納できる柔軟なデータ構造です。
+
+```{r}
+#| label: lists
+# リストの作成
+my_list <- list(
+  numbers = 1:5,
+  text = "Hello",
+  matrix = matrix(1:4, 2, 2),
+  dataframe = students[1:2, ]
+)
+
+my_list
+
+# リスト要素へのアクセス
+my_list$numbers
+my_list[[1]]
+my_list[["matrix"]]
+```
+
+# データの読み込みと書き出し
+
+## CSVファイルの操作
+
+```{r}
+#| label: csv-operations
+#| eval: false
+
+# CSVファイルの読み込み
+data <- read.csv("data.csv", header = TRUE, stringsAsFactors = FALSE)
+
+# tidyverseのreadrパッケージを使う方法（推奨）
+library(readr)
+data <- read_csv("data.csv")
+
+# CSVファイルの書き出し
+write.csv(data, "output.csv", row.names = FALSE)
+write_csv(data, "output.csv")
+```
+
+## Excelファイルの操作
+
+```{r}
+#| label: excel-operations
+#| eval: false
+
+# readxlパッケージのインストール
+install.packages("readxl")
+library(readxl)
+
+# Excelファイルの読み込み
+data <- read_excel("data.xlsx", sheet = 1)
+
+# openxlsxパッケージで書き出し
+install.packages("openxlsx")
+library(openxlsx)
+write.xlsx(data, "output.xlsx")
+```
+
+## RDS形式（Rのネイティブ形式）
+
+```{r}
+#| label: rds-operations
+#| eval: false
+
+# RDS形式で保存（単一のオブジェクト）
+saveRDS(students, "students.rds")
+
+# RDS形式の読み込み
+students_loaded <- readRDS("students.rds")
+
+# RData形式で保存（複数のオブジェクト）
+save(students, scores, file = "mydata.RData")
+
+# RData形式の読み込み
+load("mydata.RData")
+```
+
+# tidyverseによるデータ操作
+
+## tidyverseのインストールと読み込み
+
+```{r}
+#| label: tidyverse-setup
+#| message: false
+#| warning: false
+
+# インストール（初回のみ）
+# install.packages("tidyverse")
+
+# パッケージの読み込み
+library(tidyverse)
+```
+
+## dplyrによるデータ操作
+
+```{r}
+#| label: dplyr-operations
+# サンプルデータの作成
+exam_data <- data.frame(
+  student_id = 1:10,
+  name = paste0("Student", 1:10),
+  math = round(rnorm(10, 75, 10)),
+  english = round(rnorm(10, 70, 12)),
+  science = round(rnorm(10, 80, 8))
+)
+
+exam_data
+
+# select：列の選択
+exam_data %>%
+  select(name, math, english)
+
+# filter：行の絞り込み
+exam_data %>%
+  filter(math > 75)
+
+# mutate：新しい列の作成
+exam_data %>%
+  mutate(
+    total = math + english + science,
+    average = total / 3
+  )
+
+# arrange：並び替え
+exam_data %>%
+  mutate(total = math + english + science) %>%
+  arrange(desc(total))
+
+# group_by & summarize：グループ集計
+exam_data %>%
+  mutate(
+    average = (math + english + science) / 3,
+    grade = ifelse(average >= 75, "A", "B")
+  ) %>%
+  group_by(grade) %>%
+  summarize(
+    n = n(),
+    mean_score = mean(average),
+    sd_score = sd(average)
+  )
+```
+
+## パイプ演算子（%>%）の活用
+
+```{r}
+#| label: pipe-example
+# パイプを使わない場合（読みにくい）
+result1 <- arrange(
+  mutate(
+    filter(exam_data, math > 70),
+    total = math + english + science
+  ),
+  desc(total)
+)
+
+# パイプを使う場合（読みやすい）
+result2 <- exam_data %>%
+  filter(math > 70) %>%
+  mutate(total = math + english + science) %>%
+  arrange(desc(total))
+
+# 結果は同じ
+all.equal(result1, result2)
+```
+
+# データの可視化
+
+## 基本的なプロット（Base R）
+
+```{r}
+#| label: base-plots
+#| fig-width: 8
+#| fig-height: 6
+
+# サンプルデータ
+set.seed(123)
+x <- rnorm(100)
+y <- 2 * x + rnorm(100)
+
+# レイアウトの設定（2×2のグリッド）
+par(mfrow = c(2, 2))
+
+# ヒストグラム
+hist(x, main = "ヒストグラム", xlab = "値", ylab = "頻度", col = "lightblue")
+
+# 散布図
+plot(x, y, main = "散布図", xlab = "X", ylab = "Y", pch = 19, col = "blue")
+abline(lm(y ~ x), col = "red", lwd = 2)
+
+# 箱ひげ図
+boxplot(math ~ grade, 
+        data = data.frame(
+          math = c(exam_data$math, exam_data$english),
+          grade = rep(c("Math", "English"), each = 10)
+        ),
+        main = "箱ひげ図", ylab = "スコア", col = c("lightgreen", "lightcoral"))
+
+# 棒グラフ
+barplot(table(cut(x, breaks = 5)), 
+        main = "棒グラフ", xlab = "カテゴリ", ylab = "頻度",
+        col = rainbow(5))
+
+par(mfrow = c(1, 1))  # レイアウトをリセット
+```
+
+## ggplot2による可視化
+
+```{r}
+#| label: ggplot2-basics
+#| message: false
+#| warning: false
+
+# データの準備
+exam_long <- exam_data %>%
+  pivot_longer(cols = c(math, english, science), 
+               names_to = "subject", 
+               values_to = "score")
+
+# ヒストグラム
+ggplot(exam_long, aes(x = score, fill = subject)) +
+  geom_histogram(binwidth = 5, alpha = 0.7, position = "identity") +
+  facet_wrap(~ subject) +
+  theme_minimal() +
+  labs(title = "科目別スコア分布",
+       x = "スコア",
+       y = "頻度")
+
+# 箱ひげ図
+ggplot(exam_long, aes(x = subject, y = score, fill = subject)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "科目別スコアの比較",
+       x = "科目",
+       y = "スコア") +
+  theme(legend.position = "none")
+
+# 散布図行列
+library(GGally)
+ggpairs(exam_data[, c("math", "english", "science")],
+        title = "科目間の相関")
+```
+
+# パッケージ管理
+
+## パッケージのインストールと読み込み
+
+```{r}
+#| label: package-management
+#| eval: false
+
+# CRANからインストール
+install.packages("ggplot2")
+
+# 複数パッケージを一度にインストール
+install.packages(c("dplyr", "tidyr", "readr"))
+
+# パッケージの読み込み
+library(ggplot2)
+
+# インストールされているか確認してから読み込む
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+  library(ggplot2)
+}
+
+# パッケージの更新
+update.packages()
+
+# パッケージ情報の確認
+packageVersion("ggplot2")
+sessionInfo()
+```
+
+## よく使うパッケージ
+
+| カテゴリ | パッケージ | 用途 |
+|---------|-----------|------|
+| データ操作 | `dplyr`, `tidyr` | データの整形・変換 |
+| 可視化 | `ggplot2`, `plotly` | グラフ作成 |
+| 統計解析 | `car`, `emmeans` | 統計検定 |
+| 読み込み | `readr`, `readxl` | データ読み込み |
+| レポート | `knitr`, `rmarkdown` | 文書作成 |
+
+# プロジェクト管理とワークフロー
+
+## RStudioプロジェクト
+
+```{r}
+#| label: project-setup
+#| eval: false
+
+# 現在の作業ディレクトリを確認
+getwd()
+
+# 作業ディレクトリの変更
+setwd("~/Documents/MyProject")
+
+# プロジェクト構造の例
+# MyProject/
+# ├── data/           # 生データ
+# ├── R/              # Rスクリプト
+# ├── output/         # 出力結果
+# ├── figures/        # 図表
+# └── MyProject.Rproj # プロジェクトファイル
+```
+
+## 再現可能な研究のためのベストプラクティス
+
+1. **プロジェクト構造を整理する**
+   - データ、スクリプト、出力を分離
+   - 相対パスを使用
+
+2. **コードの文書化**
+   - コメントを適切に記述
+   - 変数名を分かりやすく
+
+3. **バージョン管理**
+   - Gitを使用
+   - 定期的にコミット
+
+4. **環境の記録**
+   - `sessionInfo()`で環境情報を保存
+   - `renv`パッケージで環境を固定
+
+```{r}
+#| label: session-info
+# セッション情報の記録
+sessionInfo()
+```
+
+# 練習問題
+
+## 問題1：ベクトル操作
+
+以下のタスクを実行してください：
+
+1. 1から100までの偶数のベクトルを作成
+2. 平均値、中央値、標準偏差を計算
+3. 80以上の値の個数を数える
+
+```{r}
+#| label: exercise1
+#| code-fold: show
+
+# 解答例
+even_numbers <- seq(2, 100, by = 2)
+mean(even_numbers)
+median(even_numbers)
+sd(even_numbers)
+sum(even_numbers >= 80)
+```
+
+## 問題2：データフレーム操作
+
+以下の学生データを作成し、tidyverseを使って分析してください：
+
+1. 平均点が80点以上の学生を抽出
+2. 各科目の平均点を計算
+3. 総合得点でランキング
+
+```{r}
+#| label: exercise2
+#| code-fold: show
+
+# 解答例
+students <- data.frame(
+  name = c("A", "B", "C", "D", "E"),
+  math = c(85, 72, 90, 68, 88),
+  english = c(78, 85, 82, 90, 75),
+  science = c(92, 78, 88, 85, 90)
+)
+
+library(tidyverse)
+
+# 1. 平均点80以上
+students %>%
+  mutate(average = (math + english + science) / 3) %>%
+  filter(average >= 80)
+
+# 2. 各科目の平均
+students %>%
+  summarize(
+    math_mean = mean(math),
+    english_mean = mean(english),
+    science_mean = mean(science)
+  )
+
+# 3. ランキング
+students %>%
+  mutate(
+    total = math + english + science,
+    rank = rank(-total)
+  ) %>%
+  arrange(rank)
+```
+
+# 参考資料
+
+- [R for Data Science](https://r4ds.had.co.nz/)
+- [RStudio Cheatsheets](https://www.rstudio.com/resources/cheatsheets/)
+- [The tidyverse style guide](https://style.tidyverse.org/)

@@ -1,0 +1,1665 @@
+---
+title: "9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# はじめに
+
+本ドキュメントは、**探索的因子分析 (EFA)**、**確認的因子分析 (CFA)**、**主成分分析 (PCA)**、**コレスポンデンス分析 (CA/MCA)**、および**多次元尺度法 (MDS)** を、R による実行例とともに体系的にまとめた実践ガイドです。教育・心理領域のアンケートデータやテストデータを対象に、モデルの考え方、実装、そして解釈の要点を一貫した流れで示します。
+
+依存パッケージは適宜 `install.packages()` で導入してください。
+
+::: {.callout-tip}
+## Conventions
+Figures use English labels. All code chunks are R.
+:::
+
+::: {.callout-tip}
+### いつ何を使う？（初心者向け）
+- PCA: 全分散に基づく「次元削減・可視化」。尺度が違う変数は標準化（z化）を推奨。
+- EFA: 相関の背後にある「潜在因子」を探索。回転で解釈性を向上。平行分析で因子数の当たりをつける。
+- CFA: 測定仮説を検証。因子負荷・誤差分散を推定し、適合度（CFI/TLI/RMSEA/SRMR）で評価。
+- SEM: 測定 + 構造（潜在回帰・媒介・調整）。理論に基づき因果仮説を同時推定。
+- CA/MCA: カテゴリ×カテゴリの関係を幾何学的に表現（クロス表→座標）。
+- MDS: 距離・類似度に基づく座標化（順序保持のノンメトリック MDS が頑健）。
+:::
+
+::: {.callout-note}
+### 前処理のコツ
+- PCA/EFA は変数のスケールに敏感。基本は相関行列（標準化）を使う。
+- Likert 等の順序尺度はポリコリック相関を検討（`psych::polychoric`）。
+- 欠損は単純除去より多重代入を検討（実務では `mice` など）。
+- サンプルサイズの目安：因子分析は項目数×5〜10以上、できれば200件以上。
+:::
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+# Load required packages
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(
+  tidyverse,        # Data manipulation and visualization
+  psych,            # EFA and reliability analysis
+  GPArotation,      # Factor rotations
+  sjPlot,           # EFA table formatting
+  lavaan,           # CFA/SEM
+  semPlot,          # Path diagrams
+  lavaanPlot,       # Alternative path diagrams
+  FactoMineR,       # PCA, CA, MCA
+  factoextra,       # Visualization support
+  smacof,           # Non-metric MDS
+  gt,               # Table formatting
+  scales,           # Axis labeling
+  broom             # Model output tidying
+)
+set.seed(123)
+```
+
+# 探索的因子分析（EFA）
+
+## コンセプトと手順
+
+- **独自性** = 特殊分散 + 誤差分散、**共通性** = 1 − 独自性（= 因子負荷の二乗和）
+- 目的は、相関行列を**因子**に分解し、**共通分散**の説明を最大化すること
+- 一般的な手順: **(1) 因子数の決定** → **(2) 因子負荷の推定** → **(3) 回転** → **(4) 解釈**
+
+EFAは観測変数間の相関を「共通因子 + 独自性」に分解するモデルです。推定の目的は、相関行列のうち**共通分散**をできるだけ少ない因子で説明することにあります。因子数は「過少（情報の取りこぼし）」と「過多（過適合）」のトレードオフで、スクリープロット・平行分析・情報量基準（BICなど）を**総合判断**するのが実務的です。回転は**解釈可能性の向上**が目的で、斜交回転（因子間相関を許容）をデフォルトとし、理論的に独立と考える場合のみ直交回転を検討します。
+
+### データ例（シミュレーション）
+
+```{r}
+#| label: generate-efa-data
+
+# Set parameters for data generation
+n_respondents <- 500
+n_items <- 15
+n_factors <- 3
+
+# Generate random factor loadings and scores
+loadings <- matrix(runif(n_items * n_factors), nrow = n_items, ncol = n_factors)
+factor_scores <- matrix(rnorm(n_respondents * n_factors), nrow = n_respondents, ncol = n_factors)
+
+# Transform to Likert scale (1-6)
+raw <- factor_scores %*% t(loadings)
+rng01 <- apply(raw, 1, function(x) (x - min(x)) / (max(x) - min(x)))
+data_scaled <- t(rng01) * 5 + 1
+round_likert <- function(x) pmin(pmax(round(x), 1), 6)
+survey <- as.data.frame(apply(data_scaled, 2, round_likert))
+names(survey) <- paste0("V", seq_len(ncol(survey)))
+```
+
+### 因子数の決定（ガットマン基準・スクリープロット・平行分析）
+
+```{r}
+#| label: determine-factors
+
+# Calculate eigenvalues (Guttman criterion: λ > 1)
+eig <- eigen(cor(survey))$values
+
+# Display eigenvalues in gt table
+data.frame(
+  Component = 1:length(eig),
+  Eigenvalue = eig,
+  Proportion = eig / sum(eig),
+  Cumulative = cumsum(eig / sum(eig))
+) |>
+  slice(1:10) |>  # Show first 10 components
+  gt() |>
+  tab_header(
+    title = "Eigenvalues from Correlation Matrix",
+    subtitle = "Components with eigenvalue > 1 should be retained (Kaiser criterion)"
+  ) |>
+  fmt_number(
+    columns = c(Eigenvalue, Proportion, Cumulative),
+    decimals = 3
+  ) |>
+  cols_label(
+    Component = "Component",
+    Eigenvalue = "Eigenvalue",
+    Proportion = "Proportion",
+    Cumulative = "Cumulative"
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "#e6ffe6"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = Eigenvalue,
+      rows = Eigenvalue > 1
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Components with eigenvalue > 1 are highlighted",
+    locations = cells_column_labels(columns = Eigenvalue)
+  )
+
+# Scree plot and parallel analysis
+psych::VSS.scree(survey)
+psych::fa.parallel(survey, fm = "ml", fa = "pc", n.iter = 100)
+```
+
+#### tidyverseで作るスクリープロット（自作）
+
+```{r}
+#| label: scree-plot-tidyverse
+#| fig-width: 7
+#| fig-height: 5
+
+# Create scree plot data
+eig_vals <- eigen(cor(survey))$values
+scree_tbl <- tibble(Component = seq_along(eig_vals), Eigenvalue = eig_vals)
+
+# Visualize with ggplot2
+ggplot(scree_tbl, aes(Component, Eigenvalue)) +
+  geom_point(size = 3, color = "darkblue") +
+  geom_line(linewidth = 0.8, color = "darkblue") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  scale_x_continuous(breaks = scree_tbl$Component) +
+  labs(
+    title = "Scree Plot (tidyverse)",
+    subtitle = "Components with eigenvalue > 1 (above red line) are candidates for retention",
+    y = "Eigenvalue"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(face = "italic")
+  )
+```
+
+::: {.callout-note}
+### バイプロットの読み方（PCA）
+- 変数矢印の長さが長い＝この平面でよく表現（cos²が高い）。短い矢印は3軸目以降に情報が残る可能性。
+- 矢印同士の角度が小さい＝正の相関、反対向き＝負の相関、直交＝ほぼ無相関。
+- 個体点が矢印方向に遠い＝その変数の値が大きい（方向の解釈）。
+- まず累積寄与率を確認し、この平面で十分説明できているか判断。
+:::
+
+### 変数・個体の寄与率とcos²（PCA）
+
+```{r}
+#| label: pca-contrib-cos2
+# Ensure res_pca exists (this chunk may be evaluated before the PCA section)
+if (!exists("res_pca")) {
+  # Load example data and compute PCA used throughout
+  data(decathlon)
+  res_pca <- FactoMineR::PCA(decathlon, quanti.sup = 11:12, quali.sup = 13, graph = FALSE)
+}
+
+# Variables: contributions (%) and cos² on Dim1/Dim2
+pca_var_contrib <- as_tibble(res_pca$var$contrib[,1:2], rownames = "Variable") |>
+  rename(Contrib_Dim1 = `Dim.1`, Contrib_Dim2 = `Dim.2`) |>
+  arrange(desc(Contrib_Dim1)) |>
+  slice(1:10)
+
+pca_var_cos2 <- as_tibble(res_pca$var$cos2[,1:2], rownames = "Variable") |>
+  rename(cos2_Dim1 = `Dim.1`, cos2_Dim2 = `Dim.2`) |>
+  arrange(desc(cos2_Dim1)) |>
+  slice(1:10)
+
+pca_var_contrib |>
+  gt() |>
+  tab_header(title = "PCA Variable Contributions (Top 10)", subtitle = "Contribution to Dim1/Dim2 (%)") |>
+  fmt_number(columns = c(Contrib_Dim1, Contrib_Dim2), decimals = 2)
+
+pca_var_cos2 |>
+  gt() |>
+  tab_header(title = "PCA Variable cos² (Top 10)", subtitle = "Quality of representation on Dim1/Dim2") |>
+  fmt_number(columns = c(cos2_Dim1, cos2_Dim2), decimals = 3)
+
+# Individuals (Top 10 by cos2 on Dim1)
+pca_ind_cos2 <- as_tibble(res_pca$ind$cos2[,1:2]) |>
+  mutate(id = row_number()) |>
+  rename(cos2_Dim1 = `Dim.1`, cos2_Dim2 = `Dim.2`) |>
+  arrange(desc(cos2_Dim1)) |>
+  slice(1:10)
+
+pca_ind_cos2 |>
+  gt() |>
+  tab_header(title = "PCA Individual cos² (Top 10)", subtitle = "Observations best represented on Dim1") |>
+  fmt_number(columns = c(cos2_Dim1, cos2_Dim2), decimals = 3)
+```
+
+::: {.callout-tip}
+### 読み方（PCAのcontribとcos²）
+- 寄与率（contrib）: 次元が“どの変数に支えられているか”。軸の解釈に使う。
+- cos²: “その変数/個体がこの平面でどれだけ再現されているか”。低い点の解釈は控えめに。
+:::
+
+
+### 因子負荷の推定と回転
+
+```{r}
+#| label: efa-analysis
+
+# Fit EFA model with promax rotation
+fit_efa <- psych::fa(survey, nfactors = 4, fm = "ml", rotate = "promax")
+
+# Display summary
+print(fit_efa)
+
+# Create formatted table with factor loadings
+sjPlot::tab_fa(
+  survey, 
+  rotation = "promax", 
+  method = "ml", 
+  nmbr.fctr = 4,
+  fctr.load.tlrn = 0.1, 
+  sort = TRUE, 
+  title = "Exploratory Factor Analysis Results",
+  show.cronb = TRUE, 
+  show.comm = TRUE, 
+  digits = 2, 
+  encoding = "UTF-8"
+)
+```
+
+**因子負荷の要約表（gt）**
+
+```{r}
+#| label: efa-summary-table
+
+# Extract and tidy factor loadings
+load_tbl <- fit_efa$loadings |>
+  unclass() |>
+  as.data.frame() |>
+  rownames_to_column(var = "Item")
+
+# Create summary with max loading per item, communality, and uniqueness
+efa_summary <- load_tbl |>
+  pivot_longer(-Item, names_to = "Factor", values_to = "Loading") |>
+  group_by(Item) |>
+  mutate(
+    Abs = abs(Loading),
+    Communality = sum(Loading^2)  # Sum of squared loadings across all factors
+  ) |>
+  slice_max(order_by = Abs, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  mutate(Uniqueness = 1 - pmin(Communality, 1)) |>
+  select(Item, Factor, Loading, Communality, Uniqueness) |>
+  arrange(Factor, desc(abs(Loading)))
+
+# Display in gt table
+efa_summary |>
+  gt() |>
+  tab_header(
+    title = "EFA Summary Table",
+    subtitle = "Maximum Loading, Communality, and Uniqueness per Item"
+  ) |>
+  fmt_number(
+    columns = c(Loading, Communality, Uniqueness),
+    decimals = 3
+  ) |>
+  cols_label(
+    Item = "Item",
+    Factor = "Primary Factor",
+    Loading = "Max Loading",
+    Communality = "h²",
+    Uniqueness = "u²"
+  ) |>
+  tab_spanner(
+    label = "Factor Solution",
+    columns = c(Item, Factor, Loading)
+  ) |>
+  tab_spanner(
+    label = "Variance Components",
+    columns = c(Communality, Uniqueness)
+  ) |>
+  cols_align(
+    align = "center",
+    columns = -Item
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "#f8f9fa"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_column_spanners()
+  ) |>
+  tab_footnote(
+    footnote = "h² = communality (proportion of variance explained by factors)",
+    locations = cells_column_labels(columns = Communality)
+  ) |>
+  tab_footnote(
+    footnote = "u² = uniqueness (1 - communality)",
+    locations = cells_column_labels(columns = Uniqueness)
+  )
+```
+
+上表は各項目が**最も強く負荷する因子**と、その**共通性（因子で説明される割合）**、**独自性**を並べたものです。共通性が低い項目はスケールからの除外や項目修正の候補になります。
+
+### 信頼性（α係数・ω係数）
+
+```{r}
+#| label: reliability-analysis
+
+# Select items loading highest on Factor 1 (example)
+items_f1 <- c("V6", "V14", "V1", "V7")  # Adjust based on actual data
+
+# Calculate reliability coefficients
+alpha_result <- psych::alpha(survey[, items_f1])
+omega_result <- psych::omega(survey[, items_f1], plot = FALSE)
+
+# Create reliability summary table
+data.frame(
+  Coefficient = c("Cronbach's α", "McDonald's ω"),
+  Value = c(alpha_result$total$raw_alpha, omega_result$omega.tot),
+  CI_lower = c(alpha_result$total$ase * -1.96 + alpha_result$total$raw_alpha,
+               NA),
+  CI_upper = c(alpha_result$total$ase * 1.96 + alpha_result$total$raw_alpha,
+               NA)
+) |>
+  gt() |>
+  tab_header(
+    title = "Internal Consistency Reliability",
+    subtitle = paste("Factor 1 items:", paste(items_f1, collapse = ", "))
+  ) |>
+  fmt_number(
+    columns = c(Value, CI_lower, CI_upper),
+    decimals = 3
+  ) |>
+  cols_merge(
+    columns = c(CI_lower, CI_upper),
+    pattern = "[{1}, {2}]"
+  ) |>
+  cols_label(
+    Coefficient = "Coefficient",
+    Value = "Estimate",
+    CI_lower = "95% CI"
+  ) |>
+  sub_missing(
+    columns = CI_lower,
+    missing_text = "—"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = Value,
+      rows = Value > 0.7
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Values > 0.7 indicate acceptable reliability",
+    locations = cells_column_labels(columns = Value)
+  )
+```
+
+### 可視化
+
+```{r}
+#| label: efa-visualization
+#| fig-width: 10
+#| fig-height: 8
+
+# Factor structure diagram
+psych::fa.diagram(fit_efa)
+
+# Create loading bar plot
+loadings_df <- as.data.frame.matrix(unclass(fit_efa$loadings))
+loadings_df$Item <- rownames(loadings_df)
+loadings_long <- tidyr::pivot_longer(loadings_df, cols = -Item, names_to = "Factor", values_to = "Loading")
+
+ggplot(loadings_long, aes(x = Item, y = abs(Loading), fill = Factor)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(
+    title = "Factor Loadings by Item",
+    x = "Item",
+    y = "|Loading|"
+  ) +
+  theme_bw() +
+  scale_fill_brewer(palette = "Set1")
+```
+
+#### 因子負荷のヒートマップ（tidyverse）
+
+```{r}
+#| label: efa-heatmap
+#| fig-width: 8
+#| fig-height: 10
+
+# Prepare heatmap data
+heat_tbl <- as.data.frame(unclass(fit_efa$loadings)) |>
+  rownames_to_column("Item") |>
+  pivot_longer(-Item, names_to = "Factor", values_to = "Loading") |>
+  mutate(Abs = abs(Loading))
+
+# Create heatmap
+ggplot(heat_tbl, aes(Factor, Item, fill = Loading)) +
+  geom_tile() +
+  scale_fill_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0,
+    name = "Loading"
+  ) +
+  labs(
+    title = "EFA Loadings Heatmap",
+    subtitle = "Red = positive loading, Blue = negative loading"
+  ) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(face = "bold")
+  )
+```
+
+# 確認的因子分析（CFA）
+
+## lavaan の記法とデータ
+
+`=~` は「〜により測定」を表し、`~~` は（共）分散、`~` は回帰、`~1` は切片を表します。
+
+```{r}
+#| label: cfa-data
+
+# Load example data from lavaan
+data(HolzingerSwineford1939)
+# Assumed: x1-x3 = visual, x4-x6 = textual, x7-x9 = speed
+```
+
+## モデル定義と推定
+
+```{r}
+#| label: cfa-models
+
+# Define CFA models
+model_1 <- '
+  visual  =~ x1 + x2 + x3
+  textual =~ x4 + x5 + x6
+  speed   =~ x7 + x8 + x9
+'
+
+model_2 <- '
+  visual  =~ x1 + x2
+  textual =~ x4 + x5
+  speed   =~ x7 + x8
+'
+
+# Fit models
+fit_cfa_1 <- cfa(model_1, data = HolzingerSwineford1939, std.lv = TRUE)
+fit_cfa_2 <- cfa(model_2, data = HolzingerSwineford1939, std.lv = TRUE)
+
+# Display summary
+summary(fit_cfa_1, fit.measures = TRUE, standardized = TRUE)
+
+# Extract and display fit indices
+fit_indices_1 <- fitMeasures(fit_cfa_1, c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+fit_indices_2 <- fitMeasures(fit_cfa_2, c("chisq","df","pvalue","cfi","tli","rmsea","srmr"))
+
+# Create fit indices comparison table
+data.frame(
+  Measure = names(fit_indices_1),
+  Model_1 = as.numeric(fit_indices_1),
+  Model_2 = as.numeric(fit_indices_2)
+) |>
+  gt() |>
+  tab_header(
+    title = "CFA Model Fit Comparison",
+    subtitle = "Model 1 (3 indicators per factor) vs Model 2 (2 indicators per factor)"
+  ) |>
+  fmt_number(
+    columns = c(Model_1, Model_2),
+    rows = Measure %in% c("chisq", "df"),
+    decimals = 0
+  ) |>
+  fmt_number(
+    columns = c(Model_1, Model_2),
+    rows = Measure %in% c("cfi", "tli", "rmsea", "srmr"),
+    decimals = 3
+  ) |>
+  fmt_scientific(
+    columns = c(Model_1, Model_2),
+    rows = Measure == "pvalue",
+    decimals = 3
+  ) |>
+  cols_label(
+    Measure = "Fit Index",
+    Model_1 = "Model 1",
+    Model_2 = "Model 2"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = Model_1,
+      rows = (Measure %in% c("cfi", "tli") & Model_1 > 0.95) |
+             (Measure == "rmsea" & Model_1 < 0.05) |
+             (Measure == "srmr" & Model_1 < 0.08)
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = Model_2,
+      rows = (Measure %in% c("cfi", "tli") & Model_2 > 0.95) |
+             (Measure == "rmsea" & Model_2 < 0.05) |
+             (Measure == "srmr" & Model_2 < 0.08)
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Good fit: CFI/TLI > 0.95, RMSEA < 0.05, SRMR < 0.08",
+    locations = cells_column_labels(columns = c(Model_1, Model_2))
+  )
+```
+
+**モデル適合度の読み方**: CFI/TLI は 0.90 以上（望ましくは 0.95 以上）、RMSEA は 0.08 未満（望ましくは 0.05 未満）、SRMR は 0.08 未満が一つの目安です。適合だけでなく、**理論整合性**・**パラメータの解釈可能性**・**識別性**を合わせて評価します。
+
+### 可視化と含意共分散
+
+```{r}
+#| label: cfa-visualization
+#| fig-width: 10
+#| fig-height: 8
+
+# Path diagrams
+semPaths(fit_cfa_1, whatLabels = "est", layout = "tree", rotation = 2)
+semPaths(fit_cfa_1, what = "stand", style = "lisrel")
+
+# Display implied covariance matrix
+implied_cov <- lavInspect(fit_cfa_1, what = "implied")$cov
+
+# Show first 6x6 of implied covariance matrix
+as.data.frame(implied_cov[1:6, 1:6]) |>
+  rownames_to_column("Variable") |>
+  gt() |>
+  tab_header(
+    title = "Model Implied Covariance Matrix",
+    subtitle = "First 6 variables shown"
+  ) |>
+  fmt_number(
+    columns = -Variable,
+    decimals = 3
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#f8f9fa"),
+    locations = cells_body(columns = Variable)
+  )
+```
+
+# 構造方程式モデリング（SEM）
+
+ここからは、CFA（測定モデル）に加えて、潜在変数間や潜在–観測間の因果/回帰関係（構造モデル）を同時に扱うSEMを導入します。SEM は以下の2部から成ります。
+
+- 測定モデル（CFA）：y = Λη + ε、Var(η) = Φ、Var(ε) = Θ
+- 構造モデル：η = Bη + Γξ + ζ（潜在変数同士の回帰）
+
+含意共分散は Σ(θ) = ΛΦΛ' + Θ で表され、推定はこの Σ が実データの共分散にどれだけ適合するかで評価します。
+
+::: {.callout-tip}
+### 初学者の道しるべ
+- まずは CFA（測定）→ 次に SEM（構造）の順に拡張。
+- 因子のスケールは「1つの因子負荷=1に固定」または「潜在分散=1に固定（`std.lv=TRUE`）」で識別。
+- 指標は各因子に「原則3つ以上」が望ましい（2つでも可だが脆弱）。
+:::
+
+### 例：潜在間の回帰と媒介効果（lavaan）
+
+Holzinger & Swineford データの3因子（visual/textual/speed）を使い、`textual → speed → visual` の媒介を含むモデルを推定します。推定量は非正規にやや頑健な `MLR` を用います。
+
+```{r}
+#| label: sem-model
+
+sem_model <- '
+  # 測定モデル（CFA）
+  visual  =~ x1 + x2 + x3
+  textual =~ x4 + x5 + x6
+  speed   =~ x7 + x8 + x9
+
+  # 構造モデル（潜在回帰）
+  speed   ~ a*textual
+  visual  ~ b*speed + c*textual
+
+  # 媒介効果（定義式）
+  ind_textual_visual := a*b
+  tot_textual_visual := c + (a*b)
+'
+
+fit_sem <- lavaan::sem(
+  sem_model, data = HolzingerSwineford1939,
+  std.lv = TRUE, estimator = "MLR"
+)
+
+summary(fit_sem, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+
+# 係数の整理（gt）
+coef_tbl <- parameterEstimates(fit_sem, standardized = TRUE) |>
+  as_tibble() |>
+  dplyr::filter(op %in% c("~","=~",":=")) |>
+  dplyr::transmute(
+    Term = paste(lhs, op, rhs),
+    Estimate = est, SE = se, z = z, p = pvalue,
+    Std = std.all
+  )
+
+coef_tbl |>
+  gt() |>
+  tab_header(title = "SEM Estimates (standardized incl.)") |>
+  fmt_number(columns = c(Estimate, SE, z, p, Std), decimals = 3) |>
+  data_color(columns = Std, colors = scales::col_bin(c('#f8f9fa','#e6ffe6','#b7ffb7'), bins = c(-Inf, .2, .4, Inf)))
+
+# 経路図（推定値ラベル）
+semPlot::semPaths(fit_sem, whatLabels = "std", layout = "tree", nCharNodes = 0)
+```
+
+::: {.callout-note}
+### 適合度指標と解釈
+- CFI/TLI, RMSEA, SRMR は CFA と同様に用います。構造部の自由度が増えると当てはめ過剰に注意。
+- `parameterEstimates()` の `:=` で定義した媒介効果は、直接/間接/総効果を整理するのに有用。
+:::
+
+### ブートストラップによる間接効果の信頼区間（任意）
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(lavaan)
+  fit_sem_boot <- lavaan::sem(
+    sem_model, data = HolzingerSwineford1939,
+    std.lv = TRUE, estimator = "ML",
+    se = "bootstrap", bootstrap = 500
+  )
+
+  parameterEstimates(fit_sem_boot, boot.ci.type = "perc") |>
+    as_tibble() |>
+    dplyr::filter(op == ":=") |>
+    dplyr::select(lhs, rhs, est, ci.lower, ci.upper)
+} else {
+  message("CI環境またはlavaan未検出のためブートストラップをスキップ")
+}
+```
+
+::: {.callout-tip}
+### 実務ヒント（識別・健全性チェック）
+- Heywood 事例（分散の負値など）が出たら、指標の見直し・制約・サンプル増・推定量変更を検討。
+- 指標が順序尺度（Likert）の場合は `estimator='WLSMV'`, `ordered=...` を使用（下記参照）。
+:::
+
+### 順序尺度指標の SEM（WLSMV, 任意）
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(lavaan)
+  ordinal_vars <- paste0("x", 1:9)
+  fit_wlsmv <- lavaan::sem(
+    sem_model, data = HolzingerSwineford1939,
+    std.lv = TRUE, estimator = "WLSMV", ordered = ordinal_vars,
+    parameterization = "theta"
+  )
+  summary(fit_wlsmv, fit.measures = TRUE, standardized = TRUE)
+} else {
+  message("CI環境またはlavaan未検出のためWLSMVをスキップ")
+}
+```
+
+### 修正指標（MI）と過適合への注意
+
+```{r}
+#| label: sem-mi
+mi_tbl <- modindices(fit_sem) |>
+  as_tibble() |>
+  arrange(desc(mi)) |>
+  filter(mi > 10) |>
+  select(lhs, op, rhs, mi, epc)
+
+mi_tbl |>
+  gt() |>
+  tab_header(title = "Modification Indices (MI > 10)") |>
+  fmt_number(columns = c(mi, epc), decimals = 2)
+```
+
+::: {.callout-note}
+MI はモデル改善のヒントですが「事後探索」に過ぎません。理論的妥当性が無い関連を追加すると過適合に陥ります。報告では、どの修正を、どんな根拠で採用/不採用にしたかを明記しましょう。
+:::
+
+### 測定不変性（多群）チェック（任意）
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(lavaan)
+  # school を群変数として configural → metric → scalar を順に比較
+  fit_cfg   <- lavaan::cfa(model_1, data = HolzingerSwineford1939, group = "school", std.lv = TRUE)
+  fit_met   <- lavaan::cfa(model_1, data = HolzingerSwineford1939, group = "school", std.lv = TRUE, group.equal = c("loadings"))
+  fit_scl   <- lavaan::cfa(model_1, data = HolzingerSwineford1939, group = "school", std.lv = TRUE, group.equal = c("loadings","intercepts"))
+  anova(fit_cfg, fit_met, fit_scl)
+} else {
+  message("CI環境またはlavaan未検出のため多群不変性の比較をスキップ")
+}
+```
+
+::: {.callout-tip}
+### まとめ：EFA/CFA/SEM の位置づけ
+- EFA: 構造探索。因子数・因子–項目の関係を探索的に把握。
+- CFA: 測定仮説の検証。適合度と改良の検討。
+- SEM: 測定 + 構造の統合。媒介・調整・潜在間回帰を理論に沿って推定。
+:::
+
+# 主成分分析（PCA）
+
+PCA は観測変数から**主成分**を抽出し、全分散のうち何割を説明できるか（寄与率）で次元削減を行う手法です。
+
+::: {.callout-tip}
+### PCAの手順とコツ（初心者向け）
+- 標準化: 変数スケールが異なるときは相関行列ベース（z化）を使用。
+- 固有分解: 固有値＝各主成分が説明する分散、固有ベクトル＝主成分の重み。
+- スコア: 個体の座標（可視化やクラスタリングにそのまま活用）。
+- 次元選択: スクリープロットの肘、平行分析、累積寄与率の併用で決定。
+- 外れ値: 主成分が外れ値に引っ張られることがあるので事前確認。
+:::
+
+::: {.callout-note}
+### PCA と EFA の違い（要点）
+- PCA は「全分散」を回収する幾何学的手法、EFA は「共通分散」を説明する確率モデル。
+- PCA の成分は誤差を含む観測変数の線形結合、EFA の因子は誤差を分離した潜在変数。
+- 構造を検証・推定したいなら EFA/CFA、単に次元を縮約したいなら PCA。
+:::
+
+```{r}
+#| label: pca-analysis
+
+library(FactoMineR)
+library(factoextra)
+
+# Load example data
+data(decathlon)
+
+# Perform PCA with supplementary variables
+# Quantitative supplementary: columns 11-12
+# Qualitative supplementary: column 13
+res_pca <- PCA(decathlon, quanti.sup = 11:12, quali.sup = 13, graph = FALSE)
+
+# Display eigenvalues and variance explained
+pca_eig_df <- as.data.frame(res_pca$eig)
+pca_eig_df$Dimension <- 1:nrow(pca_eig_df)
+
+pca_eig_df |>
+  select(Dimension, everything()) |>
+  gt() |>
+  tab_header(
+    title = "PCA Eigenvalues and Variance Explained",
+    subtitle = "Decathlon dataset"
+  ) |>
+  fmt_number(
+    columns = -Dimension,
+    decimals = 2
+  ) |>
+  cols_label(
+    Dimension = "Dim",
+    eigenvalue = "Eigenvalue",
+    `percentage of variance` = "% Variance",
+    `cumulative percentage of variance` = "Cumulative %"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = `cumulative percentage of variance`,
+      rows = `cumulative percentage of variance` <= 80
+    )
+  ) |>
+  tab_footnote(
+    footnote = "First few components typically explain most variance",
+    locations = cells_column_labels(columns = `cumulative percentage of variance`)
+  )
+
+# Visualization
+fviz_pca_biplot(res_pca, repel = TRUE)
+fviz_eig(res_pca, addlabels = TRUE)
+```
+
+主成分は**分散を最大化**する直交軸で、因子分析のように誤差項を明示的に分離しません。スケーリング（共分散行列か相関行列か）に注意が必要です。
+
+```{r}
+#| label: pca-biplot-tidyverse
+#| fig-width: 10
+#| fig-height: 8
+
+# Extract coordinates for tidyverse biplot
+ind <- as_tibble(res_pca$ind$coord) |>
+  mutate(id = row_number())
+var <- as_tibble(res_pca$var$coord, rownames = "Variable")
+
+# Create biplot with ggplot2
+ggplot() +
+  geom_point(data = ind, aes(Dim.1, Dim.2), alpha = 0.6, size = 2) +
+  geom_segment(
+    data = var, 
+    aes(x = 0, y = 0, xend = Dim.1 * 3, yend = Dim.2 * 3), 
+    arrow = arrow(length = unit(0.3, "cm")),
+    color = "red",
+    linewidth = 0.8
+  ) +
+  geom_text(
+    data = var, 
+    aes(Dim.1 * 3.2, Dim.2 * 3.2, label = Variable), 
+    color = "darkred",
+    size = 3.5
+  ) +
+  labs(
+    title = "PCA Biplot (tidyverse)",
+    subtitle = "Individuals and variables in principal component space",
+    x = paste0("Dim 1 (", round(res_pca$eig[1,2], 1), "%)"),
+    y = paste0("Dim 2 (", round(res_pca$eig[2,2], 1), "%)")
+  ) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(face = "italic")
+  )
+```
+
+# コレスポンデンス分析（CA/MCA）
+
+カテゴリ × カテゴリのクロス集計表を幾何学的に可視化します。多値カテゴリの個票データには **MCA** を用います。
+
+::: {.callout-tip}
+### CAの流れと前提
+- 入力はクロス表（行・列カテゴリの頻度）。
+- 行/列プロファイルとカイ二乗距離を用いて SVD 分解（行・列を同一空間へ埋め込み）。
+- 慣性（inertia）= カイ二乗統計量 / n。軸ごとの寄与率を確認して次元数を決める。
+- まれなカテゴリは結果を不安定にするので併合を検討。
+:::
+
+## CA（対応分析）の例
+
+```{r}
+#| label: ca-analysis
+
+# Generate sample data for CA
+set.seed(123)
+df_ca <- data.frame(
+  RowCat = sample(c("TypeA", "TypeB", "TypeC"), 100, replace = TRUE, 
+                  prob = c(0.5, 0.3, 0.2)),
+  ColCat = sample(c("Low", "Medium", "High"), 100, replace = TRUE,
+                  prob = c(0.3, 0.5, 0.2))
+)
+
+# Create contingency table
+tab_ca <- as.data.frame.matrix(table(df_ca$RowCat, df_ca$ColCat))
+
+# Display contingency table
+tab_ca |>
+  rownames_to_column("Row Category") |>
+  gt() |>
+  tab_header(
+    title = "Contingency Table for CA",
+    subtitle = "Row categories vs Column categories"
+  ) |>
+  cols_label(
+    `Row Category` = "Category",
+    Low = "Low",
+    Medium = "Medium",
+    High = "High"
+  ) |>
+  tab_spanner(
+    label = "Column Categories",
+    columns = c(Low, Medium, High)
+  )
+
+# Perform CA
+res_ca <- CA(tab_ca, graph = FALSE)
+
+# Visualize
+fviz_ca_biplot(res_ca, repel = TRUE)
+```
+
+::: {.callout-note}
+### バイプロットの読み方（CA）
+- 原点付近＝平均的、外側＝特徴的。遠いほどその軸への寄与が大きい傾向。
+- 行点・列点の「相対的な位置関係」を通じて、どの列（属性）がどの行（群）と結びつきやすいかを把握。
+- ただし行点と列点間のユークリッド距離そのものはスケーリングに依存し、解釈しないのが安全。
+:::
+```{r}
+#| label: ca-eig-contrib
+# Display eigenvalues and contributions
+ca_eig <- as_tibble(res_ca$eig) |>
+  mutate(Dimension = row_number()) |>
+  select(Dimension, everything())
+
+ca_eig |>
+  gt() |>
+  tab_header(
+    title = "CA Eigenvalues and Inertia",
+    subtitle = "Decomposition of total inertia"
+  ) |>
+  fmt_number(
+    columns = -Dimension,
+    decimals = 3
+  ) |>
+  cols_label(
+    Dimension = "Dim",
+    eigenvalue = "Eigenvalue",
+    `percentage of variance` = "% Inertia",
+    `cumulative percentage of variance` = "Cumulative %"
+  ) |>
+  tab_footnote(
+    footnote = "Total inertia = chi-square statistic / n",
+    locations = cells_column_labels(columns = eigenvalue)
+  )
+
+# cos²（表現品質）と列カテゴリの寄与
+row_cos2 <- as_tibble(res_ca$row$cos2[,1:2], rownames = "Category") |>
+  rename(cos2_Dim1 = `Dim 1`, cos2_Dim2 = `Dim 2`) |>
+  arrange(desc(cos2_Dim1)) |>
+  slice(1:5)
+
+col_contrib <- as_tibble(res_ca$col$contrib[,1:2], rownames = "Column") |>
+  rename(Contrib_Dim1 = `Dim 1`, Contrib_Dim2 = `Dim 2`) |>
+  arrange(desc(Contrib_Dim1)) |>
+  slice(1:5)
+
+row_cos2 |>
+  gt() |>
+  tab_header(title = "Row cos² (Top 5)", subtitle = "Quality of representation on Dim1/Dim2") |>
+  fmt_number(columns = c(cos2_Dim1, cos2_Dim2), decimals = 3)
+
+col_contrib |>
+  gt() |>
+  tab_header(title = "Column Contributions (Top 5)", subtitle = "Contribution to Dim1/Dim2 (%)") |>
+  fmt_number(columns = c(Contrib_Dim1, Contrib_Dim2), decimals = 2)
+```
+
+# Display eigenvalues and contributions
+ca_eig <- as_tibble(res_ca$eig) |>
+  mutate(Dimension = row_number()) |>
+  select(Dimension, everything())
+
+ca_eig |>
+  gt() |>
+  tab_header(
+    title = "CA Eigenvalues and Inertia",
+    subtitle = "Decomposition of total inertia"
+  ) |>
+  fmt_number(
+    columns = -Dimension,
+    decimals = 3
+  ) |>
+  cols_label(
+    Dimension = "Dim",
+    eigenvalue = "Eigenvalue",
+    `percentage of variance` = "% Inertia",
+    `cumulative percentage of variance` = "Cumulative %"
+  ) |>
+  tab_footnote(
+    footnote = "Total inertia = chi-square statistic / n",
+    locations = cells_column_labels(columns = eigenvalue)
+  )
+
+# cos²（表現品質）と列カテゴリの寄与
+row_cos2 <- as_tibble(res_ca$row$cos2[,1:2], rownames = "Category") |>
+  rename(cos2_Dim1 = `Dim 1`, cos2_Dim2 = `Dim 2`) |>
+  arrange(desc(cos2_Dim1)) |>
+  slice(1:5)
+
+col_contrib <- as_tibble(res_ca$col$contrib[,1:2], rownames = "Column") |>
+  rename(Contrib_Dim1 = `Dim 1`, Contrib_Dim2 = `Dim 2`) |>
+  arrange(desc(Contrib_Dim1)) |>
+  slice(1:5)
+
+row_cos2 |>
+  gt() |>
+  tab_header(title = "Row cos² (Top 5)", subtitle = "Quality of representation on Dim1/Dim2") |>
+  fmt_number(columns = c(cos2_Dim1, cos2_Dim2), decimals = 3)
+
+col_contrib |>
+  gt() |>
+  tab_header(title = "Column Contributions (Top 5)", subtitle = "Contribution to Dim1/Dim2 (%)") |>
+  fmt_number(columns = c(Contrib_Dim1, Contrib_Dim2), decimals = 2)
+
+::: {.callout-tip}
+### 寄与率（contribution）と cos² の違い（CA）
+- 寄与率: 各点が「その次元の形成」にどれだけ寄与したか（次元側の説明）。次元ごとに合計が100%。
+- cos²: 各点が「その平面でどれだけよく表現されているか」（点側の品質）。1に近いほど表現良好。
+実務では「寄与率で軸の主要因を把握→cos²で信頼できる点のみ解釈」を推奨。
+:::
+
+#### 行/列の表現品質ヒートマップ（Dim1/Dim2）
+
+```{r}
+#| label: ca-cos2-heatmap
+
+row_cos2_long <- as_tibble(res_ca$row$cos2[,1:2], rownames = "Category") |>
+  pivot_longer(cols = c(`Dim 1`, `Dim 2`), names_to = "Dim", values_to = "cos2") |>
+  mutate(Dim = factor(Dim, levels = c("Dim 1","Dim 2")))
+
+ggplot(row_cos2_long, aes(Dim, Category, fill = cos2)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "#2b8cbe") +
+  labs(title = "Row cos² Heatmap (Dim1/Dim2)", fill = "cos²") +
+  theme_bw() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Row contributions to Dimension 1
+contrib_row <- as_tibble(res_ca$row$contrib[,1, drop = FALSE], rownames = "Category") |>
+  rename(Contrib_Dim1 = `Dim 1`) |>
+  arrange(desc(Contrib_Dim1))
+
+contrib_row |>
+  gt() |>
+  tab_header(
+    title = "Row Category Contributions",
+    subtitle = "Contribution to Dimension 1 (%)"
+  ) |>
+  fmt_number(
+    columns = Contrib_Dim1,
+    decimals = 2
+  ) |>
+  cols_label(
+    Category = "Row Category",
+    Contrib_Dim1 = "Contribution (%)"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6f3ff"),
+    locations = cells_body(
+      columns = Contrib_Dim1,
+      rows = Contrib_Dim1 > 30
+    )
+  )
+```
+
+## MCA（多重対応分析）の例
+
+```{r}
+#| label: mca-analysis
+
+# Generate sample data for MCA
+set.seed(123)
+df_mca <- data.frame(
+  Q1 = sample(c("Yes", "No", "Maybe"), 150, replace = TRUE),
+  Q2 = sample(c("Low", "Medium", "High"), 150, replace = TRUE),
+  Q3 = sample(c("A", "B", "C", "D"), 150, replace = TRUE),
+  Q4 = sample(c("Agree", "Neutral", "Disagree"), 150, replace = TRUE)
+)
+
+# Perform MCA
+res_mca <- MCA(df_mca, graph = FALSE)
+```
+
+::: {.callout-tip}
+### MCAのポイント
+- 個票データ（複数カテゴリ変数）→ダミー展開（指標行列）を内部で用い、CAの枠組みで分解。
+- 次元数は CA より多く必要なことが多い（カテゴリが多いほど）。
+- まれなカテゴリは併合を検討。Greenacre の補正（修正慣性）指標も参考に。
+:::
+
+```{r}
+#| label: mca-visualizations
+
+# Visualizations
+fviz_mca_biplot(res_mca, repel = TRUE)
+
+# Individual plot colored by Q2
+fviz_mca_ind(res_mca,
+             col.ind = df_mca$Q2,
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE,
+             ellipse.type = "confidence",
+             legend.title = "Q2 Level",
+             repel = TRUE)
+
+# Variable categories plot
+fviz_mca_var(res_mca,
+             col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+
+# Display eigenvalues
+mca_eig <- as_tibble(res_mca$eig) |>
+  mutate(Dimension = row_number()) |>
+  select(Dimension, everything())
+
+mca_eig |>
+  slice(1:5) |>  # Show top 5 dimensions
+  gt() |>
+  tab_header(
+    title = "MCA Eigenvalues and Inertia",
+    subtitle = "Top 5 dimensions"
+  ) |>
+  fmt_number(
+    columns = -Dimension,
+    decimals = 3
+  ) |>
+  cols_label(
+    Dimension = "Dim",
+    eigenvalue = "Eigenvalue",
+    `percentage of variance` = "% Inertia",
+    `cumulative percentage of variance` = "Cumulative %"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#fff3cd"),
+    locations = cells_body(
+      columns = `cumulative percentage of variance`,
+      rows = 1:2
+    )
+  ) |>
+  tab_footnote(
+    footnote = "MCA typically requires more dimensions than CA",
+    locations = cells_column_labels(columns = `cumulative percentage of variance`)
+  )
+
+# Variable contributions
+var_contrib <- as_tibble(res_mca$var$contrib[,1:2], rownames = "Category") |>
+  rename(Dim1 = `Dim 1`, Dim2 = `Dim 2`) |>
+  arrange(desc(Dim1)) |>
+  slice(1:10)  # Top 10 categories
+
+var_contrib |>
+  gt() |>
+  tab_header(
+    title = "MCA Variable Category Contributions",
+    subtitle = "Top 10 categories by Dimension 1 contribution"
+  ) |>
+  fmt_number(
+    columns = c(Dim1, Dim2),
+    decimals = 2
+  ) |>
+  cols_label(
+    Category = "Category",
+    Dim1 = "Dim 1 (%)",
+    Dim2 = "Dim 2 (%)"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6f3ff"),
+    locations = cells_body(
+      columns = Dim1,
+      rows = Dim1 > 10
+    )
+  )
+
+# cos²（表現品質）
+var_cos2 <- as_tibble(res_mca$var$cos2[,1:2], rownames = "Category") |>
+  rename(cos2_Dim1 = `Dim 1`, cos2_Dim2 = `Dim 2`) |>
+  arrange(desc(cos2_Dim1)) |>
+  slice(1:10)
+
+var_cos2 |>
+  gt() |>
+  tab_header(title = "MCA Variable cos² (Top 10)", subtitle = "Quality of representation on first two dimensions") |>
+  fmt_number(columns = c(cos2_Dim1, cos2_Dim2), decimals = 3)
+```
+
+::: {.callout-note}
+### MCA の寄与率と cos² の解釈
+- 寄与率（contrib）: 次元の形成に対するカテゴリの寄与（パーセント）。次元ごとに合計100%。
+- cos²: そのカテゴリが当該平面でどれだけ表現されているか（1に近いほど良好）。
+- 解釈手順: まず寄与率で軸の主要カテゴリを確認→cos²が高いカテゴリのみを中心に関係を読む。
+:::
+
+## tidyverseスタイルでの可視化
+
+```{r}
+#| label: ca-mca-tidyverse
+#| fig-width: 10
+#| fig-height: 8
+
+# CA biplot with tidyverse
+row_coords <- as_tibble(res_ca$row$coord, rownames = "RowCategory")
+col_coords <- as_tibble(res_ca$col$coord, rownames = "ColCategory")
+
+# Combined plot
+ggplot() +
+  geom_point(data = row_coords, 
+             aes(x = `Dim 1`, y = `Dim 2`), 
+             color = "blue", size = 4, shape = 17) +
+  geom_text(data = row_coords, 
+            aes(x = `Dim 1`, y = `Dim 2`, label = RowCategory), 
+            vjust = -1.5, color = "blue", size = 4) +
+  geom_point(data = col_coords, 
+             aes(x = `Dim 1`, y = `Dim 2`), 
+             color = "red", size = 4, shape = 16) +
+  geom_text(data = col_coords, 
+            aes(x = `Dim 1`, y = `Dim 2`, label = ColCategory), 
+            vjust = -1.5, color = "red", size = 4) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.5) +
+  labs(title = "CA Biplot (tidyverse style)",
+       subtitle = "Blue triangles: row categories, Red circles: column categories",
+       x = paste0("Dim 1 (", round(res_ca$eig[1,2], 1), "%)"),
+       y = paste0("Dim 2 (", round(res_ca$eig[2,2], 1), "%)")) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(face = "italic")
+  )
+
+# MCA biplot with tidyverse
+ind_coords <- as_tibble(res_mca$ind$coord[,1:2]) |>
+  mutate(Q2 = df_mca$Q2)
+
+var_coords <- as_tibble(res_mca$var$coord[,1:2], rownames = "Variable")
+
+# MCA biplot
+ggplot() +
+  geom_point(data = ind_coords, 
+             aes(x = `Dim 1`, y = `Dim 2`, color = Q2), 
+             alpha = 0.4, size = 2) +
+  geom_point(data = var_coords, 
+             aes(x = `Dim 1`, y = `Dim 2`), 
+             color = "black", size = 3, shape = 15) +
+  geom_text(data = var_coords, 
+            aes(x = `Dim 1`, y = `Dim 2`, label = Variable), 
+            vjust = -1, size = 3) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.5) +
+  labs(title = "MCA Biplot (tidyverse style)",
+       subtitle = "Points: individuals colored by Q2, Squares: variable categories",
+       x = paste0("Dim 1 (", round(res_mca$eig[1,2], 1), "%)"),
+       y = paste0("Dim 2 (", round(res_mca$eig[2,2], 1), "%)")) +
+  scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07")) +
+  theme_bw() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(face = "italic"),
+    legend.title = element_text(face = "bold")
+  )
+```
+
+# 多次元尺度法（MDS）
+
+計量（距離そのものを近似）/ 非計量（順位距離を近似）の 2 系統。
+
+::: {.callout-tip}
+### MDSの考え方と使い分け
+- データ間の距離（類似度）を与えると、低次元の座標に写像して関係性を可視化。
+- 計量MDS（classical）: ユークリッド距離の再現に適し、固有値に基づく解釈が可能。
+- 非計量MDS: 距離の順位情報のみ保ち、外れ値やスケールの影響に比較的頑健。
+- 次元数はストレスの低下（エルボー）と解釈容易性で決める。
+:::
+
+::: {.callout-note}
+### 距離の基本（初心者向け）
+- ユークリッド距離: $d(x,y)=\sqrt{\sum_j (x_j-y_j)^2}$。尺度の影響が大きいため、標準化の有無に注意。
+- マンハッタン距離: $\sum_j |x_j-y_j|$。外れ値にやや頑健、L1の幾何。
+- 相関/コサイン距離: 相関や角度の差に基づく距離（方向の類似性重視）。スケール差を無視したいときに有効。
+- マハラノビス距離: $\sqrt{(x-y)^\top \Sigma^{-1} (x-y)}$。共分散構造（相関・スケール）を補正した距離。
+用途に応じて距離を選ぶと、MDSの座標（可視化結果）も大きく変わります。
+:::
+
+```{r}
+#| label: mds-analysis
+
+# Create distance matrix from iris data
+x <- as.matrix(iris[, 1:4])
+dist_mat <- dist(x)
+
+# Classical MDS
+fit_cmd <- cmdscale(dist_mat, k = 2, eig = TRUE)
+
+# Extract coordinates and create data frame
+cmd_df <- as_tibble(fit_cmd$points) |>
+  setNames(c("Dim1","Dim2")) |>
+  mutate(Species = iris$Species)
+
+# Display eigenvalues for classical MDS
+cmd_eig_df <- data.frame(
+  Dimension = 1:length(fit_cmd$eig),
+  Eigenvalue = fit_cmd$eig,
+  Proportion = fit_cmd$eig / sum(abs(fit_cmd$eig[fit_cmd$eig > 0])),
+  Cumulative = cumsum(fit_cmd$eig / sum(abs(fit_cmd$eig[fit_cmd$eig > 0])))
+)
+
+cmd_eig_df |>
+  slice(1:10) |>
+  gt() |>
+  tab_header(
+    title = "Classical MDS Eigenvalues",
+    subtitle = "Iris dataset distance decomposition"
+  ) |>
+  fmt_number(
+    columns = c(Eigenvalue, Proportion, Cumulative),
+    decimals = 3
+  ) |>
+  cols_label(
+    Dimension = "Dim",
+    Eigenvalue = "Eigenvalue",
+    Proportion = "Proportion",
+    Cumulative = "Cumulative"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = Eigenvalue,
+      rows = Eigenvalue > 0
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Negative eigenvalues indicate non-Euclidean distances",
+    locations = cells_body(
+      columns = Eigenvalue,
+      rows = Eigenvalue < 0
+    )
+  )
+
+# Visualize classical MDS
+ggplot(cmd_df, aes(Dim1, Dim2, color = Species)) +
+  geom_point(alpha = 0.7, size = 3) +
+  labs(
+    title = "Classical MDS (cmdscale)",
+    subtitle = "2D representation of 4D iris measurements",
+    x = "Dimension 1",
+    y = "Dimension 2"
+  ) +
+  theme_bw() +
+  scale_color_brewer(palette = "Set1") +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(face = "italic")
+  )
+```
+
+```
+
+::: {.callout-note}
+### Classical MDSの注意
+- 負の固有値は非ユークリッド距離の兆候。前処理のスケーリングや距離の選択を検討。
+- 2次元で分離が不十分なら3次元も候補。負荷と可視化のトレードオフを考える。
+:::
+
+```{r}
+#| label: mds-nmds
+
+# Non-metric MDS
+fit_nmds <- smacof::mds(dist_mat, type = "ordinal")
+
+# Extract coordinates
+mds_df <- as_tibble(fit_nmds$conf) |>
+  setNames(c("Dim1","Dim2")) |>
+  mutate(Species = iris$Species)
+
+# Visualize non-metric MDS
+ggplot(mds_df, aes(Dim1, Dim2, color = Species)) +
+  geom_point(alpha = 0.7, size = 3) +
+  labs(
+    title = "Non-metric MDS (smacof)",
+    subtitle = paste("Preserves rank order of distances, Stress =", round(fit_nmds$stress, 3)),
+    x = "Dimension 1",
+    y = "Dimension 2"
+  ) +
+  theme_bw() +
+  scale_color_brewer(palette = "Set1") +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(face = "italic")
+  )
+```
+
+### （例）マハラノビス距離によるMDS
+
+```{r}
+#| label: mds-mahalanobis
+# 中心化 → 共分散の -1/2 乗でホワイトニング → ユークリッド距離
+mu <- colMeans(x)
+S  <- cov(x)
+eig <- eigen(S)
+S_inv_sqrt <- eig$vectors %*% diag(1/sqrt(eig$values)) %*% t(eig$vectors)
+
+x_wh   <- scale(x, center = mu, scale = FALSE) %*% S_inv_sqrt
+dist_mah <- dist(x_wh)  # これがマハラノビス距離に対応
+
+fit_cmd_mah <- cmdscale(dist_mah, k = 2, eig = TRUE)
+cmd_mah_df <- as_tibble(fit_cmd_mah$points) |>
+  setNames(c("Dim1","Dim2")) |>
+  mutate(Species = iris$Species)
+
+ggplot(cmd_mah_df, aes(Dim1, Dim2, color = Species)) +
+  geom_point(alpha = 0.7, size = 3) +
+  labs(title = "Classical MDS (Mahalanobis distance)",
+       subtitle = "Whitened by covariance: robust to scale/correlation",
+       x = "Dimension 1", y = "Dimension 2") +
+  theme_bw() + scale_color_brewer(palette = "Set1")
+```
+
+::: {.callout-tip}
+### マハラノビス距離の直感
+- 相関の強い方向（実質的に同じ情報）は距離に過剰に効かないよう自動補正。
+- スケールの大きい変数も共分散で正規化され、距離の公平性が増す。
+:::
+
+### 距離ごとの埋め込み比較（ユークリッド/マンハッタン/相関）
+
+```{r}
+#| label: mds-distance-sensitivity
+
+embeds <- list(
+  Euclidean = cmdscale(dist(x, method = "euclidean"), k = 2),
+  Manhattan = cmdscale(dist(x, method = "manhattan"), k = 2),
+  Correlation = cmdscale(as.dist(1 - cor(t(x))), k = 2)
+)
+
+emb_df <- purrr::imap_dfr(embeds, ~{
+  as_tibble(.x) |>
+    setNames(c("Dim1","Dim2")) |>
+    mutate(Method = .y, Species = iris$Species)
+})
+
+ggplot(emb_df, aes(Dim1, Dim2, color = Species)) +
+  geom_point(alpha = 0.7, size = 2) +
+  facet_wrap(~ Method, scales = "free") +
+  theme_bw() +
+  labs(title = "MDS Embeddings by Distance Type")
+```
+
+### 次元数とストレスの関係（非計量MDS）
+
+```{r}
+#| label: mds-stress-vs-dim
+
+dims <- 1:5
+stress_tbl <- purrr::map_dfr(dims, ~{
+  fit <- smacof::mds(dist_mat, type = "ordinal", ndim = .x)
+  tibble::tibble(Dim = .x, Stress = fit$stress)
+})
+
+ggplot(stress_tbl, aes(Dim, Stress)) +
+  geom_line() + geom_point() + theme_bw() +
+  labs(title = "Stress vs. Number of Dimensions (Non-metric MDS)")
+```
+
+# Display stress and GOF statistics
+# Calculate correlation between original and MDS distances
+mds_dist <- dist(fit_nmds$conf)
+dist_cor <- cor(as.vector(dist_mat), as.vector(mds_dist))
+
+# Create GOF statistics table
+data.frame(
+  Metric = c("Stress-1", "Correlation", "N Objects", "N Dims"),
+  Value = c(
+    fit_nmds$stress,
+    dist_cor,
+    nrow(fit_nmds$conf),
+    ncol(fit_nmds$conf)
+  )
+) |>
+  gt() |>
+  tab_header(
+    title = "Non-metric MDS Goodness of Fit",
+    subtitle = "Stress and fit statistics"
+  ) |>
+  fmt_number(
+    columns = Value,
+    rows = Metric %in% c("Stress-1", "Correlation"),
+    decimals = 3
+  ) |>
+  fmt_number(
+    columns = Value,
+    rows = Metric %in% c("N Objects", "N Dims"),
+    decimals = 0
+  ) |>
+  cols_label(
+    Metric = "Measure",
+    Value = "Value"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = Value,
+      rows = Metric == "Stress-1" & Value < 0.1
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6f3ff"),
+    locations = cells_body(
+      columns = Value,
+      rows = Metric == "Correlation" & Value > 0.9
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Stress < 0.1 indicates good fit",
+    locations = cells_body(
+      columns = Value,
+      rows = Metric == "Stress-1"
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Higher correlation indicates better preservation of distances",
+    locations = cells_body(
+      columns = Value,
+      rows = Metric == "Correlation"
+    )
+  )
+
+# Shepard diagram
+plot(fit_nmds, plot.type = "Shepard", main = "Shepard Diagram")
+```
+
+**実務上のヒント**: 次元削減や潜在変数モデルは「可視化・表の整形」とセットで共有すると意思決定が速くなります。推定→可視化（散布図・ヒートマップ）→要約表（gt）→解釈メモ、の順でノート化しておくと再現性が高まります。また、**前処理（標準化・欠損処理・カテゴリ結合）**の妥当性が結論を大きく左右します。
+
+::: {.callout-warning}
+### 解釈の落とし穴（PCA/CA/MCA/MDS）
+- PCA: 2次元で十分とは限らない。累積寄与率・cos²の確認を怠らない。
+- CA/MCA: 行点と列点の距離を直接解釈しない（スケーリング依存）。cos²が低い点は控えめに。
+- MDS: 距離の選択で結果が大きく変わる。感度分析で妥当性を点検。
+- すべて: まれなカテゴリや外れ値が図を歪める。併合・ロバスト化を検討。
+:::
+
+# 参考
+- カテゴリカルデータの相関（ポリコリック/ポリシリアル/テトラコリック など）
+  - https://norimune.net/673
+- Confirmatory Factor Analysis（入門）
+  - https://bookdown.org/bean_jerry/using_r_for_social_work_research/confirmatory-factor-analysis.html
+- PCA 解説と実装（Qiita）
+  - https://qiita.com/zumax/items/d92342c3da94020eedec
+- CA の実装ガイド
+  - http://www.sthda.com/english/articles/31-principal-component-methods-in-r-practical-guide/113-ca-correspondence-analysis-in-r-essentials/
+- Factoshiny（FactoMineR の GUI）
+  - http://factominer.free.fr/graphs/factoshiny.html
+- 多次元尺度法の教材
+  - https://pages.mtu.edu/~shanem/psy5220/daily/Day16/MDS.html#multi-dimensional-scaling
+
+# セッション情報
+
+```{r}
+#| label: session-info
+sessionInfo()
+```

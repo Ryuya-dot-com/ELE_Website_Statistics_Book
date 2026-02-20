@@ -1,0 +1,978 @@
+---
+title: "混合効果モデル：2値ロジスティック回帰分析"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# はじめに
+
+一般化線型モデル (Generalized Linear Model; GLM) は線型モデル (Linear Model; LM) を正規分布以外の分布に拡張した統計モデルです。具体的には、GLMで扱う確率分布には二項分布、ポアソン分布、負の二項分布、ベータ分布、ガンマ分布などがあります。さらに、GLMに変量効果を含むモデルとして、一般化線形混合効果モデル (Generalized Linear Mixed Effect Model; GLMM) があります。
+
+近年の英語教育学研究や心理言語学研究では、混合効果モデルを用いた分析が多く報告されています ( e.g., [Baayen et al., 2008](https://doi.org/10.1016/j.jml.2007.12.005); [Brysbaert & Stevens, 2018](https://doi.org/10.5334/joc.10); [Cunnings, 2012](https://doi.org/10.1177/0267658312443651); [Gries, 2021](https://doi.org/10.1111/lang.12448); [Linck & Cunnings, 2015](https://doi.org/10.1111/lang.12117); [Meteyard & Davies, 2020](https://doi.org/10.1016/j.jml.2020.104092))。具体的には、二項分布に基づくロジスティック回帰分析、ポアソン分布もしくは負の二項分布に基づくポアソン回帰分析を扱うことが多いです。近年では目的変数が多値となるデータに対応するGLMMを扱った研究も登場しています。ここでは目的変数が2値となるロジスティック回帰分析について見ていきましょう。
+
+一般化線形混合効果モデル（GLMM）は、2値・頻度など**非正規**の目的変数に対して、**固定効果**と**ランダム効果**を同時に扱う枠組みです。本章では、語彙学習の架空データを用いて、**2値ロジスティックGLMM**を段階的に実装します。
+
+::: {.callout-tip}
+## Conventions
+- Figure labels/titles are in English to avoid mojibake across environments.
+- All code chunks are R (```{r}). HTML/CSS is used only for chapter styling.
+- For logistic models, report effects on the response scale where possible (odds/ probabilities), and state coding (treatment/sum) when interpreting.
+:::
+
+::: {.callout-tip}
+## 実行前ガイド（2値ロジスティックGLMM）
+
+- 基本式：$\operatorname{logit}(p_{ij}) = \mathbf{x}_{ij}\beta + \mathbf{z}_{ij}b$, ここで $b \sim \mathcal{N}(0,\Sigma)$。`glmer(..., family = binomial())`。
+- 推奨前処理：連続変数は**中心化/標準化**、カテゴリカルは**codingの方針**（treatment/sum）を決める。
+- ランダム効果の考え方：まず**ランダム切片**、必要なら**ランダム傾き**を追加。`isSingular()`で特異適合を点検。
+- 収束と最適化：`optimizer='bobyqa'` や `control=list(optCtrl=list(maxfun=1e5))` を検討。収束警告はまず**スケーリング**と**構造の単純化**を確認。
+- 診断：`DHARMa` のシミュレーション残差（過分散・外れ値・一様性）、`performance::check_overdispersion()`。
+- 解釈：係数は**log-odds**、`exp(β)` は**オッズ比（OR）**。`emmeans(..., type='response')` で**確率**スケールに戻す。
+:::
+
+## 2値ロジスティック回帰分析が用いられている理由
+
+GLMMは分析手法の総称であり、目的変数の特徴に応じて用いられる具体的な名前が異なります。例えば、目的変数が語彙性判断課題における反応時間のような連続値の場合、反応時間として得られたデータを対数変換して重回帰分析 (ランダム効果を含むモデルでは線形混合効果モデルと呼ばれます) を実施します。詳細は「5. 一般化線形モデル・一般化加法モデル」のページも参照。
+
+線形混合効果モデルでは右のようなデータセットが得られます。このようなデータをANOVAで分析する場合、参加者ごとに平均の反応時間を用いる方法 (F1分析) と項目ごとに平均反応時間を計算する方法 (F2分析) があります。混合効果モデルではこれらのF1分析とF2分析を1つの分析で両方実施可能であるというメリットがあります。詳細は「13. 混合効果モデルとサンプルサイズの設計」のページも参照。
+
+第二言語習得研究で利用される混合効果モデルで有名なものの1つに2値ロジスティック回帰分析があります。2値という名前が示す通り、正解・不正解のような言語テストのデータの分析に主に用いられます。特に、語彙習得研究では、ItemとParticipantの2つのランダム効果を含めた混合効果モデルでは多くの場合、目的変数が2値となります。そのため、テストの合計点を分析する場合には線形モデルであるANOVAが用いられましたが、Itemの変量効果を含めて分析する場合には一般化線形モデルである2値ロジスティック回帰分析を用いることとなります。
+
+| Participant | Item | Condition | Response_Time |
+| --- | --- | --- | --- |
+| 1 | A | A | 758.73 |
+| 1 | B | B | 693.36 |
+| 1 | C | A | 637.37 |
+| 1 | D | B | 753.53 |
+| … | … | … | … |
+| 30 | X | A | 638.73 |
+| 30 | Y | B | 623.56 |
+| 30 | Z | A | 737.34 |
+
+## 2値ロジスティック回帰分析の概要
+
+ロジスティック回帰分析は目的変数が2値データとなる一般化線形回帰分析の一種です。x軸に説明変数、y軸に0から1の確率をロジスティック曲線 (S字のシグモイド型曲線) でプロットしたものです。
+
+線形モデルでは目的変数が正規分布に従っていることが前提となるため、目的変数が正解・不正解のような2値データを扱うことができません。線形モデルを2値データに適用する方法としては2値データを確率に変換する方法があります。例えば、50人の学生が進級試験に合格するかどうかを期末テストの結果から予測するとします。目的変数は合格・不合格の2値データとなりますが、50名中25名が合格であれば50%を目的変数、期末テストを説明変数とする単回帰分析を実施することもできます。しかし、この方法は不適切であり、2値データにはロジスティック回帰分析を実装することが適切です。
+
+ロジスティック回帰分析は0から1の間に確率が収まることを利用し、目的変数が1の場合の確率を$P_1$、0の場合の確率を$P_0 = 1-P_1$と表します。また、ロジスティック回帰分析は重回帰分析と同様に観測値の独立性を前提としています。つまり、50人の学生の進級試験のデータからは50個のデータが取れるのみということとなります。
+
+ロジスティック回帰分析は目的変数が2値データであるもの以外にも多値のカテゴリカルデータにも適用できます。この多値ロジスティック回帰分析は名義尺度のカテゴリカル変数だけでなく、CEFR C1、B1、B2…のように順序データにも適用可能です。ただし、目的変数は相互に排他的でなければなりません。正解・不正解というデータは相互に排他的ですが、サッカーファン・野球ファン・ラグビーファンは相互に排他的ではありません (サッカーも野球も好きな人は存在するため)。
+
+ロジスティック回帰分析は1つの変数に対して最低50の観測値が正確な区間推定に必要です。つまり、進級試験の合格・不合格を予測する際に、期末試験の結果、当日の体調、動機づけの3つの変数から予測するためには150 (50 × 3) の観測値 (サンプルサイズ) が必要となります。なお、一般化線形混合効果モデルとしてランダム効果を含める場合にはこの限りではありませんが、正確な推定のためには参加者および項目数が多く必要となります。またRのlme4パッケージでは2値データを扱うのみです。多値データの場合はmclogitパッケージ、順序データの累積モデルはordinalパッケージをそれぞれ用いて分析可能です (隣接カテゴリモデルはordinalパッケージでは実装できません)。なお、いずれのデータもbrmsパッケージを使うことでベイズ推定で実装可能です。
+
+## 回帰係数の推定と解釈
+
+ロジスティック回帰分析は重回帰分析と同様に、線型予測子から目的変数を予測します。ロジスティック回帰分析では確率を推定するために、線型予測子を用いて予測値$\hat{g}$を以下のように得ます：$\hat{g}=b_0+b_1(X)$。$\hat{g}$を用いて具体的な確率を得るためには自然数$e$を用いて計算します：$予測確率=e^{\hat{g}}/(1+e^{\hat{g}})$。例えば、切片$b_0=-14.79$、説明変数Xの係数$b_1=2.69$で、Xが5であった場合、$e^{(-1.34)}/(1+e^{-1.34})=0.21$となり、正解率は21%となります。Xが7であった場合、$e^{(4.04)}/(1+e^{4.04})=0.98$となり、正解率は98%となります。このように$\hat{g}$と$e$を用いて予測確率を計算することができます。
+
+ロジスティック回帰分析は重回帰分析と異なり、$e$を間に挟んで確率を計算することとなります。説明変数の生のデータを用いて直接的に計算できない理由は回帰線がロジスティック曲線となるため (指数変化しているため) です。例えば、-2.5では傾きが平らであり、-2.5から2.5までの間で急に増加し、2.5以降はまた平らとなるようなロジスティック曲線が仮定されます。そのため、x軸の説明変数を使うと-10から-9までの1の変化と-2から-1への変化は重回帰分析とは異なる意味を持つことから、生データを用いた確率の予測はできません。
+
+係数を解釈するにあたってはオッズ、オッズ比、ロジットの概念を理解しておくことが必要です (ランダム効果を含まないロジスティック回帰分析およびオッズ比に関する説明などは[こちら](https://bellcurve.jp/statistics/course/26934.html)を参照のこと)。ロジスティック回帰分析の係数は全てロジットとして出力されます。そのため、指数変換を通してオッズ比として扱うことができます。Rでは、summary()関数の出力結果における回帰係数 (ロジット) の符号が正の場合、目的変数が1である確率が50%より大きく、符号がマイナスの場合、1である確率が50%より小さい結果となります。オッズ比に変換した場合、1を基準に比較することとなります。例えば、係数が1.63のように、1よりも大きい場合には目的変数が1である確率が50%より大きいと解釈できます。一方、0.14のように1よりも小さい場合には目的変数が1である確率が50%よりも小さくなると解釈できます。
+
+重回帰分析では偏差平方和が小さくなるように最小二乗法を用いていました。ロジスティック回帰分析ではモデルの当てはまりの良さを検討する尤度 (likelihood) を最大とする最尤法が用いられます。尤度はそのままでは扱いづらいため、対数を取った対数尤度 (log likelihood; LL) を用います。この対数尤度に$-2$をかけた$-2LL$は逸脱度と呼ばれ、モデルの当てはまりの悪さを表しています。この逸脱度や対数尤度を用いると、情報量基準とともにモデルを選択する指標となります。
+
+## 混合効果モデルとランダム効果
+
+参加者と項目をランダム効果として分析をする方法が混合効果モデルと呼ばれます。混合効果モデルでは個人差や項目差を考慮したより詳細な分析をすることが可能です。これまでのGLM (e.g., 重回帰分析、ロジスティック回帰分析) では平均を用いて検討を行っていました。例えば、t検定でGlossing条件とWriting条件を比較した際、15点満点のテストでこの2つの群を比較しています。Glossing条件で学習した参加者Aさんが10点、Bさんが12点、Cさんが8点となると、Glossing条件の平均点は10点となります。この平均値をWriting条件と比較して有意な差が見られるかを検討することがt検定でした。そのため、参加者の情報やどの目標語に正解したのかという個人差・項目差 (ランダム効果) は検討されていません。
+
+混合効果モデルではこれらのランダム効果を検討することができます。さらに、階層性のある多段抽出されたデータ (e.g., 学校Aから30名、学校Bから30名、学校Cから30名) についても扱うことができます。特に、語彙テストを検討する際には、参加者Aから15項目、参加者Bから15項目のように多段抽出されたデータを扱います。同様に、時系列データも階層性があります：参加者Aは直後と遅延の2つの段階でデータが収集されています。このように、混合効果モデルは教育・心理データを扱う際に適しています。以下ではランダム効果を持つロジスティック回帰分析に焦点を当てて分析していきます。
+
+# データの作成
+
+以下では、Rを用いてランダム効果を取り入れたロジスティック回帰分析を実施する方法を紹介します。データセットは、50人の参加者が2種類の語彙学習方法を用いて比較された架空のデータです。この研究では、目標語彙に集中する学習方法がより効果的であると仮定します。具体的には、注釈付きの読解よりも、目標語彙を使用して文章を作る方が学習効果が高いと考えられます。参加者は15個ずつの目標語を2つの方法で学び、L2からL1への翻訳テスト (recall test) と選択問題 (recognition test) でその知識を評価します。このテストは学習直後と1週間後の遅延で実施しました。この実験設定を前提に、以下の分析手法を提案します：
+
+1. t検定：各学習方法で15語ずつ学習し、15点満点のテストで評価します。再生テストと再認テストの両方でt検定を行います。
+2. 多変量分散分析 (Multivariate Analysis of Variance; MANOVA)：再生テストと再認テストの両方を目的変数とした多変量分散分析を実施します。
+3. ランダム効果を含むロジスティック回帰分析：目標語と参加者をランダム効果とし、各目標語を観測値として、テストの正解・不正解を2値データで分析します。再生テストと再認テストそれぞれに対してロジスティック回帰分析を行い、結果を報告します。
+4. 多変量ロジスティック回帰分析：多変量分散分析のアプローチを用いて、ランダム効果を含むロジスティック回帰分析を実施します。これはRのbrmsパッケージを使用して実装できます。
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+# パッケージの読み込み
+pacman::p_load(tidyverse, gt, psych, performance, emmeans, lmerTest, DHARMa, sjPlot, effectsize,
+               kableExtra, broom, car, compute.es, pwr, brunnermunzel, MASS, mgcv, MuMIn,
+               glmmTMB, ggeffects, pROC, PRROC, blme)
+
+# テーマと乱数種の設定
+theme_set(theme_bw())
+set.seed(123)
+```
+
+```{r}
+n_participants <- 50
+n_items <- 30
+treatments <- c("Glossing","Writing")
+tests <- c("Recall","Recognition")
+times <- c("Immediate","Delayed")
+
+dat <- expand.grid(
+  Participant = 1:n_participants,
+  Item = 1:n_items,
+  Treatment = treatments,
+  Test = tests,
+  Time = times,
+  KEEP.OUT.ATTRS = FALSE)
+
+# アイテム割当（Glossing:1-15, Writing:16-30）
+dat <- dat[
+  (dat$Treatment == "Glossing" & dat$Item <= 15) |
+  (dat$Treatment == "Writing"  & dat$Item >  15), ]
+
+# 0/1反応生成：Writing > Glossing, Recognition > Recall, Immediate > Delayed
+dat$Score <- ifelse(
+  dat$Treatment == "Glossing",
+  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.50, 0.20)),
+  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.90, 0.50)))
+
+dat$Score <- ifelse(dat$Time == "Immediate",
+                    pmin(dat$Score + sample(0:1, nrow(dat), TRUE), 1),
+                    dat$Score)
+```
+
+重回帰分析のRコードと同様に、共変量としてProficiencyとAptitudeを加えます。また、数字で読み込まれてしまっているParticipantとItemをfactor型に変更します。
+
+```{r}
+participants <- unique(dat$Participant)
+proficiency_values <- rnorm(length(participants), mean = 2500, sd = sqrt(500))
+aptitude_values <- rnorm(length(participants), mean = 10,   sd = sqrt(10))
+
+participant_data <- tibble(
+  Participant = participants,
+  Proficiency = proficiency_values,
+  Aptitude    = aptitude_values)
+
+dat <- dat |>
+  left_join(participant_data, by = "Participant") |>
+  mutate(
+    Participant = factor(Participant),
+    Item = factor(Item),
+    Treatment = factor(Treatment),
+    Time = factor(Time),
+    Proficiency = as.numeric(scale(Proficiency)),
+    Aptitude = as.numeric(scale(Aptitude)))
+```
+
+今回はMANOVAと異なり、recallとrecognitionそれぞれにモデルを作成します。そのためデータは別々のオブジェクトとして格納しました。ロングフォーマットとなっているため、ParticipantとItemが縦長になっています。ScoreにはRecallおよびRecognitionテストで正解したかどうかのデータが格納されています。ProficiencyおよびAptitudeはParticipantに付随するため、縦に同じ数値が並んでいます。このロングデータにはTestとしてRecallとRecognitionの2種類がありますが、分析の際はテストを分けて分析します。以下のように2つのデータセットを作成します。
+
+```{r}
+dat_recall <- dplyr::filter(dat, Test == "Recall")
+dat_recognition <- dplyr::filter(dat, Test == "Recognition")
+
+head(dat_recall) |> 
+  gt() |>
+  tab_header(title = "Recall Test Data")
+
+head(dat_recognition) |>
+  gt() |>
+  tab_header(title = "Recognition Test Data")
+```
+
+ロジスティック回帰分析は目的変数 (Score) が2値のまま実行できます。しかし、MやSDを用いる先行研究と一貫させるメタ分析のように他の研究へと繋げるために下のようにコードで連続値へと足して記述統計を示しておくとよいでしょう。なお、2値ロジスティック回帰分析を用いた研究もオッズ比を用いて統合可能です。記述統計をプロットを見ると、RecallおよびRecognitionでImmediateの方がDelayedよりも高く、Writingの方がGlossingよりも高い点数である傾向があることがわかります。
+
+```{r}
+dat |>
+	mutate(Participant = factor(Participant),
+				 Item = factor(Item)) |>
+	group_by(Participant, Treatment, Test, Time) |>
+	summarize(Score = sum(Score), .groups = 'drop') |>
+	group_by(Treatment, Test, Time) |>
+	summarise(
+	Mean = mean(Score),
+	SD = sd(Score),
+	N = n(),
+	SE = SD / sqrt(N),
+	CI_lower = Mean - 1.96 * SE,
+	CI_upper = Mean + 1.96 * SE) |> 
+  	ungroup() |>
+  	gt() |>
+  	tab_header(title = "Descriptive Statistics") |>
+  	cols_label(
+  	  		Treatment = "Treatment",
+  	  		Test = "Test",
+  	  		Time = "Time",
+  	  		Mean = "Mean Score",
+  	  		SD = "Standard Deviation",
+  	  		N = "Sample Size",
+  	  		SE = "Standard Error",
+  	  		CI_lower = "95% CI Lower",
+  	  		CI_upper = "95% CI Upper") |>
+  	tab_spanner(
+  	  		label = "Score Summary",
+  	  		columns = c(Mean, SD, N, SE, CI_lower, CI_upper))
+```
+
+# コーディング
+
+Rではカテゴリカル変数を読み込む際にいくつかのコーディング方法があります (コーディングについては[こちら](https://www.notion.so/2-ANOVA-8c6fcbe6ffb5431f82b09d8a86e56ef3?pvs=21)を参照)。デフォルトのdummy codingを行うとinterceptとして最初に読み込まれた水準が入るため、simple effectを検討する比較が分かりやすくなります。例えば、GlossingとWritingを比較する場合、Rはデフォルトでアルファベット順に読み込んでいきます。そのため、dummy codingではinterceptをGlossingとしてGlossingとWritingを比較することとなります。一方、Glossing vs. Writing vs. Retellingのような3水準の場合、アルファベット順でGlossingが最初に読み込まれるため、interceptのGlossingとWritingの比較に加え、GlossingとSpeakingが比較されます。そのため、結果の出力ではWritingとRetellingの比較は見られません。そのため、emmeansを使った多重比較が必要となります。なお、カテゴリカル変数同士の交互作用を検討する際にはコーディングによって得られる結果が異なるため、解釈には特に注意が必要です。
+
+このカテゴリカル変数の読み込みは以下のように変更することができます。
+
+::: {.panel-tabset}
+
+カテゴリカル変数は **sum coding（和=0）** を用います。これにより、切片は**水準平均**、主効果は**両群の平均差**、交互作用は**傾きの差**として解釈できます。2水準ではレベルが {−1, +1} に再符号化され、**単純主効果の符号と大きさ**が読み取りやすくなります。
+
+ここではConditionが2水準であると想定してコーディングしているため、2が用いられていますが、contr.sum() の数字はそれぞれの水準の数に調整する必要があります。他のコーディング方法に関しては[こちら](https://www.sciencedirect.com/science/article/pii/S0749596X19300695?via%3Dihub)も参照。なお、カテゴリカル変数のコーディングはデザイン行列と仮説行列を踏まえた解釈が非常に重要です。emmeansパッケージを用いた下位検定では多重比較でp値を調整し、タイプ2エラーの確率が高まってしまいます。
+
+カテゴリカル変数はコーディングする方法が明示されますが、連続変数についても変換が行われることがあります。GLMMでは典型的に、中心化か標準化が行われることが多いです。マルチレベルのクロス・ネスト関係で全体平均中心化と集団平均中心化の持つ意味が変わります。
+
+- 全体平均中心化：各観測値から全体の平均を引く
+- 集団平均中心化：各観測値から条件ごとの平均を引く
+
+基本的には全体平均中心化を行うことで、Treatment (Glossing vs. Writing) の全体的な効果を検討することができます。なお、Treatmentがbetween-participant designの場合、集団平均中心化は不適切となります。これは集団内での変動や特定のサブグループ内でのパターンを理解するために行われるためです。また、参加者に付随する情報であるProficiencyやAptitudeなどの情報を中心化する際には重複がある場合に特に注意が必要です。
+
+例えば、3つの学校から30名ずつ生徒を抽出した際、全体で見ると右肩下がりですが、各学校で見ると少し右肩上がりとなり、誤った解釈を行ってしまう可能性があります。このような階層性を有するマルチレベルデータに対しては、レベル2 (学校) とレベル1 (生徒) をランダム効果としたGLMMでの分析が適切です。学校1の平均を計算し、学校1の生データから引いていく方法は集団平均中心化、3つの学校の平均を生データから引いていくのが全体平均中心化です。
+
+### コード例
+
+```{r}
+# 2水準のカテゴリカルは sum coding（和=0）
+contrasts(dat_recall$Treatment) <- contr.sum(2)
+contrasts(dat_recall$Time) <- contr.sum(2)
+
+contrasts(dat_recognition$Treatment) <- contr.sum(2)
+contrasts(dat_recognition$Time) <- contr.sum(2)
+```
+
+### 結果解釈
+
+sum coding 下では、係数は**両群平均からの偏差**として現れます。可視化（`emmip`/`plot_model`）と合わせると交互作用の向きを直感的に確認できます。
+
+:::
+
+# モデル仕様（lme4）
+
+- 50名の参加者を対象に全部で30項目の目標語を学習してもらいます。つまり、変量効果はParticipantとItemであり、ネスト関係にあります。
+- Glossing条件では15項目、Writing条件では残りの15項目を学習します。つまり、固定効果 (説明変数) のTreatmentはwithin-participant designとなります。
+- 学習者の語彙知識は学習直後と1週間後の遅延テストで測定されます。つまり、固定効果 (説明変数) のTimeはwithin-participant designです。
+- 測定の際にはRecallとRecognitionの2種類のテストを実施しました。つまり、目的変数は2つあります。
+- 参加者の語彙サイズと記憶力が測定されました。つまり、Participantに付随する共変量 (説明変数) は2つあります。
+
+具体的なデータはこちらです。
+
+```{r}
+str(dat_recall)
+```
+
+## LMEおよびGLMMの記述方法
+
+変量効果を含む混合効果モデルはlme4パッケージを使います。lme4パッケージの使い方の説明として、固定効果AとBの交互作用と共変量Cの3つの固定効果を含むモデルを例に用いて説明していきます。
+
+目的変数が連続値になる場合 (e.g., 視線計測、反応時間) にはlmer() 関数、目的変数が2値データや頻度データなど、連続値以外の場合にはglmer() 関数を使います。
+
+目的変数をチルダの左側、固定効果とランダム効果をチルダの右側に置きます。固定効果はカッコの外側に置かれているA、B、Cです。アスタリスクで繋がれているものは交互作用、プラスで繋がれているものは主効果です。つまり、AとBの交互作用およびそれぞれの単純主効果、Cの主効果を検討しています。変量効果はカッコに括られているものです。
+
+`lmer(目的変数 ~ A * B + C + (1 + A * B | Participant) + (1 + C | Item), データ)`
+
+変量効果には3つの種類があります：ランダム切片、ランダム傾き、ランダム切片 + ランダム傾き
+
+ランダム切片モデルは`(1 | Participant)`で表されます。縦棒の右側の要素の差を含めて目的変数を推定します。ここでは1は切片を表し、参加者ごとに切片が異なることを表します。例えば、語彙性判断課題を検討する場合、参加者によって元々反応時間が早い人と遅い人がいます。このような場合にはランダム切片モデルが使えます。ランダム傾きのみのモデルはあまり使われませんが、`(0 + A | Participant)`と表されます。
+
+ランダム傾きモデルは、例えば、固定効果Aを受けやすい人もいれば、受けにくい人もいるけれど、全員の反応時間は統制されていると仮定します。
+
+3つ目のランダム切片と傾きのモデルは`(1 + A | Participant)`で表されます。一般的に、ランダム傾きを含めて検討することは`(1 + A | Participant)`をモデルへと組み込むことを指します。
+
+ランダム効果の表記について、`(1 + A + B | Participant)`はParticipantをAとBのランダム傾きとしてモデルに組み込むことを指します。同様に、`(1 + A * B | Participant)`はAとBの交互作用およびそれぞれの主効果をランダム傾きとしていることを指します。また、カッコの中の縦棒を2本`(1 + A * B || Participant)`にすると、ランダム傾きの相関を考慮しないこととなります。
+
+`glmer()`関数の使い方は`lmer()`関数とほとんど同じです。異なる点は`family = `と`control = glmerControl()`という引数の部分です。
+
+`glmer(目的変数 ~ A * B + C + (1 + A * B | Participant) + (1 + C | Item), 使用データ, family = XX, control = glmerControl(optimizer = "bobyqa"))`
+
+目的変数が2値のときは`family = binomial`、頻度のときは`family = poisson`、自然数のときは`family = Gamma`、正規分布 (線型モデル) のときは`family = gaussian`を用います。なお、ポアソン回帰分析の前提である平均と分散のパラメータであるλが等しいと言えない場合は`glmer()`関数ではなく`glmer.nb()`関数を使うことで負の二項分布の分析が可能です。
+
+`control = glmerControl()`の部分はモデルの収束に関わっています。いくつか収束を助けるアルゴリズムはありますが、今回は`(optimizer = "bobyqa")`を使っていきましょう。詳細はヘルプページを参照のこと。
+
+## モデルの作成：最大モデルから固定効果を探索的に選択するアプローチ
+
+今回のデータではRecallとRecognitionという目的変数が2つあります。複数の目的変数がある際の分析では以下の2つのアプローチがあります：(1) MANOVAやSEMのような多変量解析を行う、(2) 目的変数ごとに個別に分析モデルを作成する。今回はMANOVAと異なり、Recallで1つ目の分析、Recognitionで2つ目の分析を実施します。
+
+### 最大モデルの作成
+
+今回使用するデータでは、Treatment (Glossing vs. Writing)、Time (Immediate vs. Delayed)、Proficiency、Aptitudeという4つの固定効果があります。研究の最大の関心事はTreatmentであり、それ以外はモデルに含めるべきでしょうか？上記の4つの固定効果以外にも、リスニング能力やリーディング能力、文法性判断課題などの様々な共変量が考えられます。統計モデルに複数の固定効果を含めることは説明力を高めることが可能ですが、身長やアイスクリームが好きかといった固定効果を含めることが果たして適切かどうかの判断は、その分野の専門知識が必要となります。
+
+今回の固定効果は全てwithin-participant designであるため、集団平均中心化も全体平均中心化も同じ値となります。そのため、標準化 (z変換) のみ行います。z変換は平均を0、分散を1とする変換です。
+
+複数の固定効果を検討する際、今回は最大モデルから探索的にモデルに貢献する固定効果を選んでいくアプローチがあります。こちらは重回帰分析のコードでも用いられたモデル選択のアプローチと類似しています。それでは具体的なコードを見ていきましょう。
+
+まずは最大モデルを作成します。目的変数はScore (1が正解、0が不正解)、固定効果にはTreatmentとTimeの交互作用および単純主効果、ProficiencyとAptitudeの単純主効果を含んでいます。全てをアスタリスクで繋ぐ交互作用を検討する方法もありますが、研究の関心事であるTreatmentに焦点を当てるためにカテゴリカル変数同士での交互作用のみを検討しています。ランダム効果については複数のランダム傾きを検討しています。ProficiencyとAptitudeは参加者に付随する情報であるため、参加者によってこれらの値が変わるわけではありません。そのため、ParticipantではなくItemのランダム傾きとなります。今回は参加者は全てのTreatmentとTimeを受験しているため、これらはParticipantのランダム傾きにはなりません。そのため、Participantはランダム切片としてモデルに組み込まれています。
+
+```{r}
+# Recall の最大モデル（固定：Treatment*Time + 共変量、ランダム：Itemに傾き、Participantに切片）
+Full_Model_Recall <- glmer(
+  Score ~ Treatment * Time + scale(Proficiency) + scale(Aptitude) +
+    (1 + Proficiency + Aptitude | Item) +
+    (1 | Participant),
+  data = dat_recall,
+  family = binomial(),
+  control = glmerControl(optimizer = "bobyqa"))
+```
+
+# 固定効果の選択
+
+::: {.panel-tabset}
+
+### 理論解説
+
+`MuMIn::dredge()`によるAICc(Akaike Information Criteria Corrected：低ければ低いほどモデルの当てはまりが良いという指標)を最小化するように固定効果の候補を比較します。`options(na.action = "na.fail")`を設定し、**同一データ**でモデル群を評価します。AICcが近いモデルを選択することになりますが、基本的には論理的な妥当性に基づいてモデルを選択することが推奨されています。
+
+最大モデルに含まれる固定効果をMuMInパッケージの`dredge()`関数を使って選択していきます。デフォルトではAICcを使って選択しています。なお、最初の`options(na.action = "na.fail")`を入力しないとうまくコードが動きません。
+
+### コード例
+
+```{r}
+options(na.action = "na.fail")
+selection_recall <- MuMIn::dredge(Full_Model_Recall)   # AICc で順位付け
+
+head(selection_recall) |> 
+  gt()
+
+plot(selection_recall,
+     col.mode = "value",
+     labAsExpr = TRUE)
+
+Best_Fixed_Recall <- MuMIn::get.models(selection_recall, 1)[[1]]
+
+tab_model(Best_Fixed_Recall,
+          dv.labels = "Best Model")
+```
+
+`Best_Fixed_Recall`はAICcが最小となる固定効果を持つモデルです。以降のランダム効果選択では、この**固定効果式**を基礎にします。
+
+:::
+
+# ランダム効果の選択
+
+::: {.panel-tabset}
+
+### 理論解説
+
+`(1|群)` はランダム切片、`(0+傾き|群)` はランダム傾き、`||` は**相関を外す**指定です。**singular fit** は過度な複雑さや情報不足を示唆します。
+
+### コード例
+
+```{r}
+# 固定効果は Best_Fixed_Recall の式を流用し、ランダム効果を段階比較
+form_fixed <- formula(Best_Fixed_Recall)
+form_fixed
+
+fit_r1 <- update(Best_Fixed_Recall, . ~ . - (1 + Proficiency + Aptitude | Item) + (1 | Item) + (1 | Participant))
+fit_r2 <- update(Best_Fixed_Recall, . ~ . - (1 + Proficiency + Aptitude | Item) + (0 + Proficiency | Item) + (1 | Participant))
+fit_r3 <- update(Best_Fixed_Recall, . ~ . - (1 + Proficiency + Aptitude | Item) + (0 + Aptitude    | Item) + (1 | Participant))
+fit_r4 <- update(Best_Fixed_Recall, . ~ . - (1 + Proficiency + Aptitude | Item) + (1 + Proficiency || Item) + (1 | Participant))
+fit_r5 <- update(Best_Fixed_Recall, . ~ . - (1 + Proficiency + Aptitude | Item) + (1 + Aptitude    || Item) + (1 | Participant))
+fit_r6 <- update(Best_Fixed_Recall, . ~ . - (1 + Proficiency + Aptitude | Item) + (1 | Item) + (1 | Participant))
+
+anova(fit_r1, fit_r2, fit_r3, fit_r4, fit_r5, fit_r6, test = "Chisq")
+```
+
+### 結果解釈
+
+情報量基準と対数尤度のバランスで、**過度な相関付き傾き**を避けつつ、必要十分な構造を選びます。
+
+:::
+
+# モデル式と設計（数式の直感）
+
+$$\begin{aligned}
+\text{logit}\,\Pr(\text{Score}_{ij}=1) &= \beta_0 
+ + \beta_1\,\text{Treatment}_{ij}
+ + \beta_2\,\text{Time}_{ij}
+ + \beta_3\,Z_{\text{Prof},i}
+ + \beta_4\,Z_{\text{Apt},i} \\
+&\quad + \beta_5\,(\text{Treatment}\times\text{Time})_{ij}
+ + u_{0i} + v_{0j} + u_{1i}\,Z_{\text{Prof},i} + v_{1j}\,Z_{\text{Prof},i} + \cdots
+\end{aligned}$$
+
+- $u_{0i}$：参加者ごとの**ランダム切片**、$v_{0j}$：項目ごとの**ランダム切片**。\
+- 必要なら**ランダム傾き**（例：参加者ごとのProficiencyの効果差）を追加。**特異適合**になれば簡素化。
+
+```{r}
+# ランダム効果の特異適合と構造の点検（例）
+# isSingular(fit, tol = 1e-4)
+# lme4::rePCA(fit)     # ランダム効果の近似主成分分解
+# VarCorr(fit)         # 分散共分散の確認
+```
+
+# ベストモデルの要約
+
+::: {.panel-tabset}
+
+### 理論解説
+
+ロジット係数は指数変換で**オッズ比**になります。95%CI が **1** を跨がないかを確認します。
+
+### コード例
+
+```{r}
+Best_Recall <- fit_r6  # 例：AIC/BIC/対数尤度や singular の有無等で選択
+summary(Best_Recall)
+tab_model(Best_Recall, show.stat = TRUE, show.est = TRUE, dv.labels = "Score (Recall)")
+
+# オッズ比（係数の指数変換）
+exp(fixef(Best_Recall)) |> round(2)
+```
+
+### 結果解釈
+
+Time・Treatment の主効果と交互作用の向きと大きさを、**オッズ比**と可視化で確認します。
+
+:::
+
+# 下位検定と可視化
+
+::: {.panel-tabset}
+
+### 理論解説
+
+`emmeans` で条件付き平均を比較します。出力は **logit スケール**であり、必要に応じて**応答確率へ変換**して解釈します。
+
+### コード例
+
+```{r}
+# Time ごとの Treatment 比較（logit スケール）
+emm_pair_recall <- emmeans(Best_Recall, pairwise ~ Treatment | Time)
+emm_pair_recall$emmeans
+emm_pair_recall$contrasts
+
+# プロット
+emmip(Best_Recall, Treatment ~ Time, CIs = TRUE)
+plot(emm_pair_recall, comparisons = TRUE)
+ 
+# 応答確率スケールでの推定（logit→確率）
+emm_resp <- emmeans(Best_Recall, ~ Treatment | Time, type = 'response')
+emm_resp
+```
+
+### 結果解釈
+
+交互作用がある場合、**両水準での単純効果**を確認し、効果の大きさと向きを可視化で示します。
+
+:::
+
+# 診断
+
+::: {.panel-tabset}
+
+### 理論解説
+
+`DHARMa` の**シミュレーション残差**で適合度と外れ値・過分散を点検します。`performance::check_overdispersion()` で分散の過不足を確認します。
+
+### コード例
+
+```{r}
+sim <- DHARMa::simulateResiduals(Best_Recall)
+plot(sim)
+testResiduals(sim)
+performance::check_overdispersion(Best_Recall)
+performance::model_performance(Best_Recall)
+```
+
+::: {.callout-tip}
+### より踏み込んだ診断
+
+- **特異適合**: `isSingular(Best_Recall)` が TRUE ならランダム効果を簡素化。
+- **分散共分散**: `VarCorr(Best_Recall)` で構造を確認、必要なら相関の有無を検討。
+- **ゼロ膨張/過分散**: 二値では`DHARMa::testDispersion()`等も併用。
+- **外れ値**: `DHARMa::testOutliers()` を確認。
+:::
+
+### 結果解釈
+
+残差プロットと検定の結果を踏まえ、モデル仕様（とくにランダム効果）やリンク関数の妥当性を確認します。
+
+:::
+
+# Recognition（同様の流れ）
+
+::: {.panel-tabset}
+
+### 理論解説
+
+Recall と同一の手順で、固定効果の候補を AICc で比較し、ランダム効果構造を段階的に検討します。
+
+### コード例
+
+```{r}
+Full_Model_Recog <- glmer(
+  Score ~ Treatment * Time + Proficiency + Aptitude +
+    (1 + Proficiency + Aptitude | Item) +
+    (1 | Participant),
+  data    = dat_recognition,
+  family  = binomial(),
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+options(na.action = "na.fail")
+sel_recog <- MuMIn::dredge(Full_Model_Recog)
+Best_Fixed_Recog <- MuMIn::get.models(sel_recog, 1)[[1]]
+
+# ランダム効果候補の一例
+fr <- formula(Best_Fixed_Recog)
+fit_Rr1 <- update(Best_Fixed_Recog, . ~ . - (1 + Proficiency + Aptitude | Item) + (1 | Item) + (1 | Participant))
+fit_Rr2 <- update(Best_Fixed_Recog, . ~ . - (1 + Proficiency + Aptitude | Item) + (0 + Proficiency | Item) + (1 | Participant))
+fit_Rr3 <- update(Best_Fixed_Recog, . ~ . - (1 + Proficiency + Aptitude | Item) + (0 + Aptitude    | Item) + (1 | Participant))
+
+anova(fit_Rr1, fit_Rr2, fit_Rr3, test = "Chisq")
+
+Best_Recog <- fit_Rr1
+summary(Best_Recog)
+tab_model(Best_Recog, show.stat = TRUE, dv.labels = "Score (Recognition)")
+
+emmip(Best_Recog, Treatment ~ Time, CIs = TRUE)
+```
+
+### 結果解釈
+
+Recall と同様に、**Time × Treatment** の解釈を**オッズ比と可視化**で確認します。必要に応じて `emmeans` の**条件付き比較**で下位検定を示します。
+
+:::
+
+# 応用例（英語教育・応用言語学）
+
+## 例1：語彙判断課題（Lexical Decision）— 正答率のGLMM
+
+語彙判断課題（単語/非単語を素早く判断）では、正答（1）/誤答（0）の2値データが得られます。説明変数として、語の頻度（`WordFreq`：連続）と同根語かどうか（`Cognate`：0/1）を例にとり、参加者と項目をランダム効果に含む**交差乱効果ロジスティックGLMM**を推定します。
+
+```{r}
+set.seed(42)
+n_sub  <- 60
+n_item <- 120
+
+lex <- expand.grid(Participant = factor(1:n_sub),
+                   Item        = factor(1:n_item)) |>
+  mutate(
+    WordFreq = rnorm(n_item)[as.integer(Item)],       # 項目側の連続特性
+    Cognate  = rbinom(n_item, 1, .4)[as.integer(Item)] # 項目側のカテゴリ特性
+  )
+
+# ランダム切片（参加者・項目）と固定効果で正答確率を生成
+b_sub  <- rnorm(n_sub,  0, 0.6)[lex$Participant]
+b_item <- rnorm(n_item, 0, 0.4)[lex$Item]
+eta <- -0.5 + 0.8*scale(lex$WordFreq) + 0.5*lex$Cognate + 0.4*scale(lex$WordFreq)*lex$Cognate + b_sub + b_item
+lex$ACC <- rbinom(nrow(lex), 1, plogis(eta))
+
+fit_lex <- glmer(ACC ~ scale(WordFreq)*Cognate + (1|Participant) + (1|Item),
+                 data = lex, family = binomial(),
+                 control = glmerControl(optimizer = 'bobyqa'))
+
+summary(fit_lex)
+tab_model(fit_lex, show.stat = TRUE, show.est = TRUE)
+
+# 語頻度の単純効果をCognate別に可視化（確率スケール）
+gp_lex <- ggpredict(fit_lex, terms = c('WordFreq [-2:2 by=0.5]','Cognate'))
+plot(gp_lex) + labs(title = 'Lexical Decision: Word frequency × Cognate (probability)',
+                    x = 'Word Frequency (z)', y = 'P(Correct)')
+```
+
+ポイント：
+- 語頻度が上がるほど正答率が上がる（`scale(WordFreq)`の主効果）。
+- `Cognate`（同根語）が正の主効果を持つなら、同根語は判断しやすい。
+- 交互作用が有意なら「語頻度の効き方が同根語で異なる」ことを意味します。
+
+## 例2：セルフペースドリーディング（Self-paced Reading）— 反応時間のLMM（参考）
+
+リーディング研究では、1語/1セグメントごとの**反応時間（RT, ms）**を扱います。RTは正の連続量で歪みが大きいので**対数変換**を行い、線形混合効果モデル（LMM; `lmer`）で分析します。
+
+```{r}
+set.seed(123)
+n_sub  <- 40
+n_item <- 40
+
+spr <- expand.grid(Participant = factor(1:n_sub),
+                   Item = factor(1:n_item)) |>
+  mutate(
+    WordLength = rpois(n_item, 5)[as.integer(Item)],       # 語長
+    Predict    = rbinom(n_item, 1, .5)[as.integer(Item)]   # 予測可能性（0/1）
+  )
+
+u_sub  <- rnorm(n_sub,  0, 0.15)[spr$Participant]
+u_item <- rnorm(n_item, 0, 0.10)[spr$Item]
+logRT  <- 6.2 + 0.03*spr$WordLength - 0.10*spr$Predict + u_sub + u_item + rnorm(nrow(spr), 0, 0.08)
+spr$RT <- exp(logRT)
+
+fit_lmm <- lmer(log(RT) ~ scale(WordLength) + Predict + (1|Participant) + (1|Item), data = spr)
+summary(fit_lmm)
+tab_model(fit_lmm, show.stat = TRUE)
+
+# 部分効果の図
+plot(ggpredict(fit_lmm, terms = c('WordLength','Predict'))) +
+  labs(title = 'Self-paced Reading: Effects of word length and predictability', y = 'log(RT)')
+```
+
+ポイント：
+- RTは**log変換**後に正規分布に近づくため、`lmer`で扱いやすくなります。
+- 語長が長いほど時間がかかる（正の効果）、予測可能性が高いほど速い（負の効果）といった解釈が可能。
+
+::: {.callout-tip}
+英語教育・応用言語学では、正答（0/1）はロジスティックGLMM、反応時間（連続）はLMMを使い分けます。両者とも「参加者」と「項目」の**交差乱効果**を入れるのが基本です（F1/F2問題を同時に扱える）。
+:::
+
+# 発展編：過分散・代替エンジン・ROC/AUC・ベイズ・パワー
+
+## 過分散（観測レベル乱効果：OLRE）
+
+二値GLMMでも、モデル化されないばらつきが大きいと**過分散**が生じます。簡便な対処として「観測ごとの乱効果（OLRE）」を追加します。
+
+```{r}
+# 観測ID（各行に一意のID）
+dat_recall$obs <- factor(seq_len(nrow(dat_recall)))
+
+# OLRE付きGLMM（例）
+fit_olre <- glmer(
+  Score ~ Treatment * Time + Proficiency + Aptitude + (1|Item) + (1|Participant) + (1|obs),
+  data = dat_recall, family = binomial(), control = glmerControl(optimizer = "bobyqa")
+)
+
+performance::check_overdispersion(fit_olre)
+summary(fit_olre)
+```
+
+::: {.callout-note}
+OLREは**余剰のばらつき**を吸収して推定の安定に寄与しますが、効果の解釈は従前どおり**固定効果**に依拠します。
+:::
+
+## glmmTMB による推定（代替エンジン）
+
+`glmmTMB` は柔軟で収束にも強く、ゼロ膨張や分散関数の拡張も可能です。
+
+```{r}
+fit_tmb <- glmmTMB(
+  Score ~ Treatment * Time + Proficiency + Aptitude + (1|Item) + (1|Participant),
+  data = dat_recall, family = binomial(link = "logit")
+)
+summary(fit_tmb)
+performance::model_performance(fit_tmb)
+```
+
+## ROC / AUC とキャリブレーション
+
+**AUC**で識別性能、**キャリブレーション**で確率の適合性を概観します。
+
+```{r}
+# 予測確率（条件付き：既知の乱効果込み）
+pred_re <- predict(Best_Recall, type = "response")
+roc_obj <- pROC::roc(dat_recall$Score, pred_re)
+pROC::auc(roc_obj)
+
+# 簡易キャリブレーション（十分なサンプルで）
+q <- quantile(pred_re, probs = seq(0,1,length.out=11))
+bin <- cut(pred_re, include.lowest = TRUE, breaks = unique(q))
+cal <- aggregate(cbind(obs = dat_recall$Score, pred = pred_re), list(bin), mean)
+ggplot(cal, aes(pred, obs)) + geom_point() + geom_abline(slope=1,intercept=0, linetype=2) +
+  labs(title = "Calibration (decile bins)", x = "Mean predicted", y = "Mean observed")
+```
+
+::: {.callout-tip}
+混合効果では、**条件付き予測**（特定の乱効果水準での確率）と**周辺化予測**（乱効果を積分した母集団平均）が異なります。用途に応じて使い分けます。
+:::
+
+## R²（Nakagawa）とBrierスコア
+
+```{r}
+performance::r2_nakagawa(Best_Recall)
+
+# Brier: 予測確率と観測の二乗誤差
+brier <- mean((pred_re - dat_recall$Score)^2)
+brier
+```
+
+## ベイズGLMM（brms；概念実装）
+
+弱情報事前分布でロジスティックGLMMを推定し、**事後予測チェック**や**LOO**で比較します（CI環境ではスキップ）。
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(brms)
+  df_recall <- dat_recall |>
+    mutate(Participant = factor(Participant), Item = factor(Item))
+
+  pri <- c(brms::prior(normal(0, 2.5), class = b),
+           brms::prior(student_t(3, 0, 2.5), class = sd))
+
+  fit_brm <- brms::brm(
+    Score ~ Treatment * Time + Proficiency + Aptitude + (1|Participant) + (1|Item),
+    data = df_recall, family = bernoulli(link = "logit"),
+    prior = pri, chains = 2, cores = 2, iter = 2000, seed = 123
+  )
+  summary(fit_brm)
+  brms::pp_check(fit_brm)
+  loo_brm <- brms::loo(fit_brm)
+} else {
+  message("CI環境またはbrms未検出のためベイズGLMMをスキップ")
+}
+```
+
+## パワー解析（simr；概念実装）
+
+サンプルサイズや効果検出力の検討に `simr` が有用です（GLMM対応、計算負荷あり）。
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(simr)
+  base_mod <- lme4::glmer(Score ~ Treatment * Time + (1|Item) + (1|Participant),
+                    data = dat_recall, family = binomial())
+  simr::powerSim(base_mod, nsim = 50, fixed("Treatment:Time"))
+} else {
+  message("CI環境またはsimr未検出のためパワー解析をスキップ")
+}
+```
+
+# さらなる発展：相関構造・ベータ二項・リンク比較・閾値最適化・ICC・部分効果
+
+## ランダム傾きの相関構造（`|` vs `||`）
+
+`(1 + slope | Group)` は切片と傾きの**相関あり**、`(1 + slope || Group)` は**相関なし**（共分散=0）で推定します。特異適合や収束の観点から、まず相関ありで試し、難しければ相関なしへ簡素化します。
+
+```{r}
+# 参加者ごとの Proficiency 傾き（相関あり）
+fit_corr <- glmer(
+  Score ~ Treatment * Time + Proficiency + Aptitude + (1 + Proficiency | Participant) + (1 | Item),
+  data = dat_recall, family = binomial(), control = glmerControl(optimizer = "bobyqa")
+)
+
+# 相関なし
+fit_nocorr <- glmer(
+  Score ~ Treatment * Time + Proficiency + Aptitude + (1 + Proficiency || Participant) + (1 | Item),
+  data = dat_recall, family = binomial(), control = glmerControl(optimizer = "bobyqa")
+)
+
+isSingular(fit_corr); isSingular(fit_nocorr)
+AIC(fit_corr, fit_nocorr)
+```
+
+::: {.callout-note}
+`lme4::rePCA(fit)` でランダム効果のランクを近似的に確認できます。特異適合（rank不足）なら構造を削ぐのが実務的。
+:::
+
+## ベータ二項（複数試行/過分散の代替）
+
+各観測が**成功回数/試行数**で与えられる場合、**ベータ二項**が有用です（過分散を自然に表現）。
+
+```{r}
+# 例：Recallの15項目を集計（参加者×Treatment×Time）
+agg <- dat |>
+  filter(Test == "Recall") |>
+  group_by(Participant, Treatment, Time) |>
+  summarise(success = sum(Score), trials = n(), .groups = 'drop')
+
+fit_bb <- glmmTMB(cbind(success, trials - success) ~ Treatment * Time + (1|Participant),
+                  data = agg, family = betabinomial(link = "logit"))
+summary(fit_bb)
+```
+
+## リンク関数の比較（logit vs probit）
+
+```{r}
+fit_logit  <- glmer(Score ~ Treatment * Time + Proficiency + Aptitude + (1|Item) + (1|Participant),
+                    data = dat_recall, family = binomial(link = "logit"))
+fit_probit <- glmer(Score ~ Treatment * Time + Proficiency + Aptitude + (1|Item) + (1|Participant),
+                    data = dat_recall, family = binomial(link = "probit"))
+AIC(fit_logit, fit_probit)
+cor(predict(fit_logit, type='response'), predict(fit_probit, type='response'))
+```
+
+::: {.callout-tip}
+プロビット係数は概ねロジット係数/1.6〜1.7。実務では**解釈の好み**で選ばれることが多いです。
+:::
+
+## 閾値最適化とPR曲線
+
+```{r}
+pred <- predict(Best_Recall, type = 'response')
+roc_obj <- pROC::roc(dat_recall$Score, pred)
+opt <- pROC::coords(roc_obj, x = 'best', best.method = 'youden', ret = c('threshold','sensitivity','specificity'))
+opt
+
+# PR曲線（陽性が稀な場合に有用）
+pr <- PRROC::pr.curve(scores.class0 = pred[dat_recall$Score == 1],
+                      scores.class1 = pred[dat_recall$Score == 0], curve = TRUE)
+plot(pr)
+```
+
+## ICC（潜在スケール）と周辺化効果
+
+ロジスティックGLMMの**潜在スケール**では、誤差分散は $\pi^2/3$。交差切片モデルのICCは概ね：
+
+$$ICC_{participant} = \frac{\sigma^2_{participant}}{\sigma^2_{participant}+\sigma^2_{item}+\pi^2/3}$$
+
+```{r}
+vc <- as.data.frame(VarCorr(Best_Recall))
+var_part <- vc$vcov[vc$grp == 'Participant'][1]
+var_item <- vc$vcov[vc$grp == 'Item'][1]
+icc_part <- var_part / (var_part + var_item + (pi^2/3))
+icc_item <- var_item / (var_part + var_item + (pi^2/3))
+data.frame(icc_part, icc_item)
+```
+
+## 部分効果の可視化（`ggeffects`）
+
+```{r}
+library(ggeffects)
+library(insight)
+# Best_Recall に含まれる固定効果を確認し、利用可能な terms で ggpredict を実行する
+preds <- tryCatch(insight::find_predictors(Best_Recall)$conditional, error = function(e) character(0))
+
+if ("scale(Proficiency)" %in% preds) {
+  # 連続×カテゴリ（Proficiency×Treatment×Time）を確率スケールで可視化
+  gp <- ggpredict(
+    Best_Recall,
+    terms = c("scale(Proficiency) [-2:2 by=0.5]", "Treatment", "Time"),
+    bias_correction = TRUE
+  )
+} else if (all(c("Treatment", "Time") %in% preds)) {
+  # Proficiency がモデルから落ちた場合は、Time×Treatment の周辺化効果を図示
+  gp <- ggpredict(Best_Recall, terms = c("Treatment", "Time"))
+} else if ("Treatment" %in% preds) {
+  gp <- ggpredict(Best_Recall, terms = "Treatment")
+} else if ("Time" %in% preds) {
+  gp <- ggpredict(Best_Recall, terms = "Time")
+} else {
+  stop("ggpredict に渡せる適切な terms が見つかりませんでした。モデルの固定効果を確認してください。")
+}
+
+plot(gp) + labs(title = "Marginal effects (probability scale)")
+```
+
+# 参考
+
+- Baayen et al. (2008), Barr et al. (2013), Matuschek et al. (2017), Meteyard & Davies (2020) ほか
+
+## 参考：集計二項データのGLMM（`lme4::cbpp`）
+
+観測が**集計二項**（成功回数/試行数）として与えられる場合、応答は `cbind(success, trials-success)` で指定します。
+
+```{r}
+data(cbpp, package = 'lme4')
+# 罹患数incidence / 群size の二項ロジスティック
+fit_cbpp <- glmer(cbind(incidence, size - incidence) ~ period + (1|herd),
+                  data = cbpp, family = binomial())
+summary(fit_cbpp)
+isSingular(fit_cbpp)
+tab_model(fit_cbpp, show.stat = TRUE, dv.labels = 'cbpp')
+```
+
+## 報告テンプレート（例）
+
+- モデル: `glmer(Score ~ Treatment * Time + Proficiency + Aptitude + (1|Participant) + (1|Item), family=binomial)`
+- コーディング: Treatment/Time は …（sum or treatment）、Proficiency/Aptitude は z 変換。
+- 推定: OR=…（95%CI …, …）, p=…（主要効果/交互作用）
+- 診断: `isSingular`=…, `DHARMa`（一様性/過分散/外れ値）に問題なし/あり（対処: 構造簡素化等）。
+- 可視化: `emmip` で Time×Treatment を応答確率で図示。
+
+## トラブルシューティング（よくあるつまずき）
+
+- 収束しない: 連続変数の中心化/標準化、構造の簡素化（乱傾きを外す/相関を外す）、`optimizer='bobyqa'`、`maxfun`増。
+- 特異適合: ランダム効果が過剰。分散0や相関±1が出る場合は構造を簡素化。
+- 完全分離: 一部の群で全て0/1。設計見直し、もしくは弱正則化（`blme::bglmer`）等を検討。
+- 確率解釈が難しい: `emmeans(..., type='response')` を使い、**確率**スケールで報告。

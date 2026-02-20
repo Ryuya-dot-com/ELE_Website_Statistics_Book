@@ -1,0 +1,50 @@
+{
+  "dataset_name": "English Phonetic Research Dataset",
+  "creation_date": "2025-09-08T13:55:48.426340",
+  "configuration": {
+    "mode": "minimal",
+    "output_dir": "./audio_dataset",
+    "metadata_file": "metadata.csv",
+    "minimal_vowels": [
+      "i",
+      "a"
+    ],
+    "minimal_tokens_per_vowel": 5,
+    "minimal_yn_questions": 5,
+    "minimal_wh_questions": 5,
+    "minimal_speakers": 3,
+    "research_vowels": [
+      "i",
+      "ɪ",
+      "e",
+      "ɛ",
+      "æ",
+      "ʌ",
+      "ɑ",
+      "ɔ",
+      "o",
+      "ʊ",
+      "u"
+    ],
+    "research_tokens_per_vowel": 5,
+    "research_cvc_words_per_vowel": 5,
+    "research_repetitions": 2,
+    "research_yn_questions": 10,
+    "research_wh_questions": 10,
+    "research_statements": 10,
+    "research_speakers": 20
+  },
+  "recording_config": {
+    "sample_rate": 44100,
+    "bit_depth": 16,
+    "channels": 1,
+    "target_db": -12.0,
+    "silence_duration": 1000
+  },
+  "total_files": 90,
+  "file_types": {
+    "sustained_vowels": 30,
+    "cvc_words": 0,
+    "sentences": 60
+  }
+}

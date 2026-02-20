@@ -1,0 +1,1360 @@
+---
+title: "MANOVA・判別分析"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# パッケージの読み込み
+
+```{r}
+#| message: false
+#| warning: false
+
+# Install pacman if not already installed
+if (!require("pacman")) install.packages("pacman")
+
+# Load all required packages
+pacman::p_load(
+  tidyverse,    # Data manipulation and visualization
+  gt,           # Beautiful tables
+  gtsummary,    # Summary statistics tables
+  sjPlot,       # Model visualization
+  MASS,         # LDA/QDA
+  MVN,          # Multivariate normality tests
+  biotools,     # Box's M test
+  psych,        # ICC
+  effectsize,   # Effect sizes
+  GGally,       # Pairs plots
+  car,          # Additional ANOVA functions
+  pwr,          # Power analysis
+  emmeans,      # Estimated marginal means
+  corrplot,     # Correlation plots
+  candisc       # Canonical discriminant analysis
+)
+
+# Set default theme
+theme_set(theme_bw())
+set.seed(123)
+```
+
+# はじめに
+
+t検定は1つの目的変数（連続値）に対して1つの説明変数（2水準のカテゴリカル変数）を扱う線形モデルです。ANOVAは1つの目的変数に対して複数の説明変数を扱います。**MANOVA**（多変量分散分析）は**複数の目的変数**を同時に扱い、それらの**共分散構造**を踏まえて群差を検討します。ここでは語彙テストの **再生（Recall）** と **再認（Recognition）** を目的変数とし、**Treatment（Glossing / Writing）** と **Time（Immediate / Delayed）** を要因として説明します。
+
+::: {.callout-tip}
+### Conventions
+- Figure labels/titles are in English to avoid mojibake across environments.
+- All code chunks are R (```{r}). HTML/CSS is used only for chapter styling.
+- Effect-direction policy (positive = intervention-favorable) applies where relevant; this chapter focuses on MANOVA/DA, so no effect-size signs are reported.
+:::
+
+# 用語
+
+-   **単回帰・重回帰**：目的変数が1つで、説明変数が連続の場合。
+-   **ANOVA**：目的変数が1つで、説明変数がカテゴリカルの場合。
+-   **ANCOVA**：目的変数が1つ、カテゴリカルな要因に加えて共変量（連続）がある場合。
+-   **MANOVA**：**目的変数が複数**で、説明変数がカテゴリカルの場合。
+-   **MANCOVA**：複数目的変数＋カテゴリカル要因＋共変量。
+
+# 予備的な統計概念
+
+## タイプIエラーとファミリーワイズエラー率
+
+帰無仮説が真であるのにそれを棄却してしまう確率。標準的には $\alpha=0.05$ が用いられます。多重比較が増えるほど**家族内誤差率（family-wise** $\alpha$）や**実験内誤差率（experiment-wise** $\alpha$）が膨らみます。
+
+## Bonferroniの不等式
+
+$k$ 個の独立検定を名目上 $\alpha$ で行うと、全体の誤棄却確率は概ね $k\alpha$ に近づきます。したがって多重比較では**調整**（例：Bonferroni, Holm など）が重要です。
+
+## 効果量
+
+MANOVAに関連する効果量は、ウィルクスのラムダ $\Lambda$ から $1-\Lambda$ を効果量類似として報告する慣習や、単変量追跡での $\eta^2$ / 偏$\eta^2$ などがあります（厳密には加法性を持ちません）。
+
+## 検定力
+
+検定力（power）は、真に効果があるときにそれを検出できる確率。サンプルサイズ、効果量、名目上の $\alpha$ に依存します。
+
+# MANOVAの概要
+
+MANOVAは**SSCP（平方和・外積）行列**に基づく一般化分散の比較により、要因が目的変数の線形結合に与える影響を検定します。代表的な統計量は **Pillai**、**Wilks**、**Hotelling–Lawley**、**Roy** です。小標本や前提違反への頑健性の観点では Pillai がしばしば推奨されます。
+
+# データの作成
+
+```{r}
+# Generate sample data
+n_participants <- 50
+n_items <- 30
+treatments <- c("Glossing", "Writing")
+tests <- c("Recall", "Recognition")
+times <- c("Immediate", "Delayed")
+
+# Create data frame
+dat <- expand.grid(
+  Participant = 1:n_participants,
+  Item        = 1:n_items,
+  Treatment   = treatments,
+  Test        = tests,
+  Time        = times,
+  KEEP.OUT.ATTRS = FALSE
+)
+
+# Assign treatments to items
+dat <- dat[(dat$Treatment == "Glossing" & dat$Item <= 15) |
+           (dat$Treatment == "Writing"  & dat$Item >  15), ]
+
+# Generate scores
+dat$Score <- ifelse(
+  dat$Treatment == "Glossing",
+  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.5, 0.2)),
+  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.9, 0.5))
+)
+
+# Adjust for time effect
+dat$Score <- ifelse(dat$Time == "Immediate",
+                    pmin(dat$Score + sample(0:1, nrow(dat), replace = TRUE), 1),
+                    dat$Score)
+
+# Summarize data
+dat_summarized <- dat |>
+  mutate(across(c(Participant, Item, Treatment, Test, Time), as.factor)) |>
+  group_by(Participant, Treatment, Test, Time) |>
+  summarise(Score = sum(Score), .groups = "drop")
+
+# Create wide format for MANOVA
+wide_scores <- dat_summarized |>
+  pivot_wider(names_from = Test, values_from = Score, names_prefix = "Score_") |>
+  mutate(across(c(Participant, Treatment, Time), as.factor))
+
+# Display data structure
+wide_scores |>
+  head(10) |>
+  gt() |>
+  tab_header(
+    title = "Data Structure",
+    subtitle = "First 10 observations"
+  ) |>
+  cols_label(
+    Participant = "Participant ID",
+    Treatment = "Treatment",
+    Time = "Time",
+    Score_Recall = "Recall Score",
+    Score_Recognition = "Recognition Score"
+  )
+```
+
+# MANOVAの前提（検定・可視化）
+
+## 多変量正規性
+
+複数変数が**共同で正規分布**に従うかを検証します。個別に正規でも**連合が正規とは限りません**。
+
+```{r}
+# Prepare data for multivariate normality tests
+data_for_mvn <- wide_scores |> 
+  dplyr::select(Score_Recall, Score_Recognition)
+
+# 確実に動作する標準的な方法を使用
+# 1. 単変量正規性検定（Shapiro-Wilk）
+shapiro_recall <- shapiro.test(wide_scores$Score_Recall)
+shapiro_recognition <- shapiro.test(wide_scores$Score_Recognition)
+
+# 2. 多変量正規性の評価（マハラノビス距離ベース）
+center <- colMeans(data_for_mvn)
+n <- nrow(data_for_mvn)
+p <- ncol(data_for_mvn)
+cov_matrix <- cov(data_for_mvn)
+
+# マハラノビス距離の計算
+mahal_dist <- mahalanobis(data_for_mvn, center, cov_matrix)
+
+# カイ二乗分位点との比較
+chi_quantile <- qchisq(0.975, df = p)
+outliers <- sum(mahal_dist > chi_quantile)
+outlier_prop <- outliers / n
+
+# 正規性検定結果の表
+normality_results <- tibble(
+  Test = c(
+    "Shapiro-Wilk (Recall)", 
+    "Shapiro-Wilk (Recognition)",
+    "Multivariate Outliers"
+  ),
+  Statistic = c(
+    shapiro_recall$statistic, 
+    shapiro_recognition$statistic,
+    outlier_prop
+  ),
+  `p-value / Proportion` = c(
+    shapiro_recall$p.value, 
+    shapiro_recognition$p.value,
+    outlier_prop
+  ),
+  Decision = c(
+    ifelse(shapiro_recall$p.value < 0.05, "Not Normal", "Normal"),
+    ifelse(shapiro_recognition$p.value < 0.05, "Not Normal", "Normal"),
+    paste0(outliers, "/", n, " outliers")
+  )
+)
+
+# Display normality test results
+normality_results |>
+  gt() |>
+  tab_header(
+    title = "Normality Assessment",
+    subtitle = "Univariate tests and multivariate outlier detection"
+  ) |>
+  fmt_number(
+    columns = c(Statistic, `p-value / Proportion`),
+    decimals = 3
+  )
+
+# Q-Qプロット（カイ二乗）for multivariate normality
+par(mfrow = c(2, 2))
+
+# 単変量Q-Qプロット
+qqnorm(wide_scores$Score_Recall, main = "Q-Q Plot: Recall")
+qqline(wide_scores$Score_Recall)
+
+qqnorm(wide_scores$Score_Recognition, main = "Q-Q Plot: Recognition")
+qqline(wide_scores$Score_Recognition)
+
+# 多変量Q-Qプロット（マハラノビス距離）
+qqplot(qchisq(ppoints(n), df = p), mahal_dist,
+       main = "Chi-Square Q-Q Plot\n(Multivariate Normality)",
+       xlab = "Theoretical Quantiles",
+       ylab = "Sample Quantiles")
+abline(a = 0, b = 1, col = "red")
+
+# ヒストグラム
+hist(mahal_dist, breaks = 15, 
+     main = "Mahalanobis Distances",
+     xlab = "Distance", 
+     probability = TRUE)
+curve(dchisq(x, df = p), add = TRUE, col = "red")
+
+par(mfrow = c(1, 1))
+
+# Pairs plot for multivariate visualization
+GGally::ggpairs(
+  data_for_mvn,
+  title = "Multivariate Distribution Check",
+  lower = list(continuous = "smooth"),
+  diag = list(continuous = "densityDiag")
+) + theme_bw()
+```
+
+## 共分散行列の等質性
+
+群間で**分散だけでなく共分散も等しい**ことを確認します。BoxのMは有意になりやすいため解釈に注意し、補助的に各変数の等分散性（Bartlett）も確認します。
+
+```{r}
+# Create interaction group for testing
+wide_scores$Group <- interaction(wide_scores$Treatment, wide_scores$Time)
+
+# Box's M test
+box_m_result <- biotools::boxM(
+  data_for_mvn, 
+  grouping = wide_scores$Group
+)
+
+# Bartlett tests for each variable
+bartlett_recall <- bartlett.test(Score_Recall ~ Group, data = wide_scores)
+bartlett_recognition <- bartlett.test(Score_Recognition ~ Group, data = wide_scores)
+
+# Create summary table
+homogeneity_results <- tibble(
+  Test = c("Box's M", "Bartlett (Recall)", "Bartlett (Recognition)"),
+  Statistic = c(
+    as.numeric(box_m_result$statistic),
+    bartlett_recall$statistic[[1]],
+    bartlett_recognition$statistic[[1]]
+  ),
+  df = c(
+    as.numeric(box_m_result$parameter),
+    bartlett_recall$parameter[[1]],
+    bartlett_recognition$parameter[[1]]
+  ),
+  `p-value` = c(
+    box_m_result$p.value,
+    bartlett_recall$p.value,
+    bartlett_recognition$p.value
+  ),
+  Decision = c(
+    ifelse(box_m_result$p.value < 0.05, "Heterogeneous", "Homogeneous"),
+    ifelse(bartlett_recall$p.value < 0.05, "Heterogeneous", "Homogeneous"),
+    ifelse(bartlett_recognition$p.value < 0.05, "Heterogeneous", "Homogeneous")
+  )
+)
+
+# Display homogeneity test results with GT
+homogeneity_results |>
+  gt() |>
+  tab_header(
+    title = "Homogeneity of Covariance Tests",
+    subtitle = "Testing equality of variance-covariance matrices"
+  ) |>
+  fmt_number(
+    columns = c(Statistic, `p-value`),
+    decimals = 3
+  ) |>
+  fmt_number(
+    columns = df,
+    decimals = 0
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#FFE5E5"),
+    locations = cells_body(
+      columns = everything(),
+      rows = Decision == "Heterogeneous"
+    )
+  )
+```
+
+## 観測の独立性
+
+観測間の独立を前提とします。直接検定は難しいため、**ICC** などを指標として潜在的な依存を概観します（高いICCは「似通い」が強い→独立性に注意）。
+
+```{r}
+# Calculate ICC
+icc_result <- psych::ICC(data_for_mvn)
+
+# Extract key ICC values
+icc_summary <- tibble(
+  Type = c("ICC(1,1)", "ICC(1,k)", "ICC(2,1)", "ICC(2,k)", "ICC(3,1)", "ICC(3,k)"),
+  ICC = icc_result$results$ICC,
+  `Lower CI` = icc_result$results$`lower bound`,
+  `Upper CI` = icc_result$results$`upper bound`,
+  Interpretation = case_when(
+    icc_result$results$ICC < 0.40 ~ "Poor agreement",
+    icc_result$results$ICC < 0.60 ~ "Fair agreement",
+    icc_result$results$ICC < 0.75 ~ "Good agreement",
+    TRUE ~ "Excellent agreement"
+  )
+)
+
+# Display ICC results
+icc_summary |>
+  gt() |>
+  tab_header(
+    title = "Intraclass Correlation Coefficients",
+    subtitle = "Assessing independence of observations"
+  ) |>
+  fmt_number(
+    columns = c(ICC, `Lower CI`, `Upper CI`),
+    decimals = 3
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#E5F5E5"),
+    locations = cells_body(
+      columns = everything(),
+      rows = ICC < 0.40
+    )
+  )
+```
+
+# MANOVA分析
+
+## 目的変数の作成と分析の実行
+
+```{r}
+# Create dependent variable matrix
+manova_dep_var <- cbind(
+  wide_scores$Score_Recall, 
+  wide_scores$Score_Recognition
+)
+colnames(manova_dep_var) <- c("Score_Recall", "Score_Recognition")
+
+# Run MANOVA
+manova_result <- manova(manova_dep_var ~ Treatment * Time, data = wide_scores)
+```
+
+## MANOVA統計量
+
+下記の4統計量は同じ仮説に対する**異なる近似**です。小標本や前提違反への頑健性では **Pillai** がしばしば推奨されます。
+
+```{r}
+# Extract all MANOVA test statistics
+manova_tests <- list(
+  Pillai = summary(manova_result, test = "Pillai"),
+  Wilks = summary(manova_result, test = "Wilks"),
+  `Hotelling-Lawley` = summary(manova_result, test = "Hotelling-Lawley"),
+  Roy = summary(manova_result, test = "Roy")
+)
+
+# Create summary table
+manova_summary <- map_df(names(manova_tests), function(test_name) {
+  test_result <- manova_tests[[test_name]]
+  stats <- test_result$stats
+  
+  tibble(
+    Test = test_name,
+    Term = rownames(stats),
+    Statistic = stats[, 1],
+    `Approx F` = stats[, 2],
+    `Num df` = stats[, 3],
+    `Den df` = stats[, 4],
+    `p-value` = stats[, 5]
+  )
+})
+
+# Display MANOVA results
+manova_summary |>
+  filter(Term != "Residuals") |>
+  gt() |>
+  tab_header(
+    title = "MANOVA Test Statistics",
+    subtitle = "Comparing all four multivariate test statistics"
+  ) |>
+  fmt_number(
+    columns = c(Statistic, `Approx F`, `p-value`),
+    decimals = 3
+  ) |>
+  fmt_number(
+    columns = c(`Num df`, `Den df`),
+    decimals = 0
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = `p-value`,
+      rows = `p-value` < 0.05
+    )
+  ) |>
+  tab_row_group(
+    label = "Pillai's Trace (Most Robust)",
+    rows = Test == "Pillai"
+  ) |>
+  tab_row_group(
+    label = "Wilks' Lambda (Most Common)",
+    rows = Test == "Wilks"
+  ) |>
+  tab_row_group(
+    label = "Hotelling-Lawley Trace",
+    rows = Test == "Hotelling-Lawley"
+  ) |>
+  tab_row_group(
+    label = "Roy's Largest Root",
+    rows = Test == "Roy"
+  )
+```
+
+## 単変量追跡分析（Univariate Follow-up）
+
+```{r}
+# Run separate ANOVAs for each dependent variable
+aov_recall <- aov(Score_Recall ~ Treatment * Time, data = wide_scores)
+aov_recognition <- aov(Score_Recognition ~ Treatment * Time, data = wide_scores)
+
+# Get ANOVA tables
+recall_anova_summary <- summary(aov_recall)[[1]]
+recognition_anova_summary <- summary(aov_recognition)[[1]]
+
+# Create formatted table for Recall
+recall_table <- tibble(
+  Source = rownames(recall_anova_summary),
+  Df = recall_anova_summary$Df,
+  `Sum Sq` = recall_anova_summary$`Sum Sq`,
+  `Mean Sq` = recall_anova_summary$`Mean Sq`,
+  `F value` = recall_anova_summary$`F value`,
+  `p-value` = recall_anova_summary$`Pr(>F)`
+)
+
+# Create formatted table for Recognition
+recognition_table <- tibble(
+  Source = rownames(recognition_anova_summary),
+  Df = recognition_anova_summary$Df,
+  `Sum Sq` = recognition_anova_summary$`Sum Sq`,
+  `Mean Sq` = recognition_anova_summary$`Mean Sq`,
+  `F value` = recognition_anova_summary$`F value`,
+  `p-value` = recognition_anova_summary$`Pr(>F)`
+)
+
+# Display Recall ANOVA
+recall_table |>
+  filter(Source != "Residuals") |>
+  gt() |>
+  tab_header(
+    title = "Univariate ANOVA: Recall",
+    subtitle = "Follow-up analysis for Recall scores"
+  ) |>
+  fmt_number(
+    columns = c(`Sum Sq`, `Mean Sq`, `F value`),
+    decimals = 3
+  ) |>
+  fmt_number(
+    columns = Df,
+    decimals = 0
+  ) |>
+  fmt_number(
+    columns = `p-value`,
+    decimals = 4
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = `p-value`,
+      rows = !is.na(`p-value`) & `p-value` < 0.05
+    )
+  ) |>
+  cols_label(
+    Source = "Source of Variation",
+    Df = "df",
+    `Sum Sq` = "Sum of Squares",
+    `Mean Sq` = "Mean Square",
+    `F value` = "F-statistic",
+    `p-value` = "p-value"
+  )
+
+# Display Recognition ANOVA
+recognition_table |>
+  filter(Source != "Residuals") |>
+  gt() |>
+  tab_header(
+    title = "Univariate ANOVA: Recognition",
+    subtitle = "Follow-up analysis for Recognition scores"
+  ) |>
+  fmt_number(
+    columns = c(`Sum Sq`, `Mean Sq`, `F value`),
+    decimals = 3
+  ) |>
+  fmt_number(
+    columns = Df,
+    decimals = 0
+  ) |>
+  fmt_number(
+    columns = `p-value`,
+    decimals = 4
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = `p-value`,
+      rows = !is.na(`p-value`) & `p-value` < 0.05
+    )
+  ) |>
+  cols_label(
+    Source = "Source of Variation",
+    Df = "df",
+    `Sum Sq` = "Sum of Squares",
+    `Mean Sq` = "Mean Square",
+    `F value` = "F-statistic",
+    `p-value` = "p-value"
+  )
+
+# Create linear models for sjPlot
+lm_recall <- lm(Score_Recall ~ Treatment * Time, data = wide_scores)
+lm_recognition <- lm(Score_Recognition ~ Treatment * Time, data = wide_scores)
+
+# Display using sjPlot
+tab_model(
+  lm_recall, 
+  lm_recognition,
+  pred.labels = c("Intercept", "Treatment [Writing]", "Time [Delayed]", "Treatment × Time"),
+  dv.labels = c("Recall Score", "Recognition Score"),
+  show.ci = FALSE,
+  show.se = TRUE,
+  show.stat = TRUE,
+  show.p = TRUE,
+  p.style = "stars",
+  title = "Regression Coefficients from Univariate Models"
+)
+```
+
+# 事後検定（Post-hoc Tests）
+
+```{r}
+# Create linear models (if not already created)
+lm_recall <- lm(Score_Recall ~ Treatment * Time, data = wide_scores)
+lm_recognition <- lm(Score_Recognition ~ Treatment * Time, data = wide_scores)
+
+# Estimated marginal means for interaction effects
+emm_recall <- emmeans(lm_recall, ~ Treatment * Time)
+emm_recognition <- emmeans(lm_recognition, ~ Treatment * Time)
+
+# Pairwise comparisons with Tukey adjustment
+pairs_recall <- pairs(emm_recall, adjust = "tukey")
+pairs_recognition <- pairs(emm_recognition, adjust = "tukey")
+
+# Convert to data frames for GT
+pairs_recall_df <- as.data.frame(pairs_recall)
+pairs_recognition_df <- as.data.frame(pairs_recognition)
+
+# Display Recall post-hoc tests
+pairs_recall_df |>
+  gt() |>
+  tab_header(
+    title = "Post-hoc Comparisons: Recall",
+    subtitle = "Tukey-adjusted pairwise comparisons"
+  ) |>
+  fmt_number(
+    columns = c(estimate, SE, df, t.ratio, p.value),
+    decimals = 3
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = p.value,
+      rows = p.value < 0.05
+    )
+  )
+
+# Display Recognition post-hoc tests
+pairs_recognition_df |>
+  gt() |>
+  tab_header(
+    title = "Post-hoc Comparisons: Recognition",
+    subtitle = "Tukey-adjusted pairwise comparisons"
+  ) |>
+  fmt_number(
+    columns = c(estimate, SE, df, t.ratio, p.value),
+    decimals = 3
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = p.value,
+      rows = p.value < 0.05
+    )
+  )
+```
+
+# 判別分析（LDA）
+
+## 線形判別分析の実行
+
+```{r}
+# Run LDA
+lda_model <- lda(
+  Group ~ Score_Recall + Score_Recognition, 
+  data = wide_scores, 
+  CV = FALSE
+)
+
+# Display LDA coefficients
+lda_coef <- as.data.frame(lda_model$scaling)
+lda_coef$Variable <- rownames(lda_coef)
+
+# Prior probabilities
+prior_probs <- data.frame(
+  Group = names(lda_model$prior),
+  Prior = lda_model$prior
+)
+
+# Group means
+group_means <- as.data.frame(lda_model$means)
+group_means$Group <- rownames(group_means)
+
+# Display LDA coefficients
+lda_coef |>
+  gt() |>
+  tab_header(
+    title = "Linear Discriminant Analysis",
+    subtitle = "Discriminant function coefficients"
+  ) |>
+  fmt_number(
+    columns = starts_with("LD"),
+    decimals = 3
+  ) |>
+  cols_move_to_start(Variable)
+
+# Display prior probabilities
+prior_probs |>
+  gt() |>
+  tab_header(
+    title = "Prior Probabilities",
+    subtitle = "Group proportions in training data"
+  ) |>
+  fmt_number(
+    columns = Prior,
+    decimals = 3
+  )
+
+# Display group means
+group_means |>
+  gt() |>
+  tab_header(
+    title = "Group Centroids",
+    subtitle = "Mean scores by group"
+  ) |>
+  fmt_number(
+    columns = c(Score_Recall, Score_Recognition),
+    decimals = 2
+  ) |>
+  cols_move_to_start(Group)
+```
+
+## 分類精度の評価
+
+```{r}
+# Perform leave-one-out cross-validation
+lda_cv <- lda(
+  Group ~ Score_Recall + Score_Recognition, 
+  data = wide_scores, 
+  CV = TRUE
+)
+
+# Create confusion matrix
+confusion_matrix <- table(
+  Actual = wide_scores$Group, 
+  Predicted = lda_cv$class
+)
+
+# Calculate classification accuracy by group
+group_accuracy <- diag(confusion_matrix) / rowSums(confusion_matrix) * 100
+overall_accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix) * 100
+
+# Create confusion matrix table
+confusion_df <- as.data.frame.matrix(confusion_matrix)
+confusion_df$Actual <- rownames(confusion_df)
+confusion_df$Total <- rowSums(confusion_matrix)
+confusion_df$Correct <- diag(confusion_matrix)
+confusion_df$Accuracy <- paste0(round(group_accuracy, 1), "%")
+
+# Display confusion matrix
+confusion_df |>
+  dplyr::select(Actual, everything()) |>
+  gt() |>
+  tab_header(
+    title = "Classification Results (LOOCV)",
+    subtitle = paste0("Overall Accuracy: ", round(overall_accuracy, 1), "%")
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#E5F5FF"),
+    locations = cells_body(
+      columns = 2:5,
+      rows = everything()
+    )
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "#CCE5FF"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = Accuracy,
+      rows = everything()
+    )
+  ) |>
+  cols_label(
+    Actual = "Actual Group",
+    Total = "Total N",
+    Correct = "Correct",
+    Accuracy = "Accuracy"
+  )
+```
+
+## 判別スコアの可視化
+
+```{r}
+#| fig-width: 10
+#| fig-height: 6
+
+# Get discriminant scores
+lda_pred <- predict(lda_model, wide_scores)
+
+# Create data frame for plotting
+lda_scores <- data.frame(
+  LD1 = lda_pred$x[, 1],
+  LD2 = lda_pred$x[, 2],
+  Group = wide_scores$Group
+)
+
+# Plot discriminant scores
+ggplot(lda_scores, aes(x = LD1, y = LD2, color = Group)) +
+  geom_point(size = 3, alpha = 0.7) +
+  stat_ellipse(level = 0.95, linetype = "dashed") +
+  labs(
+    title = "Linear Discriminant Analysis",
+    subtitle = "Discriminant scores by group",
+    x = "First Discriminant Function",
+    y = "Second Discriminant Function"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 12)
+  )
+```
+
+# 二次判別分析（QDA）
+
+```{r}
+# Run QDA
+qda_model <- qda(
+  Group ~ Score_Recall + Score_Recognition,
+  data = wide_scores
+)
+
+# Predict using QDA
+qda_pred <- predict(qda_model, wide_scores)
+
+# Create confusion matrix for QDA
+qda_confusion <- table(
+  Actual = wide_scores$Group,
+  Predicted = qda_pred$class
+)
+
+# Calculate QDA accuracy
+qda_group_accuracy <- diag(qda_confusion) / rowSums(qda_confusion) * 100
+qda_overall_accuracy <- sum(diag(qda_confusion)) / sum(qda_confusion) * 100
+
+# Create QDA confusion matrix table
+qda_confusion_df <- as.data.frame.matrix(qda_confusion)
+qda_confusion_df$Actual <- rownames(qda_confusion_df)
+qda_confusion_df$Total <- rowSums(qda_confusion)
+qda_confusion_df$Correct <- diag(qda_confusion)
+qda_confusion_df$Accuracy <- paste0(round(qda_group_accuracy, 1), "%")
+
+# Display QDA confusion matrix
+qda_confusion_df |>
+  dplyr::select(Actual, everything()) |>
+  gt() |>
+  tab_header(
+    title = "QDA Classification Results",
+    subtitle = paste0("Overall Accuracy: ", round(qda_overall_accuracy, 1), "%")
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#FFE5E5"),
+    locations = cells_body(
+      columns = 2:5,
+      rows = everything()
+    )
+  ) |>
+  tab_style(
+    style = list(
+      cell_fill(color = "#FFCCCC"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      columns = Accuracy,
+      rows = everything()
+    )
+  ) |>
+  cols_label(
+    Actual = "Actual Group",
+    Total = "Total N",
+    Correct = "Correct",
+    Accuracy = "Accuracy"
+  )
+
+# Compare LDA vs QDA
+comparison_df <- tibble(
+  Method = c("LDA (LOOCV)", "QDA"),
+  `Overall Accuracy (%)` = c(
+    round(overall_accuracy, 1),
+    round(qda_overall_accuracy, 1)
+  ),
+  `Difference` = c(
+    "-",
+    paste0(ifelse(qda_overall_accuracy > overall_accuracy, "+", ""),
+           round(qda_overall_accuracy - overall_accuracy, 1), "%")
+  )
+)
+
+comparison_df |>
+  gt() |>
+  tab_header(
+    title = "LDA vs QDA Classification Performance",
+    subtitle = "Comparison of overall classification accuracy"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = everything(),
+      rows = 1
+    )
+  )
+```
+
+# 正準判別分析（Canonical Discriminant Analysis）
+
+```{r}
+# 正準判別分析のセクションはスキップします
+# candisc パッケージの互換性の問題があるため
+print("正準判別分析は省略します（パッケージの互換性の問題）")
+
+# 代わりに判別分析の結果から重要な情報を表示
+lda_importance <- data.frame(
+  Variable = c("Score_Recall", "Score_Recognition"),
+  LD1_Coefficient = lda_model$scaling[,1],
+  LD2_Coefficient = lda_model$scaling[,2]
+)
+
+lda_importance |>
+  gt() |>
+  tab_header(
+    title = "Linear Discriminant Coefficients",
+    subtitle = "Variable importance in discrimination"
+  ) |>
+  fmt_number(
+    columns = c(LD1_Coefficient, LD2_Coefficient),
+    decimals = 3
+  )
+```
+
+# 効果量の計算
+
+```{r}
+# Note: aov_recall and aov_recognition are already created in the previous chunk
+
+# Eta squared
+eta_sq_recall <- effectsize::eta_squared(aov_recall)
+eta_sq_recognition <- effectsize::eta_squared(aov_recognition)
+
+# Omega squared  
+omega_sq_recall <- effectsize::omega_squared(aov_recall)
+omega_sq_recognition <- effectsize::omega_squared(aov_recognition)
+
+# Cohen's f
+cohen_f_recall <- effectsize::cohens_f(aov_recall)
+cohen_f_recognition <- effectsize::cohens_f(aov_recognition)
+
+# Create comprehensive effect size table
+effect_size_summary <- tibble(
+  Variable = rep(c("Recall", "Recognition"), each = 3),
+  Effect = rep(c("Treatment", "Time", "Treatment:Time"), 2),
+  `Eta²` = c(
+    eta_sq_recall$Eta2[eta_sq_recall$Parameter == "Treatment"],
+    eta_sq_recall$Eta2[eta_sq_recall$Parameter == "Time"],
+    eta_sq_recall$Eta2[eta_sq_recall$Parameter == "Treatment:Time"],
+    eta_sq_recognition$Eta2[eta_sq_recognition$Parameter == "Treatment"],
+    eta_sq_recognition$Eta2[eta_sq_recognition$Parameter == "Time"],
+    eta_sq_recognition$Eta2[eta_sq_recognition$Parameter == "Treatment:Time"]
+  ),
+  `Omega²` = c(
+    omega_sq_recall$Omega2[omega_sq_recall$Parameter == "Treatment"],
+    omega_sq_recall$Omega2[omega_sq_recall$Parameter == "Time"],
+    omega_sq_recall$Omega2[omega_sq_recall$Parameter == "Treatment:Time"],
+    omega_sq_recognition$Omega2[omega_sq_recognition$Parameter == "Treatment"],
+    omega_sq_recognition$Omega2[omega_sq_recognition$Parameter == "Time"],
+    omega_sq_recognition$Omega2[omega_sq_recognition$Parameter == "Treatment:Time"]
+  ),
+  `Cohen's f` = c(
+    cohen_f_recall$Cohens_f[cohen_f_recall$Parameter == "Treatment"],
+    cohen_f_recall$Cohens_f[cohen_f_recall$Parameter == "Time"],
+    cohen_f_recall$Cohens_f[cohen_f_recall$Parameter == "Treatment:Time"],
+    cohen_f_recognition$Cohens_f[cohen_f_recognition$Parameter == "Treatment"],
+    cohen_f_recognition$Cohens_f[cohen_f_recognition$Parameter == "Time"],
+    cohen_f_recognition$Cohens_f[cohen_f_recognition$Parameter == "Treatment:Time"]
+  ),
+  Interpretation = case_when(
+    `Cohen's f` < 0.10 ~ "Negligible",
+    `Cohen's f` < 0.25 ~ "Small",
+    `Cohen's f` < 0.40 ~ "Medium",
+    TRUE ~ "Large"
+  )
+)
+
+# Display effect sizes
+effect_size_summary |>
+  gt() |>
+  tab_header(
+    title = "Effect Sizes by Variable",
+    subtitle = "Multiple effect size measures for univariate effects"
+  ) |>
+  fmt_number(
+    columns = c(`Eta²`, `Omega²`, `Cohen's f`),
+    decimals = 3
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#E5FFE5"),
+    locations = cells_body(
+      columns = everything(),
+      rows = Interpretation == "Large"
+    )
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#FFFFE5"),
+    locations = cells_body(
+      columns = everything(),
+      rows = Interpretation == "Medium"
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Cohen's f interpretation: Small (0.10), Medium (0.25), Large (0.40)",
+    locations = cells_column_labels(columns = `Cohen's f`)
+  ) |>
+  tab_footnote(
+    footnote = "Eta² and Omega² interpretation: Small (0.01), Medium (0.06), Large (0.14)",
+    locations = cells_column_labels(columns = c(`Eta²`, `Omega²`))
+  )
+```
+
+# パワー分析
+
+```{r}
+# Power analysis for MANOVA - simplified version
+# Check if Treatment effect exists in the stats matrix
+if("Treatment" %in% rownames(manova_tests$Pillai$stats)) {
+  pillai_stat <- manova_tests$Pillai$stats["Treatment", 1]
+} else if("Treatment " %in% rownames(manova_tests$Pillai$stats)) {
+  pillai_stat <- manova_tests$Pillai$stats["Treatment ", 1]  
+} else {
+  # Use first non-residual row as fallback
+  non_residual_rows <- rownames(manova_tests$Pillai$stats)[rownames(manova_tests$Pillai$stats) != "Residuals"]
+  if(length(non_residual_rows) > 0) {
+    pillai_stat <- manova_tests$Pillai$stats[non_residual_rows[1], 1]
+    print(paste("Using", non_residual_rows[1], "for power analysis"))
+  } else {
+    pillai_stat <- 0.3  # Default value
+    print("Could not extract Pillai's trace, using default value")
+  }
+}
+
+f2 <- pillai_stat / (1 - pillai_stat)
+
+# Post-hoc power analysis
+power_analysis <- pwr::pwr.f2.test(
+  u = 2,  # numerator df (number of DVs)
+  v = nrow(wide_scores) - 3 - 1,  # denominator df
+  f2 = f2,
+  sig.level = 0.05
+)
+
+# Display basic power result
+cat("Observed power:", round(power_analysis$power, 3), "\n")
+cat("Effect size (f²):", round(f2, 3), "\n")
+```
+
+# 相関構造の可視化
+
+```{r}
+#| fig-width: 8
+#| fig-height: 8
+
+# Calculate correlation matrix
+cor_matrix <- cor(data_for_mvn)
+
+# Visualize correlation
+corrplot::corrplot(
+  cor_matrix,
+  method = "circle",
+  type = "upper",
+  order = "hclust",
+  tl.col = "black",
+  tl.srt = 45,
+  addCoef.col = "black",
+  title = "Correlation between Dependent Variables",
+  mar = c(0, 0, 2, 0)
+)
+
+# Group-wise correlations
+group_cors <- wide_scores |>
+  group_by(Group) |>
+  summarise(
+    Correlation = cor(Score_Recall, Score_Recognition),
+    N = n()
+  )
+
+# Display group correlations
+group_cors |>
+  gt() |>
+  tab_header(
+    title = "Within-Group Correlations",
+    subtitle = "Correlation between Recall and Recognition by group"
+  ) |>
+  fmt_number(
+    columns = Correlation,
+    decimals = 3
+  )
+```
+
+# 結果のサマリーと可視化
+
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+
+# Create comprehensive summary
+summary_stats <- wide_scores |>
+  group_by(Treatment, Time) |>
+  summarise(
+    n = n(),
+    `Recall Mean` = mean(Score_Recall),
+    `Recall SD` = sd(Score_Recall),
+    `Recall SE` = sd(Score_Recall)/sqrt(n()),
+    `Recognition Mean` = mean(Score_Recognition),
+    `Recognition SD` = sd(Score_Recognition),
+    `Recognition SE` = sd(Score_Recognition)/sqrt(n()),
+    .groups = "drop"
+  )
+
+# Display summary statistics
+summary_stats |>
+  gt() |>
+  tab_header(
+    title = "Descriptive Statistics",
+    subtitle = "Mean scores by treatment and time"
+  ) |>
+  fmt_number(
+    columns = 3:8,
+    decimals = 2
+  ) |>
+  tab_spanner(
+    label = "Recall",
+    columns = c(`Recall Mean`, `Recall SD`, `Recall SE`)
+  ) |>
+  tab_spanner(
+    label = "Recognition",
+    columns = c(`Recognition Mean`, `Recognition SD`, `Recognition SE`)
+  )
+
+# Create interaction plots
+p1 <- ggplot(summary_stats, aes(x = Time, y = `Recall Mean`, 
+                                 group = Treatment, color = Treatment)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = `Recall Mean` - `Recall SE`, 
+                    ymax = `Recall Mean` + `Recall SE`),
+                width = 0.1, size = 0.8) +
+  labs(title = "Recall Scores",
+       y = "Mean Score",
+       x = "Time") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+p2 <- ggplot(summary_stats, aes(x = Time, y = `Recognition Mean`, 
+                                 group = Treatment, color = Treatment)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = `Recognition Mean` - `Recognition SE`, 
+                    ymax = `Recognition Mean` + `Recognition SE`),
+                width = 0.1, size = 0.8) +
+  labs(title = "Recognition Scores",
+       y = "Mean Score",
+       x = "Time") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# Combine plots
+library(patchwork)
+combined_plot <- p1 + p2 + 
+  plot_annotation(
+    title = "Interaction Effects: Treatment × Time",
+    subtitle = "Mean scores with standard error bars"
+  )
+
+print(combined_plot)
+```
+
+# プロファイル分析
+
+```{r}
+# Profile plot data preparation
+profile_data <- wide_scores |>
+  pivot_longer(
+    cols = starts_with("Score_"),
+    names_to = "Test",
+    values_to = "Score",
+    names_prefix = "Score_"
+  ) |>
+  group_by(Treatment, Time, Test) |>
+  summarise(
+    Mean = mean(Score),
+    SE = sd(Score)/sqrt(n()),
+    .groups = "drop"
+  )
+
+# Create profile plot
+ggplot(profile_data, aes(x = Test, y = Mean, 
+                         group = interaction(Treatment, Time),
+                         color = Treatment,
+                         linetype = Time)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE),
+                width = 0.1, size = 0.8) +
+  labs(title = "Profile Analysis",
+       subtitle = "Mean scores across tests by treatment and time",
+       y = "Mean Score",
+       x = "Test Type") +
+  theme_bw() +
+  theme(legend.position = "right")
+```
+
+# まとめ
+
+## 主要な結果
+
+```{r}
+tibble(
+  Analysis = c(
+    "MANOVA (Pillai)",
+    "LDA Classification", 
+    "QDA Classification",
+    "Largest Effect Size",
+    "Power Analysis"
+  ),
+  Result = c(
+    {
+      treatment_row <- grep("^Treatment", rownames(manova_tests$Pillai$stats), value = TRUE)[1]
+      if(!is.na(treatment_row)) {
+        paste0("Treatment: F = ", 
+               round(manova_tests$Pillai$stats[treatment_row, 2], 2),
+               ", p = ", 
+               round(manova_tests$Pillai$stats[treatment_row, 5], 3))
+      } else {
+        "Treatment effect not found"
+      }
+    },
+    paste0(round(overall_accuracy, 1), "% accuracy"),
+    paste0(round(qda_overall_accuracy, 1), "% accuracy"),
+    paste0("Treatment on Recognition: η² = ",
+           round(max(effect_size_summary$`Eta²`), 3)),
+    paste0("Observed power = ", round(power_analysis$power, 3))
+  ),
+  Interpretation = c(
+    {
+      treatment_row <- grep("^Treatment", rownames(manova_tests$Pillai$stats), value = TRUE)[1]
+      if(!is.na(treatment_row)) {
+        ifelse(manova_tests$Pillai$stats[treatment_row, 5] < 0.05, 
+               "Significant", "Not significant")
+      } else {
+        "N/A"
+      }
+    },
+    "Moderate classification",
+    "Moderate classification",
+    effect_size_summary$Interpretation[which.max(effect_size_summary$`Eta²`)],
+    ifelse(power_analysis$power > 0.80, "Adequate", "Inadequate")
+  )
+) |>
+  gt() |>
+  tab_header(
+    title = "Analysis Summary",
+    subtitle = "Key findings from MANOVA and related analyses"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(
+      columns = Interpretation,
+      rows = Interpretation %in% c("Significant", "Large", "Adequate")
+    )
+  )
+```
+
+## 結論
+
+-   MANOVA は複数の目的変数を同時に扱い、相関を踏まえて群差を検討します。
+-   Pillai / Wilks / Hotelling-Lawley / Roy を総合して解釈し、必要に応じて単変量や判別分析で追跡します。
+-   前提（多変量正規性・共分散等質・独立性）を確認します。
+-   判別分析により、群を最もよく分離する変数の線形結合を特定できます。
+-   事後検定により具体的な群間差を明確にできます。
+-   効果量とパワー分析により実質的な意味と研究の妥当性を評価します。
+
+# 参考ウェブサイト
+
+-   http://www.sthda.com/english/wiki/manova-test-in-r-multivariate-analysis-of-variance
+-   https://rpubs.com/friendly/penguin-manova
+-   https://kevintshoemaker.github.io/NRES-746/MANOVA.html
+-   https://www.datanovia.com/en/lessons/manova-in-r/

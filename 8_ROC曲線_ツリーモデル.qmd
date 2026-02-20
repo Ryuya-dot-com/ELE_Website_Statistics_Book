@@ -1,0 +1,1212 @@
+---
+title: "ツリーモデルで学ぶ予測分析：ROCを実務に活かす"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# はじめに
+
+この章の主役は**ツリーモデル**です。具体的には、
+
+- 決定木（Decision Tree）
+- ランダムフォレスト（Random Forest）
+- XGBoost
+
+を扱います。
+
+そして、これらのモデルの精度を評価する方法の1つとして、**ROC曲線とAUC**を導入します。
+
+英語教育研究では、たとえば以下のような予測課題が実務で登場します。
+
+- 語彙テスト項目の正誤（正解/不正解）を予測する
+- 学習者が次の小テストで基準を超えるかを予測する
+- CEFR到達判定の補助指標を構築する
+
+この章では、こうした課題に近い**架空データ（英語語彙学習）**を使い、モデル比較から評価まで一気通貫で実装します。
+
+::: {.callout-tip}
+## Conventions
+- Figure labels are in English.
+- All code chunks are R.
+- 数式は最小限にし、実装と解釈を重視します。
+:::
+
+::: {.callout-note}
+## この章でできるようになること
+1. ツリーモデル3種を同じデータで比較できる。
+2. ROC-AUCだけでなくPR-AUC・閾値・キャリブレーションも確認できる。
+3. 「精度が高い」で終わらず、教育実務で使える判断に落とし込める。
+:::
+
+::: {.callout-tip}
+## 30秒でわかるこの章
+- やること: 「どの学習者・どの語彙項目が正答しやすいか」を予測する。
+- 使うモデル: 単純（決定木）から高精度（RF, XGBoost）へ段階的に比較する。
+- 最終判断: ROC-AUCだけでなく、閾値・PR・キャリブレーションまで見て運用設計する。
+:::
+
+::: {.callout-note}
+## 読み方ガイド
+1. まず「ケース設定」まで読み、どんな教育データを想定しているかをつかむ。  
+2. 次に「決定木 → RF → XGBoost」を比較し、モデルごとの強みを理解する。  
+3. 最後に「ROC/PR・閾値・キャリブレーション」で運用判断の流れを確認する。  
+:::
+
+## 英語教育分野の先行研究（ツリーモデル）
+
+この章の設計は、英語教育・応用言語学での最近の機械学習研究に合わせています。代表例は次の通りです。
+
+1. **CEFR難易度分類**  
+   Zhang & Lu (2025) は、L2英語学習者向けテキストをCEFRレベルに分類するために**Random Forest**を使用し、複数レベルで実用的な精度を報告しました。
+2. **L2アカデミックライティング評価**  
+   Mau & Feng (2025) は、自動作文評価で**XGBoost分類器**を採用し、move分析情報を統合した評価モデルを報告しました。
+3. **英語教育評価へのRF応用（会議報告）**  
+   Niu (2025) は、英語教育評価の精度改善に向けた**Random Forest**活用を報告しています。
+
+この章で「単木 → RF → XGBoost」を順に扱うのは、こうした先行研究の流れを、大学院レベルで再現可能な形に落とし込むためです。
+
+ここでの狙いは、論文を読むだけでなく、**同じ発想を自分で再実装できること**です。
+
+※ なお、会議論文は査読誌より方法報告が簡潔な場合があるため、再現時は必ず評価設計（分割・指標・閾値）を明示します。
+
+---
+
+# 事前準備
+
+## パッケージ
+
+```{r}
+#| label: setup-packages
+#| message: false
+#| warning: false
+
+pacman::p_load(
+  tidyverse, gt,
+  tidymodels, workflowsets,
+  rpart.plot, vip, ranger, xgboost,
+  probably, scales
+)
+
+set.seed(2026)
+theme_set(theme_bw())
+options(digits = 3)
+
+tidymodels_prefer()
+```
+
+## 評価設計（最初に決める）
+
+最初に評価設計を固定します。ここを曖昧にすると、後から都合のよい指標だけを見る「後出し」になりがちです。
+
+```{r}
+#| label: setup-metrics
+
+metric_tbl <- metric_set(
+  roc_auc, pr_auc, accuracy,
+  sens, spec, brier_class
+)
+
+metric_tbl
+```
+
+この章では、次のように役割分担して読みます。
+
+- `ROC_AUC`: モデル全体の識別性能をざっくり比較
+- `PR_AUC`: 陽性クラス（ここでは `correct`）を重視した比較
+- `Sensitivity` / `Specificity`: 閾値を決めた後の実運用評価
+- `Brier`: 予測確率の信頼性（キャリブレーション）
+
+::: {.callout-important}
+## なぜROCだけでなくPRも見るのか
+- ROC-AUCは閾値に依存しない便利な比較指標。
+- ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合がある（Saito & Rehmsmeier, 2015）。
+:::
+
+## 混同行列を30秒で復習（超ミニ例）
+
+ここで一度だけ、ROCの土台になる混同行列を小さな例で確認します。
+
+```{r}
+#| label: mini-confusion-threshold
+
+# 以降の章でも使える、閾値ごとの基本指標関数
+evaluate_threshold <- function(truth, prob, threshold) {
+  pred <- factor(
+    if_else(prob >= threshold, "correct", "incorrect"),
+    levels = levels(truth)
+  )
+
+  tp <- sum(pred == "correct" & truth == "correct")
+  fp <- sum(pred == "correct" & truth == "incorrect")
+  tn <- sum(pred == "incorrect" & truth == "incorrect")
+  fn <- sum(pred == "incorrect" & truth == "correct")
+
+  tibble(
+    threshold = threshold,
+    TP = tp, FP = fp, TN = tn, FN = fn,
+    Sensitivity = tp / (tp + fn),
+    Specificity = tn / (tn + fp),
+    Precision = tp / (tp + fp)
+  )
+}
+
+mini_dat <- tibble(
+  truth = factor(
+    c("correct", "incorrect", "correct", "incorrect", "correct", "incorrect"),
+    levels = c("incorrect", "correct")
+  ),
+  pred_prob = c(0.90, 0.80, 0.63, 0.56, 0.42, 0.10)
+)
+
+bind_rows(
+  evaluate_threshold(mini_dat$truth, mini_dat$pred_prob, 0.40),
+  evaluate_threshold(mini_dat$truth, mini_dat$pred_prob, 0.60)
+) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(
+    title = "Mini Threshold Example",
+    subtitle = "Lower threshold often improves sensitivity but increases false positives"
+  )
+```
+
+この表の読み方:
+
+- 閾値を下げる（0.60 → 0.40）と、拾える正解者（Sensitivity）は上がりやすい。
+- その代わり、誤って正解判定する人数（FP）が増えることがある。
+
+---
+
+# ケース設定：英語語彙学習データ（架空）
+
+この節のゴールは、モデル比較の土台になるデータ構造を明確にすることです。
+
+## 研究場面の想定
+
+- 対象: 大学生のL2語彙学習
+- 目的変数: 項目正答（`correct` / `incorrect`）
+- 説明変数: 学習者要因 + 語彙項目要因 + 学習条件
+
+回帰分析の知識がある方は、次のように捉えると理解しやすいです。
+
+- ロジスティック回帰: 係数で線形に説明しやすい
+- ツリーモデル: 非線形・相互作用を自然に拾いやすい
+
+::: {.callout-note}
+## 変数を教育文脈で言い換える
+- `proficiency`: 習熟度（高いほど正答しやすい想定）
+- `weekly_study`: 週学習時間（行動指標）
+- `anxiety`: テスト不安（高いほど不利な想定）
+- `word_freq` / `word_length`: 語彙項目の難しさ
+- `condition`: 指導法（glossing / retrieval / sentence）
+:::
+
+## データ生成
+
+```{r}
+#| label: simulate-edu-data
+
+n_learners <- 220
+n_items <- 120
+
+learner_tbl <- tibble(
+  learner_id = factor(1:n_learners),
+  proficiency = rnorm(n_learners, 0, 1),
+  weekly_study = pmax(rnorm(n_learners, 4, 1.5), 0.5),
+  anxiety = rnorm(n_learners, 0, 1),
+  l1_distance = runif(n_learners, 0, 1),
+  u_learner = rnorm(n_learners, 0, 0.55)
+)
+
+item_tbl <- tibble(
+  item_id = factor(1:n_items),
+  word_freq = rlnorm(n_items, 4.3, 0.8),
+  word_length = sample(3:12, n_items, replace = TRUE),
+  cognate = factor(rbinom(n_items, 1, 0.25), labels = c("no", "yes")),
+  pos = factor(sample(c("noun", "verb", "adjective"), n_items, replace = TRUE,
+                      prob = c(0.45, 0.35, 0.20))),
+  u_item = rnorm(n_items, 0, 0.45)
+)
+
+# learner-item の全組み合わせから一部を観測
+obs <- crossing(learner_id = learner_tbl$learner_id,
+                item_id = item_tbl$item_id) |>
+  slice_sample(n = 3500)
+
+df <- obs |>
+  left_join(learner_tbl, by = "learner_id") |>
+  left_join(item_tbl, by = "item_id") |>
+  mutate(
+    condition = factor(sample(c("glossing", "retrieval", "sentence"), n(), replace = TRUE,
+                              prob = c(0.40, 0.35, 0.25))),
+    test_time = factor(sample(c("immediate", "delayed"), n(), replace = TRUE,
+                              prob = c(0.62, 0.38))),
+    # 最小限の式で「それらしい」難易度構造を生成
+    eta = -1.45 +
+      0.95 * proficiency +
+      0.10 * weekly_study -
+      0.35 * anxiety -
+      0.30 * l1_distance +
+      0.38 * log10(word_freq) -
+      0.12 * word_length +
+      0.55 * (cognate == "yes") +
+      0.42 * (condition == "retrieval") +
+      0.20 * (condition == "sentence") -
+      0.33 * (test_time == "delayed") +
+      0.25 * proficiency * (condition == "retrieval") -
+      0.18 * (condition == "retrieval") * (test_time == "delayed") +
+      u_learner + u_item,
+    p_correct = plogis(eta),
+    correct = factor(
+      if_else(rbinom(n(), 1, p_correct) == 1, "correct", "incorrect"),
+      levels = c("incorrect", "correct")
+    )
+  ) |>
+  select(correct, proficiency, weekly_study, anxiety, l1_distance,
+         word_freq, word_length, cognate, pos, condition, test_time)
+
+glimpse(df)
+```
+
+## データの概観
+
+```{r}
+#| label: data-overview
+
+df |>
+  summarise(
+    n = n(),
+    correct_rate = mean(correct == "correct"),
+    incorrect_rate = mean(correct == "incorrect")
+  ) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(
+    title = "Outcome Distribution",
+    subtitle = "Binary classification target"
+  )
+```
+
+```{r}
+#| label: predictor-overview
+
+df |>
+  select(proficiency, weekly_study, anxiety, l1_distance, word_freq, word_length) |>
+  summarise(across(everything(), list(mean = mean, sd = sd))) |>
+  pivot_longer(everything(), names_to = "stat", values_to = "value") |>
+  separate(stat, into = c("variable", "index"), sep = "_(?=[^_]+$)") |>
+  pivot_wider(names_from = index, values_from = value) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(
+    title = "Descriptive Statistics",
+    subtitle = "Continuous predictors"
+  )
+```
+
+## 具体例: 3人の学習者プロフィール
+
+この後のモデル比較でイメージしやすいように、典型的な3ケースを先に置いておきます。
+
+```{r}
+#| label: example-profiles
+
+profile_tbl <- tibble(
+  case = c(
+    "Case A: 高習熟 + retrieval + 即時",
+    "Case B: 低習熟 + glossing + 遅延",
+    "Case C: 中習熟 + sentence + 遅延"
+  ),
+  proficiency = c(1.2, -0.8, 0.1),
+  weekly_study = c(6.0, 2.0, 3.5),
+  anxiety = c(-0.5, 0.8, 0.2),
+  word_freq = c(140, 20, 55),
+  word_length = c(5, 9, 7),
+  condition = c("retrieval", "glossing", "sentence"),
+  test_time = c("immediate", "delayed", "delayed")
+)
+
+profile_tbl |>
+  gt() |>
+  tab_header(
+    title = "Three Concrete Learner Cases",
+    subtitle = "We will reuse these profiles when interpreting model outputs"
+  )
+```
+
+---
+
+# 学習・評価の分割（リーク防止）
+
+この節のゴールは、「評価が信頼できる実験設計」を先に固定することです。
+
+## データ分割
+
+```{r}
+#| label: split-data
+
+set.seed(2026)
+data_split <- initial_split(df, prop = 0.8, strata = correct)
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+bind_rows(
+  tibble(dataset = "train", n = nrow(train_data),
+         correct_rate = mean(train_data$correct == "correct")),
+  tibble(dataset = "test", n = nrow(test_data),
+         correct_rate = mean(test_data$correct == "correct"))
+) |>
+  mutate(correct_rate = percent(correct_rate, accuracy = 0.1)) |>
+  gt() |>
+  tab_header(
+    title = "Train/Test Split",
+    subtitle = "Stratified by outcome"
+  )
+```
+
+::: {.callout-tip}
+## たとえ話で理解する分割
+- **train**: 授業で練習した問題
+- **test**: 期末テストで初見の問題
+
+trainの点数だけ高くても、testで下がるなら実務では使いにくいモデルです。
+:::
+
+## 前処理レシピ
+
+- ツリーモデル用: 最低限の前処理（`word_freq` を対数化）
+- XGBoost用: 追加でダミー化（数値入力が必要）
+
+```{r}
+#| label: recipes
+
+rec_tree <- recipe(
+  correct ~ proficiency + weekly_study + anxiety + l1_distance +
+    word_freq + word_length + cognate + pos + condition + test_time,
+  data = train_data
+) |>
+  step_log(word_freq, base = 10, offset = 1)
+
+rec_xgb <- rec_tree |>
+  step_dummy(all_nominal_predictors())
+
+rec_glm <- rec_tree |>
+  step_dummy(all_nominal_predictors())
+```
+
+::: {.callout-warning}
+## 重要: 前処理のfit先
+`recipe`の`prep`は必ず学習データ側で行います。テストデータ情報を前処理に混ぜるとリークになります。
+:::
+
+---
+
+# ベースライン：ロジスティック回帰
+
+読者の既存知識（回帰分析）に接続するため、まずGLMをベースラインに置きます。
+
+ここでの位置づけは「比較の出発点」です。勝者を決めるためではなく、ツリーモデルの上積みを判断する基準にします。
+
+```{r}
+#| label: fit-glm-baseline
+
+glm_spec <- logistic_reg() |>
+  set_engine("glm")
+
+glm_wf <- workflow() |>
+  add_recipe(rec_glm) |>
+  add_model(glm_spec)
+
+glm_fit <- fit(glm_wf, data = train_data)
+
+glm_fit |>
+  extract_fit_parsnip() |>
+  tidy() |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(
+    title = "Baseline Logistic Regression",
+    subtitle = "Coefficients on log-odds scale"
+  )
+```
+
+---
+
+# 決定木（Decision Tree）
+
+この節のゴールは、最も解釈しやすい木モデルを作り、分岐ルールを目で確認することです。
+
+## モデルとチューニング
+
+まずは「深すぎる木を避ける」ことを意識して、単純な探索から始めます。
+
+```{r}
+#| label: tune-decision-tree
+
+set.seed(2026)
+folds <- vfold_cv(train_data, v = 3, strata = correct)
+
+tree_spec <- decision_tree(
+  cost_complexity = tune(),
+  tree_depth = tune(),
+  min_n = tune()
+) |>
+  set_engine("rpart") |>
+  set_mode("classification")
+
+tree_wf <- workflow() |>
+  add_recipe(rec_tree) |>
+  add_model(tree_spec)
+
+tree_grid <- grid_regular(
+  cost_complexity(range = c(-4, -1)),
+  tree_depth(range = c(2L, 8L)),
+  min_n(range = c(10L, 120L)),
+  levels = c(3, 2, 2)
+)
+
+set.seed(2026)
+tree_res <- tune_grid(
+  tree_wf,
+  resamples = folds,
+  grid = tree_grid,
+  metrics = metric_set(roc_auc, pr_auc)
+)
+
+tree_best <- select_best(tree_res, metric = "roc_auc")
+tree_best
+```
+
+## 最終学習と可視化
+
+```{r}
+#| label: finalize-tree
+#| fig-width: 10
+#| fig-height: 7
+#| fig-cap: "Final decision tree (pruned via cross-validated tuning)"
+
+tree_final_wf <- finalize_workflow(tree_wf, tree_best)
+tree_final_fit <- fit(tree_final_wf, data = train_data)
+
+tree_model <- tree_final_fit |>
+  extract_fit_parsnip() |>
+  pluck("fit")
+
+rpart.plot::rpart.plot(tree_model, type = 2, extra = 104,
+                       tweak = 1.0, under = TRUE, fallen.leaves = TRUE)
+```
+
+## 解釈ポイント
+
+- 決定木は「if-then」規則で説明しやすい。
+- ただし単木は分散が高く、データの揺れに弱い。
+- したがって、教育現場では「説明用のモデル」として特に有用です。
+
+## どの変数でよく分岐しているか（具体確認）
+
+```{r}
+#| label: tree-rule-summary
+
+tibble(split_var = tree_model$frame$var) |>
+  filter(split_var != "<leaf>") |>
+  count(split_var, sort = TRUE) |>
+  rename(Variable = split_var, Split_Count = n) |>
+  gt() |>
+  tab_header(
+    title = "Decision Tree Split Frequency",
+    subtitle = "Variables repeatedly used for branching"
+  )
+```
+
+この表は「木がどの変数を重視して意思決定しているか」の最短確認です。
+
+---
+
+# ランダムフォレスト（Random Forest）
+
+この節のゴールは、単木の弱点（不安定さ）をアンサンブルで補うことです。
+
+## モデルとチューニング
+
+`mtry` と `min_n` を中心に調整し、汎化性能を安定化させます。
+
+```{r}
+#| label: tune-rf
+
+rf_spec <- rand_forest(
+  mtry = tune(),
+  min_n = tune(),
+  trees = 300
+) |>
+  set_engine("ranger", importance = "permutation") |>
+  set_mode("classification")
+
+rf_wf <- workflow() |>
+  add_recipe(rec_tree) |>
+  add_model(rf_spec)
+
+rf_grid <- grid_max_entropy(
+  mtry(range = c(2L, 10L)),
+  min_n(range = c(5L, 60L)),
+  size = 6
+)
+
+set.seed(2026)
+rf_res <- tune_grid(
+  rf_wf,
+  resamples = folds,
+  grid = rf_grid,
+  metrics = metric_set(roc_auc, pr_auc)
+)
+
+rf_best <- select_best(rf_res, metric = "roc_auc")
+rf_best
+```
+
+```{r}
+#| label: finalize-rf
+
+rf_final_wf <- finalize_workflow(rf_wf, rf_best)
+rf_final_fit <- fit(rf_final_wf, data = train_data)
+```
+
+::: {.callout-note}
+## ランダムフォレストを直感で理解する
+1本の木に任せるのではなく、たくさんの木に「多数決」を取らせます。  
+教育的に言えば、1人の採点者ではなく、複数採点者の合議で判定するイメージです。
+:::
+
+```{r}
+#| label: rf-oob-check
+
+rf_engine_fit <- rf_final_fit |>
+  extract_fit_parsnip() |>
+  pluck("fit")
+
+tibble(
+  Metric = c("OOB Error", "OOB Accuracy"),
+  Value = c(rf_engine_fit$prediction.error, 1 - rf_engine_fit$prediction.error)
+) |>
+  mutate(Value = round(Value, 3)) |>
+  gt() |>
+  tab_header(
+    title = "Random Forest OOB Check",
+    subtitle = "Out-of-bag estimate as an internal validation signal"
+  )
+```
+
+## 変数重要度
+
+ここは「どの要因が予測に効いていたか」を説明する節です。
+
+```{r}
+#| label: rf-importance
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Permutation importance from random forest"
+
+rf_vi <- tibble(
+  Feature = names(rf_engine_fit$variable.importance),
+  Importance = as.numeric(rf_engine_fit$variable.importance)
+) |>
+  arrange(desc(Importance))
+
+rf_vi |>
+  gt() |>
+  tab_header(
+    title = "Random Forest Variable Importance",
+    subtitle = "Permutation importance"
+  ) |>
+  fmt_number(columns = Importance, decimals = 4)
+
+rf_vi |>
+  slice_max(Importance, n = 12) |>
+  ggplot(aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_col(fill = "#2C7FB8") +
+  coord_flip() +
+  labs(title = "Top Features (Random Forest)",
+       x = "Feature", y = "Importance")
+```
+
+---
+
+# XGBoost
+
+この節のゴールは、高精度モデルを構築しつつ、重要特徴を解釈可能な形で確認することです。
+
+## モデルとチューニング
+
+XGBoostは強力ですが、設定が多いため、ここでは小さめの探索空間で実行可能性を優先します。
+
+```{r}
+#| label: tune-xgb
+
+xgb_spec <- boost_tree(
+  trees = tune(),
+  tree_depth = tune(),
+  min_n = tune(),
+  loss_reduction = tune(),
+  sample_size = tune(),
+  learn_rate = tune(),
+  mtry = tune()
+) |>
+  set_engine("xgboost") |>
+  set_mode("classification")
+
+xgb_wf <- workflow() |>
+  add_recipe(rec_xgb) |>
+  add_model(xgb_spec)
+
+xgb_grid <- grid_latin_hypercube(
+  trees(range = c(100L, 250L)),
+  tree_depth(range = c(2L, 8L)),
+  min_n(range = c(2L, 40L)),
+  loss_reduction(),
+  sample_prop(range = c(0.5, 1.0)),
+  learn_rate(range = c(-3.5, -0.8)),
+  finalize(mtry(), juice(prep(rec_xgb)) |> select(-correct)),
+  size = 5
+)
+
+set.seed(2026)
+xgb_res <- tune_grid(
+  xgb_wf,
+  resamples = folds,
+  grid = xgb_grid,
+  metrics = metric_set(roc_auc, pr_auc)
+)
+
+xgb_best <- select_best(xgb_res, metric = "roc_auc")
+xgb_best
+```
+
+```{r}
+#| label: finalize-xgb
+
+xgb_final_wf <- finalize_workflow(xgb_wf, xgb_best)
+xgb_final_fit <- fit(xgb_final_wf, data = train_data)
+```
+
+::: {.callout-note}
+## XGBoostを直感で理解する
+XGBoostは「前の木が間違えた観測」を次の木が重点的に学習して、誤差を段階的に減らしていく方法です。  
+最初から完璧な木を作るのではなく、改善を積み重ねる設計です。
+:::
+
+```{r}
+#| label: xgb-feature-gain
+
+xgb_engine_fit <- xgb_final_fit |>
+  extract_fit_parsnip() |>
+  pluck("fit")
+
+xgb.importance(model = xgb_engine_fit) |>
+  as_tibble() |>
+  slice_max(Gain, n = 10) |>
+  mutate(across(where(is.numeric), ~ round(., 4))) |>
+  gt() |>
+  tab_header(
+    title = "Top Features in XGBoost",
+    subtitle = "Gain-based importance (top 10)"
+  )
+```
+
+---
+
+# 3モデル比較（ROCはここで効く）
+
+この節では、ケース別予測 → 全体指標 → ROC/PR の順で、読み手が迷わないように比較します。
+
+## 予測値をまとめる
+
+```{r}
+#| label: collect-preds
+
+collect_binary_preds <- function(fit_obj, data, model_name) {
+  tibble(
+    model = model_name,
+    truth = data$correct,
+    .pred_correct = predict(fit_obj, data, type = "prob")$.pred_correct,
+    .pred_class = predict(fit_obj, data, type = "class")$.pred_class
+  )
+}
+
+pred_all <- bind_rows(
+  collect_binary_preds(glm_fit, test_data, "Logistic"),
+  collect_binary_preds(tree_final_fit, test_data, "Decision Tree"),
+  collect_binary_preds(rf_final_fit, test_data, "Random Forest"),
+  collect_binary_preds(xgb_final_fit, test_data, "XGBoost")
+)
+
+glimpse(pred_all)
+```
+
+## 3つの具体ケースで予測値を比べる
+
+全体指標の前に、先ほどの3ケースで「モデルがどう答えるか」を見ます。
+
+```{r}
+#| label: case-based-predictions
+
+case_profiles <- tibble(
+  case = c(
+    "Case A: 高習熟 + retrieval + 即時",
+    "Case B: 低習熟 + glossing + 遅延",
+    "Case C: 中習熟 + sentence + 遅延"
+  ),
+  proficiency = c(1.2, -0.8, 0.1),
+  weekly_study = c(6.0, 2.0, 3.5),
+  anxiety = c(-0.5, 0.8, 0.2),
+  l1_distance = c(0.20, 0.75, 0.45),
+  word_freq = c(140, 20, 55),
+  word_length = c(5, 9, 7),
+  cognate = factor(c("yes", "no", "no"), levels = levels(train_data$cognate)),
+  pos = factor(c("noun", "verb", "adjective"), levels = levels(train_data$pos)),
+  condition = factor(c("retrieval", "glossing", "sentence"), levels = levels(train_data$condition)),
+  test_time = factor(c("immediate", "delayed", "delayed"), levels = levels(train_data$test_time))
+)
+
+model_case_pred <- bind_rows(
+  case_profiles |>
+    mutate(model = "Logistic",
+           p_correct = predict(glm_fit, case_profiles, type = "prob")$.pred_correct),
+  case_profiles |>
+    mutate(model = "Decision Tree",
+           p_correct = predict(tree_final_fit, case_profiles, type = "prob")$.pred_correct),
+  case_profiles |>
+    mutate(model = "Random Forest",
+           p_correct = predict(rf_final_fit, case_profiles, type = "prob")$.pred_correct),
+  case_profiles |>
+    mutate(model = "XGBoost",
+           p_correct = predict(xgb_final_fit, case_profiles, type = "prob")$.pred_correct)
+) |>
+  select(case, model, p_correct) |>
+  mutate(p_correct = round(p_correct, 3))
+
+model_case_pred |>
+  pivot_wider(names_from = model, values_from = p_correct) |>
+  gt() |>
+  tab_header(
+    title = "Case-Based Probability Comparison",
+    subtitle = "Predicted probability of correct response"
+  )
+```
+
+## 指標テーブル
+
+```{r}
+#| label: compare-metrics
+
+metric_summary <- pred_all |>
+  group_by(model) |>
+  summarise(
+    ROC_AUC = roc_auc_vec(truth, .pred_correct, event_level = "second"),
+    PR_AUC = pr_auc_vec(truth, .pred_correct, event_level = "second"),
+    Accuracy = accuracy_vec(truth, .pred_class),
+    Sensitivity = sens_vec(truth, .pred_class, event_level = "second"),
+    Specificity = spec_vec(truth, .pred_class, event_level = "second"),
+    Brier = brier_class_vec(truth, .pred_correct, event_level = "second")
+  ) |>
+  arrange(desc(ROC_AUC))
+
+metric_summary |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(
+    title = "Model Comparison on Test Set",
+    subtitle = "ROC-AUC is one lens; PR-AUC and Brier are also reported"
+  ) |>
+  tab_source_note("Event level is 'correct' (second level).")
+```
+
+解釈のコツ:
+
+- まず `ROC_AUC` と `PR_AUC` で上位候補を2つ程度に絞る。
+- 次に `Sensitivity` / `Specificity` と `Brier` で用途適合性を確認する。
+
+::: {.callout-tip}
+## まずどこを見るか（時短版）
+1. 研究で「見逃しが痛い」なら `Sensitivity` と `PR_AUC` を優先。  
+2. 全体比較をざっくり見るなら `ROC_AUC`。  
+3. 予測確率そのものを使うなら `Brier` とキャリブレーション図を確認。
+:::
+
+## ROC曲線
+
+```{r}
+#| label: roc-curves
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "ROC curves for four models"
+
+pred_all |>
+  group_by(model) |>
+  roc_curve(truth, .pred_correct, event_level = "second") |>
+  autoplot() +
+  labs(
+    title = "ROC Curve Comparison",
+    subtitle = "Higher and more leftward is better",
+    x = "False Positive Rate",
+    y = "True Positive Rate"
+  )
+```
+
+## PR曲線
+
+```{r}
+#| label: pr-curves
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "Precision-Recall curves for four models"
+
+pred_all |>
+  group_by(model) |>
+  pr_curve(truth, .pred_correct, event_level = "second") |>
+  autoplot() +
+  labs(
+    title = "Precision-Recall Curve Comparison",
+    subtitle = "Useful when positive class is relatively rare",
+    x = "Recall",
+    y = "Precision"
+  )
+```
+
+::: {.callout-note}
+## ここでの読み方
+- ROC-AUCが近いモデルでも、PR-AUCでは差が広がることがあります。
+- 教育現場で「見逃し（FN）」を避けたいなら、Recall/PrecisionのバランスをPRで確認する方が実務的です。
+:::
+
+---
+
+# 閾値をどう決めるか（ROCを運用に接続）
+
+AUCは「ランク付けの上手さ」を示しますが、現場では最終的に**閾値**が必要です。
+
+ここが「研究結果を実務判断へ変換する」一番重要な節です。
+
+## 例: YoudenのJで閾値を選ぶ
+
+ここでは例として、最上位モデル（ここでは`XGBoost`を想定）でYoudenのJを使います。
+
+```{r}
+#| label: threshold-selection
+
+xgb_pred <- pred_all |> filter(model == "XGBoost")
+
+roc_tbl_xgb <- xgb_pred |>
+  roc_curve(truth, .pred_correct, event_level = "second") |>
+  mutate(youden_j = sensitivity + specificity - 1)
+
+best_threshold <- roc_tbl_xgb |>
+  slice_max(youden_j, n = 1, with_ties = FALSE) |>
+  pull(.threshold)
+
+best_threshold
+```
+
+```{r}
+#| label: confusion-at-best-threshold
+
+xgb_threshold_eval <- xgb_pred |>
+  mutate(
+    .pred_class_j = factor(
+      if_else(.pred_correct >= best_threshold, "correct", "incorrect"),
+      levels = levels(truth)
+    )
+  )
+
+conf_mat(xgb_threshold_eval, truth = truth, estimate = .pred_class_j)
+```
+
+## 閾値を変えると何が変わるか（実データで比較）
+
+```{r}
+#| label: threshold-candidate-comparison
+
+threshold_cmp <- bind_rows(
+  evaluate_threshold(xgb_pred$truth, xgb_pred$.pred_correct, 0.30),
+  evaluate_threshold(xgb_pred$truth, xgb_pred$.pred_correct, best_threshold),
+  evaluate_threshold(xgb_pred$truth, xgb_pred$.pred_correct, 0.70)
+) |>
+  mutate(Setting = c("Recall重視", "Youden最適", "Precision重視")) |>
+  select(Setting, threshold, TP, FP, TN, FN, Sensitivity, Specificity, Precision)
+
+threshold_cmp |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(
+    title = "Threshold Trade-off Table (XGBoost)",
+    subtitle = "Lower threshold generally increases recall but also false positives"
+  )
+```
+
+上から順に「取りこぼしを減らす設定」→「バランス設定」→「誤警報を減らす設定」と読めます。
+
+::: {.callout-tip}
+## 実務ではコストベースで閾値を決める
+- 早期介入モデルなら「見逃し（FN）コスト」が高い。
+- その場合、Youden最適より低めの閾値にしてRecallを優先する設計がありえます。
+:::
+
+---
+
+# キャリブレーション確認（確率をそのまま信じてよいか）
+
+高いAUCでも、確率が歪んでいる場合があります。教育現場で「0.8の確率で正答」のように使うなら、校正の確認が必要です。
+
+特に、学習支援の優先順位づけに確率を使う場合は、この確認を省略しないのが安全です。
+
+```{r}
+#| label: calibration-plot
+#| fig-width: 8
+#| fig-height: 6
+#| fig-cap: "Calibration plot for XGBoost (test set)"
+
+xgb_calib <- xgb_pred |>
+  mutate(bin = ntile(.pred_correct, 10L)) |>
+  group_by(bin) |>
+  summarise(
+    pred_mean = mean(.pred_correct),
+    obs_rate = mean(truth == "correct"),
+    n = n(),
+    .groups = "drop"
+  )
+
+xgb_calib |>
+  ggplot(aes(x = pred_mean, y = obs_rate, size = n)) +
+  geom_point(color = "#1B9E77", alpha = 0.85) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray40") +
+  scale_size_continuous(range = c(2, 7)) +
+  coord_equal() +
+  labs(
+    title = "Calibration Check",
+    subtitle = "Dashed line = perfect calibration",
+    x = "Mean predicted probability",
+    y = "Observed success rate"
+  )
+```
+
+::: {.callout-tip}
+## キャリブレーション図の見方（簡易）
+- 点が対角線より**上**: 実際の正答率が予測より高い（過小評価気味）。
+- 点が対角線より**下**: 実際の正答率が予測より低い（過大評価気味）。
+:::
+
+---
+
+# 英語教育研究としての解釈
+
+この節は、分析結果を「論文の文章」に変換するためのテンプレートです。
+
+## 何を報告すると説得力が出るか
+
+最低限、次をセットで報告します。
+
+1. データ分割（train/test または CV設計）
+2. 主要指標（ROC-AUC, PR-AUC, Sens/Spec, Brier）
+3. 閾値の決定根拠（Youden, あるいはコスト設計）
+4. 解釈（重要特徴・教育的意味）
+5. 限界（外的妥当性、バイアス、公平性）
+
+## 教育的含意の例（この章のケース）
+
+- `retrieval`条件は`glossing`より正答率を押し上げる傾向。
+- ただし遅延テストで効果が減衰する可能性がある（交互作用）。
+- 学習時間だけでなく語彙特性（頻度・長さ・同根語）も予測に寄与。
+
+::: {.callout-note}
+## 結果記述テンプレート（そのまま使える形）
+「XGBoostはテストデータでROC-AUC = XX、PR-AUC = XXを示した。  
+閾値を0.XX（Youden最適）に設定した場合、Sensitivity = XX、Specificity = XXであった。  
+教育実務では見逃しコストを考慮し、閾値を0.XXに下げる運用も妥当である。」  
+:::
+
+---
+
+# よくある失敗と回避策
+
+::: {.callout-warning}
+## 失敗1: AUCだけで勝敗を決める
+- 回避: PR-AUC、閾値依存指標（Sens/Spec/Precision）も併記。
+:::
+
+::: {.callout-warning}
+## 失敗2: 目的変数のイベント水準を取り違える
+- 回避: `event_level = "second"`などを明示して再現可能にする。
+:::
+
+::: {.callout-warning}
+## 失敗3: 前処理リーク
+- 回避: recipeの学習は学習データだけ。workflowで一体化する。
+:::
+
+::: {.callout-warning}
+## 失敗4: 複雑モデルをデフォルトで信用する
+- 回避: 単純モデル（GLM/単木）を必ず比較対象に残す。
+:::
+
+---
+
+# まとめ
+
+この章の結論はシンプルです。
+
+1. ツリーモデルは、英語教育データで起こりやすい非線形・相互作用を扱いやすい。
+2. ROCは有用だが、**ROCだけでは不十分**。
+3. 実務では、PR・閾値・キャリブレーションまで見て初めて意思決定に使える。
+
+---
+
+# 実務チェックリスト（提出前に確認）
+
+- [ ] 予測課題は明確か（何を当てるか）。
+- [ ] データ分割とCV手順を明記したか。
+- [ ] ROC-AUCとPR-AUCの両方を示したか。
+- [ ] 閾値の根拠を記述したか。
+- [ ] 教育的解釈と限界（公平性含む）を書いたか。
+
+---
+
+# 参考文献
+
+::: {#refs}
+- Breiman, L. (2001). Random Forests. *Machine Learning*, 45, 5-32. https://doi.org/10.1023/A:1010933404324
+- Breiman, L., Friedman, J. H., Olshen, R. A., & Stone, C. J. (1984). *Classification and Regression Trees*. Wadsworth.
+- Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. *KDD '16*. https://arxiv.org/abs/1603.02754
+- DeLong, E. R., DeLong, D. M., & Clarke-Pearson, D. L. (1988). Comparing the areas under two or more correlated ROC curves. *Biometrics*, 44, 837-845.
+- Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, 27(8), 861-874. https://doi.org/10.1016/j.patrec.2005.10.010
+- Robin, X., et al. (2011). pROC: an open-source package for R and S+ to analyze and compare ROC curves. *BMC Bioinformatics*, 12, 77. https://doi.org/10.1186/1471-2105-12-77
+- Saito, T., & Rehmsmeier, M. (2015). The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets. *PLOS ONE*, 10(3), e0118432. https://doi.org/10.1371/journal.pone.0118432
+- Steyerberg, E. W., et al. (2010). Assessing the performance of prediction models: a framework for traditional and novel measures. *Epidemiology*, 21(1), 128-138. https://doi.org/10.1097/EDE.0b013e3181c30fb2
+- Mau, B.-R., & Feng, H.-H. (2025). Integrating move analysis and sentence reconstruction in automated writing evaluation for L2 academic writers. *Assessing Writing*, 66, 100984. https://doi.org/10.1016/j.asw.2025.100984
+- Niu, N. (2025). Enhancing English language teaching assessment through random forest algorithms. In *2025 4th International Conference on Distributed Computing and Electrical Circuits and Electronics (ICDCECE)* (pp. 1-7). https://doi.org/10.1109/ICDCECE65353.2025.11034840
+- Zhang, X., & Lu, X. (2025). Aligning linguistic complexity with the difficulty of English texts for L2 learners based on CEFR levels. *Studies in Second Language Acquisition*, 47(5), 1407-1434. https://doi.org/10.1017/S0272263125101125
+- Yağcı, M. (2022). Educational data mining: prediction of students' academic performance using machine learning algorithms. *Smart Learning Environments*, 9, 11. https://doi.org/10.1186/s40561-022-00192-z
+:::
+
+## 関連リソース（実装ドキュメント）
+
+- [rpart::rpart.control](https://stat.ethz.ch/R-manual/R-devel/RHOME/library/rpart/html/rpart.control.html)
+- [pROC package site](https://xrobin.github.io/pROC/)
+- [yardstick: roc_auc](https://yardstick.tidymodels.org/reference/roc_auc.html)
+- [rsample: vfold_cv](https://rsample.tidymodels.org/reference/vfold_cv.html)
+- [tune: tune_grid](https://tune.tidymodels.org/reference/tune_grid.html)
+- [scikit-learn: common pitfalls (data leakage)](https://scikit-learn.org/1.5/common_pitfalls.html)
+
+## セッション情報
+
+```{r}
+#| label: session-info
+
+sessionInfo()
+```

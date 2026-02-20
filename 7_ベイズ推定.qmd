@@ -1,0 +1,428 @@
+---
+title: "ベイズ推定"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+こちらのページで紹介されているRのコードはいずれもbrmsパッケージのデフォルトの事前分布を仮定していることにご注意ください。
+
+# はじめに
+
+混合モデルを実装するlme4パッケージでは、引数familyにbinomial (2値ロジスティック回帰 = 目的変数が2値データ)、poisson (ポアソン回帰 = 目的変数がカウントデータ)、Gamma (ガンマ回帰 = 目的変数が自然数となるデータ)、gaussian (線型混合モデル = 目的変数が連続データ) などが含まれています。なお、ポアソン回帰の一種である負の二項分布 (negative binomial distribution) に基づく回帰分析 (混合モデル) の場合には、glmer()関数ではなくglmer.nb()関数を使います。
+
+これらの混合モデルはいずれもlme4やmgcv、gammパッケージなどを使うことで実装することができますが、目的変数が3水準以上のダミーコードとなる場合や順序データ、多変量の分析などの自由なモデリングには対応していません。(もしかしたら今後改善されるかもしれません)
+
+::: {.callout-tip}
+## Conventions
+- Figure labels/titles are in English to avoid mojibake across environments.
+- All code chunks are R. HTML/CSS is used only for chapter styling.
+- For Bayesian models, report on the response scale (e.g., IRR/OR) when possible; state priors if deviating from defaults.
+:::
+
+## 3水準以上のカテゴリカル変数
+
+3水準以上のカテゴリカル変数は、例えば、語彙連想課題の分野などで使われます。語彙連想課題とは、目標語から連想される語を書き出す (or 口頭で述べる) という課題で、メンタルレキシコンの構造を検討する際に用いられてきました。例えば、appleから連想される語としてはbanana、fruit、red、pie、Newtonなどがあります。語彙連想課題の分析の際にはこれらの連想語をいくつかのカテゴリーに分けていきます。apple-bananaの関係は同位語、apple-fruitの関係は上位語・下位語、apple-redの関係はシンタグマティック (コロケーション・統語)、apple-Newtonの関係はfree associationとなります。このようなカテゴリーの間には順序関係がありません。そのため、「正解・不正解」「成功・失敗」のような2値データと同じダミーコードが付与されます。
+
+2024年現在、lme4パッケージのfamilyではこのmultinomialのデータを分析することができません。
+
+## 順序データ
+
+lme4パッケージで分析することができないデータの2つ目は順序データです。順序データの典型例はアンケートなどのリッカートスケールです。アンケートの結果は因子分析などでまとめられてしまうことが多いですが、例えば、生徒のスピーチを5段階で評価するなどのデータでは有用です。パフォーマンス評価を行う際には、評価者と受験者をファセットとした多層ラッシュモデルで分析することもできます。多相ラッシュモデルは評価者の厳しさや受験者の能力を含めたモデリングであり、現在のデータを説明することが目的です。一方、順序ロジスティック回帰では、未来のデータを予測することが目的となります。例えば、受験者の授業中の様子からスピーチの評価を予測するなどが挙げられます。
+
+lme4パッケージのfamilyではこのordinal logistic regressionは実装できません。ランダム効果も含めたcumulative link mixed effect modelの場合はclmmパッケージを使うことができます。
+
+## 多変量のデータ
+
+MANOVAのように目的変数が複数ある場合、lme4パッケージでは混合効果を含めたMANOVAを実装することができません。例えば、recallとrecognitionの語彙テストで得られた正解・不正解のデータはrecallで1つの2値ロジスティック回帰、recognitionで1つの2値ロジスティック回帰という具合に、2つのGLMMでモデルが作成されます。
+
+# brmsパッケージとベイズアプローチ
+
+上記のように、lme4パッケージで分析することができないデータはbrmsパッケージを使うことで全て解決可能です。brmsパッケージはベイズ推定を行うためのパッケージです。以下ではベイズアプローチに基づく回帰分析について簡単に紹介します。
+
+### ベイズ推定
+
+ベイズアプローチとは、物事について、どれくらい知っているのか、あるいは知らないのかを、確率で表現するものです。例えば、明日が雨なのか晴れなのかよくわからないという場合でも、「よくわからない」ではなく、「雨が降る確率は40%くらいだろうか」と確率を使って定量的に評価することが試みられます。
+
+ベイズアプローチはベイズの定理に基づき、事前確率を事後確率に更新します。事前確率とは、データが得られる前に想定された確率のことで、データが得られた後に想定する確率です。例えば、先行研究で得られている効果量を事前確率とし、手元のデータに当てはめてパラメータの推定値やデータの予測値を得ることができます。
+
+事前確率を事後確率に更新する際には尤度と周辺尤度の比を使います。尤度とはパラメータが所与であるという条件における、標本が得られる確率のことで、条件付き確率として表現されます。一方で周辺尤度とはデータが得られる平均的な確率です。例えば、語彙テストにおいて、ある単語の意味を正しく回答できるかどうかの確率は正解か不正解かで50%であると想定されます。ただし、appleやorangeのように具体的な語彙は75%の確率で正解し、amazingやdoubtfulのような抽象的な語彙の正解率は50%であることが先行研究で示されているとします。この状況を数式としてまとめると、以下のようになります。
+
+- テスト項目が具体的な単語であるときに、テストで正解するというデータが得られる確率：P(D|H1) = 0.75
+- テスト項目が抽象的な単語であるときに、テストで正解するというデータが得られる確率：P(D|H2) = 0.50
+- 周辺尤度：P(D) = P(D|H1)P(H1) + P(D|H2)P(H2) = 0.75 × 0.5 + 0.5 × 0.5 = 0.625
+
+これらの確率を使い、ベイズの定理に基づくと、事前確率を事後確率に更新することができます。ベイズの定理は以下のように表されます。
+
+$$
+P(H_1|D) = \frac{P(D|H1)P(H_1)}{P(D)}
+$$
+
+このベイズの定理を用いた事前確率から事後確率への更新はベイズ更新と呼ばれています。語彙テストの例を続けると、学習者が語彙テストに正解した後に想定する「テスト項目が具象語であると想定する確率」、すなわち事後確率は以下のように計算されます。
+
+$$
+Posterior Probability = P(H_1|D) = P(H_1) × \frac{P(D|H_1)}{P(D)} = 0.5 × \frac{0.75}{0.625} = 0.5 × 1.2 = 0.6
+$$
+
+このベイズ更新を用いて確率を更新していくことにより、パラメータや予測結果の不確実性が確率で定量化されます。パラメータは確率分布として扱うことができることから、データが得られる前に想定される確率分布は事前分布、データが得られた後に想定される確率分布は事後分布と呼ばれます。この事後分布に従う乱数を小さいものから順番に並べ、2.5%点から97.5%点に該当する範囲を調べることで95%ベイズ信用区間を得ることができます。つまり、95%Credible Interval (CrI) はNull Hypothesis Significant Testingにおける95%Confidence Interval (CI) と異なり、95%の確率で母集団のパラメータを推定することが可能です。
+
+# ポアソン回帰分析
+
+ベイズ推定について紹介するため紹介するため、ポアソン回帰分析を例としてコードを見ていきましょう。
+
+```{r}
+# パッケージの読み込み
+pacman::p_load(
+  brms, rstan, rstanarm, loo, tidybayes, tidyverse,
+  bayesplot, sjPlot, performance)
+
+# プロットのテーマの設定
+theme_set(theme_bw())
+
+# 処理の高速化
+rstan_options(auto_write = T)
+options(mc.cores=parallel::detectCores())
+```
+
+パッケージとして主に用いるのはbrmsとなります。brmsはBayesian Regression Models using 'Stan' のことを指しています。Stanとは、ベイズ推定で必要となるMCMCサンプリングを行うプログラムのことです。デフォルトで4,000回のコンパイルがあるため、処理を高速化する必要があります。
+
+続いては分析用のデータを確認していきましょう。
+
+```{r}
+# ポアソン回帰
+data(epilepsy) # データの読み込み
+head(epilepsy)
+
+ggplot(epilepsy, aes(x = count)) +
+ geom_histogram(binwidth = 1, fill = "blue", alpha = 0.7) +
+ facet_grid(. ~ Trt) +
+ theme_bw()
+```
+
+データはbrmsパッケージに含まれているepilepsyデータでてんかんにおける抗けいれん薬治療のランダム化試験における発作回数を検討します。目的変数はcount、説明変数はz変換されたAge (zAge)、zBaseとTrtの交互作用となります。
+
+![Untitled](https://prod-files-secure.s3.us-west-2.amazonaws.com/c37f0e82-1db9-44a5-b16e-29ff982c00da/d6f1dedc-f343-4272-9c0e-0bf6e9a61d70/Untitled.png)
+
+brmsパッケージのbrm関数の記述方法はlme4パッケージと同じように使うことができます。ポアソン回帰分析を実行するにはfamilyにpoissonを用いることとなります。
+
+brm関数の引数にはチェーンの数やバーンインの回数などがありますが、今回は何も指定せずにデフォルトを使用しています。デフォルトではチェーン数は4、iterationは2000、バーンインは1000、thiningは1となっています。また、事前分布としてはget_prior関数を使うと確認することができます。
+
+```{r}
+# ポアソン回帰の実行
+fit1 <- brm(count ~ zAge + zBase * Trt + (1|patient),
+ data = epilepsy, family = poisson())
+
+# 結果の表示
+summary(fit1, prob = 0.95)
+tab_model(fit1)
+plot(conditional_effects(fit1), ask = F)
+```
+
+summary関数の結果には推定値などが示されています。重要な指標の解釈は以下の通りです。
+
+- R hat：1.1を超えているとモデルの収束に問題あり
+- Estimate：対数変換されているIncidence Rate Ratios (IRR)
+- 95%CI：IRRの95%信用区間 (credible interval) に0が含まれていると実質的に差がない
+- Bulk ESS：MCMCサンプルの中心の有効なサンプルサイズ
+- Tail BSS：MCMCサンプルの尾部の有効なサンプルサイズ
+
+::: {.panel-tabset}
+### 結果の確認
+
+```{r}
+summary(fit1, prob = 0.95)
+```
+
+### tab_modelでの出力結果
+tab_model関数の出力結果は、summary関数のEstimateがIRRへと指数変換されています。そのため、95%CIに1が含まれている際には実質的な差が見られないと解釈できます。そのため、zAgeの主効果、zBaseとTrtの交互作用、Trtの主効果は発生率に影響を与えていないと言えます。onditional_effects関数とplot関数を使うと予測プロットを描画することができます。
+
+```{r}
+tab_model(fit1)
+```
+
+### トレースプロット
+トレースプロットはベイズ推定で用いられるMCMCサンプルの安定性を各パラメータごとに可視化しています。b_で始まるパラメータは固定効果、sd_で始まるパラメータはランダム効果の推定結果となります。iterationが1〜4であり、それぞれが安定しているかを視覚的に捉えることができます。今回は比較的安定しているように思われます。
+
+```{r}
+plot(fit1, combo = c("trace", "dens_overlay"), ask = F)
+```
+
+### モデルの予測
+
+モデルの予測について、事後分布を確認することができます。左側がヒストグラム、右側が確率密度で目的変数の事後分布をプロットしています。Bulk ESS、Tail ESSで700〜1400のシミュレーションの平均に基づくと、目的変数は8.0〜8.5あたりになるようです。左側のヒストグラムの$T(y)$ はシミュレーションの最小値となり、ヒストグラムの山と重なっていることから、実際のデータとシミュレーションの結果が一致していることを表しています。
+
+```{r}
+# モデルの予測の確認
+pp_check(object = fit1, ndraws = 1000, type = "stat", stat = "mean") +
+theme_test() + ylab("Frequency")
+
+pp_check(object = fit1, ndraws = 100) +
+theme_test() + ylab("Density")
+```
+
+### モデルの適合度
+
+モデルの適合度は以下の通りです。回帰モデルの適合度を計算する際には、観測値と回帰直線の残差を使うこととなります。この残差を用いると、モデルの決定係数 ($R^2 = 1 - 残差標準誤差$) を計算することや、逸脱度 (パラメータが所与の目的変数の確率密度を対数変換し、-2をかけたもの) を計算することができます。逸脱度は低いほどモデルの当てはまりがよくなります。
+
+逸脱度では、確率密度を対数変換を行なっています。確率密度は掛け合わせるものですが、対数変換をすることにより確率を足し合わせることができるようになります。 leave-one-out (LOO) cross validationを用いたLOO残差を対数変換したexpected log predictive density (ELPD) は、小さいほどモデルの当てはまりがよいとされます。また、事前情報を組み込んだモデルを用いるとか学習は防がれます。このモデルを比較する際には、ELPDやLOOIC、WAICなどを用います。LOOICはELPD_LOOに-2をかけたものであり、高いほど当てはまりが良いと言えます。WAICはAICと同じように低いほど当てはまりが良いと言えます。WAICはモデルの予測尤度の対数を計算し、これらの値の平均を取ります。
+
+```{r}
+model_performance(fit1)
+```
+
+### 事前分布とStanコード
+
+事前分布はget_prior関数を使うと確認することができます。
+
+```{r}
+get_prior(count ~ zAge + zBase * Trt + (1|patient), 
+          data = epilepsy)
+```
+
+flatは無情報分布と呼ばれるものです。多くの場合、平均0、分散100の正規分布のような平らな分布となります。こちらはclassがbのパラメータ (固定効果) に対して用いられています。
+
+事前分布は先行研究でどのようなパラメータが用いられているかを踏まえて推定されます。例えば、身長はマイナスの値にはならないなど、分析者の専門知識を活用することが必要となります。基本的にはデフォルトの事前分布を用いて良いかと思います。
+
+```{r}
+stancode(fit1)
+```
+
+:::
+
+# 順序ロジスティック回帰
+
+目的変数が順序尺度 (例：とてもそう思う・そう思う・どちらでもない・あまりそう思わない・全くそう思わない) の場合、順序ロジスティック回帰分析を用いることとなります。なお、順序ロジスティック回帰には累積ロジスティック回帰分析と隣接ロジスティック回帰分析の2種類があります。
+
+## 累積ロジスティック回帰分析
+
+目的変数が2値のロジスティック回帰分析では「成功の確率」と「失敗の確率」を比較するものでした。目的変数が順序尺度の場合、5件法のアンケートを例とすると、1の確率と2以上の確率の比較、2以下の確率と3以上の確率の比較、3以下の確率と4以上の確率の比較、4以下の確率と5の確率の比較を行なっています。つまり、累積ロジスティック回帰は目的変数が複数の順序尺度を2つの比較へと縮小していると言えます。一方、隣接ロジスティック回帰は、1の確率と2の確率の比較、2の確率と3の確率の比較、3の確率と4の確率の比較、4の確率と5の確率の比較などを行います。
+
+それでは具体例で見ていきましょう。
+
+```{r}
+# パッケージの読み込み
+library(brms)
+library(rstan)
+library(rstanarm)
+library(loo)
+library(tidybayes)
+library(tidyverse)
+library(bayesplot)
+library(sjPlot)
+library(performance)
+
+# プロットのテーマの設定
+theme_set(theme_bw())
+
+# 処理の高速化
+rstan_options(auto_write = T)
+options(mc.cores=parallel::detectCores())
+
+library(ordinal) # wineデータの読み込みのためのパッケージ
+data(wine) # データの読み込み
+head(wine)
+
+ggplot(wine, aes(x = rating, y = response, fill = temp)) +
+   geom_boxplot()
+```
+
+今回使用するデータはordinalパッケージに含まれるワインの苦味を5段階で評定するwineというデータです。9人の審査員が2本ずつワインをテイスティングし、5段階で苦味を報告しています。この評定にワインを作成する際の温度 (2水準：warm vs. cold)、果汁と果皮の接触 (2水準：Yes vs. No) が影響するかを検討します。
+
+プロットを見てみると、warmの場合は2〜5が多く、coldの場合は1〜4が多いように思われます。また、ratingは1が少なく、5が最もおおいようです。
+
+それではbrmsパッケージを使って累積ロジスティック回帰分析を実行してみます。familyにcumulativeを設定しています。なお、link = “logit” の部分はリンク関数を明示しており、省略可能です。
+
+```{r}
+# 順序ロジスティック回帰の実行
+fit2 <- brm(rating ~ temp + contact + (1|judge),
+data = wine, family = cumulative(link = "logit"))
+
+# 結果の表示
+summary(fit2, prob = 0.95)
+
+tab_model(fit2)
+plot_model(fit2,
+ type = "pred",
+ terms = c("temp", "contact"))
+plot(conditional_effects(fit2), ask = F)
+```
+
+ポアソン回帰ではEstimateが対数変換されていないIncidence Rate Ratios (IRR) でした。ロジスティック回帰分析絵は対数変換されているオッズ比 (Odds Ratio: OR) であるロジットが表示されています。ロジットが0であることは基準と比べて差がないことを表しています。
+
+ロジットの95%CIを確認すると、tempは0が含まれていないため、ratingに影響を与えているようです。ベースラインはcoldであるため、coldに比べてwarmは高く評定されるようにあります。また、contactはNoに比べ、Yesの方が高く評定されるようです。
+
+tab_model関数の出力結果は指数変換されており、ロジットがオッズ比へと変換されています。そのため、CIに1.00が含まれているとベースラインと比べて差がないことを意味しています。今回はtempもcontactも影響を与えているようです。この結果はplot_model関数の結果を確認すると視覚的に分かります。
+
+::: {.panel-tabset}
+### 結果の確認
+
+```{r}
+summary(fit2, prob = 0.95)
+```
+
+### tab_modelでの出力結果
+
+```{r}
+tab_model(fit2)
+```
+
+1と評定する左上のプロットはwarmよりもcoldの方が多く、contactがyesよりnoの方が多いようです。この傾向は逆に、5の評定をみると逆転しています。つまり、tempがwarmであると評定が高くなり、contactがyesであると評定が高くなる傾向が見られます。
+
+### 予測プロット
+
+予測モデルでは分かりにくい場合、以下のコードを使ってみましょう。
+
+```{r}
+plot(conditional_effects(fit2), ask = F)
+```
+
+conditional_effects関数を使うとratingがwarmおよびyesであると高くなることがわかります。
+
+```{r}
+plot_model(fit2)
+```
+
+こちらは予測プロットを作成する際のtypeとtermsを削除したsjPlotパッケージのplot_model関数で、フォレストプロットを作成するものです。x軸には効果量であるオッズ比を示しており、Interceptとの比較が示されています。それぞれの比較の解釈は以下の通りです。
+
+- Intercept[1]：評定が1と2以上の比較
+- Intercept[2]：評定が2以下と3以上の比較
+- Intercept[3]：評定が3以下と4以上の比較
+- Intercept[4]：評定が4以下と5の比較
+
+それぞれオッズ比が1よりも小さい場合には赤、1より大きい場合には青で示されます。95%CIが1を跨いでいると目的変数に影響を与えないという解釈となります。
+
+### トレースプロット
+
+それではトレースプロットやモデル指標などを確認し、これらの結果が信頼できるものか確認してみましょう。
+
+```{r}
+# トレースプロット
+plot(fit2, combo = c("trace", "dens_overlay"), ask = F)
+
+# モデルの予測の確認
+pp_check(object = fit2, ndraws = 1000, type = "stat", stat = "mean") +
+theme_test() + ylab("Frequency")
+
+pp_check(object = fit2, ndraws = 100) +
+theme_test() + ylab("Density")
+```
+
+トレースプロットなどを確認すると、モデルの収束に問題はなかったようです。事後分布を確認すると、評定は3であることが多いようです。
+
+### モデルの指標
+
+それではモデルの指標を確認していきましょう。警告メッセージとして、ベイズ決定係数は順序尺度には不適切であることが述べられています。
+
+```{r}
+model_performance(fit2)
+```
+
+:::

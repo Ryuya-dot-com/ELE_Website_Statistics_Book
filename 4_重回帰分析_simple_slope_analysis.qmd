@@ -1,0 +1,517 @@
+---
+title: "重回帰分析"
+author: "小室竜也"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    code-fold: show
+    theme: journal
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
+lang: ja
+---
+
+```{=html}
+<style>
+/* journalテーマ用のアカデミックなカスタムスタイル */
+body {
+  font-family: 'Noto Serif JP', 'Times New Roman', serif;
+  color: #2c3e50;
+  line-height: 1.8;
+}
+
+/* タイトルブロックをジャーナル風に */
+.quarto-title-banner {
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 4px double #495057;
+  padding: 2.5em 2em;
+  text-align: center;
+}
+
+.quarto-title-banner .title {
+  color: #212529 !important;
+  font-size: 2.2em !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* 見出しのアカデミックスタイル */
+h1 {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #1a1a1a;
+  border-bottom: 2px solid #212529;
+  padding-bottom: 0.5em;
+  margin-top: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+h2 {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #343a40;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+}
+
+h2:before {
+  content: "§";
+  margin-right: 0.5em;
+  color: #6c757d;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #495057;
+  font-style: italic;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+/* テーブルを学術論文風に */
+table {
+  margin: 2em auto;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  width: 90%;
+  border-top: 2px solid #212529;
+  border-bottom: 2px solid #212529;
+}
+
+thead {
+  background: #f8f9fa;
+  border-bottom: 1px solid #212529;
+}
+
+/* コードブロックをシンプルに */
+pre {
+  background: #f8f9fa !important;
+  border: 1px solid #dee2e6;
+  border-radius: 0;
+  padding: 1em;
+  font-size: 0.9em;
+}
+
+/* 数式を強調 */
+.math {
+  color: #212529;
+  font-size: 1.05em;
+  font-style: italic;
+}
+</style>
+```
+
+# はじめに
+
+これまでに **t検定** と **MANOVA** を扱ってきました。いずれも説明変数がカテゴリカル中心でしたが、実データでは **連続変数**（例：語彙サイズ、適性）を含むことが一般的です。本章では、Notionノートの内容を基に、**重回帰分析**（線形モデル）と **Simple Slope Analysis**（連続×カテゴリカルの交互作用の下位検定）を、**実行可能なRコード**とともに示します。
+
+::: {.callout-note}
+**想定データ**：2つの学習方法（Glossing / Writing）、2つのテスト（Recall / Recognition）、2つの時点（Immediate / Delayed）、共変量として Proficiency（語彙サイズ）, Aptitude（記憶力/適性）。
+:::
+
+::: {.callout-tip}
+## Conventions
+- Figure labels/titles are in English to avoid mojibake across environments.
+- All code chunks are R (```{r}). HTML/CSS is used only for chapter styling.
+- Coding policy used here: z-scores for continuous predictors and sum coding for categorical predictors.
+:::
+
+::: {.callout-tip}
+## 実行前ガイド（重回帰・モデレーション）
+
+- データ整形: 行=受験者/観測、列=変数。カテゴリカルは`factor`に、連続は数値に統一。
+- 基本設計: 連続変数はz変換（単位の統一）、カテゴリカルはsum coding（平均差の解釈）。
+- 交互作用: まず主効果＋2次の交互作用から開始し、必要に応じて高次項を検討。
+- モデル選択: 情報量基準（AIC/BIC）や交差検証を併用して過学習を抑制。
+- 前提確認: 線形性/等分散/正規性/独立性/共線性（VIF）を系統立てて点検。
+- 可視化: 予測線（`plot_model`）と条件付き平均（`emmeans/emmip`）を併用。
+:::
+
+# データの準備
+
+```{r}
+# パッケージ
+library(tidyverse)
+library(performance)
+library(effectsize)
+library(emmeans)
+library(sjPlot)
+library(broom)
+library(MASS)      # step() の周辺や今後の拡張で使用可
+theme_set(theme_bw())
+
+set.seed(123)
+
+# パラメータ
+n_participants <- 50
+n_items        <- 30
+treatments     <- c("Glossing", "Writing")
+tests          <- c("Recall", "Recognition")
+times          <- c("Immediate", "Delayed")
+
+# 完全要因の展開
+dat <- expand.grid(
+  Participant = 1:n_participants,
+  Item        = 1:n_items,
+  Treatment   = treatments,
+  Test        = tests,
+  Time        = times,
+  KEEP.OUT.ATTRS = FALSE
+)
+
+# アイテム割当（Glossing:1-15, Writing:16-30）
+dat <- dat[
+  (dat$Treatment == "Glossing" & dat$Item <= 15) |
+  (dat$Treatment == "Writing"  & dat$Item >  15), ]
+
+# 0/1反応（Writing > Glossing, Recognition > Recall）
+dat$Score <- ifelse(
+  dat$Treatment == "Glossing",
+  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.5, 0.2)),
+  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.9, 0.5))
+)
+
+# Immediate 効果を少し上げる（上限1でクリップ）
+dat$Score <- ifelse(dat$Time == "Immediate",
+                    pmin(dat$Score + sample(0:1, nrow(dat), TRUE), 1),
+                    dat$Score)
+
+# 参加者×条件に合計（0-15点）
+dat_summarized <- dat |>
+  mutate(across(c(Participant, Item, Treatment, Test, Time), as.factor)) |>
+  group_by(Participant, Treatment, Test, Time) |>
+  summarise(Score = sum(Score), .groups = "drop")
+
+# Wide（多変量）→ 本章では Score_Recall を主目的変数に利用
+wide_scores <- dat_summarized |>
+  pivot_wider(names_from = Test, values_from = Score, names_prefix = "Score_") |>
+  mutate(across(c(Participant, Treatment, Time), as.factor))
+
+# 参加者レベルの共変量を付与（Proficiency ~ N(2500, 500), Aptitude ~ N(10, 10)）
+participants       <- unique(wide_scores$Participant)
+proficiency_values <- rnorm(length(participants), mean = 2500, sd = sqrt(500))
+aptitude_values    <- rnorm(length(participants), mean = 10,   sd = sqrt(10))
+
+wide_scores <- wide_scores |>
+  left_join(tibble(Participant = participants, Proficiency = proficiency_values), by = "Participant") |>
+  left_join(tibble(Participant = participants, Aptitude    = aptitude_values),   by = "Participant")
+
+head(wide_scores)
+```
+
+# 説明変数の変換
+
+::: {.panel-tabset}
+
+### z変換（連続変数）
+
+連続変数は**単位を揃える**ために z 変換します。これにより係数は「**1 SDの変化で従属変数が何単位変わるか**」の解釈になり、**交互作用の比較**や可視化がしやすくなります。
+
+```{r}
+wide_scores <- wide_scores |>
+  mutate(
+    Proficiency = as.numeric(scale(Proficiency)),
+    Aptitude    = as.numeric(scale(Aptitude))
+  )
+```
+
+### コントラスト（カテゴリカル）
+
+交互作用を解釈しやすい **sum coding**（水準和=0）を用います。2水準の場合、レベルは \{-1, +1\} に再符号化され、**主効果は両群の平均差**、**交互作用は傾きの差**として読みやすくなります。
+
+```{r}
+contrasts(wide_scores$Treatment) <- contr.sum(2)
+contrasts(wide_scores$Time)      <- contr.sum(2)
+```
+
+### 補足：係数の読み方
+
+- `Proficiency` と `Aptitude` は**標準化済み**なので、係数は**標準化回帰係数**に近い解釈になります。  
+- `Treatment` と `Time` は **sum coding** のため、切片は**水準平均**、主効果は**平均差**を意味します。  
+- 交互作用（例：`Treatment:Proficiency`）は、**Proficiencyの傾きが群でどれだけ異なるか**を表します。
+:::
+
+## モデル式と解釈（数式）
+
+本章の代表的なモデル（例：Score_Recallの線形回帰）は次の通りです。
+
+$$\begin{aligned}
+\mathbb{E}[Y] &= \beta_0 
+ + \beta_1\,\text{Trt} 
+ + \beta_2\,\text{Time}
+ + \beta_3\,Z_{\text{Prof}}
+ + \beta_4\,Z_{\text{Apt}} \\
+&\quad + \beta_5\,(\text{Trt} \times Z_{\text{Prof}})
+ + \beta_6\,(\text{Trt} \times \text{Time})
+ + \cdots 
+\end{aligned}$$
+
+- Trt/Timeはsum coding（-1, +1）。$Z_{\text{Prof}}$と$Z_{\text{Apt}}$はz変換。  
+- $\beta_3$はProficiencyの主効果（平均化されたTrt/Time上の傾き）。  
+- $\beta_5$はProficiencyの傾きが群（Trt）でどれだけ変わるか（simple slope差）。
+
+# 重回帰分析の実施
+
+## フルモデルの当てはめ
+
+```{r}
+# 4要因＋全交互作用のフルモデル
+mra_full <- lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
+summary(mra_full)
+```
+
+## モデルの作成と選択（AIC）
+
+```{r}
+# ステップワイズ（両方向）：AIC最小化
+mra_step <- step(mra_full, trace = 0)
+mra_step$call
+summary(mra_step)
+```
+
+::: {.callout-note}
+**モデル選択の考え方**  
+- **AIC** は汎化を意識した情報量基準。**小さいほど良い**（過学習を一定程度抑制）。  
+- **BIC** はパラメータ数への罰則が強く、より**保守的**。  
+- 可能なら **交差検証（CV）** を併用して、予測性能も確認しましょう。
+:::
+
+# モデルの前提の確認
+
+::: {.panel-tabset}
+
+### 線形性・外れ値
+
+残差 vs 予測値の散布図で**系統的な曲線**がないかを確認します。強い曲線や極端な外れ値は**非線形**や**影響点**の可能性。
+
+```{r}
+check_model(mra_step)  # 総合ダイアグノスティクス
+```
+
+### 等分散性（ホモスケダスティシティ）
+
+残差の分散が予測値に依存して増減しないかをチェックします。**ファン形**は違反のサイン。
+
+```{r}
+performance::check_heteroscedasticity(mra_step)
+```
+
+### 正規性（誤差項）
+
+Q-Qプロットで**直線から大きく外れない**ことを確認。サンプルが大きい場合は軽微な逸脱に過敏にならないこと。
+
+```{r}
+performance::check_normality(mra_step)
+```
+
+### 独立性（系列相関）
+
+時系列や縦断データの場合は**自己相関**に注意。Durbin–Watson などで補助確認。
+
+```{r}
+performance::check_autocorrelation(mra_step)
+```
+
+### 多重共線性（VIF）
+
+VIF が **10超**で注意、**5超**でも文脈により検討。相関が高い説明変数は解釈を不安定にします。
+
+```{r}
+performance::check_collinearity(mra_step)
+model_performance(mra_step)
+```
+
+### 共線性の可視化（相関行列）
+
+説明変数の相関をざっと把握しておくと、モデル解釈の助けになります（とくに中心化・標準化前のスケールの違いに注意）。
+
+```{r}
+pred_num <- wide_scores |>
+  dplyr::select(dplyr::all_of(c("Proficiency", "Aptitude")))
+cm <- round(cor(pred_num), 2)
+
+# シンプルなヒートマップ
+as.data.frame(as.table(cm)) |>
+  ggplot(aes(Var1, Var2, fill = Freq)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "#2166ac", mid = "#f7f7f7", high = "#b2182b", midpoint = 0) +
+  geom_text(aes(label = Freq)) +
+  labs(title = "Predictor Correlations", x = NULL, y = NULL, fill = "r") +
+  theme_minimal()
+```
+
+:::
+
+# 結果の出力
+
+```{r}
+summary(mra_step)
+tab_model(mra_step)
+```
+
+## 効果量と標準化係数（補助）
+
+```{r}
+# 標準化係数（参考）：
+effectsize::standardize_parameters(mra_step)
+
+# 決定係数とf2（Cohen, 1988）の概算：
+r2 <- performance::r2(mra_step)$R2
+f2 <- r2 / (1 - r2)
+data.frame(R2 = r2, f2 = f2)
+```
+
+## ロバスト標準誤差（HC3）と頑健推定（参考）
+
+小規模サンプルや等分散性の疑いがある場合、**ヘテロスケダスティシティ頑健標準誤差（HC3）**を参考にすると安心です。
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(sandwich, lmtest)
+  hc3 <- sandwich::vcovHC(mra_step, type = "HC3")
+  lmtest::coeftest(mra_step, vcov. = hc3)
+} else {
+  message("sandwich/lmtest 未インストールのためスキップ")
+}
+```
+
+モデル自体をロバスト化（Huber M推定など）する選択肢もあります（`MASS::rlm` など）。
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(MASS)
+  mod_rlm <- MASS::rlm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
+  summary(mod_rlm)
+} else {
+  message("MASS 未インストールのためスキップ")
+}
+```
+
+## 交差検証（K-fold）の概念実装（参考）
+
+情報量基準に加えて、**汎化性能**をK-fold CVで確認しておくと堅牢です。
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(boot)
+  set.seed(123)
+  # 例：10-fold CV の平均二乗誤差（MSE）
+  glm_fit <- glm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
+  cv_res  <- boot::cv.glm(wide_scores, glm_fit, K = 10)
+  cv_res$delta  # raw / adjusted CV error
+} else {
+  message("boot 未インストールのためスキップ")
+}
+```
+
+# 結果の可視化
+
+```{r}
+# 代表例：Proficiency × Treatment × Time の効果を可視化
+plot_model(
+  mra_step,
+  type  = "pred",
+  terms = c("Proficiency", "Treatment", "Time")
+)
+```
+
+# 下位検定・Simple Slope Analysis
+
+連続変数を含む交互作用の下位検定は、**どの値で比較するか**を明示する必要があります。ここでは `emmeans` の **`ref_grid()`** を使って、関心の z 値（例：-2, -1, 0, 1, 2）で条件付き平均と群差を評価します。
+
+::: {.panel-tabset}
+
+### 概念
+
+- **Simple slope**：連続変数の特定値で「群差の傾き」を比較  
+- **注意**：`offset` 引数は回帰の切片ずらし用途で、**連続モデレータの下位検定には不向き**。`ref_grid()` を使います。  
+- **解釈**：例えば `Treatment:Proficiency` が有意なら、「Proficiency が 1 SD 増えたときの傾き差」が有意。
+
+### 条件付きの群差（Timeごと）
+
+```{r}
+emmeans(mra_step, pairwise ~ Treatment | Time)
+```
+
+### Simple Slope（Proficiencyの範囲で）
+
+```{r}
+rg <- ref_grid(mra_step, at = list(Proficiency = c(-2, -1, 0, 1, 2)))
+emmeans(rg, pairwise ~ Treatment | Proficiency)
+```
+
+:::
+
+### 参考：Johnson–Neyman法（有意領域の可視化）
+
+連続モデレーターのどの範囲で群差（または単純傾き）が有意かを連続的に評価する方法です。
+
+```{r}
+if (Sys.getenv("CI") != "true") {
+  pacman::p_load(interactions)
+  # モデルに交互作用が含まれているか、および J–N の前提（連続×連続）が満たされているかを確認
+  coef_names <- names(coef(mra_step))
+  has_tp <- any(grepl("(Proficiency:Treatment|Treatment:Proficiency)", coef_names))
+  modx_is_continuous <- is.numeric(wide_scores$Treatment) || is.double(wide_scores$Treatment)
+  pred_is_continuous <- is.numeric(wide_scores$Proficiency) || is.double(wide_scores$Proficiency)
+
+  if (has_tp && modx_is_continuous && pred_is_continuous) {
+    interactions::johnson_neyman(mra_step, pred = Proficiency, modx = Treatment,
+                                 alpha = 0.05, control.fdr = FALSE, plot = TRUE)
+  } else {
+    message("Johnson–Neyman は連続×連続の相互作用かつ当該交互作用がモデルに含まれる場合のみ実行します（今回スキップ）。")
+  }
+} else {
+  message("interactions 未インストールのためスキップ")
+}
+```
+
+## 交互作用の可視化
+
+```{r}
+emmip(rg, Treatment ~ Proficiency, style = "factor", CIs = TRUE,
+      linearg = list(), dotarg = list(size = 2), CIarg = list(alpha = 1))
+```
+
+# まとめ
+
+- 連続変数を含む線形モデルは **lm()** で実装し、**z変換**＋**sum coding** を使うと交互作用の解釈が明瞭。
+- **AIC によるモデル選択**で過度な複雑さを回避しつつ汎化性能を確保。
+- **performance** と **emmeans** で **前提確認** と **下位検定** を系統立てて実施。
+- Simple Slope はあくまで補助。**可視化**（`plot_model` / `emmip`）と併せて解釈。
+
+## 報告テンプレート（例）
+
+- モデル: lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude)
+- コーディング: Treatment/Time は sum coding（-1,+1）、Proficiency/Aptitude は z 変換。
+- 当てはまり: R² = …, 調整R² = …, AIC = …（必要に応じてCVの指標も併記）。
+- 主要効果: β(…)=…, SE=…, t=…, p=…（標準化係数/効果量があれば併記）。
+- 交互作用: 例) Treatment×Proficiency が有意（β=…, p=…）。simple slope/emmip で図示し、Proficiency が高いほど Writing の効果が大きい等を解釈。
+- 前提確認: 等分散性/正規性/共線性の点検結果（問題があればロバストSE等を併記）。
+
+
+## トラブルシューティング（よくあるつまずき）
+
+- 交互作用の符号が直観と異なる: コーディング（sum vs treatment）や基準化の有無を確認。係数は「他の変数を平均化したとき」の効果。
+- 強い曲線が残差図に出る: 非線形の可能性（多項式/スプラインやGLM/GAMを検討）。
+- 等分散性違反: ロバスト標準誤差、変数変換、モデル変更（GLM/GEEなど）を検討。
+- VIFが高い: z変換・中心化でも改善しない場合、設計の再考（変数削減/合成指標）。
+- Simple slopeのp値が不安定: J–N法で連続的に確認、複数比較補正や効果量・図示で総合判断。
+
+# 参考ウェブサイト
+
+- https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis
+- https://bookdown.org/mike/data_analysis/moderation.html
+- https://kzee.github.io/Interactions_Demo.html

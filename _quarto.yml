@@ -1,0 +1,134 @@
+project:
+  type: book
+  output-dir: _book
+
+book:
+  title: "Rによる統計解析実戦ガイド"
+  author: "小室竜也"
+  date: today
+  reader-mode: true
+  
+  chapters:
+    - index.qmd
+    - Rの基本的な使い方.qmd
+    
+    - part: "第I部：統計モデルの基礎"
+      chapters:
+        - 統計モデルについての概略.qmd
+        - 1_T検定と効果量.qmd
+        - 2_ANOVAとカテゴリカル変数のコーディング.qmd
+        - 3_MANOVA_判別分析.qmd
+    
+    - part: "第II部：回帰分析"
+      chapters:
+        - 4_重回帰分析_simple_slope_analysis.qmd
+        - 5_一般化線形モデル_一般化加法モデル.qmd
+        - 6_混合効果モデル_2値ロジスティック回帰.qmd
+    
+    - part: "第III部：ベイズ統計と機械学習"
+      chapters:
+        - 7_ベイズ推定.qmd
+        - 8_ROC曲線_ツリーモデル.qmd
+    
+    - part: "第IV部：多変量解析"
+      chapters:
+        - 9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法.qmd
+        - 10_一般化可能性理論.qmd
+        - 11_項目応答理論とラッシュモデル.qmd
+        - 12_拡張ラッシュモデル.qmd
+
+    - part: "第V部：時系列解析"
+      chapters:
+        - 13_時系列データ分析_ARIMA.qmd
+
+    - part: "第VI部：地理空間データ"
+      chapters:
+        - 14_地理空間データ分析_入門.qmd
+        - 15_地理空間データ分析_応用.qmd
+    
+    - 参考文献_おすすめの書籍.qmd
+    
+    - part: "第VII部：ネットワーク分析"
+      chapters:
+        - 16_ネットワーク分析.qmd
+
+    - part: "第VIII部：メタ分析"
+      chapters:
+        - 17_メタ分析.qmd
+
+csl: apa-7th-edition.csl
+
+format:
+  html:
+    theme: journal
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    toc-title: "目次"
+    number-sections: true
+    number-depth: 3
+    code-fold: show
+    code-summary: "コード"
+    code-tools: true
+    code-copy: hover
+    code-overflow: wrap
+    fig-align: center
+    fig-responsive: true
+    tbl-cap-location: top
+    crossref:
+      fig-title: "図"
+      tbl-title: "表"
+      eq-prefix: "式"
+    lang: ja
+    
+  pdf:
+    documentclass: ltjsbook
+    classoption:
+      - openany
+      - 11pt
+      - a4paper
+    geometry:
+      - top=25mm
+      - bottom=25mm
+      - left=20mm
+      - right=20mm
+    papersize: a4
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    colorlinks: true
+    linkcolor: blue
+    citecolor: blue
+    urlcolor: blue
+    keep-tex: false
+    include-in-header:
+      - text: |
+          \usepackage{luatexja}
+          \usepackage{luatexja-fontspec}
+          \setmainfont{Times New Roman}
+          \setsansfont{Arial}
+          \setmainjfont{Noto Serif JP}
+          \setsansjfont{Noto Sans JP}
+    
+  epub:
+    cover-image: cover.png
+    toc: true
+    toc-depth: 2
+    epub-chapter-level: 2
+
+execute:
+  freeze: auto
+  cache: true
+  echo: true
+  warning: false
+  message: false
+  fig-width: 7
+  fig-height: 5
+  fig-dpi: 300
+
+editor: visual
+
+language:
+  crossref-fig-title: "図"
+  crossref-tbl-title: "表"
+  crossref-eq-prefix: "式"
