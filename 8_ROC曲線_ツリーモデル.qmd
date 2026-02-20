@@ -131,7 +131,7 @@ pre {
 - 学習者が次の小テストで基準を超えるかを予測する
 - CEFR到達判定の補助指標を構築する
 
-この章では、こうした課題に近い**架空データ（英語語彙学習）**を使い、モデル比較から評価まで一気通貫で実装します。
+この章では、こうした課題に近い**架空データ（英語語彙学習）**を用いて、モデル比較から評価までを体系的に実装します。
 
 ::: {.callout-tip}
 ## Conventions
@@ -141,15 +141,15 @@ pre {
 :::
 
 ::: {.callout-note}
-## この章でできるようになること
+## 本章の到達目標
 1. ツリーモデル3種を同じデータで比較できる。
 2. ROC-AUCだけでなくPR-AUC・閾値・キャリブレーションも確認できる。
 3. 「精度が高い」で終わらず、教育実務で使える判断に落とし込める。
 :::
 
 ::: {.callout-tip}
-## 30秒でわかるこの章
-- やること: 「どの学習者・どの語彙項目が正答しやすいか」を予測する。
+## 本章の要点
+- 分析課題: 「どの学習者・どの語彙項目が正答しやすいか」を予測する。
 - 使うモデル: 単純（決定木）から高精度（RF, XGBoost）へ段階的に比較する。
 - 最終判断: ROC-AUCだけでなく、閾値・PR・キャリブレーションまで見て運用設計する。
 :::
@@ -174,9 +174,71 @@ pre {
 
 この章で「単木 → RF → XGBoost」を順に扱うのは、こうした先行研究の流れを、大学院レベルで再現可能な形に落とし込むためです。
 
-ここでの狙いは、論文を読むだけでなく、**同じ発想を自分で再実装できること**です。
+本章の目的は、先行研究の読解にとどまらず、**同一の分析発想を再実装できること**にあります。
 
 ※ なお、会議論文は査読誌より方法報告が簡潔な場合があるため、再現時は必ず評価設計（分割・指標・閾値）を明示します。
+
+## SHAP / Dominance Analysis のチュートリアル文献
+
+本章で追加した解釈手法（SHAPとdominance analysis）については、次の文献が実装理解に有用です。
+
+```{r}
+#| label: tutorial-paper-map
+
+tibble::tribble(
+  ~Method, ~Paper, ~How_Used_in_Paper, ~Concrete_Example,
+  "SHAP",
+  "Lundberg & Lee (2017)",
+  "SHAPを『予測 = ベースライン + 各特徴の寄与』で説明する統一枠組みとして定式化。",
+  "単一予測について、各特徴がどれだけ予測値を押し上げ/下げたかを分解。",
+  "SHAP",
+  "Lundberg et al. (2020)",
+  "TreeExplainerを使って、local説明を集約しglobal理解へつなぐ手順を提示。",
+  "医療データで、希少だが高リスクな要因や相互作用、性能劣化要因を可視化。",
+  "SHAP",
+  "Štrumbelj & Kononenko (2013)",
+  "感度分析ベースで個別予測の特徴寄与を算出し、モデル理解支援を検証。",
+  "人工/実データで説明可能性を評価し、122名実験で理解改善を報告。",
+  "Dominance",
+  "Budescu (1993); Azen & Budescu (2003)",
+  "標準化回帰係数比較の代替として、全サブモデル比較に基づく相対的重要性評価を提案・整理。",
+  "予測子ごとに一般的優位性（general dominance）を算出し順位化。",
+  "Dominance (Logistic)",
+  "Azen & Traxel (2009)",
+  "ロジスティック回帰へ拡張し、R2類似指標とブートストラップ推論を検討。",
+  "一般的優位性の信頼区間や再現性を、シミュレーションと実データ例で検証。",
+  "Applied Linguistics",
+  "Mizumoto (2022)",
+  "応用言語学向けに dominance analysis と random forests の実践手順を提示。",
+  "既存実証研究の再解析を通じ、β係数だけに依存しない重要度解釈を実演。"
+) |>
+  gt() |>
+  tab_header(
+    title = "How Tutorial Papers Use SHAP and Dominance Analysis",
+    subtitle = "What they did and concrete examples"
+  )
+```
+
+::: {.callout-tip}
+## この章での対応づけ
+- 論文の「SHAP: local→global」を、本章では `xgb-shap-local` と `xgb-shap-global` に対応させています。  
+- 論文の「dominance: 全サブモデル比較」を、本章では `glm-dominance-analysis` と `glm-dominance-level` に対応させています。  
+:::
+
+### 論文の手順をこの章で再現するミニガイド
+
+1. **Dominance（Budescu, Azen系）**  
+   まず回帰モデルを固定し、全サブモデルで「その変数を追加したときの改善量」を平均して重要度を出します。  
+   Azen & Traxel (2009) はロジスティック回帰でこの考え方を拡張し、擬似R2とブートストラップで安定性を検討しました。  
+   本章では `glm-dominance-analysis` で平均寄与、`glm-dominance-level` でモデルサイズ別寄与を確認します。  
+2. **SHAP（Lundberg系）**  
+   1件ごとの予測を「ベースライン + 特徴寄与」に分解し、そのlocal説明を多数集約してglobal理解へ進みます。  
+   Lundberg et al. (2020) はこの流れで、希少だが高リスクな要因、相互作用、性能劣化要因を抽出しました。  
+   本章では `xgb-shap-local`（個別）と `xgb-shap-global`（全体）で同じ読み方を再現します。  
+3. **教育データでの読み替え例**  
+   たとえばある学習者のlocal SHAPで `test_time_delayed` が負、`proficiency` が正なら、  
+   「遅延テスト条件は不利だが、習熟度がそれを一部補っている」と解釈できます。  
+   さらにglobal SHAPで `condition` や `word_freq` が上位なら、授業介入と語彙難度の設計に優先順位をつけられます。  
 
 ---
 
@@ -193,7 +255,7 @@ pacman::p_load(
   tidyverse, gt,
   tidymodels, workflowsets,
   rpart.plot, vip, ranger, xgboost,
-  probably, scales
+  probably, scales, dominanceanalysis
 )
 
 set.seed(2026)
@@ -220,7 +282,7 @@ metric_tbl
 
 この章では、次のように役割分担して読みます。
 
-- `ROC_AUC`: モデル全体の識別性能をざっくり比較
+- `ROC_AUC`: モデル全体の識別性能を比較
 - `PR_AUC`: 陽性クラス（ここでは `correct`）を重視した比較
 - `Sensitivity` / `Specificity`: 閾値を決めた後の実運用評価
 - `Brier`: 予測確率の信頼性（キャリブレーション）
@@ -231,7 +293,7 @@ metric_tbl
 - ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合がある（Saito & Rehmsmeier, 2015）。
 :::
 
-## 混同行列を30秒で復習（超ミニ例）
+## 混同行列の確認（最小例）
 
 ここで一度だけ、ROCの土台になる混同行列を小さな例で確認します。
 
@@ -288,7 +350,7 @@ bind_rows(
 
 # ケース設定：英語語彙学習データ（架空）
 
-この節のゴールは、モデル比較の土台になるデータ構造を明確にすることです。
+この節の目的は、モデル比較の基盤となるデータ構造を明確にすることです。
 
 ## 研究場面の想定
 
@@ -447,7 +509,7 @@ profile_tbl |>
 
 # 学習・評価の分割（リーク防止）
 
-この節のゴールは、「評価が信頼できる実験設計」を先に固定することです。
+この節の目的は、「評価の信頼性を担保する実験設計」を先に固定することです。
 
 ## データ分割
 
@@ -539,11 +601,132 @@ glm_fit |>
   )
 ```
 
+## 補助解析：Dominance Analysis（GLM）
+
+係数表は「方向と有意性」を示すのに有用ですが、  
+説明変数が複数あると「相対的重要性」は読み取りにくくなります。  
+そこで、GLMに対して dominance analysis を追加します（Budescu, 1993; Azen & Budescu, 2003; Azen & Traxel, 2009）。
+
+文献での活用ポイント（具体）:
+
+- Azen & Traxel (2009) は、ロジスティック回帰で dominance analysis を使うために、  
+  R2類似指標の選定とブートストラップ推論を組み合わせて、重要度の再現性を検討しました。  
+- Mizumoto (2022) は、応用言語学データの再解析で dominance analysis を併用し、  
+  「標準化βだけでは見えにくい相対的重要性」を示しました。  
+- 本章での具体例としては、`proficiency` と `condition` の relative share を比較し、  
+  「学習者要因と授業デザイン要因のどちらが予測改善に効いているか」を同じ尺度で読む、という使い方になります。  
+
+```{r}
+#| label: glm-dominance-analysis
+
+# dominance analysis は通常の glm オブジェクトで実行する
+glm_dom <- glm(
+  correct ~ proficiency + weekly_study + anxiety + l1_distance +
+    log10(word_freq + 1) + word_length + cognate + pos + condition + test_time,
+  data = train_data,
+  family = binomial()
+)
+
+da_glm <- dominanceanalysis::dominanceAnalysis(glm_dom)
+da_avg <- dominanceanalysis::averageContribution(da_glm)
+
+da_tbl <- purrr::imap_dfr(da_avg, ~ tibble(
+  Fit_Index = .y,
+  Predictor = names(.x),
+  Average_Contribution = as.numeric(.x)
+)) |>
+  group_by(Fit_Index) |>
+  mutate(
+    Relative = Average_Contribution / sum(Average_Contribution),
+    Rank = dense_rank(desc(Average_Contribution))
+  ) |>
+  ungroup()
+
+# 章内では Nagelkerke R2 ベース（r2.n）を主に表示
+da_tbl |>
+  filter(Fit_Index == "r2.n") |>
+  arrange(desc(Average_Contribution)) |>
+  mutate(across(c(Average_Contribution, Relative), ~ round(., 4))) |>
+  gt() |>
+  tab_header(
+    title = "Dominance Analysis (GLM)",
+    subtitle = "Relative importance based on Nagelkerke R2 (r2.n)"
+  ) |>
+  cols_label(
+    Fit_Index = "Fit Index",
+    Predictor = "Predictor",
+    Average_Contribution = "Average Contribution",
+    Relative = "Relative Share",
+    Rank = "Rank"
+  )
+```
+
+```{r}
+#| label: glm-dominance-plot
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Dominance ranking of predictors (GLM, r2.n)"
+
+da_tbl |>
+  filter(Fit_Index == "r2.n") |>
+  arrange(desc(Average_Contribution)) |>
+  ggplot(aes(x = reorder(Predictor, Average_Contribution),
+             y = Average_Contribution)) +
+  geom_col(fill = "#4C78A8") +
+  coord_flip() +
+  labs(
+    title = "Dominance Analysis for Logistic Baseline",
+    subtitle = "Higher values indicate stronger average incremental contribution",
+    x = "Predictor",
+    y = "Average contribution (r2.n)"
+  )
+```
+
+```{r}
+#| label: glm-dominance-level
+#| fig-width: 9
+#| fig-height: 5
+#| fig-cap: "Dominance contribution by model size (GLM, r2.n)"
+
+da_level_tbl <- dominanceanalysis::contributionByLevel(da_glm)$r2.n |>
+  as_tibble() |>
+  pivot_longer(-level, names_to = "Predictor", values_to = "Contribution")
+
+da_level_tbl |>
+  ggplot(aes(x = factor(level), y = Contribution, fill = Predictor)) +
+  geom_col(position = "stack") +
+  labs(
+    title = "Contribution by Model Size",
+    subtitle = "level = number of predictors already in the submodel",
+    x = "Model size level",
+    y = "Incremental contribution"
+  ) +
+  guides(fill = "none")
+```
+
+::: {.callout-note}
+## Dominance と SHAP の役割分担
+- Dominance（ここ）: **GLM全体**で、説明変数の相対的重要性を比較する。  
+- SHAP（後半）: **XGBoost**で、全体と個別予測の寄与を説明する。  
+:::
+
 ---
 
 # 決定木（Decision Tree）
 
-この節のゴールは、最も解釈しやすい木モデルを作り、分岐ルールを目で確認することです。
+この節の目的は、解釈可能性の高い木モデルを構築し、分岐規則を確認することです。
+
+::: {.callout-note}
+## 決定木の基本構造
+- 決定木は、データを「条件分岐」で繰り返し分けるモデルです。  
+- 分岐点（ノード）では、例: `proficiency > 0.4` のような質問をします。  
+- 最後の葉（leaf）で、正答確率やクラス（correct / incorrect）を出します。  
+- 良い点: ルールが可視化でき、教育的解釈がしやすい。  
+- 注意点: 1本の木はデータの小さな揺れに影響されやすい。  
+:::
+
+英語教育の文脈では、「どの条件の学習者が正答しやすいか」を  
+if-then ルールで説明できる点が、決定木の大きな利点です。
 
 ## モデルとチューニング
 
@@ -627,13 +810,25 @@ tibble(split_var = tree_model$frame$var) |>
   )
 ```
 
-この表は「木がどの変数を重視して意思決定しているか」の最短確認です。
+この表は、木がどの変数を重視して意思決定しているかを確認するための基礎資料です。
 
 ---
 
 # ランダムフォレスト（Random Forest）
 
-この節のゴールは、単木の弱点（不安定さ）をアンサンブルで補うことです。
+この節の目的は、単木の弱点（不安定性）をアンサンブルで補うことです。
+
+::: {.callout-note}
+## ランダムフォレストの基本原理
+- ランダムフォレストは、たくさんの決定木の「多数決」で予測します。  
+- 各木は、別々のブートストラップ標本で学習します（bagging）。  
+- 各分岐では、全変数でなく一部の変数だけを候補にします。  
+- これにより木どうしの似すぎを防ぎ、過学習を抑えやすくなります。  
+- 代償として、単木より説明はやや複雑になります。  
+:::
+
+英語教育データでは、学習者要因と語彙要因の相互作用が多く、  
+単木よりもランダムフォレストの方が安定して高い再現性能を得やすい場面が多くあります。
 
 ## モデルとチューニング
 
@@ -678,12 +873,6 @@ rf_best
 rf_final_wf <- finalize_workflow(rf_wf, rf_best)
 rf_final_fit <- fit(rf_final_wf, data = train_data)
 ```
-
-::: {.callout-note}
-## ランダムフォレストを直感で理解する
-1本の木に任せるのではなく、たくさんの木に「多数決」を取らせます。  
-教育的に言えば、1人の採点者ではなく、複数採点者の合議で判定するイメージです。
-:::
 
 ```{r}
 #| label: rf-oob-check
@@ -741,7 +930,7 @@ rf_vi |>
 
 # XGBoost
 
-この節のゴールは、高精度モデルを構築しつつ、重要特徴を解釈可能な形で確認することです。
+この節の目的は、高精度モデルを構築しつつ、重要特徴を解釈可能な形で確認することです。
 
 ## モデルとチューニング
 
@@ -797,7 +986,7 @@ xgb_final_fit <- fit(xgb_final_wf, data = train_data)
 ```
 
 ::: {.callout-note}
-## XGBoostを直感で理解する
+## XGBoostの学習原理
 XGBoostは「前の木が間違えた観測」を次の木が重点的に学習して、誤差を段階的に減らしていく方法です。  
 最初から完璧な木を作るのではなく、改善を積み重ねる設計です。
 :::
@@ -819,6 +1008,120 @@ xgb.importance(model = xgb_engine_fit) |>
     subtitle = "Gain-based importance (top 10)"
   )
 ```
+
+## SHAP（全体と個別の解釈）
+
+ここまでの可視化でも比較は可能ですが、大学院レベルの読み物としては、  
+「なぜその予測になったか」を説明できるSHAPを入れておくと実務との接続が強くなります（Lundberg & Lee, 2017; Lundberg et al., 2020）。
+
+文献での活用ポイント（具体）:
+
+- Lundberg & Lee (2017) は、SHAPを「加法的特徴寄与」の統一枠組みとして定義し、  
+  1件予測の寄与分解を理論的に一意化しました。  
+- Lundberg et al. (2020) は、医療データに対して local説明を多数集約し、  
+  低頻度だが高リスクな要因や、特徴間の非線形相互作用、運用中モデルの劣化要因を特定しました。  
+- Štrumbelj & Kononenko (2013) は、個別予測の寄与説明がモデル理解を高めることを実験的に示しました。  
+- 本章ではこれを教育データに置き換え、  
+  `xgb-shap-global` で全体傾向、`xgb-shap-local` で個別学習者ケースの説明を行います。  
+- 具体的には、ある学習者で `anxiety` が負寄与、`weekly_study` が正寄与と出れば、  
+  「不安による不利を学習時間がどこまで補っているか」をケース単位で説明できます。  
+
+### 全体: どの特徴が平均的に効いたか
+
+```{r}
+#| label: xgb-shap-global
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Global SHAP importance for XGBoost"
+
+# XGBoost用に前処理したテスト行列を作る
+xgb_prep <- prep(rec_xgb, training = train_data)
+xgb_test_processed <- bake(xgb_prep, new_data = test_data)
+xgb_test_matrix <- xgb_test_processed |>
+  select(-correct) |>
+  as.matrix()
+
+# predcontrib = TRUE でSHAP寄与を取得（最後の列はBIAS）
+shap_raw <- predict(xgb_engine_fit, newdata = xgb_test_matrix, predcontrib = TRUE)
+if (!is.matrix(shap_raw)) shap_raw <- as.matrix(shap_raw)
+
+shap_feature_names <- colnames(xgb_test_matrix)
+if (ncol(shap_raw) == length(shap_feature_names) + 1) {
+  colnames(shap_raw) <- c(shap_feature_names, "BIAS")
+}
+
+shap_importance <- tibble(
+  Feature = shap_feature_names,
+  MeanAbsSHAP = colMeans(abs(shap_raw[, shap_feature_names, drop = FALSE]))
+) |>
+  arrange(desc(MeanAbsSHAP))
+
+shap_importance |>
+  mutate(MeanAbsSHAP = round(MeanAbsSHAP, 4)) |>
+  gt() |>
+  tab_header(
+    title = "Global SHAP Importance (XGBoost)",
+    subtitle = "Mean absolute contribution across test observations"
+  )
+
+shap_importance |>
+  slice_max(MeanAbsSHAP, n = 12) |>
+  ggplot(aes(x = reorder(Feature, MeanAbsSHAP), y = MeanAbsSHAP)) +
+  geom_col(fill = "#D95F02") +
+  coord_flip() +
+  labs(
+    title = "Top 12 Features by SHAP",
+    x = "Feature",
+    y = "Mean |SHAP|"
+  )
+```
+
+### 個別: 1つの予測をどう説明するか
+
+```{r}
+#| label: xgb-shap-local
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Local SHAP explanation for one high-probability case"
+
+# 正答確率が最も高いテスト観測を1件選ぶ
+xgb_prob_test <- predict(xgb_final_fit, test_data, type = "prob")$.pred_correct
+focus_id <- which.max(xgb_prob_test)
+focus_prob <- xgb_prob_test[focus_id]
+
+local_shap <- tibble(
+  Feature = shap_feature_names,
+  SHAP = shap_raw[focus_id, shap_feature_names]
+) |>
+  mutate(Direction = if_else(SHAP >= 0, "Push to correct", "Push to incorrect")) |>
+  arrange(desc(abs(SHAP))) |>
+  slice_head(n = 12)
+
+local_shap |>
+  mutate(across(where(is.numeric), ~ round(., 4))) |>
+  gt() |>
+  tab_header(
+    title = "Local SHAP Explanation",
+    subtitle = paste0("Case ID ", focus_id, ", predicted P(correct) = ", round(focus_prob, 3))
+  )
+
+local_shap |>
+  ggplot(aes(x = reorder(Feature, SHAP), y = SHAP, fill = Direction)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = c("Push to correct" = "#1B9E77", "Push to incorrect" = "#D95F02")) +
+  labs(
+    title = "Local SHAP Contributions (Top 12)",
+    x = "Feature",
+    y = "SHAP contribution"
+  )
+```
+
+::: {.callout-tip}
+## SHAPの解釈指針
+- **Global SHAP**: どの特徴が「全体として」効いているか。  
+- **Local SHAP**: 1件の予測で、どの特徴が「正答側/誤答側」に押したか。  
+:::
 
 ---
 
@@ -928,15 +1231,15 @@ metric_summary |>
   tab_source_note("Event level is 'correct' (second level).")
 ```
 
-解釈のコツ:
+解釈の指針:
 
 - まず `ROC_AUC` と `PR_AUC` で上位候補を2つ程度に絞る。
 - 次に `Sensitivity` / `Specificity` と `Brier` で用途適合性を確認する。
 
 ::: {.callout-tip}
-## まずどこを見るか（時短版）
+## 指標確認の優先順序
 1. 研究で「見逃しが痛い」なら `Sensitivity` と `PR_AUC` を優先。  
-2. 全体比較をざっくり見るなら `ROC_AUC`。  
+2. 全体性能を比較する場合は `ROC_AUC`。  
 3. 予測確率そのものを使うなら `Brier` とキャリブレーション図を確認。
 :::
 
@@ -1125,7 +1428,7 @@ xgb_calib |>
 - 学習時間だけでなく語彙特性（頻度・長さ・同根語）も予測に寄与。
 
 ::: {.callout-note}
-## 結果記述テンプレート（そのまま使える形）
+## 結果記述テンプレート
 「XGBoostはテストデータでROC-AUC = XX、PR-AUC = XXを示した。  
 閾値を0.XX（Youden最適）に設定した場合、Sensitivity = XX、Specificity = XXであった。  
 教育実務では見逃しコストを考慮し、閾値を0.XXに下げる運用も妥当である。」  
@@ -1133,33 +1436,33 @@ xgb_calib |>
 
 ---
 
-# よくある失敗と回避策
+# 方法論上の留意点
 
 ::: {.callout-warning}
-## 失敗1: AUCだけで勝敗を決める
-- 回避: PR-AUC、閾値依存指標（Sens/Spec/Precision）も併記。
+## 留意点1: AUC単独でモデル選択を行わない
+- 対応: PR-AUC、閾値依存指標（Sens/Spec/Precision）も併記する。
 :::
 
 ::: {.callout-warning}
-## 失敗2: 目的変数のイベント水準を取り違える
-- 回避: `event_level = "second"`などを明示して再現可能にする。
+## 留意点2: 目的変数のイベント水準を明示する
+- 対応: `event_level = "second"` などを明示し、再現可能性を確保する。
 :::
 
 ::: {.callout-warning}
-## 失敗3: 前処理リーク
-- 回避: recipeの学習は学習データだけ。workflowで一体化する。
+## 留意点3: 前処理リークを防止する
+- 対応: recipeの学習は学習データのみに限定し、workflowで一体化する。
 :::
 
 ::: {.callout-warning}
-## 失敗4: 複雑モデルをデフォルトで信用する
-- 回避: 単純モデル（GLM/単木）を必ず比較対象に残す。
+## 留意点4: 複雑モデルを無条件に採用しない
+- 対応: 単純モデル（GLM/単木）を必ず比較対象に含める。
 :::
 
 ---
 
 # まとめ
 
-この章の結論はシンプルです。
+本章の主要な結論は次の3点である。
 
 1. ツリーモデルは、英語教育データで起こりやすい非線形・相互作用を扱いやすい。
 2. ROCは有用だが、**ROCだけでは不十分**。
@@ -1180,14 +1483,21 @@ xgb_calib |>
 # 参考文献
 
 ::: {#refs}
+- Azen, R., & Budescu, D. V. (2003). The dominance analysis approach for comparing predictors in multiple regression. *Psychological Methods*, 8(2), 129-148. https://doi.org/10.1037/1082-989X.8.2.129
+- Azen, R., & Traxel, N. (2009). Using dominance analysis to determine predictor importance in logistic regression. *Journal of Educational and Behavioral Statistics*, 34(3), 319-347. https://doi.org/10.3102/1076998609332754
 - Breiman, L. (2001). Random Forests. *Machine Learning*, 45, 5-32. https://doi.org/10.1023/A:1010933404324
 - Breiman, L., Friedman, J. H., Olshen, R. A., & Stone, C. J. (1984). *Classification and Regression Trees*. Wadsworth.
+- Budescu, D. V. (1993). Dominance analysis: A new approach to the problem of relative importance of predictors in multiple regression. *Psychological Bulletin*, 114(3), 542-551. https://doi.org/10.1037/0033-2909.114.3.542
 - Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. *KDD '16*. https://arxiv.org/abs/1603.02754
 - DeLong, E. R., DeLong, D. M., & Clarke-Pearson, D. L. (1988). Comparing the areas under two or more correlated ROC curves. *Biometrics*, 44, 837-845.
 - Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, 27(8), 861-874. https://doi.org/10.1016/j.patrec.2005.10.010
+- Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. *arXiv*. https://doi.org/10.48550/arXiv.1705.07874
+- Lundberg, S. M., Erion, G., Chen, H., DeGrave, A., Prutkin, J. M., Nair, B., Katz, R., Himmelfarb, J., Bansal, N., & Lee, S.-I. (2020). From local explanations to global understanding with explainable AI for trees. *Nature Machine Intelligence*, 2(1), 56-67. https://doi.org/10.1038/s42256-019-0138-9
+- Mizumoto, A. (2022). Calculating the relative importance of multiple regression predictor variables using dominance analysis and random forests. *Language Learning*, 73(1), 161-196. https://doi.org/10.1111/lang.12518
 - Robin, X., et al. (2011). pROC: an open-source package for R and S+ to analyze and compare ROC curves. *BMC Bioinformatics*, 12, 77. https://doi.org/10.1186/1471-2105-12-77
 - Saito, T., & Rehmsmeier, M. (2015). The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets. *PLOS ONE*, 10(3), e0118432. https://doi.org/10.1371/journal.pone.0118432
 - Steyerberg, E. W., et al. (2010). Assessing the performance of prediction models: a framework for traditional and novel measures. *Epidemiology*, 21(1), 128-138. https://doi.org/10.1097/EDE.0b013e3181c30fb2
+- Štrumbelj, E., & Kononenko, I. (2013). Explaining prediction models and individual predictions with feature contributions. *Knowledge and Information Systems*, 41(3), 647-665. https://doi.org/10.1007/s10115-013-0679-x
 - Mau, B.-R., & Feng, H.-H. (2025). Integrating move analysis and sentence reconstruction in automated writing evaluation for L2 academic writers. *Assessing Writing*, 66, 100984. https://doi.org/10.1016/j.asw.2025.100984
 - Niu, N. (2025). Enhancing English language teaching assessment through random forest algorithms. In *2025 4th International Conference on Distributed Computing and Electrical Circuits and Electronics (ICDCECE)* (pp. 1-7). https://doi.org/10.1109/ICDCECE65353.2025.11034840
 - Zhang, X., & Lu, X. (2025). Aligning linguistic complexity with the difficulty of English texts for L2 learners based on CEFR levels. *Studies in Second Language Acquisition*, 47(5), 1407-1434. https://doi.org/10.1017/S0272263125101125
