@@ -2,6 +2,9 @@
 title: "一般化線形モデル・一般化加法モデル"
 author: "小室竜也"
 date: today
+bibliography:
+  - references_glm_gam.bib
+  - references_glmm.bib
 format:
   html:
     toc: true
@@ -118,939 +121,1209 @@ pre {
 
 # はじめに
 
-線形回帰分析（`lm`）は**誤差が正規分布**に従うことを前提にしています。しかし現実のデータは、2値（正解/不正解）、頻度（0,1,2,…）、歪みの大きい正の連続値など、正規分布から外れることが少なくありません。**一般化線形モデル（GLM; `glm`）**は、**リンク関数**と**分布族（誤差分布）**を指定して、これらを統一的に扱います。さらに、**一般化加法モデル（GAM; `mgcv::gam`）**は、説明変数ごとに**平滑関数**を用いて**非線形**を柔軟にモデリングできます。
+英語教育研究では、従属変数が正規分布を仮定しにくい場面が多くあります。典型例は、
+**正誤（0/1）**、**相互作用回数（count）**、**正の連続量**です。これらを
+通常の線形回帰で処理すると、分布仮定と解釈がずれやすくなります。
+
+この問題に対する標準的な枠組みが
+**一般化線形モデル（GLM）**[@nelder1972] であり、
+非線形効果を柔軟に扱う拡張が
+**一般化加法モデル（GAM）**[@hastie1990; @wood2017; @wood2020] です。
+
+本章は、理論説明を最小限にし、**実データでそのまま再利用できる実務手順**に重点を置きます。
 
 ::: {.callout-tip}
-## Conventions
-- Figure labels/titles are in English to avoid mojibake across environments.
-- All code chunks are R (```{r}). HTML/CSS is used only for chapter styling.
-- Effect-direction policy is not central here (GLM/GAM focus on link/scale). Report on the response scale when possible.
+## この章の到達目標
+
+- 分布とリンク関数を、研究目的に応じて選べる。
+- GLM と GAM を同じ研究課題で比較し、採用理由を説明できる。
+- 係数を OR / IRR / 倍率に変換し、応答スケール予測で可視化できる。
+- 章内コードをそのままテンプレートとして使える。
 :::
-
-::: {.callout-tip}
-## 実行前ガイド（GLM/GAM）
-
-- まずはGLM（`glm`）で十分かを検討。連続×非線形が強いときにGAM（`mgcv::gam`）で`s()`を追加。
-- 目的変数Yに応じて「分布とリンク」を選ぶ（下表）。`emmeans(..., type='response')`で“確率/平均”スケールへ戻す。
-- 係数解釈はリンク関数のスケール：ロジットなら`exp(β)`=オッズ比、ポアソンなら`exp(β)`=発生率比（IRR）。
-- 診断：GLMは過分散/ゼロ膨張を確認、GAMは`gam.check()`と`concurvity()`で平滑・曲線依存を確認。
-- 予測と可視化：`plot_model(type='pred')`や`emmip()`で主要交互作用を応答スケールに可視化。
-:::
-
-```{r}
-#| label: link-map
-#| echo: false
-library(gt)
-dist_link <- data.frame(
-  Family = c('gaussian', 'binomial', 'poisson', 'Gamma', 'inverse.gaussian'),
-  Default_Link = c('identity', 'logit', 'log', 'inverse', '1/mu^2'),
-  Typical_Data = c('continuous (Gaussian)', 'binary / successes', 'count', 'positive continuous', 'positive continuous')
-)
-
-gt(dist_link) |>
-  tab_header(title = md('**GLM: Family and Link Functions**'))
-```
 
 ::: {.callout-note}
-### リンク関数の直感（初心者向け）
+## Conventions
 
-- ガウス（identity）: ふつうの回帰。係数は「1単位の増加で平均がβだけ増える」。
-- ロジット（binomial）: 係数は**対数オッズ**。`exp(β)`は**オッズ比**（>1で上昇）。確率に戻すときは`plogis(線形予測子)`または`predict(..., type='response')`。
-- ログ（poisson）: 係数は**対数平均**。`exp(β)`は**発生率比（IRR）**。件数を“×◯倍”で解釈。
-- ガンマ（inverse など）: 正の連続量（時間・コスト）。リンクを変えると係数の意味（加法/乗法）が変わる点に注意。
+- Figure labels/titles are in English to avoid mojibake across environments.
+- All code chunks are R (```{r}). HTML/CSS is used only for chapter styling.
+- 反復測定や被験者・項目ランダム効果が中核の設計では、GLMM/GAMMへ拡張する。
 :::
 
-## GLM の要点
+## 分析判断の早見表
 
--   **線形予測子**：$\eta = \mathbf{X}\beta$\
--   **リンク関数**：$g(\mu) = \eta$（$\mu = \mathbb{E}[Y]$）\
--   **分布族**：指数型分布族（正規、二項、ポアソン、ガンマ、逆正規
-    など）
+```{r}
+#| label: tbl-decision-map
+#| echo: false
 
-代表的な分布とリンク関数（既定）：
+library(gt)
 
-| 分布 (family) | $g(\mu)$ | Rでの指定 |
-|------------------------|------------------------|------------------------|
-| 正規 (gaussian) | $\mu$ | `family = gaussian(link = "identity")` |
-| 二項 (binomial) | $\log\frac{\mu}{1-\mu}$ | `family = binomial(link = "logit")` |
-| ポアソン (poisson) | $\log(\mu)$ | `family = poisson(link = "log")` |
-| ガンマ (Gamma) | $1/\mu$ | `family = Gamma(link = "inverse")` |
-| 逆正規 (Inverse.gaussian) | $1/\mu^2$ | `family = inverse.gaussian(link = "1/mu^2")` |
+decision_map <- tibble::tribble(
+  ~Question, ~Outcome, ~First_Model, ~When_to_Use_GAM, ~Main_Report,
+  "助言関係の有無を予測", "0/1", "Binomial GLM", "連続予測子に閾値/飽和が疑われる", "OR + 予測確率",
+  "協働回数の差を比較", "count", "Poisson GLM", "非線形が疑われる / 残差構造が複雑", "IRR + 予測件数",
+  "協働強度の差を説明", "positive continuous", "Gamma GLM", "連続予測子の形が直線でない", "倍率 + 予測平均"
+)
 
-::: callout-note
-**GLMの理論メモ（重要ポイント）** - **正準リンク（canonical link）**：各分布に「数式的に扱いやすい既定リンク」があります（例：二項→logit、ポアソン→log）。正準リンクは推定・漸近特性に利点がある一方、実務上は解釈の容易さで他のリンクを選ぶこともあります。\
--
-**分散関数と分散パラメータ**：$\mathrm{Var}(Y)=\phi\,V(\mu)$。二項・ポアソンの$\phi$（分散パラメータ）は既定で1。**過分散**がある場合は`quasibinomial`や`quasipoisson`、あるいは別分布（負の二項など）を検討します。\
--
-**逸脱度（Deviance）**：飽和モデルとの対数尤度差に基づく**当てはまりの指標**。**AIC**は$-2\log L + 2k$。GAMでは平滑化パラメータも複雑さとして考慮されます。\
--
-**係数の解釈**：リンク関数の世界で線形和を作り、**リンクの逆関数**で平均$\mu$に戻して解釈します（例：ロジット→**オッズ比**、ポアソン→**IRR**）。
+gt(decision_map) |>
+  tab_header(title = md("**GLM/GAM Decision Map (Applied Linguistics Data)**")) |>
+  cols_label(
+    Question = "Research Question",
+    Outcome = "Outcome Type",
+    First_Model = "Start Here",
+    When_to_Use_GAM = "Escalate to GAM When...",
+    Main_Report = "Main Output"
+  )
+```
+
+# 理論はここだけ押さえる
+
+GLM は次の3要素で定義されます[@nelder1972]。
+
+- 線形予測子: $\eta_i = \mathbf{x}_i^\top\beta$
+- リンク関数: $g(\mu_i)=\eta_i$
+- 分布: $Y_i$ の分布（binomial, Poisson, Gamma など）
+
+GAM は GLM の線形項を平滑関数 $f(\cdot)$ に置き換え、
+平滑化パラメータを REML 等で推定します[@wood2011; @wood2017]。
+
+$$
+g(\mu_i)=\beta_0 + f_1(x_{i1}) + \cdots + f_p(x_{ip})
+$$
+
+実装仕様は `stats::glm` / `stats::family` / `mgcv` の公式ドキュメントを参照してください
+[@rstatsglm; @rstatsfamily; @mgcvpkg]。
+
+## モデル比較のための尤度（必須）
+
+モデル比較を説明するには、尤度を明示しておく必要があります。
+
+$$
+L(\theta \mid y) = \prod_{i=1}^{n} f(y_i \mid \theta), \quad
+\ell(\theta) = \log L(\theta \mid y)
+$$
+
+- 尤度 $L$: 「このモデルが観測データをどれだけ起こしやすいか」
+- 対数尤度 $\ell$: 尤度を足し算で扱える形にしたもの
+
+実務でよく使う比較指標は以下です[@burnham2002]。
+
+$$
+\mathrm{AIC} = -2\ell + 2k,\quad
+\mathrm{BIC} = -2\ell + k\log n
+$$
+
+- $k$: 推定パラメータ数
+- 小さい AIC/BIC は、適合と複雑さのバランスがよいことを示す
+
+入れ子モデルなら尤度比検定（LRT）も使えます。
+
+$$
+2\{\ell(\text{full})-\ell(\text{reduced})\}
+\sim \chi^2_{\Delta df}
+$$
+
+::: {.callout-note}
+### LRT を使うときの条件
+
+- 同じ分布族・同じリンク関数・同じデータで比較する。
+- reduced と full が入れ子であることを確認する。
+- GAM では平滑化推定が入るため、GLMのLRTと同じ感覚で乱用しない。
+  本章では GAM 比較は主に AIC / `compare_performance()` / `gam.check()` で判断する。
 :::
 
-> `glm(formula, family, data)` で、`formula` は `lm` と同様に
-> `y ~ x1 + x2` 形式です。**違いは `family`** を明示する点です。
+## モデル前提チェックリスト（GLM/GAM）
 
-------------------------------------------------------------------------
+GLM/GAM の前提は「正規性」だけではありません。実務では次を最低限確認します。
+
+1. `outcome` と `family/link` が整合しているか（binary/count/positive）。
+2. 観測の独立性が成り立つか（反復・階層があるなら GLMM/GAMM へ）。
+3. GLM の線形項がリンクスケールで妥当か（不自然なら GAM を検討）。
+4. count で過分散がないか（Poisson 過信を避ける）。
+5. GAM の平滑項が過不足ないか（`gam.check()` の k-index / edf）。
+6. 共線性が強すぎないか（推定不安定の回避）。
+
+::: {.callout-tip}
+### 前提確認の実装対応（本章）
+
+- 形状と平滑: `gam.check()`, `concurvity()`
+- 分布妥当性: `check_overdispersion()`, `check_model()`
+- 共線性: `check_collinearity()`
+- 階層性: 章末の「6章への接続」で GLMM 比較を実演
+:::
+
+## 2値データのリンク関数ガイド（詳細）
+
+2値アウトカムでは、同じ説明変数でもリンク関数の選び方で
+「係数の意味」「尾部の当てはまり」「予測確率の形」が変わります。
+`stats::binomial()` では `logit`, `probit`, `cloglog`, `cauchit`, `log`, `identity`
+が指定できます[@rstatsfamily; @rmakelink]。
+
+| Link | $g(p)$ | $g^{-1}(\\eta)$ | 係数の主な解釈 | 実務メモ |
+|---|---|---|---|---|
+| logit | $\\log\\{p/(1-p)\\}$ | $\\mathrm{logit}^{-1}(\\eta)$ | $\\exp(\\beta)$ はオッズ比（OR） | 最も標準的。解釈がしやすい |
+| probit | $\\Phi^{-1}(p)$ | $\\Phi(\\eta)$ | 潜在正規尺度での変化量 | logit と予測は近いが係数尺度は異なる |
+| cloglog | $\\log\\{-\\log(1-p)\\}$ | $1-\\exp\\{-\\exp(\\eta)\\}$ | 非対称リンク | 稀少イベント/離散時間ハザードで有用[@prentice1978] |
+| log-log | $-\\log\\{-\\log(p)\\}$ | $\\exp\\{-\\exp(-\\eta)\\}$ | cloglog の鏡像 | 事象定義を反転したい場合に有用[@vgamcloglog] |
+| cauchit | $\\tan\\{\\pi(p-1/2)\\}$ | $\\arctan(\\eta)/\\pi + 1/2$ | 重尾リンク | 外れ値的な線形予測子に比較的頑健 |
+| log | $\\log(p)$ | $\\exp(\\eta)$ | $\\exp(\\beta)$ はリスク比に近い解釈 | 確率>1の制約に注意 |
+| identity | $p$ | $\\eta$ | リスク差に近い | [0,1] 制約を満たしにくく通常は非推奨 |
+
+::: {.callout-note}
+### logit と probit の違い（誤解しやすい点）
+
+- 予測確率の形はしばしば似るが、係数尺度は同一ではない。
+- 係数比較では「どちらが有意か」より、**応答スケール予測**で比較する方が安全。
+- `exp(beta)` を OR として解釈できるのは logit のときのみ。
+:::
+
+::: {.callout-note}
+### log-log について
+
+`log-log` は `cloglog` の反転関係にあり、`VGAM` 文書でも
+「0/1の定義を反転すると実質的に loglog が適用される」ことが示されています
+[@vgamcloglog]。`stats::binomial()` には `loglog` 名が直接はないため、
+必要なら `VGAM` か目的変数の符号反転で対応します。
+:::
+
+# 実行前ガイド（実務版）
+
+1. 研究質問を「確率・件数・平均」のどれかに落とし込む。
+2. まず GLM を当てる（最小構成）。
+3. 過分散・残差・予測妥当性を確認する。
+4. 連続予測子の形が怪しい場合だけ GAM に拡張する。
+5. 係数はリンクスケール、図は応答スケールで報告する。
+
+# パッケージとデータ準備
 
 ```{r}
 #| label: setup
 #| message: false
 #| warning: false
 
-# パッケージの読み込み
-pacman::p_load(tidyverse, gt, psych, performance, emmeans, lmerTest, DHARMa, sjPlot, effectsize, kableExtra, broom, car, compute.es, pwr, brunnermunzel, MASS, mgcv)
-
-# テーマと乱数種の設定
-theme_set(theme_bw())
-set.seed(123)
-```
-
-# 平滑化回帰
-
-**平滑化回帰**は、近傍点に重みを付けて局所的に回帰する手法（例：`loess`）で、複雑な曲線関係を柔らかく捉えます。まず、非線形を含むデータを作り、多項式回帰と比べてみます。
-
-```{r}
-x1 <- seq(-10, 10, 0.1)
-y1 <- 50 * sin(x1) + x1^2 + 10 * rnorm(length(x1), 0, 1)
-
-plot_data <- tibble(x1 = x1, y1 = y1)
-
-# 多項式回帰（2次/5次/8次）
-lm_p2 <- lm(y1 ~ poly(x1, 2))
-lm_p5 <- lm(y1 ~ poly(x1, 5))
-lm_p8 <- lm(y1 ~ poly(x1, 8))
-
-plot_data <- plot_data |>
-  mutate(
-    fit_p2 = fitted(lm_p2),
-    fit_p5 = fitted(lm_p5),
-    fit_p8 = fitted(lm_p8))
-
-ggplot(plot_data, aes(x = x1)) +
-  geom_point(aes(y = y1)) +
-  geom_line(aes(y = fit_p2, colour = "2nd-degree polynomial")) +
-  geom_line(aes(y = fit_p5, colour = "5th-degree polynomial")) +
-  geom_line(aes(y = fit_p8, colour = "8th-degree polynomial")) +
-  labs(y = "y1", title = "Comparison of Polynomial Fits", colour = "Model Type")
-```
-
-多項式次数を上げると当てはまりは改善する一方、**外挿**や**端点の挙動**が不安定になりがちです。次に、`loess`
-で平滑化回帰を行います。
-
-```{r}
-# 平滑化回帰（loess）
-loess_fit <- loess(y1 ~ x1, span = 0.3)  # span: 平滑度
-summary(loess_fit)
-```
-
-**summaryの読み方**（要点）\
-- *Equivalent Number of Parameters*：複雑さの目安（大きいほど複雑）。\
-- *Residual Standard
-Error*：予測と実測のズレ。小さいほど当てはまり良好。\
-- *Trace of smoother matrix*：平滑化の強さの指標。
-
-```{r}
-plot_data$loess <- predict(
-  loess_fit,
-  newdata = data.frame(x1 = x1))
-
-ggplot(plot_data, aes(x = x1)) +
-  geom_point(aes(y = y1)) +
-  geom_line(aes(y = loess), linewidth = 0.8) +
-  labs(y = "y1", title = "Loess Regression")
-```
-
-
-::: panel-tabset
-### loess の主なパラメータ
-
--   `span`：平滑度。**小さい**ほど曲線は細かく追従、**大きい**ほどなめらか。\
--   `degree`：局所多項式の次数（通常 1 or 2）。\
--   `family`：`"gaussian"`（既定）/`"symmetric"`（外れ値にやや頑健）。
-
-### 多項式回帰の注意点
-
--   次数を上げると境界で**暴れる**（ランウェイ効果/端点不安定）。\
--   係数の解釈が**高次**ほど困難。**説明より予測**用途に向きがち。
-
-### loess vs 情報量規準
-
--   `loess`は**最尤推定に基づかない**ため、AICは一般に使いません。\
--   モデル選択は**CV**や**外部検証**、**RSE**、**視覚的評価**で行います。
-:::
-
-### ロバスト回帰との比較
-
-外れ値に影響されにくい**ロバスト回帰（`MASS::rlm`）**と通常の最小二乗法（`lm`）を、`stackloss`
-データで比較します。
-
-```{r}
-data(stackloss)
-
-fit_linear <- lm(stack.loss ~ Air.Flow + Water.Temp + Acid.Conc., data = stackloss)
-fit_robust <- rlm(stack.loss ~ Air.Flow + Water.Temp + Acid.Conc., data = stackloss)
-
-tab_model(fit_linear, fit_robust, show.aic = TRUE,  show.stat = TRUE, show.est = TRUE, dv.labels = c("線形モデル", "ロバスト回帰モデル"))
-
-plot_models(fit_linear, fit_robust, show.values = TRUE, m.labels = c("Linear Model", "Robust Regression Model")) +
-  theme_bw()
-```
-
-`performance::model_performance()`
-で適合度を一括算出します（AIC/AICc/BIC, $R^2$, RMSE等）。基本的にAICおよびBICは**小さいほど良い**とされます。
-
-```{r}
-model_performance(fit_linear) |> gt()
-model_performance(fit_robust) |> gt()
-```
-
-```{r}
-compare_performance(fit_linear, fit_robust) |> gt()
-```
-
-
-> **注意**：`loess` は**最尤推定**の枠組みではないため AIC
-> は一般に定義しません。非線形の柔軟性と**情報量規準**によるモデル選択の両立には、**GAM**
-> が便利です。
-
-------------------------------------------------------------------------
-
-# Generalized Additive Model
-
-**GAM** は $$
-y = \alpha + f_1(x_1) + f_2(x_2) + \cdots + \varepsilon
-$$ のように、各説明変数に**平滑関数** $f_j(\cdot)$
-を割り当てる枠組みです。`lm` や `glm` は $f_j(x)=\beta_j x$
-という**線形**の特別な場合と見なせます。R では `mgcv::gam()`
-を用い、**連続変数を `s()` で包む**のが基本です。
-
-## GAMの要点と診断
-
-::: panel-tabset
-### 平滑基底とEDF
-
--   `s(x)`
-    はスプライン基底の線形結合。**EDF（有効自由度）**が**曲線の複雑さ**。\
--   `k`
-    は基底次元。**小さすぎ**るとパターンを捉えきれず、**大きすぎ**ると計算負荷が増加する。
-
-### 平滑化パラメータの推定
-
--   既定の`method = "REML"`（推奨）か`"GCV.Cp"`で**過剰適合を抑制**。\
--   `select = TRUE`で**不要な平滑の自動縮退**（ゼロ効果の罰則）を有効化。\
--   `s(cont_var)`: 非線形効果を表す。線形関係（edf=1）を基準とする。\
-
-### 診断（必須）
-
--   `gam.check(fit)`：残差/QQ/スケール・`k`の適否（`k'`検定）を示す。完全な収束に必要な反復回数が多いほどモデルの推定に時間がかかり、50回以上の場合には注意が必要。勾配範囲は絶対値で0.001未満が望ましい。ヘッセ行列(Hessian)に負の固有値が含まれる場合、収束が不安定であることがわかる。今回の結果は、基底次元`k`は9であり、k-indexが1に近く概ね適切。現在の`k'`=9でも問題ないが、より保守的にするなら`k'`=10～12に増やしても良い。\
--   `concurvity(fit)`：**曲線同士の依存**（多重共線性のGAM版）。paraはパラメトリック項間の多重共線性を表す。s(cont_var)は平滑化項とパラメトリック項の多重共線性を表す。\
--   `plot(fit, pages = 1, shade = TRUE, rug = TRUE, residuals = TRUE)`：平滑の形状を確認。X軸には連続変数、Y軸には平滑化された値が表示される。`shade = TRUE`で信頼区間を表示。`rug = TRUE`でデータの分布を下部に示す。`residuals = TRUE`で残差をプロット。信頼区間の中に平滑線が収まっており、大きく2つの効果の山が見られる。
-
-```{r}
-# サンプルデータの作成
-set.seed(123)
-n <- 200
-
-# データフレームを作成
-data <- data.frame(
-  cat_var1 = factor(sample(c("A", "B", "C"), n, replace = TRUE)),
-  cat_var2 = factor(sample(c("X", "Y"), n, replace = TRUE)),
-  cont_var = runif(n, 0, 10),
-  noise = rnorm(n, 0, 2))
-
-# 目的変数を生成（非線形関係を含む）
-data$response <- with(data,
-  10 + 
-  2 * (cat_var1 == "B") + 
-  3 * (cat_var1 == "C") +
-  1.5 * (cat_var2 == "Y") +
-  sin(cont_var) * 3 +
-  noise)
-
-# GAMモデルのフィット
-gam_fit <- gam(
-  response ~ cat_var1 + cat_var2 + s(cont_var), 
-  data = data, 
-  method = "REML", 
-  select = TRUE)
-
-# 結果の確認
-summary(gam_fit)
-tab_model(gam_fit,
-          show.aic = TRUE,
-          show.stat = TRUE,
-          show.est = TRUE)
-
-# 平滑と診断
-gam.check(gam_fit)
-concurvity(gam_fit)
-plot(gam_fit,
-     pages = 1,
-     shade = TRUE,
-     rug = TRUE,
-     residuals = TRUE)
-```
-:::
-
-::: {.callout-tip}
-### 実務レシピ（GAM）
-
-1. GLMで十分かを確認（線形/リンクの妥当性、残差）。
-2. 非線形が強い連続変数を `s(x)` で平滑化（`method='REML'`, `select=TRUE`）。
-3. `gam.check()`で`k`の適否と残差を確認、必要なら`k`を適度に増やす。
-4. `plot(fit)`で平滑の形状と信頼区間を確認、`concurvity()`で曲線同士の依存を点検。
-5. 予測は`predict(fit, type='response')`（応答スケール）を基本に可視化。
-:::
-
-------------------------------------------------------------------------
-
-# 重回帰分析と一般化加法モデル
-
-ここでは、**連続×カテゴリカル**を含むデータを合成し、**重回帰（LM）**と**GAM**を比較します。
-
-```{r}
-set.seed(123)
-n <- 100
-cat_var1 <- factor(sample(1:3, n, replace = TRUE)) # 3水準
-cat_var2 <- factor(sample(0:1, n, replace = TRUE)) # 2水準
-cont_var <- rnorm(n, mean = 60, sd = sqrt(20)) # 連続
-
-# 効果の設計
-cat_effect  <- ifelse(cat_var1 == 1, 1, ifelse(cat_var1 == 2, 2, -1))
-cont_effect <- 2 * sin(cont_var / 5) + cont_var^2 / 200
-
-mu <- 60 + 5 * cat_effect + 5 * cont_effect
-response <- rnorm(n, mean = mu, sd = 5)
-
-data <- tibble(cat_var1, cat_var2, cont_var, response)
-
-# 可視化
-ggplot(data, aes(x = cont_var,
-                 y = response,
-                 color = cat_var1,
-                 shape = cat_var2)) +
-  geom_point() +
-  labs(x = "Continuous Variable",
-       y = "Response",
-       title = "Scatter Plot with Categorical Variables") +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
-
-## 重回帰分析と一般化加法モデルの当てはめ
-
-`compare_performance()` でモデルの適合度を比較した結果、AICがLMよりGAMの方が小さいことがわかります。これは、GAMが非線形性を捉えるため、よりデータに適合していることを示しています。
-
-```{r}
-# LM
-linear_model <- lm(
-  response ~ cat_var1 + cat_var2 + cont_var,
-  data = data)
-
-# GAM（連続変数を s() で平滑化）
-gam_model <- gam(
-  response ~ cat_var1 + cat_var2 +
-    s(cont_var),
-  data = data)
-
-tab_model(linear_model, gam_model,
-          show.aic = TRUE,
-          show.stat = TRUE,
-          dv.labels = c("LM", "GAM"))
-
-plot_model(linear_model,
-           type = "pred",
-           terms = c("cont_var", "cat_var1", "cat_var2"))
-plot_model(gam_model,
-           type = "pred",
-           terms = c("cont_var", "cat_var1", "cat_var2"))
-
-compare_performance(linear_model, gam_model) |>
-  gt()
-```
-
-# GAM診断（形状・k検定・曲線間の依存）
-
-```{r}
-gam.check(gam_model)
-concurvity(gam_model)
-plot(gam_model,
-     pages = 1,
-     shade = TRUE,
-     rug = TRUE,
-     residuals = TRUE)
-```
-
-::: callout-tip
-**解釈メモ**\
--
-LMは直線、GAMは**曲線**。`s(cont_var)`の**EDFが大きい**ほど非線形性が強い。\
-- 予測/解釈のニーズに応じ、**過度なEDF**は抑える（`method="REML"`,
-`select=TRUE` 等）。
-:::
-
-```{r}
-# 3水準以上のカテゴリカルは多重比較が必要
-pw_lm <- emmeans(linear_model,
-                 pairwise ~ cat_var1)
-pw_lm$contrasts |> 
-  data.frame() |>
-  gt() |>
-  tab_header(title = "Pairwise Comparisons for LM") |>
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Estimate",
-    SE = "Standard Error",
-    df = "Degrees of Freedom",
-    t.ratio = "t-ratio",
-    p.value = "p-value")
-
-pw_gam <- emmeans(gam_model,
-                  pairwise ~ cat_var1)
-pw_gam$contrasts |>
-  data.frame() |>
-  gt() |>
-  tab_header(title = "Pairwise Comparisons for GAM") |>
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Estimate",
-    SE = "Standard Error",
-    df = "Degrees of Freedom",
-    t.ratio = "t-ratio",
-    p.value = "p-value")
-
-plot(pw_lm, comparisons = TRUE) +
-  labs(title = "Pairwise Comparisons for LM")
-plot(pw_gam, comparisons = TRUE) +
-  labs(title = "Pairwise Comparisons for GAM")
-
-emmip(linear_model,
-      ~ cat_var1,
-      CIs = TRUE) +
-  labs(title = "Estimated Marginal Means for LM")
-
-emmip(gam_model,
-      ~ cat_var1,
-      CIs = TRUE) +
-  labs(title = "Estimated Marginal Means for GAM")
-```
-
-------------------------------------------------------------------------
-
-# 2値ロジスティック回帰と一般化加法モデル
-
-**2値データ**（成功/失敗, 正解/不正解）には
-**二項分布**を仮定し、`glm(..., family = binomial())`
-を用います。非線形が疑われる場合は `gam(..., family = binomial())` で
-**logit** スケール上の**平滑化**を導入できます。
-
-```{r}
-set.seed(123)
-n <- 100
-cat_var1 <- factor(sample(1:3, n, replace = TRUE))
-cat_var2 <- factor(sample(0:1, n, replace = TRUE))
-cont_var <- rnorm(n, mean = 60, sd = sqrt(20))
-
-cat_effect  <- ifelse(cat_var1 == 1, 1, ifelse(cat_var1 == 2, 2, -1))
-cont_effect <- sin(cont_var / 10) + cont_var^2 / 400
-
-# ロジット線形予測子 → 確率
-logit_p <- 0.5 * cat_effect + 0.05 * cont_effect
-logit_p <- logit_p - mean(logit_p)  # シフトして平均0付近に
-prob <- plogis(logit_p)
-
-response <- rbinom(n, 1, prob)
-data <- tibble(cat_var1, cat_var2, cont_var, response)
-```
-
-## GLM（ロジスティック）と GAM（ロジスティック）
-
-::: panel-tabset
-
-### GLM（ロジスティック回帰）
-
-```{r}
-logistic_model <- glm(
-  response ~ cat_var1 + cat_var2 + cont_var,
-  family = binomial(),
-  data = data)
-
-summary(logistic_model)
-tab_model(logistic_model,
-          show.aic = TRUE,
-          show.stat = TRUE)
-
-plot_model(logistic_model,
-           type = "pred",
-           terms = c("cont_var", "cat_var1", "cat_var2"),
-           show.data = TRUE)
-
-model_performance(logistic_model) |> 
-  gt() |> 
-  tab_header(title = "Model Performance for Logistic Regression")
-
-pw_logit <- emmeans(logistic_model, pairwise ~ cat_var1)
-pw_logit$contrasts |>
-  data.frame() |>
-  gt() |>
-  tab_header(title = "Pairwise Comparisons for Logistic Regression") |>
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Estimate",
-    SE = "Standard Error",
-    df = "Degrees of Freedom",
-    z.ratio = "z-ratio",
-    p.value = "p-value")
-
-plot(pw_logit,
-     comparisons = TRUE) +
-  labs(title = "Pairwise Comparisons for Logistic Regression")
-
-emmip(logistic_model,
-      ~ cat_var1,
-      CIs = TRUE) +
-  labs(title = "Estimated Marginal Means for Logistic Regression")
-```
-
-::: {.callout-note}
-### 係数の解釈（ロジット → オッズ比/確率）
-
-- ロジット係数`β`は**対数オッズ**。`exp(β)`が**オッズ比(OR)**。OR>1は増加、<1は減少。
-- `emmeans(..., type='response')`で**確率スケール**の群平均や差を得る。
-:::
-
-```{r}
-# オッズ比の表
-library(broom)
-tidy(logistic_model, conf.int = TRUE, exponentiate = TRUE) |> 
-  gt() |> tab_header(title = "Odds Ratios (exp(beta)) with 95% CI")
-
-# 確率スケールでの群平均とpairwise
-emm_resp <- emmeans(logistic_model, ~ cat_var1, type = 'response')
-emm_resp
-pairs(emm_resp)
-
-# 新しいケースの予測（確率）
-new_data <- tibble(
-  cat_var1 = factor(c(1,2,3), levels = levels(data$cat_var1)),
-  cat_var2 = factor(0, levels = levels(data$cat_var2)),
-  cont_var = seq(min(data$cont_var), max(data$cont_var), length.out = 3)
+pacman::p_load(
+  tidyverse,
+  mgcv,
+  performance,
+  emmeans,
+  sjPlot,
+  broom,
+  gt
 )
-pred_prob <- predict(logistic_model, newdata = new_data, type = 'response')
-cbind(new_data, prob = round(pred_prob, 3)) |> gt() |> 
-  tab_header(title = "Predicted Probabilities (newdata)")
-```
 
-::: {.callout-note}
-### 参照水準とコーディング
+theme_set(theme_bw())
+set.seed(20260220)
 
-- 既定は**treatment coding**（基準水準との比較）。`relevel()`で基準を変更可能。
-- **sum coding**（水準和=0）にすると、切片は水準平均、主効果は平均差に近い解釈に。
-
-```{r}
-# 参照水準の変更（基準を"2"へ）
-data$cat_var1 <- relevel(data$cat_var1, ref = "2")
-
-# sum coding の例（全因子に一括適用したいときはcontrastsオプションを設定）
-contrasts(data$cat_var1) <- contr.sum(nlevels(data$cat_var1))
-```
-:::
-
-::: {.callout-tip}
-#### 残差診断（DHARMa）
-
-GLMの残差を**一様化**して診断するDHARMaを併用すると、モデルの当てはまりを直感的に確認できます。
-
-```{r}
-if (Sys.getenv("CI") != "true") {
-  pacman::p_load(DHARMa)
-  res <- DHARMa::simulateResiduals(logistic_model)
-  plot(res)                     # QQ/残差vs予測/レバーリッジ など
-  DHARMa::testDispersion(res)   # 分散の妥当性
-  DHARMa::testUniformity(res)   # 残差の一様性
-} else {
-  message("DHARMa 未インストールのためスキップ")
+make_ic_table <- function(...) {
+  models <- list(...)
+  names(models) |>
+    purrr::map_dfr(function(nm) {
+      m <- models[[nm]]
+      tibble(
+        model = nm,
+        AIC = suppressWarnings(AIC(m)),
+        BIC = suppressWarnings(BIC(m)),
+        deviance = suppressWarnings(deviance(m))
+      )
+    }) |>
+    arrange(AIC)
 }
 ```
-:::
-
-### GAM（ロジスティック回帰）
 
 ```{r}
-gam_logistic_model <- gam(
-  response ~ cat_var1 + cat_var2 +
-    s(cont_var),
-  family = binomial(),
-  data = data)
+#| label: data-prep
 
-summary(gam_logistic_model)
-tab_model(gam_logistic_model,
-          show.aic = TRUE,
-          show.stat = TRUE)
+# collaboration network (60 learners)
+nodes_collab <- readr::read_csv(
+  "data/network/nodes_collaboration.csv",
+  show_col_types = FALSE
+)
+edges_collab <- readr::read_csv(
+  "data/network/edges_collaboration.csv",
+  show_col_types = FALSE
+)
 
-plot_model(gam_logistic_model,
-           type = "pred",
-           terms = c("cont_var", "cat_var1", "cat_var2"),
-           show.data = TRUE) 
+# directed advice network (30 learners)
+nodes_advice <- readr::read_csv(
+  "data/network/nodes.csv",
+  show_col_types = FALSE
+)
+edges_advice <- readr::read_csv(
+  "data/network/edges_directed_advice.csv",
+  show_col_types = FALSE
+)
 
-model_performance(gam_logistic_model) |> 
-  gt() |> 
-  tab_header(title = "Model Performance for GAM Logistic Regression")
+prof_levels <- c("A2", "B1", "B2")
+prof_map <- c(A2 = 1, B1 = 2, B2 = 3)
 
-pw_gam_logit <- emmeans(gam_logistic_model, pairwise ~ cat_var1)
+nodes_collab <- nodes_collab |>
+  mutate(
+    class = factor(class),
+    proficiency = factor(proficiency, levels = prof_levels),
+    prof_num = unname(prof_map[as.character(proficiency)]),
+    baseline_score_sc = as.numeric(scale(baseline_score))
+  )
 
-pw_gam_logit$contrasts |>
-  data.frame() |>
-  gt() |>
-  tab_header(title = "Pairwise Comparisons for GAM Logistic Regression") |>
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Estimate",
-    SE = "Standard Error",
-    df = "Degrees of Freedom",
-    t.ratio = "t-ratio",
-    p.value = "p-value")
+# node-level collaboration metrics for later models
+node_metrics <- bind_rows(
+  edges_collab |>
+    transmute(id = from, partner = to, w = weight),
+  edges_collab |>
+    transmute(id = to, partner = from, w = weight)
+) |>
+  group_by(id) |>
+  summarise(
+    collab_strength = sum(w),
+    collab_degree = n_distinct(partner),
+    .groups = "drop"
+  )
 
-plot(pw_gam_logit,
-     comparisons = TRUE) +
-  labs(title = "Pairwise Comparisons for GAM Logistic Regression")
+dat_pos <- nodes_collab |>
+  left_join(node_metrics, by = "id") |>
+  mutate(
+    collab_strength = replace_na(collab_strength, 0),
+    collab_degree = replace_na(collab_degree, 0)
+  )
 
-emmip(gam_logistic_model,
-      ~ cat_var1,
-      CIs = TRUE) +
-  labs(title = "Estimated Marginal Means for GAM Logistic Regression")
+summary(dat_pos$collab_strength)
 ```
-
-::: {.callout-note}
-#### ロバスト標準誤差（HC）と報告
-
-GLMの等分散仮定が怪しい場合、**ヘテロスケダスティシティ頑健標準誤差**（HC3等）を参考にします。
-
-```{r}
-if (Sys.getenv("CI") != "true") {
-  pacman::p_load(sandwich, lmtest)
-  lmtest::coeftest(logistic_model, vcov. = sandwich::vcovHC(logistic_model, type = 'HC3'))
-} else {
-  message("sandwich/lmtest 未インストールのためスキップ")
-}
-```
-:::
-
-:::
-
-::: panel-tabset
-
-### モデル比較
-
-モデルを比較すると、AICが低いGAMの方がデータに適合していることがわかります。
-
-オッズ比は以下のように解釈されます：
-
--   係数の**指数変換**がオッズ比。**1**を跨ぐ95%CI→差がない可能性。\
--   連続変数は「1単位増でオッズが何倍か」。標準化すれば**1SD増**の解釈に
-
-```{r}
-tab_model(logistic_model, gam_logistic_model,
-          show.aic = TRUE,
-          show.stat = TRUE,
-          dv.labels = c("Logistic Regression", "GAM Logistic Regression"))
-```
-
-### ROC/AUC としきい値
-
-```{r}
-performance::performance_roc(logistic_model)
-performance::performance_roc(gam_logistic_model)
-```
-
--   AUCは**1に近いほど**識別性能が高い。しきい値0.5固定は最適でない場合がある。
-
-### キャリブレーション（較正）
-
-```{r}
-check_model(logistic_model)       # ロジスティックの診断（残差/QQ/影響点）
-check_model(gam_logistic_model)
-```
-
--   予測確率が**過大/過小**に寄っていないかを視覚的に確認。
-:::
-
-> 出力の**オッズ比**は係数の指数変換です。95%CIに **1**
-> を含むかどうかが差の判定の目安になります。
 
 ------------------------------------------------------------------------
 
-# ポアソン回帰分析と一般化加法モデル
+# ケース1: 助言関係の有無（Binomial GLM/GAM）
 
-**頻度データ**には
-**ポアソン回帰**を使います（`glm(..., family = poisson())`）。平均と分散が等しい仮定に反する場合は**過分散**に注意し、負の二項（`MASS::glm.nb`）や準ポアソンを検討します。非線形は
-`gam(..., family = poisson())` で扱えます。
+**目的**: 2人組の特徴（同クラスか、習熟度差、ベースライン差）で、
+助言関係（有/無）を予測します。
+
+## モデル用データの作成（実データ）
 
 ```{r}
-set.seed(123)
-n <- 100
-cat_var1 <- factor(sample(1:3, n, replace = TRUE))
-cat_var2 <- factor(sample(0:1, n, replace = TRUE))
-cont_var <- rnorm(n, mean = 60, sd = sqrt(20))
+#| label: make-binary-data
 
-nonlinear_effect <- 0.1 * sin(cont_var / 10) + 0.001 * cont_var^2
-lambda <- exp(0.1 * as.numeric(cat_var1) - 0.05 * as.numeric(cat_var2) + nonlinear_effect)
-counts <- rpois(n, lambda)
+# advice nodes (30名) に baseline score を結合
+nodes_advice <- nodes_advice |>
+  left_join(
+    nodes_collab |>
+      dplyr::select(id, baseline_score, baseline_score_sc),
+    by = "id"
+  ) |>
+  mutate(
+    class = factor(class),
+    proficiency = factor(proficiency, levels = prof_levels),
+    prof_num = unname(prof_map[as.character(proficiency)])
+  )
 
-data <- tibble(cat_var1, cat_var2, cont_var, counts)
+# 全有向ペア（from != to）を作成
+dat_bin <- tidyr::crossing(from = nodes_advice$id, to = nodes_advice$id) |>
+  filter(from != to) |>
+  left_join(
+    nodes_advice |>
+      dplyr::select(
+        from = id,
+        class_from = class,
+        prof_from = proficiency,
+        prof_num_from = prof_num,
+        score_from_sc = baseline_score_sc
+      ),
+    by = "from"
+  ) |>
+  left_join(
+    nodes_advice |>
+      dplyr::select(
+        to = id,
+        class_to = class,
+        prof_to = proficiency,
+        prof_num_to = prof_num,
+        score_to_sc = baseline_score_sc
+      ),
+    by = "to"
+  ) |>
+  mutate(
+    same_class = as.integer(class_from == class_to),
+    prof_gap = abs(prof_num_from - prof_num_to),
+    score_gap = abs(score_from_sc - score_to_sc),
+    tie = as.integer(paste(from, to) %in% paste(edges_advice$from, edges_advice$to))
+  )
+
+c(n_rows = nrow(dat_bin), n_ties = sum(dat_bin$tie))
 ```
 
-## GLM（ポアソン）と GAM（ポアソン）
-
-:::panel-tabset
-
-### GLM（ポアソン回帰）
+## GLM と GAM
 
 ```{r}
-# GLM
-poisson_model <- glm(
-  counts ~ cat_var1 + cat_var2 + cont_var,
-  family = poisson(),
-  data = data)
+#| label: fit-binary
 
-summary(poisson_model)
-tab_model(poisson_model,
-          show.aic = TRUE,
-          show.stat = TRUE)
+f_bin <- tie ~ same_class + prof_gap + score_from_sc + score_to_sc + score_gap +
+  prof_from + prof_to
 
-plot_model(poisson_model,
-           type = "pred",
-           terms = c("cont_var", "cat_var1", "cat_var2"),
-           show.data = TRUE) +
-  labs(title = "Poisson Regression Model")
+m_bin_glm <- glm(
+  f_bin,
+  family = binomial(link = "logit"),
+  data = dat_bin
+)
 
-model_performance(poisson_model) |> 
-  gt() |> 
-  tab_header(title = "Model Performance for Poisson Regression")
+m_bin_probit <- glm(
+  f_bin,
+  family = binomial(link = "probit"),
+  data = dat_bin
+)
 
-pw_pois <- emmeans(poisson_model, pairwise ~ cat_var1)
+m_bin_cloglog <- glm(
+  f_bin,
+  family = binomial(link = "cloglog"),
+  data = dat_bin
+)
 
-pw_pois$contrasts |>
-  data.frame() |>
+m_bin_cauchit <- glm(
+  f_bin,
+  family = binomial(link = "cauchit"),
+  data = dat_bin
+)
+
+m_bin_gam <- gam(
+  tie ~ same_class + prof_gap +
+    s(score_from_sc, k = 8) +
+    s(score_to_sc, k = 8) +
+    score_gap +
+    prof_from + prof_to,
+  family = binomial(link = "logit"),
+  data = dat_bin,
+  method = "REML",
+  select = TRUE
+)
+
+summary(m_bin_glm)
+summary(m_bin_gam)
+```
+
+## リンク関数の比較（Case 1: 2値）
+
+```{r}
+#| label: compare-link-binary
+
+performance::compare_performance(
+  m_bin_glm,
+  m_bin_probit,
+  m_bin_cloglog,
+  m_bin_cauchit
+) |>
   gt() |>
-  tab_header(title = "Pairwise Comparisons for Poisson Regression") |>
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Estimate",
-    SE = "Standard Error",
-    df = "Degrees of Freedom",
-    z.ratio = "z-ratio",
-    p.value = "p-value")
-
-plot(pw_pois, comparisons = TRUE) +
-  labs(title = "Pairwise Comparisons for Poisson Regression")
-
-emmip(poisson_model, ~ cat_var1, CIs = TRUE) +
-  labs(title = "Estimated Marginal Means for Poisson Regression")
+  tab_header(title = "Case 1: Link Function Comparison (GLM)")
 ```
 
 ```{r}
-# 過分散とゼロ膨張の点検
-performance::check_overdispersion(poisson_model)
-performance::check_zeroinflation(poisson_model)
+#| label: pred-link-binary
+
+new_bin_link <- tidyr::expand_grid(
+  same_class = c(0L, 1L),
+  prof_gap = 1,
+  score_from_sc = seq(-2, 2, length.out = 120),
+  score_to_sc = 0,
+  prof_from = factor("B1", levels = levels(dat_bin$prof_from)),
+  prof_to = factor("B1", levels = levels(dat_bin$prof_to))
+)
+
+new_bin_link$score_gap <- abs(new_bin_link$score_from_sc - new_bin_link$score_to_sc)
+new_bin_link$p_logit <- predict(m_bin_glm, newdata = new_bin_link, type = "response")
+new_bin_link$p_probit <- predict(m_bin_probit, newdata = new_bin_link, type = "response")
+new_bin_link$p_cloglog <- predict(m_bin_cloglog, newdata = new_bin_link, type = "response")
+new_bin_link$p_cauchit <- predict(m_bin_cauchit, newdata = new_bin_link, type = "response")
+
+plot_link <- new_bin_link |>
+  pivot_longer(
+    cols = c(p_logit, p_probit, p_cloglog, p_cauchit),
+    names_to = "link",
+    values_to = "prob"
+  ) |>
+  mutate(
+    link = recode(
+      link,
+      p_logit = "logit",
+      p_probit = "probit",
+      p_cloglog = "cloglog",
+      p_cauchit = "cauchit"
+    ),
+    same_class = factor(
+      same_class,
+      levels = c(0, 1),
+      labels = c("Different class", "Same class")
+    )
+  )
+
+ggplot(plot_link, aes(x = score_from_sc, y = prob, color = link, linetype = same_class)) +
+  geom_line(linewidth = 0.9) +
+  labs(
+    x = "Sender Baseline Score (z)",
+    y = "Predicted Probability of Advice Tie",
+    title = "Case 1: Predicted Probabilities by Link Function"
+  )
 ```
 
-::: {.callout-tip}
-#### レート（率）のモデル化（offset）
-
-観測時間や曝露量が異なる場合は、`offset(log(exposure))`を追加して**率**をモデル化します。
+## モデル比較と OR
 
 ```{r}
-dat_rate <- transform(data, exposure = runif(nrow(data), 0.5, 2))
-glm(counts ~ cat_var1 + cat_var2 + cont_var + offset(log(exposure)), 
-    family = poisson(), data = dat_rate)
-```
-:::
+#| label: compare-binary
 
-```{r}
-# 準ポアソン（過分散への簡易対応：分散パラメータを推定）
-poisson_quasi <- glm(
-  counts ~ cat_var1 + cat_var2 + cont_var,
-  family = quasipoisson(),
-  data = data)
-summary(poisson_quasi)
+make_ic_table(
+  "Binomial GLM" = m_bin_glm,
+  "Binomial GAM" = m_bin_gam
+) |>
+  gt() |>
+  tab_header(title = "Case 1: Model Comparison (Binary)")
 ```
 
-### GAM（ポアソン回帰）
+```{r}
+#| label: likelihood-binary
+
+# 尤度ベース比較（入れ子 GLM）
+m_bin_glm_reduced <- update(m_bin_glm, . ~ . - score_gap)
+
+tibble(
+  model = c("Reduced GLM", "Full GLM"),
+  logLik = c(as.numeric(logLik(m_bin_glm_reduced)), as.numeric(logLik(m_bin_glm))),
+  AIC = c(AIC(m_bin_glm_reduced), AIC(m_bin_glm)),
+  BIC = c(BIC(m_bin_glm_reduced), BIC(m_bin_glm))
+) |>
+  gt() |>
+  tab_header(title = "Case 1: Likelihood-based Comparison (Nested GLM)")
+
+anova(m_bin_glm_reduced, m_bin_glm, test = "Chisq")
+```
 
 ```{r}
-gam_poisson_model <- gam(
-  counts ~ cat_var1 + cat_var2 +
-    s(cont_var),
-  family = poisson(),
-  data = data)
+#| label: perf-compare-binary
 
-summary(gam_poisson_model)
-tab_model(
-  gam_poisson_model,
+performance::compare_performance(m_bin_glm, m_bin_gam) |>
+  gt() |>
+  tab_header(title = "Case 1: compare_performance()")
+```
+
+```{r}
+#| label: sjplot-binary-table
+
+sjPlot::tab_model(
+  m_bin_glm,
   show.aic = TRUE,
-  show.stat = TRUE)
+  show.ci = TRUE,
+  show.se = TRUE,
+  dv.labels = "Case 1 Binomial GLM"
+)
+```
 
-plot_model(
-  gam_poisson_model,
+```{r}
+#| label: binary-or
+
+broom::tidy(m_bin_glm, conf.int = TRUE, exponentiate = TRUE) |>
+  gt() |>
+  tab_header(title = "Case 1: Odds Ratios (Binomial GLM)") |>
+  cols_label(
+    term = "Term",
+    estimate = "OR",
+    conf.low = "2.5%",
+    conf.high = "97.5%",
+    p.value = "p"
+  )
+```
+
+## 応答スケール予測（予測確率）
+
+```{r}
+#| label: pred-binary
+
+new_bin <- tidyr::expand_grid(
+  same_class = c(0L, 1L),
+  prof_gap = 1,
+  score_from_sc = seq(-2, 2, length.out = 120),
+  score_to_sc = 0,
+  prof_from = factor("B1", levels = levels(dat_bin$prof_from)),
+  prof_to = factor("B1", levels = levels(dat_bin$prof_to))
+) |>
+  mutate(score_gap = abs(score_from_sc - score_to_sc))
+
+new_bin$prob_glm <- predict(m_bin_glm, newdata = new_bin, type = "response")
+new_bin$prob_gam <- predict(m_bin_gam, newdata = new_bin, type = "response")
+
+plot_bin <- new_bin |>
+  pivot_longer(
+    cols = c(prob_glm, prob_gam),
+    names_to = "model",
+    values_to = "prob"
+  ) |>
+  mutate(
+    model = recode(model, prob_glm = "GLM", prob_gam = "GAM"),
+    same_class = factor(same_class, levels = c(0, 1), labels = c("Different class", "Same class"))
+  )
+
+ggplot(plot_bin, aes(x = score_from_sc, y = prob, color = model, linetype = same_class)) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = "Sender Baseline Score (z)",
+    y = "Predicted Probability of Advice Tie",
+    title = "Case 1: Response-Scale Prediction"
+  )
+```
+
+```{r}
+#| label: sjplot-binary-pred
+
+sjPlot::plot_model(
+  m_bin_glm,
   type = "pred",
-  terms = c("cont_var", "cat_var1", "cat_var2"),
-  show.data = TRUE)
-
-model_performance(gam_poisson_model) |> 
-  gt() |> 
-  tab_header(title = "Model Performance for GAM Poisson Regression")
-
-pw_gam_pois <- emmeans(gam_poisson_model, pairwise ~ cat_var1)
-
-pw_gam_pois$contrasts |>
-  data.frame() |>
-  gt() |>
-  tab_header(title = "Pairwise Comparisons for GAM Poisson Regression") |>
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Estimate",
-    SE = "Standard Error",
-    df = "Degrees of Freedom",
-    t.ratio = "t-ratio",
-    p.value = "p-value")
-
-plot(pw_gam_pois,
-     comparisons = TRUE) +
-  labs(title = "Pairwise Comparisons for GAM Poisson Regression")
-
-emmip(gam_poisson_model,
-      ~ cat_var1,
-      CIs = TRUE) +
-  labs(title = "Estimated Marginal Means for GAM Poisson Regression")
+  terms = c("score_from_sc", "prof_from"),
+  show.data = FALSE
+)
 ```
 
--   **過分散**（$\phi \gg 1$）なら `quasipoisson` や
-    **負の二項**を検討。
-
-### 負の二項回帰分析
+## 下位検定（Case 1: 送信者/受信者習熟度）
 
 ```{r}
-negative_binomial_model <- MASS::glm.nb(
-  counts ~ cat_var1 + cat_var2 + cont_var,
-  data = data)
-summary(negative_binomial_model)
-tab_model(negative_binomial_model,
-          show.aic = TRUE,
-          show.stat = TRUE)
-plot_model(negative_binomial_model,
-           type = "pred",
-           terms = c("cont_var", "cat_var1", "cat_var2"),
-           show.data = TRUE) +
-  labs(title = "Negative Binomial Regression Model")
-model_performance(negative_binomial_model) |>
-  gt() |> 
-  tab_header(title = "Model Performance for Negative Binomial Regression")
-pw_nb <- emmeans(negative_binomial_model, pairwise ~ cat_var1)
-pw_nb$contrasts |>
-  data.frame() |>
+#| label: posthoc-binary
+
+emm_from <- emmeans(m_bin_glm, ~ prof_from, type = "response")
+emm_to <- emmeans(m_bin_glm, ~ prof_to, type = "response")
+
+as.data.frame(emm_from) |>
   gt() |>
-  tab_header(title = "Pairwise Comparisons for Negative Binomial Regression") |>
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Estimate",
-    SE = "Standard Error",
-    df = "Degrees of Freedom",
-    z.ratio = "z-ratio",
-    p.value = "p-value")
-plot(pw_nb, comparisons = TRUE) +
-  labs(title = "Pairwise Comparisons for Negative Binomial Regression")
+  tab_header(title = "Case 1: EMMs for Sender Proficiency (response scale)")
+
+pairs(emm_from, adjust = "holm") |>
+  as.data.frame() |>
+  gt() |>
+  tab_header(title = "Case 1: Pairwise (Sender Proficiency, Holm)")
+
+as.data.frame(emm_to) |>
+  gt() |>
+  tab_header(title = "Case 1: EMMs for Receiver Proficiency (response scale)")
+
+pairs(emm_to, adjust = "holm") |>
+  as.data.frame() |>
+  gt() |>
+  tab_header(title = "Case 1: Pairwise (Receiver Proficiency, Holm)")
 ```
 
-### モデル比較
+## 診断
 
 ```{r}
-tab_model(poisson_model, gam_poisson_model, negative_binomial_model,
-          show.aic = TRUE,
-          show.stat = TRUE,
-          dv.labels = c("Poisson Regression", "GAM Poisson Regression", "Negative Binomial Regression"))
+#| label: diag-binary
 
-compare_performance(poisson_model, gam_poisson_model, negative_binomial_model) |>
-  gt() |>
-  tab_header(title = "Model Comparison for Poisson Regression vs GAM vs Negative Binomial")
+gam.check(m_bin_gam)
+concurvity(m_bin_gam, full = FALSE)
+performance::check_overdispersion(m_bin_glm)
+performance::check_collinearity(m_bin_glm)
+performance::check_model(m_bin_glm)
+performance::check_model(m_bin_gam)
 ```
 
+::: {.callout-note}
+### 実務メモ
+
+- GAM の平滑項が縮退（edf がほぼ 0 または 1）した場合、
+  「非線形の追加利得は小さい」と判断できる。
+- 最終報告は OR と予測確率図を併記すると読み手に伝わりやすい。
 :::
-
-::: panel-tabset
-### 過分散チェック
-
-```{r}
-performance::check_overdispersion(poisson_model)
-performance::check_overdispersion(gam_poisson_model)
-performance::check_overdispersion(negative_binomial_model)
-```
-
-### オフセット（曝露量）
-
-同じ「**時間・人数・面積**」あたりの発生率を比較するには、`offset(log(exposure))`を使います。
-
-```{r}
-set.seed(123)
-data$exposure <- runif(nrow(data), min = 0.5, max = 2)  # 観測時間（時間）
-glm(counts ~ cat_var1 + cat_var2 + cont_var +
-      offset(log(exposure)),
-    family = poisson(),
-    data = data) |>
-  tab_model()
-```
-:::
-
-> `tab_model()` の **IRR（Incidence Rate Ratio）**
-> は係数の指数変換。95%CIが **1** を跨ぐと差がない可能性を示唆します。
 
 ------------------------------------------------------------------------
 
-# その他
+# ケース2: 協働回数（Count: Poisson/NB/GAM）
 
-`glm` の `family`
-を変えることで、さまざまな目的変数に対応できます。代表例：
+**目的**: 学習者ペアの協働回数（0を含む）を、
+同クラスかどうか、習熟度差、ベースライン平均で説明します。
 
-| 回帰 | 目的変数 | Rの関数 | 備考 |
-|------------------|------------------|------------------|------------------|
-| ベータ回帰 | 0–1 の比率 | `betareg::betareg()` | `link = "probit"` でプロビット可 |
-| ガンマ回帰 | 正の連続 | `glm(family = Gamma())` | 既定リンクは inverse |
-| 負の二項回帰 | 過分散カウント | `MASS::glm.nb()` | GLMM は `lme4::glmer.nb()` |
-| ゼロ切断 | 0 を含まないカウント | `VGAM::vglm(family = pospoisson)` | Poisson/NegBin 両系統あり |
-| ゼロ過剰 | 0 が過多のカウント | `pscl::zeroinfl()` | Poisson/NegBin 両系統あり |
-| 多値ロジスティック | 名義多水準 | `nnet::multinom()` | `mgcv` にも `multinom`（名称衝突注意） |
-| 順序ロジスティック | 順序カテゴリ | `MASS::polr()`, `ordinal::clm()` | `VGAM::vglm(family = acat())` は隣接法 |
+## モデル用データの作成（実データ）
 
-::: callout-note
-**実務ヒント** -
-**ゼロ過剰**：発生メカニズムが「**発生する/しない**」と「**何回起きる**」の**二段階**であるときに有効。\
--
-**準二項/準ポアソン**：分散推定を**自由化**（$\phi$推定）して**標準誤差**を補正。係数自体は（家族を変えない限り）同じでも**有意性が変わる**ことがある。\
--
-**リンク選択**：解釈（オッズ比/IRR）・安定性・予測精度の**三点**で評価。
+```{r}
+#| label: make-count-data
+
+# 全ペア（無向）を作成
+all_pairs <- tidyr::crossing(id1 = nodes_collab$id, id2 = nodes_collab$id) |>
+  mutate(
+    n1 = as.integer(gsub("S", "", id1)),
+    n2 = as.integer(gsub("S", "", id2))
+  ) |>
+  filter(n1 < n2) |>
+  dplyr::select(-n1, -n2)
+
+# 観測されたエッジ重みを無向ペアへ統合
+w_obs <- edges_collab |>
+  mutate(
+    a = pmin(from, to),
+    b = pmax(from, to)
+  ) |>
+  group_by(a, b) |>
+  summarise(weight = sum(weight), .groups = "drop")
+
+# 全ペアに観測重みを結合（非観測は0）
+dat_count <- all_pairs |>
+  mutate(a = pmin(id1, id2), b = pmax(id1, id2)) |>
+  left_join(w_obs, by = c("a", "b")) |>
+  mutate(weight = tidyr::replace_na(weight, 0L)) |>
+  left_join(
+    nodes_collab |>
+      dplyr::select(id1 = id, class1 = class, profn1 = prof_num, base1_sc = baseline_score_sc),
+    by = "id1"
+  ) |>
+  left_join(
+    nodes_collab |>
+      dplyr::select(id2 = id, class2 = class, profn2 = prof_num, base2_sc = baseline_score_sc),
+    by = "id2"
+  ) |>
+  mutate(
+    same_class = as.integer(class1 == class2),
+    prof_gap = abs(profn1 - profn2),
+    baseline_mean_sc = (base1_sc + base2_sc) / 2
+  )
+
+summary(dat_count$weight)
+sum(dat_count$weight > 0)
+```
+
+## Poisson から開始し、過分散を確認
+
+```{r}
+#| label: fit-poisson-count
+
+m_count_pois <- glm(
+  weight ~ same_class + prof_gap + baseline_mean_sc,
+  family = poisson(link = "log"),
+  data = dat_count
+)
+
+performance::check_overdispersion(m_count_pois)
+```
+
+## NB-GLM と NB-GAM
+
+```{r}
+#| label: fit-nb-count
+
+m_count_nb_glm <- MASS::glm.nb(
+  weight ~ same_class + prof_gap + baseline_mean_sc,
+  data = dat_count
+)
+
+m_count_nb_gam <- gam(
+  weight ~ same_class + prof_gap + s(baseline_mean_sc, k = 10),
+  family = nb(),
+  data = dat_count,
+  method = "REML",
+  select = TRUE
+)
+
+summary(m_count_nb_glm)
+summary(m_count_nb_gam)
+```
+
+## モデル比較と IRR
+
+```{r}
+#| label: compare-count
+
+make_ic_table(
+  "Poisson GLM" = m_count_pois,
+  "NB GLM" = m_count_nb_glm,
+  "NB GAM" = m_count_nb_gam
+) |>
+  gt() |>
+  tab_header(title = "Case 2: Model Comparison (Count)")
+```
+
+```{r}
+#| label: perf-compare-count
+
+performance::compare_performance(m_count_pois, m_count_nb_glm, m_count_nb_gam) |>
+  gt() |>
+  tab_header(title = "Case 2: compare_performance()")
+```
+
+```{r}
+#| label: sjplot-count-table
+
+sjPlot::tab_model(
+  m_count_pois,
+  m_count_nb_glm,
+  show.aic = TRUE,
+  show.ci = TRUE,
+  show.se = TRUE,
+  dv.labels = c("Poisson GLM", "NB GLM")
+)
+```
+
+```{r}
+#| label: count-irr
+
+broom::tidy(m_count_nb_glm, conf.int = TRUE, exponentiate = TRUE) |>
+  gt() |>
+  tab_header(title = "Case 2: IRR (NB GLM)") |>
+  cols_label(
+    term = "Term",
+    estimate = "IRR",
+    conf.low = "2.5%",
+    conf.high = "97.5%",
+    p.value = "p"
+  )
+```
+
+## 応答スケール予測（期待協働回数）
+
+```{r}
+#| label: pred-count
+
+new_count <- tidyr::expand_grid(
+  same_class = c(0L, 1L),
+  prof_gap = 1,
+  baseline_mean_sc = seq(-2, 2, length.out = 120)
+)
+
+new_count$mu_nb_glm <- predict(m_count_nb_glm, newdata = new_count, type = "response")
+new_count$mu_nb_gam <- predict(m_count_nb_gam, newdata = new_count, type = "response")
+
+plot_count <- new_count |>
+  pivot_longer(
+    cols = c(mu_nb_glm, mu_nb_gam),
+    names_to = "model",
+    values_to = "mu"
+  ) |>
+  mutate(
+    model = recode(model, mu_nb_glm = "NB-GLM", mu_nb_gam = "NB-GAM"),
+    same_class = factor(same_class, levels = c(0, 1), labels = c("Different class", "Same class"))
+  )
+
+ggplot(plot_count, aes(x = baseline_mean_sc, y = mu, color = model, linetype = same_class)) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = "Mean Baseline Score of Dyad (z)",
+    y = "Expected Collaboration Count",
+    title = "Case 2: Response-Scale Prediction"
+  )
+```
+
+```{r}
+#| label: sjplot-count-pred
+
+sjPlot::plot_model(
+  m_count_nb_glm,
+  type = "pred",
+  terms = "baseline_mean_sc",
+  show.data = FALSE
+)
+```
+
+## 下位検定（Case 2: same_class）
+
+```{r}
+#| label: posthoc-count
+
+emm_count_same <- emmeans(
+  m_count_nb_glm,
+  ~ same_class,
+  at = list(same_class = c(0, 1)),
+  type = "response"
+)
+
+as.data.frame(emm_count_same) |>
+  gt() |>
+  tab_header(title = "Case 2: EMMs for same_class (response scale)")
+
+pairs(emm_count_same) |>
+  as.data.frame() |>
+  gt() |>
+  tab_header(title = "Case 2: Pairwise Contrast for same_class")
+```
+
+## 診断
+
+```{r}
+#| label: diag-count
+
+gam.check(m_count_nb_gam)
+concurvity(m_count_nb_gam, full = FALSE)
+performance::check_overdispersion(m_count_pois)
+performance::check_overdispersion(m_count_nb_glm)
+performance::check_collinearity(m_count_nb_glm)
+performance::check_model(m_count_pois)
+performance::check_model(m_count_nb_glm)
+performance::check_model(m_count_nb_gam)
+```
+
+::: {.callout-note}
+### 実務メモ
+
+- 過分散がある場合、Poisson をそのまま使うと標準誤差が過小評価されやすい。
+- NB を基準にし、非線形が必要なときだけ NB-GAM へ拡張する。
 :::
-
-> **プロビット**はロジットに近い結果を返します（係数は概ねロジット係数/1.7）。選択は好みと解釈の便宜によります。
 
 ------------------------------------------------------------------------
 
-# 報告テンプレート（例）
+# ケース3: 協働強度（Positive Continuous: Gamma GLM/GAM）
 
-- モデル: GLM family=..., link=...（必要ならGAM: method=REML, select=TRUE）
-- 係数: `exp(β)`（ロジット/ログリンク）でOR/IRRを報告。95%CIとpを併記。
-- 適合度: AIC/BIC、CV指標（あれば）、過分散（φ）やゼロ膨張の有無。
-- 可視化: 主要交互作用を応答スケール（確率/率）で図示（`plot_model`, `emmip`）。
-- 診断: GLMは過分散/ゼロ膨張、GAMは`gam.check`と`concurvity`。問題があれば準族/負二項/オフセット/ロバストSE等を検討。
+**目的**: 学習者ごとの協働強度（重み総和）を、
+ベースライン得点・クラス・習熟度で説明します。
 
-## トラブルシューティング（よくあるつまずき）
+## GLM/GAM の当てはめ
 
-- 係数解釈が混乱: リンクスケールか応答スケールかを明確に。`emmeans(..., type='response')`で確率/平均に戻す。
-- 過分散: `quasi*`族か負二項を検討。標準誤差が過小評価されやすい点に注意。
-- 非線形が強い: `s(x)`を追加（GAM）。EDFや`gam.check`で曲線の妥当性を確認。
-- 率の比較: 曝露量の違いを`offset(log(exposure))`で補正。
-- 収束警告: 初期値/スケーリング/外れ値の影響を点検。GAMでは`k`や`method`の調整も。
+```{r}
+#| label: fit-positive
 
-# 参考ウェブサイト
+m_pos_lm <- lm(
+  collab_strength ~ baseline_score_sc + class + proficiency,
+  data = dat_pos
+)
 
--   https://www.geeksforgeeks.org/polynomial-regression-in-r-programming/\
--   http://r.qcbs.ca/Workshops/workshop08/workshop08-en/workshop08-en.html#1
+m_pos_gamma_glm <- glm(
+  collab_strength ~ baseline_score_sc + class + proficiency,
+  family = Gamma(link = "log"),
+  data = dat_pos
+)
+
+m_pos_gamma_gam <- gam(
+  collab_strength ~ s(baseline_score_sc, k = 8) + class + proficiency,
+  family = Gamma(link = "log"),
+  data = dat_pos,
+  method = "REML",
+  select = TRUE
+)
+
+summary(m_pos_lm)
+summary(m_pos_gamma_glm)
+summary(m_pos_gamma_gam)
+```
+
+## モデル比較と倍率解釈
+
+```{r}
+#| label: compare-positive
+
+make_ic_table(
+  "LM (Gaussian)" = m_pos_lm,
+  "Gamma GLM" = m_pos_gamma_glm,
+  "Gamma GAM" = m_pos_gamma_gam
+) |>
+  gt() |>
+  tab_header(title = "Case 3: Model Comparison (Positive Continuous)")
+```
+
+```{r}
+#| label: perf-compare-positive
+
+performance::compare_performance(m_pos_lm, m_pos_gamma_glm, m_pos_gamma_gam) |>
+  gt() |>
+  tab_header(title = "Case 3: compare_performance()")
+```
+
+```{r}
+#| label: sjplot-positive-table
+
+sjPlot::tab_model(
+  m_pos_lm,
+  m_pos_gamma_glm,
+  show.aic = TRUE,
+  show.ci = TRUE,
+  show.se = TRUE,
+  dv.labels = c("LM", "Gamma GLM")
+)
+```
+
+```{r}
+#| label: positive-ratio
+
+broom::tidy(m_pos_gamma_glm, conf.int = TRUE, exponentiate = TRUE) |>
+  gt() |>
+  tab_header(title = "Case 3: Multiplicative Effects (Gamma GLM)") |>
+  cols_label(
+    term = "Term",
+    estimate = "Multiplier",
+    conf.low = "2.5%",
+    conf.high = "97.5%",
+    p.value = "p"
+  )
+```
+
+## 応答スケール予測（期待協働強度）
+
+```{r}
+#| label: pred-positive
+
+new_pos <- tidyr::expand_grid(
+  class = factor(c("A", "B", "C"), levels = levels(dat_pos$class)),
+  proficiency = factor("B1", levels = levels(dat_pos$proficiency)),
+  baseline_score_sc = seq(min(dat_pos$baseline_score_sc), max(dat_pos$baseline_score_sc), length.out = 120)
+)
+
+new_pos$mu_gamma_glm <- predict(m_pos_gamma_glm, newdata = new_pos, type = "response")
+new_pos$mu_gamma_gam <- predict(m_pos_gamma_gam, newdata = new_pos, type = "response")
+
+plot_pos <- new_pos |>
+  pivot_longer(
+    cols = c(mu_gamma_glm, mu_gamma_gam),
+    names_to = "model",
+    values_to = "mu"
+  ) |>
+  mutate(model = recode(model, mu_gamma_glm = "Gamma-GLM", mu_gamma_gam = "Gamma-GAM"))
+
+ggplot(plot_pos, aes(x = baseline_score_sc, y = mu, color = model, linetype = class)) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = "Baseline Score (z)",
+    y = "Expected Collaboration Strength",
+    title = "Case 3: Response-Scale Prediction"
+  )
+```
+
+```{r}
+#| label: sjplot-positive-pred
+
+sjPlot::plot_model(
+  m_pos_gamma_glm,
+  type = "pred",
+  terms = c("baseline_score_sc", "class"),
+  show.data = FALSE
+)
+```
+
+## 下位検定（Case 3: class / proficiency）
+
+```{r}
+#| label: posthoc-positive
+
+emm_class_pos <- emmeans(m_pos_gamma_glm, ~ class, type = "response")
+emm_prof_pos <- emmeans(m_pos_gamma_glm, ~ proficiency, type = "response")
+
+as.data.frame(emm_class_pos) |>
+  gt() |>
+  tab_header(title = "Case 3: EMMs for Class (response scale)")
+
+pairs(emm_class_pos, adjust = "holm") |>
+  as.data.frame() |>
+  gt() |>
+  tab_header(title = "Case 3: Pairwise (Class, Holm)")
+
+as.data.frame(emm_prof_pos) |>
+  gt() |>
+  tab_header(title = "Case 3: EMMs for Proficiency (response scale)")
+
+pairs(emm_prof_pos, adjust = "holm") |>
+  as.data.frame() |>
+  gt() |>
+  tab_header(title = "Case 3: Pairwise (Proficiency, Holm)")
+```
+
+## 診断
+
+```{r}
+#| label: diag-positive
+
+gam.check(m_pos_gamma_gam)
+concurvity(m_pos_gamma_gam, full = FALSE)
+performance::check_collinearity(m_pos_gamma_glm)
+performance::check_model(m_pos_lm)
+performance::check_model(m_pos_gamma_glm)
+performance::check_model(m_pos_gamma_gam)
+```
+
+::: {.callout-note}
+### 実務メモ
+
+- Gamma(link = log) では、係数の指数変換が「何倍か」を意味する。
+- 非線形が弱い場合は GLM で十分。GAM は必要最小限で使う。
+:::
+
+# 6章への接続: モデル比較とランダム効果選択（最短実装）
+
+5章で GLM/GAM の判断ができたら、次に確認すべきは
+「観測の独立性が崩れていないか」です。学習者・項目の反復がある場合は、
+GLMM を候補に含めて比較します[@jaeger2008; @baayen2008; @barr2013; @meteyard2020]。
+
+実務では次の順序が安定です。
+
+1. まず GLM（固定効果のみ）を作る。
+2. ランダム切片（例: `from` / `to`）を追加した GLMM を作る。
+3. 必要ならランダム傾きを試す。
+4. `compare_performance()`、`anova(..., test="Chisq")`、`isSingular()` を併用して採否を決める。
+
+```{r}
+#| label: bridge-glm-to-glmm
+
+f_bridge <- tie ~ same_class + prof_gap + score_from_sc + score_to_sc + score_gap
+
+m_bridge_glm <- glm(
+  f_bridge,
+  family = binomial(link = "logit"),
+  data = dat_bin
+)
+
+m_bridge_from <- lme4::glmer(
+  update(f_bridge, . ~ . + (1 | from)),
+  family = binomial(link = "logit"),
+  data = dat_bin,
+  control = lme4::glmerControl(
+    optimizer = "bobyqa",
+    optCtrl = list(maxfun = 2e5)
+  )
+)
+
+m_bridge_to <- lme4::glmer(
+  update(f_bridge, . ~ . + (1 | to)),
+  family = binomial(link = "logit"),
+  data = dat_bin,
+  control = lme4::glmerControl(
+    optimizer = "bobyqa",
+    optCtrl = list(maxfun = 2e5)
+  )
+)
+
+m_bridge_ri <- lme4::glmer(
+  update(f_bridge, . ~ . + (1 | from) + (1 | to)),
+  family = binomial(link = "logit"),
+  data = dat_bin,
+  control = lme4::glmerControl(
+    optimizer = "bobyqa",
+    optCtrl = list(maxfun = 2e5)
+  )
+)
+
+m_bridge_rs <- lme4::glmer(
+  update(f_bridge, . ~ . + (1 + same_class | from) + (1 | to)),
+  family = binomial(link = "logit"),
+  data = dat_bin,
+  control = lme4::glmerControl(
+    optimizer = "bobyqa",
+    optCtrl = list(maxfun = 2e5)
+  )
+)
+
+performance::compare_performance(
+  m_bridge_glm,
+  m_bridge_from,
+  m_bridge_to,
+  m_bridge_ri,
+  m_bridge_rs
+) |>
+  gt() |>
+  tab_header(title = "Bridge: GLM vs GLMM Candidates")
+
+anova(m_bridge_from, m_bridge_ri, test = "Chisq")
+anova(m_bridge_to, m_bridge_ri, test = "Chisq")
+anova(m_bridge_ri, m_bridge_rs, test = "Chisq")
+
+lme4::isSingular(m_bridge_ri)
+lme4::isSingular(m_bridge_rs)
+performance::check_model(m_bridge_ri)
+```
+
+::: {.callout-tip}
+### 5章での判断を6章へつなぐポイント
+
+- 非線形が主課題なら GAM、依存構造が主課題なら GLMM。
+- どちらも疑われる場合は、まず GLMM で依存構造を処理してから GAMM を検討する。
+- モデル選択は単一指標ではなく、適合指標・特異適合・理論整合性の3点で判断する。
+:::
+
+# 3ケースをどう報告するか（実践テンプレート）
+
+## Method セクション
+
+- 研究質問ごとに outcome type を明示（binary / count / positive continuous）。
+- GLM を基準モデルとし、必要な場合のみ GAM を追加。
+- Count では過分散確認後に NB を採用した理由を記述。
+- GAM では `method='REML'`、`gam.check()`、`concurvity()` の結果を要約。
+
+## Results セクション
+
+- Binary: OR と予測確率曲線を提示。
+- Count: IRR と期待件数曲線を提示。
+- Positive: 倍率解釈と期待平均曲線を提示。
+- いずれも「リンクスケールの係数」と「応答スケール図」をセットで示す。
+
+## 例文（書き換え用）
+
+```text
+A binomial GLM and GAM were fitted to directed advice ties.
+The GAM did not provide a substantial improvement over the GLM,
+indicating limited nonlinear gain for baseline-score effects.
+We therefore report odds ratios from the GLM and response-scale
+predicted probabilities for interpretability.
+```
+
+```text
+For collaboration counts, Poisson models showed overdispersion,
+so negative binomial models were adopted. The same-class effect
+was robust across NB-GLM and NB-GAM, and expected counts were
+reported on the response scale.
+```
+
+## APAスタイルでの報告テンプレート（貼り付け用）
+
+### 最低限の表記ルール（APA 7）
+
+- 統計記号はイタリック: *M*, *SD*, *β*, *SE*, *z*, *t*, *F*, *p*, *R*^2
+- *p* 値は `p = .032`、非常に小さい場合は `p < .001`
+- 区間推定は `95% CI [LL, UL]` で表記
+- 効果量（OR / IRR / 倍率）を必ず併記
+
+### Method（GLM/GAM）
+
+```text
+We modeled [outcome] using a [family] GLM as the baseline model
+and added a GAM when nonlinear effects of continuous predictors
+were theoretically plausible. Model fit was evaluated with AIC/BIC,
+likelihood-based comparison (when nested), and diagnostic checks
+(overdispersion, collinearity, and model-check plots).
+```
+
+### Results: 2値（logit）
+
+```text
+[Predictor] was associated with higher odds of [event],
+β = [ ], SE = [ ], z = [ ], p = [ ], OR = [ ],
+95% CI [ [ ], [ ] ].
+On the response scale, predicted probability increased from [ ]
+to [ ] across [condition].
+```
+
+### Results: count（NB）
+
+```text
+Because the Poisson model showed overdispersion, we adopted a
+negative binomial model. [Predictor] significantly predicted counts,
+β = [ ], SE = [ ], z = [ ], p = [ ], IRR = [ ],
+95% CI [ [ ], [ ] ].
+```
+
+### Results: positive continuous（Gamma log-link）
+
+```text
+In the Gamma model with a log link, [predictor] showed a
+multiplicative effect, β = [ ], SE = [ ], t/z = [ ], p = [ ],
+exp(β) = [ ], indicating a [ ]% change in expected [outcome].
+```
+
+::: {.callout-note}
+### DHARMa について
+
+本章（5章）は GLM/GAM が中心のため、残差診断は
+`check_model()`, `gam.check()`, `concurvity()` を主に用いています。
+`DHARMa` は階層構造を含む GLMM の残差診断で特に有効なため、
+6章で本格的に使用しています。
+:::
+
+# トラブルシューティング（実務で詰まりやすい点）
+
+- `family` の不一致: outcome の型と family が対応しているか確認。
+- 過分散の見落とし: count ではまず `check_overdispersion()` を実行。
+- `k` の過不足: `gam.check()` の k-index と edf を確認して調整。
+- 解釈の混線: 係数（リンク）と予測図（応答）を混同しない。
+- 過剰モデル化: GAM を常に使わず、GLM と比較して採用判断する。
+
+# 発展学習（読書順）
+
+- GLM の原点: @nelder1972
+- GAM の基礎と実装: @hastie1990; @wood2017; @wood2020
+- 平滑化推定（REML）の理論: @wood2011
+- 言語データへの応用: @winter2016; @pedersen2019; @wirtz2025
+- リンク関数の一次資料: @rstatsfamily; @rmakelink; @vgamcloglog; @prentice1978
+- 実装リファレンス: @rstatsglm; @mgcvpkg
+- ハンズオン補助: @ucla_logit; @ucla_probit; @ucla_poisson
+
+# 参考文献
+
+::: {#refs}
+:::
