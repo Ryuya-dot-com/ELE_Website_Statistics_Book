@@ -242,6 +242,8 @@ literature_map |>
   )
 ```
 
+先行研究マップが示すように、IRT/Rasch は言語テスト研究で項目評価・公平性検証・尺度開発に広く活用されています。これらの研究がどのような問題意識から出発しているかを踏まえ、まず CTT と IRT の根本的な違いを確認します。
+
 # CTT から IRT へ：何が変わるのか
 
 ここで具体的な場面を考えてみましょう。500人の EFL 学習者に語彙テスト（20項目）を実施したとします。受験者 A と受験者 B はどちらも合計12点でした。CTT ではこの2名は「同じ得点」として扱われます。しかし、A は易しい項目ばかり正解し、B は難しい項目を多く正解していたとしたらどうでしょうか。**実際の語彙力に差がある可能性**が高いのに、合計点だけではそれが見えません。
@@ -503,6 +505,8 @@ tibble(max_abs_difference = max_abs_diff) |>
   fmt_number(columns = max_abs_difference, decimals = 10)
 ```
 
+この結果は、$\theta$ と $b$ を同じ定数だけ平行移動しても正答確率が不変であること（位置不変性）を数値的に確認しています。差が実質的にゼロであることから、Rasch モデルが差 $\theta - b$ のみに依存する構造であることがわかります。
+
 ## 条件付き尤度（CML）の導出スケッチ
 
 Rasch 推定の理論的核は、\(\theta_i\) を「邪魔母数（nuisance parameters）」として消去できる点です。
@@ -545,10 +549,12 @@ tibble(
   gt() |>
   tab_header(
     title = "Conditional Probability Given Raw Score",
-    subtitle = "Expression contains b only (theta is canceled)"
+    subtitle = "Expression contains b only (θ is canceled)"
   ) |>
   fmt_number(columns = conditional_probability, decimals = 6)
 ```
+
+この条件付き確率の計算に $\theta$ が一切含まれていないことが、CML の核心です。素点 $R_i = r$ で条件付けることで受験者能力が消去され、項目母数 $\mathbf{b}$ だけの関数として推定が可能になります。
 
 ## Andersen の LR 検定の考え方
 
@@ -661,6 +667,8 @@ ggplot(score_df, aes(x = total_score, fill = group)) +
     fill = "Group"
   )
 ```
+
+得点分布はおおむね正規に近い形を示しており、2群間でわずかに平均が異なります。この群差は DIF 分析のセクションで活用します。分布の両端（0点付近・満点付近）に受験者が少ないことは、Rasch 推定における能力推定の精度に影響しうる点です。
 
 # Rasch モデルの推定（eRm）
 
@@ -1134,6 +1142,8 @@ package_tbl |>
   )
 ```
 
+3パッケージはそれぞれ得意分野が異なります。`mirt` は柔軟なモデル指定（多次元・混合）に強く、`TAM` は Rasch 系の運用（WLE・適合度・DIF）に特化しており、`sirt` は補助的な手法（残差適合・特殊モデル）を提供します。以下の折りたたみセクションで各パッケージのワークフローを確認できます。
+
 ::: {.callout-note collapse="true"}
 ## TAM ワークフロー（MML/JML/fit/WLE）— 展開して確認
 
@@ -1309,6 +1319,8 @@ as_tibble(cross_corr, rownames = "estimate_source") |>
 
 パッケージ間の相関が .99 以上であれば、推定法の違い（CML vs MML）にかかわらず実質的に同じ項目順序を得ていると判断できます。これは Rasch モデルの頑健性を示す好材料です。研究報告では、使用パッケージと推定法を明記した上で、結果の一致を補足的に言及すると査読者への説得力が増します。
 
+ここまでで推定・適合度・前提チェック・パッケージ比較を一通り実行しました。最後に、テストの**公平性**を検証する DIF（項目機能差異）分析に進みます。
+
 # DIF とバイアス分析
 
 ::: {.callout-tip}
@@ -1454,6 +1466,8 @@ dif_type_tbl |>
   fmt_number(columns = c(X2, p, adj_p), decimals = 3)
 ```
 
+Uniform DIF（困難度のみの差）と Non-uniform DIF（識別力にも差）を分離して検定することで、DIF の性質を特定できます。Uniform DIF のみの項目は困難度の調整で対処可能ですが、Non-uniform DIF がある場合は能力帯によって群差が逆転しうるため、より慎重な内容検討が必要です。
+
 ## DIF とバイアスは同義ではない
 
 **DIF は統計的非不変性**、**バイアスは妥当性判断（解釈上の不公平）**です。  
@@ -1528,11 +1542,15 @@ bias_effect_tbl |>
 6. **公平性確認**: DIF/DTF を報告し、影響の実質的解釈を行う。
 :::
 
+実務チェックリストの各ステップを実行できたら、結果を論文に報告する段階です。以下に最小テンプレートを示します。
+
 # 論文報告テンプレート（英語）
 
 以下は、英語教育研究の Methods/Results にそのまま展開しやすい最小テンプレートです。
 
 > **IRT analysis.** We analyzed dichotomous item responses using a Rasch model (1PL) in R with the `eRm` package [@mair2007], estimating item parameters via conditional maximum likelihood. As assumption checks, we evaluated unidimensionality using tetrachoric-eigenvalue inspection and local independence using Yen’s Q3 residual correlations [@yen1984; @christensen2017]. For sensitivity analysis, we fitted 2PL and 3PL models with `mirt` [@chalmers2012] and compared model fit and test information functions. To evaluate fairness across L1 background groups, we conducted both uniform and non-uniform DIF analyses in a multiple-group framework and reported item-level effect sizes (\(\Delta b\)) in addition to adjusted p-values. We distinguished statistical DIF from substantive bias and examined potential score impact after conditioning on anchor-based ability estimates [@camilli1994].
+
+上記テンプレートは、研究の目的や分析範囲に応じて適宜拡張してください。次に、本章の要点を振り返ります。
 
 # まとめ
 
