@@ -1,7 +1,11 @@
 ---
-title: "重回帰分析"
+title: "重回帰分析とSimple Slope Analysis"
 author: "小室竜也"
 date: today
+bibliography:
+  - references_glm_gam.bib
+  - references_glmm.bib
+  - references_regression_moderation.bib
 format:
   html:
     toc: true
@@ -115,28 +119,97 @@ pre {
 
 # はじめに
 
-これまでに **t検定** と **MANOVA** を扱ってきました。いずれも説明変数がカテゴリカル中心でしたが、実データでは **連続変数**（例：語彙サイズ、適性）を含むことが一般的です。本章では、Notionノートの内容を基に、**重回帰分析**（線形モデル）と **Simple Slope Analysis**（連続×カテゴリカルの交互作用の下位検定）を、**実行可能なRコード**とともに示します。
+本章では、英語教育データを想定して、**重回帰分析（`lm`）**と
+**Simple Slope Analysis（交互作用の下位検定）**を実装します。
+読者は回帰分析の基本を既習として、次の問いに答えられることを目標にします。
+
+- 学習方法の効果は、学習者の proficiency によって変わるか。
+- その差は、Immediate/Delayed のどちらで大きいか。
+- 交互作用を、係数・図・下位検定で整合的に説明できるか。
+
+::: {.callout-tip}
+## この章の到達目標
+
+- 連続変数を含む交互作用モデルを、理論先行で仕様化できる。
+- `emtrends()` と `emmeans()` を使い分けて simple slope を報告できる。
+- 診断、ロバストSE、CVを使って「推定の頑健性」を説明できる。
+:::
 
 ::: {.callout-note}
-**想定データ**：2つの学習方法（Glossing / Writing）、2つのテスト（Recall / Recognition）、2つの時点（Immediate / Delayed）、共変量として Proficiency（語彙サイズ）, Aptitude（記憶力/適性）。
+## 本章の立ち位置
+
+- 本章は、**`lm` による回帰モデレーションの基礎訓練**です。
+- 反復測定や項目レベルの 0/1 応答を主対象にする場合は、GLMM を優先します
+  [@jaeger2008; @barr2013]。
 :::
 
+## 分析フロー
+
+1. 研究仮説からモデル式を定義（理論先行）。
+2. z変換とコントラスト設定で係数の意味を明確化。
+3. モデル推定後、前提診断とロバストSEで安定性を確認。
+4. `emtrends()` で simple slope、`emmeans()` で条件付き群差を検定。
+5. 図示と報告テンプレートで、結果を再現可能に記述。
+
 ::: {.callout-tip}
-## Conventions
-- Figure labels/titles are in English to avoid mojibake across environments.
-- All code chunks are R (```{r}). HTML/CSS is used only for chapter styling.
-- Coding policy used here: z-scores for continuous predictors and sum coding for categorical predictors.
+## 初回読者向けの最短ルート（20分）
+
+1. `m_theory` を実行して `summary()` を確認する。  
+2. `emtrends()` で傾き差（simple slope）を確認する。  
+3. `emmip()` で図を見て、方向と大きさを言語化する。  
+4. 余力があれば `check_model()` と HC3 で頑健性を確認する。  
+
+最初は「有意かどうか」だけでなく、**方向（正/負）** と **教育的に意味のある差か** を優先して読む。
 :::
 
-::: {.callout-tip}
-## 実行前ガイド（重回帰・モデレーション）
+# 統計チュートリアル文献との接続（回帰中心）
 
-- データ整形: 行=受験者/観測、列=変数。カテゴリカルは`factor`に、連続は数値に統一。
-- 基本設計: 連続変数はz変換（単位の統一）、カテゴリカルはsum coding（平均差の解釈）。
-- 交互作用: まず主効果＋2次の交互作用から開始し、必要に応じて高次項を検討。
-- モデル選択: 情報量基準（AIC/BIC）や交差検証を併用して過学習を抑制。
-- 前提確認: 線形性/等分散/正規性/独立性/共線性（VIF）を系統立てて点検。
-- 可視化: 予測線（`plot_model`）と条件付き平均（`emmeans/emmip`）を併用。
+本章は、SLA理論の紹介よりも**重回帰分析の実装手順**に焦点を置きます。  
+とくに次のチュートリアル文献を実務ガイドとして参照します。
+
+- 交互作用の下位検定（simple slope / Johnson–Neyman）:
+  Bauer & Curran (2005) [@bauer2005]
+- 実装支援（計算・可視化の運用）:
+  Preacher et al. (2006) [@preacher2006]
+- 多カテゴリ変数を含む交互作用の扱い:
+  Hayes & Montoya (2017) [@hayesmontoya2017]
+- モデレーション研究の検出力設計:
+  Brown & Abulela (2025) [@brownabulela2025]
+
+## チュートリアル論文の具体例（本章との対応）
+
+- **Bauer & Curran (2005)**:
+  simple slope だけでなく Johnson-Neyman（J-N）法を使って「有意となるモデレータ範囲」を示す。
+  本章の `emtrends()` と J-N 節はこの流れに対応 [@bauer2005]。
+- **Preacher et al. (2006)**:
+  交互作用のプロービングを計算ツールで実装する実務手順を提示。
+  本章の「式だけで終わらず、条件付き効果を計算して報告する」方針に直結 [@preacher2006]。
+- **Hayes & Montoya (2017)**:
+  3群以上のカテゴリ変数が絡む回帰交互作用で、符号化と条件付き効果比較をどう行うかを整理。
+  本章では2水準を扱うが、拡張時の設計はこの枠組みに接続 [@hayesmontoya2017]。
+- **Baranger et al. (2023)**:
+  交互作用検出力の具体例として、相関を入力した解析的/シミュレーションベースの power 分析を提示
+  （例: `r.x1.y`, `r.x2.y`, `r.x1.x2`, `r.x1x2.y`）[@baranger2023]。
+- **Brown & Abulela (2025)**:
+  MMR の power を段階的に組み立てるチュートリアル。
+  「小さな交互作用」「信頼性」「抑制/増幅」を見込んだ設計を、Rコード付きで示す [@brownabulela2025]。
+
+本章後半に、以下の4テーマを**コード付きレシピ**としてまとめます。
+
+- Bauer/Curran: `emtrends()` + Johnson-Neyman
+- Preacher: 条件付き効果の計算手順
+- Hayes/Montoya: 多カテゴリ交互作用
+- Baranger/Brown: 交互作用の検出力設計
+
+::: {.callout-tip}
+## 読み方の実務ルール
+
+- 交互作用が有意でも、**simple slope と予測図を併記**しない限り教育的含意は確定しない。
+- 係数の有意性だけでなく、**効果量・信頼区間・教育的に意味のある差**を同時に報告する。
+- コントラストの設計行列や符号化の厳密な扱いは、第2章
+  （`2_ANOVAとカテゴリカル変数のコーディング.qmd`）で確認する。
+- 反復測定・項目効果が中心の設計は、第6章
+  （`6_混合効果モデル_2値ロジスティック回帰.qmd`）に接続する [@cunnings2012; @brysbaert2018]。
 :::
 
 # データの準備
@@ -149,369 +222,703 @@ library(effectsize)
 library(emmeans)
 library(sjPlot)
 library(broom)
-library(MASS)      # step() の周辺や今後の拡張で使用可
 theme_set(theme_bw())
 
-set.seed(123)
+set.seed(42)
 
-# パラメータ
-n_participants <- 50
-n_items        <- 30
-treatments     <- c("Glossing", "Writing")
-tests          <- c("Recall", "Recognition")
-times          <- c("Immediate", "Delayed")
+# 条件設定
+n_participants <- 120
+treatments <- c("Glossing", "Writing")
+tests <- c("Recall", "Recognition")
+times <- c("Immediate", "Delayed")
 
-# 完全要因の展開
-dat <- expand.grid(
-  Participant = 1:n_participants,
-  Item        = 1:n_items,
-  Treatment   = treatments,
-  Test        = tests,
-  Time        = times,
-  KEEP.OUT.ATTRS = FALSE
+# 参加者レベル共変量（生値）
+participants <- tibble(
+  Participant = factor(1:n_participants),
+  Proficiency = rnorm(n_participants, mean = 2500, sd = 500),
+  Aptitude = rnorm(n_participants, mean = 10, sd = 3),
+  u_participant = rnorm(n_participants, mean = 0, sd = 1.2)
 )
 
-# アイテム割当（Glossing:1-15, Writing:16-30）
-dat <- dat[
-  (dat$Treatment == "Glossing" & dat$Item <= 15) |
-  (dat$Treatment == "Writing"  & dat$Item >  15), ]
+# Participant × Treatment × Test × Time の展開
+# ここでは学習効果とモデレーションが見えるよう、回帰式ベースでスコアを生成
+# （実データ置換時は、この生成部分を読み飛ばして可）
+dat_long <- crossing(
+  Participant = participants$Participant,
+  Treatment = factor(treatments, levels = treatments),
+  Test = factor(tests, levels = tests),
+  Time = factor(times, levels = times)
+) |>
+  left_join(participants, by = "Participant")
 
-# 0/1反応（Writing > Glossing, Recognition > Recall）
-dat$Score <- ifelse(
-  dat$Treatment == "Glossing",
-  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.5, 0.2)),
-  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.9, 0.5))
-)
+prof_z_gen <- as.numeric(scale(dat_long$Proficiency))
+apt_z_gen <- as.numeric(scale(dat_long$Aptitude))
 
-# Immediate 効果を少し上げる（上限1でクリップ）
-dat$Score <- ifelse(dat$Time == "Immediate",
-                    pmin(dat$Score + sample(0:1, nrow(dat), TRUE), 1),
-                    dat$Score)
+eta <- 7.0 +
+  2.1 * (dat_long$Treatment == "Writing") +
+  1.8 * (dat_long$Test == "Recognition") -
+  1.2 * (dat_long$Time == "Delayed") +
+  1.3 * prof_z_gen +
+  0.6 * apt_z_gen +
+  1.0 * (dat_long$Treatment == "Writing") * prof_z_gen -
+  0.5 * (dat_long$Time == "Delayed") * prof_z_gen +
+  dat_long$u_participant
 
-# 参加者×条件に合計（0-15点）
-dat_summarized <- dat |>
-  mutate(across(c(Participant, Item, Treatment, Test, Time), as.factor)) |>
-  group_by(Participant, Treatment, Test, Time) |>
-  summarise(Score = sum(Score), .groups = "drop")
+dat_long$Score <- pmin(pmax(round(eta + rnorm(nrow(dat_long), 0, 2)), 0), 15)
 
-# Wide（多変量）→ 本章では Score_Recall を主目的変数に利用
-wide_scores <- dat_summarized |>
-  pivot_wider(names_from = Test, values_from = Score, names_prefix = "Score_") |>
-  mutate(across(c(Participant, Treatment, Time), as.factor))
+# Testを列に展開
+wide_scores <- dat_long |>
+  dplyr::select(-u_participant) |>
+  pivot_wider(names_from = Test, values_from = Score, names_prefix = "Score_")
 
-# 参加者レベルの共変量を付与（Proficiency ~ N(2500, 500), Aptitude ~ N(10, 10)）
-participants       <- unique(wide_scores$Participant)
-proficiency_values <- rnorm(length(participants), mean = 2500, sd = sqrt(500))
-aptitude_values    <- rnorm(length(participants), mean = 10,   sd = sqrt(10))
-
-wide_scores <- wide_scores |>
-  left_join(tibble(Participant = participants, Proficiency = proficiency_values), by = "Participant") |>
-  left_join(tibble(Participant = participants, Aptitude    = aptitude_values),   by = "Participant")
-
-head(wide_scores)
+glimpse(wide_scores)
 ```
 
-# 説明変数の変換
+# 変数変換と係数解釈
 
 ::: {.panel-tabset}
 
 ### z変換（連続変数）
 
-連続変数は**単位を揃える**ために z 変換します。これにより係数は「**1 SDの変化で従属変数が何単位変わるか**」の解釈になり、**交互作用の比較**や可視化がしやすくなります。
+z変換は、係数を「**1 SD 増加あたりの変化量**」として読めるようにし、
+交互作用の解釈を安定化します[@aiken1991; @cohen2003]。
 
 ```{r}
 wide_scores <- wide_scores |>
   mutate(
     Proficiency = as.numeric(scale(Proficiency)),
-    Aptitude    = as.numeric(scale(Aptitude))
+    Aptitude = as.numeric(scale(Aptitude)),
+    Treatment = factor(Treatment, levels = treatments),
+    Time = factor(Time, levels = times)
   )
 ```
 
 ### コントラスト（カテゴリカル）
 
-交互作用を解釈しやすい **sum coding**（水準和=0）を用います。2水準の場合、レベルは \{-1, +1\} に再符号化され、**主効果は両群の平均差**、**交互作用は傾きの差**として読みやすくなります。
+2水準要因を sum coding（-1, +1）にすると、
+主効果は「他変数平均化後の平均差」として読みやすくなります。
 
 ```{r}
 contrasts(wide_scores$Treatment) <- contr.sum(2)
-contrasts(wide_scores$Time)      <- contr.sum(2)
+contrasts(wide_scores$Time) <- contr.sum(2)
 ```
 
-### 補足：係数の読み方
+### モデル式
 
-- `Proficiency` と `Aptitude` は**標準化済み**なので、係数は**標準化回帰係数**に近い解釈になります。  
-- `Treatment` と `Time` は **sum coding** のため、切片は**水準平均**、主効果は**平均差**を意味します。  
-- 交互作用（例：`Treatment:Proficiency`）は、**Proficiencyの傾きが群でどれだけ異なるか**を表します。
+本章の主モデルは次式です。
+
+$$
+\begin{aligned}
+\mathbb{E}[Y] &= \beta_0 + \beta_1\,\text{Trt} + \beta_2\,\text{Time}
++ \beta_3\,Z_{\text{Prof}} + \beta_4\,Z_{\text{Apt}} \\
+&\quad + \beta_5(\text{Trt}\times\text{Time})
++ \beta_6(\text{Trt}\times Z_{\text{Prof}})
++ \beta_7(\text{Time}\times Z_{\text{Prof}})
+\end{aligned}
+$$
+
+- $Y$ は `Score_Recall`。
+- `Trt` と `Time` は sum coding。
+- $\beta_6$ が「Treatment による Proficiency 傾き差」（主要関心）。
+
 :::
 
-## モデル式と解釈（数式）
+# モデル構築戦略
 
-本章の代表的なモデル（例：Score_Recallの線形回帰）は次の通りです。
-
-$$\begin{aligned}
-\mathbb{E}[Y] &= \beta_0 
- + \beta_1\,\text{Trt} 
- + \beta_2\,\text{Time}
- + \beta_3\,Z_{\text{Prof}}
- + \beta_4\,Z_{\text{Apt}} \\
-&\quad + \beta_5\,(\text{Trt} \times Z_{\text{Prof}})
- + \beta_6\,(\text{Trt} \times \text{Time})
- + \cdots 
-\end{aligned}$$
-
-- Trt/Timeはsum coding（-1, +1）。$Z_{\text{Prof}}$と$Z_{\text{Apt}}$はz変換。  
-- $\beta_3$はProficiencyの主効果（平均化されたTrt/Time上の傾き）。  
-- $\beta_5$はProficiencyの傾きが群（Trt）でどれだけ変わるか（simple slope差）。
-
-# 重回帰分析の実施
-
-## フルモデルの当てはめ
+## 理論先行モデル（主分析）
 
 ```{r}
-# 4要因＋全交互作用のフルモデル
-mra_full <- lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
-summary(mra_full)
+m_theory <- lm(
+  Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude,
+  data = wide_scores
+)
+summary(m_theory)
 ```
 
-## モデルの作成と選択（AIC）
+## 探索的モデル（補助）
 
 ```{r}
-# ステップワイズ（両方向）：AIC最小化
-mra_step <- step(mra_full, trace = 0)
-mra_step$call
-summary(mra_step)
+m_full <- lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
+m_step <- step(m_full, direction = "both", trace = 0)
+
+summary(m_step)
+performance::compare_performance(m_theory, m_step)
 ```
 
-::: {.callout-note}
-**モデル選択の考え方**  
-- **AIC** は汎化を意識した情報量基準。**小さいほど良い**（過学習を一定程度抑制）。  
-- **BIC** はパラメータ数への罰則が強く、より**保守的**。  
-- 可能なら **交差検証（CV）** を併用して、予測性能も確認しましょう。
+::: {.callout-warning}
+`step()` は便利ですが、変数選択の不安定性や過学習を招く可能性があるため、
+**仮説検証の主軸には置かない**のが安全です[@babyak2004; @rstatsstep]。
+AIC/BICやCVは「判断補助」として使い、最終モデルは理論根拠で固定します
+[@burnham2002]。
 :::
 
-# モデルの前提の確認
+## 交差検証（補助）
+
+```{r}
+if (requireNamespace("boot", quietly = TRUE)) {
+  set.seed(42)
+  cv_theory <- boot::cv.glm(
+    wide_scores,
+    glm(formula(m_theory), data = wide_scores),
+    K = 10
+  )$delta[1]
+
+  cv_step <- boot::cv.glm(
+    wide_scores,
+    glm(formula(m_step), data = wide_scores),
+    K = 10
+  )$delta[1]
+
+  tibble(
+    Model = c("Theory-first", "Stepwise"),
+    CV_MSE = c(cv_theory, cv_step)
+  )
+} else {
+  message("boot 未インストールのため CV をスキップ")
+}
+```
+
+# モデル前提の確認
+
+`performance` パッケージの診断関数を使うと、回帰前提を系統的に確認できます
+[@performancepkg; @performance_checkmodel]。
 
 ::: {.panel-tabset}
 
-### 線形性・外れ値
-
-残差 vs 予測値の散布図で**系統的な曲線**がないかを確認します。強い曲線や極端な外れ値は**非線形**や**影響点**の可能性。
+### 総合診断
 
 ```{r}
-check_model(mra_step)  # 総合ダイアグノスティクス
+check_model(m_theory)
 ```
 
-### 等分散性（ホモスケダスティシティ）
-
-残差の分散が予測値に依存して増減しないかをチェックします。**ファン形**は違反のサイン。
+### 等分散性・正規性・独立性
 
 ```{r}
-performance::check_heteroscedasticity(mra_step)
+performance::check_heteroscedasticity(m_theory)
+performance::check_normality(m_theory)
+performance::check_autocorrelation(m_theory)
 ```
 
-### 正規性（誤差項）
-
-Q-Qプロットで**直線から大きく外れない**ことを確認。サンプルが大きい場合は軽微な逸脱に過敏にならないこと。
+### 多重共線性
 
 ```{r}
-performance::check_normality(mra_step)
+performance::check_collinearity(m_theory)
+model_performance(m_theory)
 ```
 
-### 独立性（系列相関）
-
-時系列や縦断データの場合は**自己相関**に注意。Durbin–Watson などで補助確認。
+### ロバスト標準誤差（HC3）
 
 ```{r}
-performance::check_autocorrelation(mra_step)
+if (requireNamespace("sandwich", quietly = TRUE) && requireNamespace("lmtest", quietly = TRUE)) {
+  hc3 <- sandwich::vcovHC(m_theory, type = "HC3")
+  lmtest::coeftest(m_theory, vcov. = hc3)
+} else {
+  message("sandwich/lmtest 未インストールのため HC3 をスキップ")
+}
 ```
 
-### 多重共線性（VIF）
-
-VIF が **10超**で注意、**5超**でも文脈により検討。相関が高い説明変数は解釈を不安定にします。
-
-```{r}
-performance::check_collinearity(mra_step)
-model_performance(mra_step)
-```
-
-### 共線性の可視化（相関行列）
-
-説明変数の相関をざっと把握しておくと、モデル解釈の助けになります（とくに中心化・標準化前のスケールの違いに注意）。
-
-```{r}
-pred_num <- wide_scores |>
-  dplyr::select(dplyr::all_of(c("Proficiency", "Aptitude")))
-cm <- round(cor(pred_num), 2)
-
-# シンプルなヒートマップ
-as.data.frame(as.table(cm)) |>
-  ggplot(aes(Var1, Var2, fill = Freq)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient2(low = "#2166ac", mid = "#f7f7f7", high = "#b2182b", midpoint = 0) +
-  geom_text(aes(label = Freq)) +
-  labs(title = "Predictor Correlations", x = NULL, y = NULL, fill = "r") +
-  theme_minimal()
-```
+等分散性に懸念がある場合、HC3 は実務的な頑健化として有効です
+[@mackinnon1985; @longervin2000]。
 
 :::
 
-# 結果の出力
+# 結果の整理と可視化
+
+## 主要出力
 
 ```{r}
-summary(mra_step)
-tab_model(mra_step)
+summary(m_theory)
+tab_model(m_theory)
 ```
 
-## 効果量と標準化係数（補助）
+## 標準化係数と効果量
 
 ```{r}
-# 標準化係数（参考）：
-effectsize::standardize_parameters(mra_step)
+effectsize::standardize_parameters(m_theory)
 
-# 決定係数とf2（Cohen, 1988）の概算：
-r2 <- performance::r2(mra_step)$R2
+r2 <- performance::r2(m_theory)$R2
 f2 <- r2 / (1 - r2)
-data.frame(R2 = r2, f2 = f2)
+tibble(R2 = r2, f2 = f2)
 ```
 
-## ロバスト標準誤差（HC3）と頑健推定（参考）
-
-小規模サンプルや等分散性の疑いがある場合、**ヘテロスケダスティシティ頑健標準誤差（HC3）**を参考にすると安心です。
+## 予測の図示
 
 ```{r}
-if (Sys.getenv("CI") != "true") {
-  pacman::p_load(sandwich, lmtest)
-  hc3 <- sandwich::vcovHC(mra_step, type = "HC3")
-  lmtest::coeftest(mra_step, vcov. = hc3)
-} else {
-  message("sandwich/lmtest 未インストールのためスキップ")
-}
-```
-
-モデル自体をロバスト化（Huber M推定など）する選択肢もあります（`MASS::rlm` など）。
-
-```{r}
-if (Sys.getenv("CI") != "true") {
-  pacman::p_load(MASS)
-  mod_rlm <- MASS::rlm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
-  summary(mod_rlm)
-} else {
-  message("MASS 未インストールのためスキップ")
-}
-```
-
-## 交差検証（K-fold）の概念実装（参考）
-
-情報量基準に加えて、**汎化性能**をK-fold CVで確認しておくと堅牢です。
-
-```{r}
-if (Sys.getenv("CI") != "true") {
-  pacman::p_load(boot)
-  set.seed(123)
-  # 例：10-fold CV の平均二乗誤差（MSE）
-  glm_fit <- glm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
-  cv_res  <- boot::cv.glm(wide_scores, glm_fit, K = 10)
-  cv_res$delta  # raw / adjusted CV error
-} else {
-  message("boot 未インストールのためスキップ")
-}
-```
-
-# 結果の可視化
-
-```{r}
-# 代表例：Proficiency × Treatment × Time の効果を可視化
 plot_model(
-  mra_step,
-  type  = "pred",
+  m_theory,
+  type = "pred",
   terms = c("Proficiency", "Treatment", "Time")
 )
 ```
 
-# 下位検定・Simple Slope Analysis
+# Simple Slope Analysis
 
-連続変数を含む交互作用の下位検定は、**どの値で比較するか**を明示する必要があります。ここでは `emmeans` の **`ref_grid()`** を使って、関心の z 値（例：-2, -1, 0, 1, 2）で条件付き平均と群差を評価します。
+交互作用の下位検定では、何を推定するかを分けて考えます。
+
+- **Simple slope（傾き）**: `emtrends()`
+- **条件付き平均差**: `ref_grid()` + `emmeans()`
+
+この切り分けは `emmeans` の公式ドキュメントで明確に整理されています
+[@emmeansemtrends; @emmeansbasics; @emmeanspkg]。
 
 ::: {.panel-tabset}
 
-### 概念
-
-- **Simple slope**：連続変数の特定値で「群差の傾き」を比較  
-- **注意**：`offset` 引数は回帰の切片ずらし用途で、**連続モデレータの下位検定には不向き**。`ref_grid()` を使います。  
-- **解釈**：例えば `Treatment:Proficiency` が有意なら、「Proficiency が 1 SD 増えたときの傾き差」が有意。
-
-### 条件付きの群差（Timeごと）
+### 1) Proficiency の simple slope（Treatment × Time 別）
 
 ```{r}
-emmeans(mra_step, pairwise ~ Treatment | Time)
+slopes_prof <- emtrends(
+  m_theory,
+  pairwise ~ Treatment | Time,
+  var = "Proficiency"
+)
+slopes_prof
 ```
 
-### Simple Slope（Proficiencyの範囲で）
+- `emtrends` 部分: 各条件での Proficiency 傾き
+- `contrasts` 部分: 条件間の傾き差（交互作用の実質的検定）
+
+### 2) Proficiency 水準ごとの群差（-1SD, 平均, +1SD）
 
 ```{r}
-rg <- ref_grid(mra_step, at = list(Proficiency = c(-2, -1, 0, 1, 2)))
-emmeans(rg, pairwise ~ Treatment | Proficiency)
+rg_prof <- ref_grid(m_theory, at = list(Proficiency = c(-1, 0, 1)))
+emm_treat_prof <- emmeans(rg_prof, pairwise ~ Treatment | Proficiency)
+emm_treat_prof
+```
+
+### 3) 図示（条件付き平均）
+
+```{r}
+emmip(rg_prof, Treatment ~ Proficiency, CIs = TRUE)
 ```
 
 :::
 
-### 参考：Johnson–Neyman法（有意領域の可視化）
+## 参考: Johnson-Neyman 法
 
-連続モデレーターのどの範囲で群差（または単純傾き）が有意かを連続的に評価する方法です。
+Johnson-Neyman 法は、**連続 × 連続**の交互作用で「有意領域」を連続的に示す手法です
+[@bauer2005; @interactionspkg]。
 
 ```{r}
-if (Sys.getenv("CI") != "true") {
-  pacman::p_load(interactions)
-  # モデルに交互作用が含まれているか、および J–N の前提（連続×連続）が満たされているかを確認
-  coef_names <- names(coef(mra_step))
-  has_tp <- any(grepl("(Proficiency:Treatment|Treatment:Proficiency)", coef_names))
-  modx_is_continuous <- is.numeric(wide_scores$Treatment) || is.double(wide_scores$Treatment)
-  pred_is_continuous <- is.numeric(wide_scores$Proficiency) || is.double(wide_scores$Proficiency)
-
-  if (has_tp && modx_is_continuous && pred_is_continuous) {
-    interactions::johnson_neyman(mra_step, pred = Proficiency, modx = Treatment,
-                                 alpha = 0.05, control.fdr = FALSE, plot = TRUE)
-  } else {
-    message("Johnson–Neyman は連続×連続の相互作用かつ当該交互作用がモデルに含まれる場合のみ実行します（今回スキップ）。")
-  }
+if (requireNamespace("interactions", quietly = TRUE)) {
+  m_jn <- lm(Score_Recall ~ Treatment + Time + Proficiency * Aptitude, data = wide_scores)
+  interactions::johnson_neyman(
+    m_jn,
+    pred = Proficiency,
+    modx = Aptitude,
+    alpha = 0.05,
+    control.fdr = FALSE,
+    plot = TRUE
+  )
 } else {
-  message("interactions 未インストールのためスキップ")
+  message("interactions 未インストールのため Johnson-Neyman をスキップ")
 }
 ```
 
-## 交互作用の可視化
+# チュートリアル別 実装レシピ（詳細）
+
+## 1. Bauer/Curran: `emtrends()` + Johnson-Neyman
+
+### 手順A: simple slope（カテゴリ × 連続）
 
 ```{r}
-emmip(rg, Treatment ~ Proficiency, style = "factor", CIs = TRUE,
-      linearg = list(), dotarg = list(size = 2), CIarg = list(alpha = 1))
+slopes_bauer <- emtrends(
+  m_theory,
+  pairwise ~ Treatment | Time,
+  var = "Proficiency"
+)
+
+# 各条件での傾き
+summary(slopes_bauer$emtrends, infer = c(TRUE, TRUE))
+
+# 傾き差（交互作用の実質的検定）
+summary(slopes_bauer$contrasts, infer = c(TRUE, TRUE), adjust = "holm")
 ```
+
+判定の目安:
+- `slopes_bauer$contrasts` の p が有意なら、群間で傾きが異なる。
+- 推定値の符号で、どちらの群の傾きが強いかを判断する。
+
+### 手順B: J-N（連続 × 連続）
+
+```{r}
+if (requireNamespace("interactions", quietly = TRUE)) {
+  m_bauer_jn <- lm(Score_Recall ~ Treatment + Time + Proficiency * Aptitude, data = wide_scores)
+  jn_bauer <- interactions::johnson_neyman(
+    m_bauer_jn,
+    pred = Proficiency,
+    modx = Aptitude,
+    alpha = 0.05,
+    control.fdr = FALSE,
+    plot = TRUE
+  )
+  jn_bauer
+} else {
+  message("interactions 未インストールのため J-N をスキップ")
+}
+```
+
+判定の目安:
+- J-N 結果は「どのモデレータ範囲で効果が有意か」を示す。
+- 観測されていない範囲（外挿）の解釈はしない。
+
+## 2. Preacher: 条件付き効果の計算手順
+
+Preacher et al. (2006) の流れに合わせ、条件付き効果を係数と分散共分散行列から計算します
+[@preacher2006]。
+
+$$
+\hat{\\tau}(z)=\hat{\\beta}_{T}+z\hat{\\beta}_{T\\times Z},\quad
+SE\\{\\hat{\\tau}(z)\\}=\\sqrt{Var(\\hat{\\beta}_{T})+z^2Var(\\hat{\\beta}_{T\\times Z})+2zCov(\\hat{\\beta}_{T},\\hat{\\beta}_{T\\times Z})}
+$$
+
+```{r}
+dat_preacher <- wide_scores |>
+  mutate(Treatment01 = relevel(factor(Treatment), ref = "Glossing"))
+
+m_preacher <- lm(
+  Score_Recall ~ Treatment01 * Proficiency + Time + Aptitude,
+  data = dat_preacher
+)
+
+calc_conditional_effect <- function(z, model,
+                                    b_main = "Treatment01Writing",
+                                    b_int = "Treatment01Writing:Proficiency") {
+  b <- coef(model)
+  V <- vcov(model)
+  df <- df.residual(model)
+
+  est <- b[b_main] + z * b[b_int]
+  var_est <- V[b_main, b_main] + (z^2) * V[b_int, b_int] + 2 * z * V[b_main, b_int]
+  se <- sqrt(var_est)
+  t_val <- est / se
+  p_val <- 2 * pt(abs(t_val), df = df, lower.tail = FALSE)
+  ci <- est + qt(c(0.025, 0.975), df = df) * se
+
+  tibble(
+    Proficiency = z,
+    Estimate = est,
+    SE = se,
+    t = t_val,
+    p = p_val,
+    CI_low = ci[1],
+    CI_high = ci[2]
+  )
+}
+
+manual_conditional <- purrr::map_dfr(c(-1, 0, 1), calc_conditional_effect, model = m_preacher)
+manual_conditional
+```
+
+```{r}
+# emmeans による同等の確認（条件付き群差）
+rg_preacher <- ref_grid(m_preacher, at = list(Proficiency = c(-1, 0, 1)))
+emmeans(rg_preacher, pairwise ~ Treatment01 | Proficiency)
+```
+
+判定の目安:
+- 手計算と `emmeans` の結果が実質的に一致することを確認する。
+- `-1SD, 0, +1SD` で効果の向きや大きさがどう変わるかを記述する。
+
+## 3. Hayes/Montoya: 多カテゴリ交互作用のR実装
+
+Hayes & Montoya (2017) の要点は、3水準以上のカテゴリ変数でも
+「条件付き効果 + 多重比較」を系統的に示すことです[@hayesmontoya2017]。
+
+```{r}
+set.seed(2026)
+n_multi <- 360
+
+dat_multi <- tibble(
+  Treatment3 = factor(
+    rep(c("Glossing", "Writing", "Retrieval"), each = n_multi / 3),
+    levels = c("Glossing", "Writing", "Retrieval")
+  ),
+  Proficiency = rnorm(n_multi),
+  Aptitude = rnorm(n_multi)
+) |>
+  mutate(
+    Score = 7.5 +
+      1.0 * (Treatment3 == "Writing") +
+      1.8 * (Treatment3 == "Retrieval") +
+      1.2 * Proficiency +
+      0.6 * (Treatment3 == "Writing") * Proficiency +
+      1.0 * (Treatment3 == "Retrieval") * Proficiency +
+      0.5 * Aptitude +
+      rnorm(n_multi, 0, 2)
+  )
+
+m_hayes <- lm(Score ~ Treatment3 * Proficiency + Aptitude, data = dat_multi)
+summary(m_hayes)
+```
+
+```{r}
+# モデレータ水準ごとの群差（多重比較補正）
+rg_hayes <- ref_grid(m_hayes, at = list(Proficiency = c(-1, 0, 1)))
+emmeans(rg_hayes, pairwise ~ Treatment3 | Proficiency, adjust = "holm")
+
+# 群ごとの Proficiency 傾き差
+slopes_hayes <- emtrends(m_hayes, pairwise ~ Treatment3, var = "Proficiency")
+summary(slopes_hayes$contrasts, infer = c(TRUE, TRUE), adjust = "holm")
+```
+
+```{r}
+emmip(rg_hayes, Treatment3 ~ Proficiency, CIs = TRUE)
+```
+
+判定の目安:
+- 多カテゴリでは、まず「どの群ペアが有意か」を確認する。
+- 次に「傾き差が有意か」を確認し、平均差と傾き差を分けて報告する。
+
+## 4. Baranger/Brown: 交互作用 power 分析
+
+### 手順A: 論文値で解析的 power 曲線を作る（`power_interaction_r2`）
+
+以下は、チュートリアル論文で示される代表値を用いた設計例です。
+
+- **Baranger et al. (2023)** の例:
+  `r.x1.y=.51, r.x2.y=.22, r.x1.x2=.09` を固定し、
+  `r.x1x2.y=.09`（比較的大きい交互作用）と
+  `r.x1x2.y=.045`（小さい交互作用）を比較 [@baranger2023]。
+- **Brown & Abulela (2025)** の例:
+  `r.x1.y=-.18, r.x2.y=-.03, r.x1.x2=.64, r.x1x2.y=.10` を使い、
+  信頼性 `rel.x1=.89, rel.x2=.95, rel.y=.79` を反映した場合と、
+  完全信頼性（1.0）を比較 [@brownabulela2025]。
+
+```{r}
+if (requireNamespace("InteractionPoweR", quietly = TRUE)) {
+  # Baranger: 交互作用の大きさの違い
+  pwr_baranger_large <- InteractionPoweR::power_interaction_r2(
+    N = seq(500, 2000, by = 50),
+    r.x1.y = 0.51,
+    r.x2.y = 0.22,
+    r.x1x2.y = 0.09,
+    r.x1.x2 = 0.09
+  ) |>
+    mutate(Scenario = "Baranger: r.x1x2.y = .09")
+
+  pwr_baranger_small <- InteractionPoweR::power_interaction_r2(
+    N = seq(500, 6000, by = 250),
+    r.x1.y = 0.51,
+    r.x2.y = 0.22,
+    r.x1x2.y = 0.045,
+    r.x1.x2 = 0.09
+  ) |>
+    mutate(Scenario = "Baranger: r.x1x2.y = .045")
+
+  # Brown: 信頼性補正あり/なし
+  pwr_brown_reliability <- InteractionPoweR::power_interaction_r2(
+    N = seq(500, 1500, by = 25),
+    r.x1.y = -0.18,
+    r.x2.y = -0.03,
+    r.x1x2.y = 0.10,
+    r.x1.x2 = 0.64,
+    rel.x1 = 0.89,
+    rel.x2 = 0.95,
+    rel.y = 0.79
+  ) |>
+    mutate(Scenario = "Brown: reliability adjusted")
+
+  pwr_brown_ideal <- InteractionPoweR::power_interaction_r2(
+    N = seq(500, 1500, by = 25),
+    r.x1.y = -0.18,
+    r.x2.y = -0.03,
+    r.x1x2.y = 0.10,
+    r.x1.x2 = 0.64
+  ) |>
+    mutate(Scenario = "Brown: reliability = 1.0")
+
+  pwr_lit <- bind_rows(
+    pwr_baranger_large,
+    pwr_baranger_small,
+    pwr_brown_reliability,
+    pwr_brown_ideal
+  )
+
+  pwr_targets <- pwr_lit |>
+    group_by(Scenario) |>
+    summarise(
+      N_for_80 = if (any(pwr >= 0.80)) min(N[pwr >= 0.80]) else NA_real_,
+      N_for_90 = if (any(pwr >= 0.90)) min(N[pwr >= 0.90]) else NA_real_,
+      .groups = "drop"
+    )
+
+  pwr_targets
+} else {
+  message("InteractionPoweR 未インストールのためスキップ: install.packages('InteractionPoweR')")
+}
+```
+
+```{r}
+if (exists("pwr_lit")) {
+  ggplot(pwr_lit, aes(x = N, y = pwr, color = Scenario)) +
+    geom_line(linewidth = 0.9) +
+    geom_hline(yintercept = 0.80, linetype = 2) +
+    geom_hline(yintercept = 0.90, linetype = 3) +
+    scale_y_continuous(limits = c(0, 1)) +
+    labs(
+      title = "Literature-Based Power Curves for Interaction Effects",
+      x = "Sample Size (N)",
+      y = "Power",
+      color = NULL
+    ) +
+    theme(legend.position = "bottom")
+}
+```
+
+判定の目安:
+- `N_for_80` を最低ライン、`N_for_90` を推奨ラインとして扱う。
+- 信頼性補正ありの曲線を優先し、過度に楽観的な見積りを避ける。
+
+### 手順B: 解析解とモンテカルロの照合（Barangerの強い交互作用例）
+
+```{r}
+if (requireNamespace("InteractionPoweR", quietly = TRUE)) {
+  # 解析解
+  pwr_baranger_analytic <- InteractionPoweR::power_interaction_r2(
+    N = 940,
+    r.x1.y = 0.51,
+    r.x2.y = 0.22,
+    r.x1x2.y = 0.09,
+    r.x1.x2 = 0.09
+  )
+
+  # モンテカルロ（時間短縮のため反復数は抑えめ。最終報告時は増やす）
+  set.seed(2026)
+  pwr_baranger_mc <- InteractionPoweR::power_interaction(
+    n.iter = 500,
+    N = 940,
+    r.x1.y = 0.51,
+    r.x2.y = 0.22,
+    r.x1x2.y = 0.09,
+    r.x1.x2 = 0.09,
+    alpha = 0.05
+  )
+
+  bind_rows(
+    pwr_baranger_analytic |> mutate(Method = "Analytic"),
+    pwr_baranger_mc |> mutate(Method = "Monte Carlo")
+  ) |>
+    dplyr::select(Method, N, pwr)
+}
+```
+
+判定の目安:
+- Analytic と Monte Carlo の `pwr` が概ね一致するか確認する。
+- 差が大きい場合は `n.iter` を増やし、仮定（相関・信頼性）を再点検する。
+
+### 手順C: 段階的モデル比較（BrownのMMR手順に対応）
+
+`InteractionPoweR` に加えて、増分説明率（`ΔR²`）に基づく
+`anova(m0, m1)` のシミュレーションで、BrownのMMR的な考え方を再現します。
+
+```{r}
+simulate_mmr <- function(n, beta_x1 = 0.25, beta_x2 = 0.20, beta_int = 0.10, sigma = 1) {
+  x1 <- rnorm(n)
+  x2 <- rnorm(n)
+  y <- beta_x1 * x1 + beta_x2 * x2 + beta_int * (x1 * x2) + rnorm(n, 0, sigma)
+  tibble(y, x1, x2)
+}
+
+power_delta_r2 <- function(n, nsim = 150, beta_int = 0.10) {
+  p_vals <- replicate(nsim, {
+    d <- simulate_mmr(n = n, beta_int = beta_int)
+    m0 <- lm(y ~ x1 + x2, data = d)
+    m1 <- lm(y ~ x1 * x2, data = d)
+    anova(m0, m1)$`Pr(>F)`[2]
+  })
+  mean(p_vals < 0.05, na.rm = TRUE)
+}
+
+set.seed(2026)
+power_grid <- tibble(N = seq(120, 320, by = 20)) |>
+  mutate(power = purrr::map_dbl(N, power_delta_r2, nsim = 150, beta_int = 0.10))
+
+power_grid |>
+  dplyr::filter(power >= 0.80) |>
+  dplyr::slice_head(n = 1)
+```
+
+```{r}
+ggplot(power_grid, aes(x = N, y = power)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(yintercept = 0.80, linetype = 2, color = "red") +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(
+    title = "Power Curve for Interaction Detection (ΔR² approach)",
+    x = "Sample Size (N)",
+    y = "Power"
+  )
+```
+
+判定の目安:
+- `ΔR²` ベースの結果が InteractionPoweR の結果と同方向かを確認する。
+- 不一致なら、効果量の仮定と誤差分散の設定を再検討する。
+
+## 迷ったときのチェックポイント（1分版）
+
+```{r}
+tibble::tribble(
+  ~Step, ~What_to_check, ~Decision_rule,
+  "1. 交互作用係数", "`summary(m_theory)` の `Treatment × Proficiency`", "p < .05 かつ符号が理論と整合",
+  "2. Simple slope", "`summary(slopes_bauer$contrasts)`", "傾き差の有意性を確認",
+  "3. 条件付き平均差", "`emmeans(... | Proficiency)`", "-1SD/0/+1SD の差を比較",
+  "4. 図の整合", "`emmip()`", "線の交差・傾き方向が統計結果と一致",
+  "5. 頑健性", "`check_model()` と HC3", "結論が大きく変わらない"
+)
+```
+
+# 報告テンプレート（英語教育研究向け）
+
+- モデル: `lm(Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude)`
+- コーディング: `Treatment/Time` は sum coding、`Proficiency/Aptitude` は z 変換。
+- 当てはまり: $R^2$、調整 $R^2$、AIC/BIC（必要ならCV指標）。
+- 主要効果: 各係数の $\beta$, SE, t, p, 95% CI。
+- 交互作用: `Treatment × Proficiency` の係数と、`emtrends()` による傾き差。
+- 下位検定: `Proficiency = -1, 0, +1` での条件付き群差。
+- 診断: 等分散性・正規性・共線性・ロバストSEの結果。
+- 実質解釈: 「高 proficiency 層ほど Writing 効果が増幅」など、教育的意味を1文で明示。
+
+## 結果解釈テンプレート（理論接続版）
+
+以下の3文セットで書くと、統計結果とSLA理論の接続が明確になります。
+
+1. **統計的記述**: 「`Treatment × Proficiency` は有意であった（β = ..., 95% CI [..., ...]）。」
+2. **条件付き解釈**: 「simple slope では、`Proficiency = +1SD` で Writing 優位が確認された。」
+3. **理論的含意**: 「このパターンは、学習者要因が処置効果を調整する ATI の見立てと整合的である
+   [@li2015]。」
+
+補足として、コントラスト設計に踏み込んだ厳密解釈は第2章で扱います
+（本章では運用上の最小要件に絞ります）。
+
+# 実データへ移すときの注意
+
+- 参加者内反復測定や項目効果が強い場合、`lm` では独立性仮定が崩れます。
+- 語彙テストの項目正誤（0/1）を扱う場合、logit GLMM が原則です
+  [@jaeger2008; @barr2013]。
+- したがって本章は「交互作用解釈の基礎」と位置づけ、設計に応じて第6章へ接続してください。
 
 # まとめ
 
-- 連続変数を含む線形モデルは **lm()** で実装し、**z変換**＋**sum coding** を使うと交互作用の解釈が明瞭。
-- **AIC によるモデル選択**で過度な複雑さを回避しつつ汎化性能を確保。
-- **performance** と **emmeans** で **前提確認** と **下位検定** を系統立てて実施。
-- Simple Slope はあくまで補助。**可視化**（`plot_model` / `emmip`）と併せて解釈。
+- 理論先行でモデルを定義し、`step()` は探索補助に限定する。
+- simple slope は `emtrends()`、条件付き平均差は `emmeans()` で分けて報告する。
+- 診断・ロバストSE・CVを併用し、推定の頑健性を明示する。
 
-## 報告テンプレート（例）
+# 参考ウェブ資料
 
-- モデル: lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude)
-- コーディング: Treatment/Time は sum coding（-1,+1）、Proficiency/Aptitude は z 変換。
-- 当てはまり: R² = …, 調整R² = …, AIC = …（必要に応じてCVの指標も併記）。
-- 主要効果: β(…)=…, SE=…, t=…, p=…（標準化係数/効果量があれば併記）。
-- 交互作用: 例) Treatment×Proficiency が有意（β=…, p=…）。simple slope/emmip で図示し、Proficiency が高いほど Writing の効果が大きい等を解釈。
-- 前提確認: 等分散性/正規性/共線性の点検結果（問題があればロバストSE等を併記）。
+- UVA StatLab: [Getting Started with Simple Slopes Analysis](https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis) [@uva_simpleslopes]
+- UCLA OARC: [Interaction effects in linear regression](https://stats.oarc.ucla.edu/stata/faq/how-can-i-explain-a-continuous-by-continuous-interaction-stata-12/) [@ucla_interactions]
 
+# さらに学習したい人へ（重回帰・交互作用チュートリアル）
 
-## トラブルシューティング（よくあるつまずき）
+- Bauer & Curran (2005): simple slope と Johnson–Neyman の理論整理 [@bauer2005]
+- Preacher et al. (2006): 交互作用プロービングの計算支援 [@preacher2006]
+- Hayes & Montoya (2017): 多カテゴリ変数を含む回帰交互作用の実装 [@hayesmontoya2017]
+- Brown & Abulela (2025): moderated multiple regression の検出力設計 [@brownabulela2025]
 
-- 交互作用の符号が直観と異なる: コーディング（sum vs treatment）や基準化の有無を確認。係数は「他の変数を平均化したとき」の効果。
-- 強い曲線が残差図に出る: 非線形の可能性（多項式/スプラインやGLM/GAMを検討）。
-- 等分散性違反: ロバスト標準誤差、変数変換、モデル変更（GLM/GEEなど）を検討。
-- VIFが高い: z変換・中心化でも改善しない場合、設計の再考（変数削減/合成指標）。
-- Simple slopeのp値が不安定: J–N法で連続的に確認、複数比較補正や効果量・図示で総合判断。
+## 他章との接続
 
-# 参考ウェブサイト
-
-- https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis
-- https://bookdown.org/mike/data_analysis/moderation.html
-- https://kzee.github.io/Interactions_Demo.html
+- コントラスト・符号化（設計行列を含む）: 第2章
+  `2_ANOVAとカテゴリカル変数のコーディング.qmd`
+- 反復測定/階層データでの拡張: 第6章
+  `6_混合効果モデル_2値ロジスティック回帰.qmd`

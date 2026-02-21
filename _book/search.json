@@ -933,5 +933,192 @@
       "第IV部：多変量解析",
       "<span class='chapter-number'>14</span>  <span class='chapter-title'>拡張ラッシュモデル</span>"
     ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html",
+    "href": "4_重回帰分析_simple_slope_analysis.html",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "",
+    "text": "7 はじめに\n本章では、英語教育データを想定して、重回帰分析（lm）と Simple Slope Analysis（交互作用の下位検定）を実装します。 読者は回帰分析の基本を既習として、次の問いに答えられることを目標にします。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#分析フロー",
+    "href": "4_重回帰分析_simple_slope_analysis.html#分析フロー",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "7.1 分析フロー",
+    "text": "7.1 分析フロー\n\n研究仮説からモデル式を定義（理論先行）。\nz変換とコントラスト設定で係数の意味を明確化。\nモデル推定後、前提診断とロバストSEで安定性を確認。\nemtrends() で simple slope、emmeans() で条件付き群差を検定。\n図示と報告テンプレートで、結果を再現可能に記述。\n\n\n\n\n\n\n\n初回読者向けの最短ルート（20分）\n\n\n\n\nm_theory を実行して summary() を確認する。\n\nemtrends() で傾き差（simple slope）を確認する。\n\nemmip() で図を見て、方向と大きさを言語化する。\n\n余力があれば check_model() と HC3 で頑健性を確認する。\n\n最初は「有意かどうか」だけでなく、方向（正/負） と 教育的に意味のある差か を優先して読む。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#理論先行モデル主分析",
+    "href": "4_重回帰分析_simple_slope_analysis.html#理論先行モデル主分析",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "11.1 理論先行モデル（主分析）",
+    "text": "11.1 理論先行モデル（主分析）\n\n\nコード\nm_theory &lt;- lm(\n  Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude,\n  data = wide_scores\n)\nsummary(m_theory)\n\n\n\nCall:\nlm(formula = Score_Recall ~ Treatment * Time + Treatment * Proficiency + \n    Time * Proficiency + Aptitude, data = wide_scores)\n\nResiduals:\n    Min      1Q  Median      3Q     Max \n-6.6315 -1.5899  0.1144  1.5762  6.5509 \n\nCoefficients:\n                       Estimate Std. Error t value Pr(&gt;|t|)    \n(Intercept)             7.43333    0.10524  70.631  &lt; 2e-16 ***\nTreatment1             -1.09583    0.10524 -10.412  &lt; 2e-16 ***\nTime1                   0.67083    0.10524   6.374 4.38e-10 ***\nProficiency             1.45485    0.10637  13.677  &lt; 2e-16 ***\nAptitude                0.65186    0.10637   6.128 1.88e-09 ***\nTreatment1:Time1        0.05833    0.10524   0.554   0.5797    \nTreatment1:Proficiency -0.44204    0.10535  -4.196 3.25e-05 ***\nTime1:Proficiency       0.27796    0.10535   2.638   0.0086 ** \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nResidual standard error: 2.306 on 472 degrees of freedom\nMultiple R-squared:  0.4455,    Adjusted R-squared:  0.4373 \nF-statistic: 54.18 on 7 and 472 DF,  p-value: &lt; 2.2e-16",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#探索的モデル補助",
+    "href": "4_重回帰分析_simple_slope_analysis.html#探索的モデル補助",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "11.2 探索的モデル（補助）",
+    "text": "11.2 探索的モデル（補助）\n\n\nコード\nm_full &lt;- lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)\nm_step &lt;- step(m_full, direction = \"both\", trace = 0)\n\nsummary(m_step)\n\n\n\nCall:\nlm(formula = Score_Recall ~ Treatment + Time + Proficiency + \n    Aptitude + Treatment:Proficiency + Time:Proficiency + Time:Aptitude + \n    Proficiency:Aptitude, data = wide_scores)\n\nResiduals:\n    Min      1Q  Median      3Q     Max \n-6.5385 -1.5705  0.1817  1.5975  6.4667 \n\nCoefficients:\n                       Estimate Std. Error t value Pr(&gt;|t|)    \n(Intercept)              7.4671     0.1057  70.659  &lt; 2e-16 ***\nTreatment1              -1.0958     0.1045 -10.486  &lt; 2e-16 ***\nTime1                    0.6708     0.1045   6.419 3.35e-10 ***\nProficiency              1.4859     0.1066  13.938  &lt; 2e-16 ***\nAptitude                 0.6465     0.1057   6.119 1.98e-09 ***\nTreatment1:Proficiency  -0.4420     0.1046  -4.225 2.87e-05 ***\nTime1:Proficiency        0.2513     0.1056   2.379   0.0178 *  \nTime1:Aptitude          -0.1931     0.1056  -1.828   0.0681 .  \nProficiency:Aptitude     0.2452     0.1138   2.155   0.0317 *  \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nResidual standard error: 2.29 on 471 degrees of freedom\nMultiple R-squared:  0.4544,    Adjusted R-squared:  0.4452 \nF-statistic: 49.04 on 8 and 471 DF,  p-value: &lt; 2.2e-16\n\n\nコード\nperformance::compare_performance(m_theory, m_step)\n\n\n# Comparison of Model Performance Indices\n\nName     | Model |  AIC (weights) | AICc (weights) |  BIC (weights) |    R2\n---------------------------------------------------------------------------\nm_theory |    lm | 2174.1 (0.053) | 2174.5 (0.055) | 2211.7 (0.312) | 0.446\nm_step   |    lm | 2168.3 (0.947) | 2168.8 (0.945) | 2210.1 (0.688) | 0.454\n\nName     | R2 (adj.) |  RMSE | Sigma\n------------------------------------\nm_theory |     0.437 | 2.286 | 2.306\nm_step   |     0.445 | 2.268 | 2.290\n\n\n\n\n\n\n\n\n警告\n\n\n\nstep() は便利ですが、変数選択の不安定性や過学習を招く可能性があるため、 仮説検証の主軸には置かないのが安全です(Babyak, 2004; R Core Team, 2026)。 AIC/BICやCVは「判断補助」として使い、最終モデルは理論根拠で固定します (Burnham & Anderson, 2002)。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#交差検証補助",
+    "href": "4_重回帰分析_simple_slope_analysis.html#交差検証補助",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "11.3 交差検証（補助）",
+    "text": "11.3 交差検証（補助）\n\n\nコード\nif (requireNamespace(\"boot\", quietly = TRUE)) {\n  set.seed(42)\n  cv_theory &lt;- boot::cv.glm(\n    wide_scores,\n    glm(formula(m_theory), data = wide_scores),\n    K = 10\n  )$delta[1]\n\n  cv_step &lt;- boot::cv.glm(\n    wide_scores,\n    glm(formula(m_step), data = wide_scores),\n    K = 10\n  )$delta[1]\n\n  tibble(\n    Model = c(\"Theory-first\", \"Stepwise\"),\n    CV_MSE = c(cv_theory, cv_step)\n  )\n} else {\n  message(\"boot 未インストールのため CV をスキップ\")\n}\n\n\n# A tibble: 2 × 2\n  Model        CV_MSE\n  &lt;chr&gt;         &lt;dbl&gt;\n1 Theory-first   5.38\n2 Stepwise       5.27",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#主要出力",
+    "href": "4_重回帰分析_simple_slope_analysis.html#主要出力",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "13.1 主要出力",
+    "text": "13.1 主要出力\n\n\nコード\nsummary(m_theory)\n\n\n\nCall:\nlm(formula = Score_Recall ~ Treatment * Time + Treatment * Proficiency + \n    Time * Proficiency + Aptitude, data = wide_scores)\n\nResiduals:\n    Min      1Q  Median      3Q     Max \n-6.6315 -1.5899  0.1144  1.5762  6.5509 \n\nCoefficients:\n                       Estimate Std. Error t value Pr(&gt;|t|)    \n(Intercept)             7.43333    0.10524  70.631  &lt; 2e-16 ***\nTreatment1             -1.09583    0.10524 -10.412  &lt; 2e-16 ***\nTime1                   0.67083    0.10524   6.374 4.38e-10 ***\nProficiency             1.45485    0.10637  13.677  &lt; 2e-16 ***\nAptitude                0.65186    0.10637   6.128 1.88e-09 ***\nTreatment1:Time1        0.05833    0.10524   0.554   0.5797    \nTreatment1:Proficiency -0.44204    0.10535  -4.196 3.25e-05 ***\nTime1:Proficiency       0.27796    0.10535   2.638   0.0086 ** \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nResidual standard error: 2.306 on 472 degrees of freedom\nMultiple R-squared:  0.4455,    Adjusted R-squared:  0.4373 \nF-statistic: 54.18 on 7 and 472 DF,  p-value: &lt; 2.2e-16\n\n\nコード\ntab_model(m_theory)\n\n\n\n\n\n\n\n\n\n\n\n \nScore Recall\n\n\nPredictors\nEstimates\nCI\np\n\n\n(Intercept)\n7.43\n7.23 – 7.64\n&lt;0.001\n\n\nTreatment [1]\n-1.10\n-1.30 – -0.89\n&lt;0.001\n\n\nTime [1]\n0.67\n0.46 – 0.88\n&lt;0.001\n\n\nProficiency\n1.45\n1.25 – 1.66\n&lt;0.001\n\n\nAptitude\n0.65\n0.44 – 0.86\n&lt;0.001\n\n\nTreatment [1] × Time [1]\n0.06\n-0.15 – 0.27\n0.580\n\n\nTreatment [1] ×\nProficiency\n-0.44\n-0.65 – -0.24\n&lt;0.001\n\n\nTime [1] × Proficiency\n0.28\n0.07 – 0.48\n0.009\n\n\nObservations\n480\n\n\nR2 / R2 adjusted\n0.446 / 0.437",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#標準化係数と効果量",
+    "href": "4_重回帰分析_simple_slope_analysis.html#標準化係数と効果量",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "13.2 標準化係数と効果量",
+    "text": "13.2 標準化係数と効果量\n\n\nコード\neffectsize::standardize_parameters(m_theory)\n\n\n# Standardization method: refit\n\nParameter                   | Std. Coef. |         95% CI\n---------------------------------------------------------\n(Intercept)                 |   2.64e-16 | [-0.07,  0.07]\nTreatment [1]               |      -0.36 | [-0.42, -0.29]\nTime [1]                    |       0.22 | [ 0.15,  0.29]\nProficiency                 |       0.47 | [ 0.41,  0.54]\nAptitude                    |       0.21 | [ 0.14,  0.28]\nTreatment [1] × Time [1]    |       0.02 | [-0.05,  0.09]\nTreatment [1] × Proficiency |      -0.14 | [-0.21, -0.08]\nTime [1] × Proficiency      |       0.09 | [ 0.02,  0.16]\n\n\nコード\nr2 &lt;- performance::r2(m_theory)$R2\nf2 &lt;- r2 / (1 - r2)\ntibble(R2 = r2, f2 = f2)\n\n\n# A tibble: 1 × 2\n     R2    f2\n  &lt;dbl&gt; &lt;dbl&gt;\n1 0.446 0.804",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#予測の図示",
+    "href": "4_重回帰分析_simple_slope_analysis.html#予測の図示",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "13.3 予測の図示",
+    "text": "13.3 予測の図示\n\n\nコード\nplot_model(\n  m_theory,\n  type = \"pred\",\n  terms = c(\"Proficiency\", \"Treatment\", \"Time\")\n)",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#参考-johnson-neyman-法",
+    "href": "4_重回帰分析_simple_slope_analysis.html#参考-johnson-neyman-法",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "14.1 参考: Johnson-Neyman 法",
+    "text": "14.1 参考: Johnson-Neyman 法\nJohnson-Neyman 法は、連続 × 連続の交互作用で「有意領域」を連続的に示す手法です (Bauer & Curran, 2005; J. A. Long, 2026)。\n\n\nコード\nif (requireNamespace(\"interactions\", quietly = TRUE)) {\n  m_jn &lt;- lm(Score_Recall ~ Treatment + Time + Proficiency * Aptitude, data = wide_scores)\n  interactions::johnson_neyman(\n    m_jn,\n    pred = Proficiency,\n    modx = Aptitude,\n    alpha = 0.05,\n    control.fdr = FALSE,\n    plot = TRUE\n  )\n} else {\n  message(\"interactions 未インストールのため Johnson-Neyman をスキップ\")\n}\n\n\nJOHNSON-NEYMAN INTERVAL\n\nWhen Aptitude is OUTSIDE the interval [-92.87, -3.12], the slope of\nProficiency is p &lt; .05.\n\nNote: The range of observed values of Aptitude is [-2.16, 2.44]",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#結果解釈テンプレート理論接続版",
+    "href": "4_重回帰分析_simple_slope_analysis.html#結果解釈テンプレート理論接続版",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "16.1 結果解釈テンプレート（理論接続版）",
+    "text": "16.1 結果解釈テンプレート（理論接続版）\n以下の3文セットで書くと、統計結果とSLA理論の接続が明確になります。\n\n統計的記述: 「Treatment × Proficiency は有意であった（β = …, 95% CI […, …]）。」\n条件付き解釈: 「simple slope では、Proficiency = +1SD で Writing 優位が確認された。」\n理論的含意: 「このパターンは、学習者要因が処置効果を調整する ATI の見立てと整合的である (Li, 2015)。」\n\n補足として、コントラスト設計に踏み込んだ厳密解釈は第2章で扱います （本章では運用上の最小要件に絞ります）。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#他章との接続",
+    "href": "4_重回帰分析_simple_slope_analysis.html#他章との接続",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "20.1 他章との接続",
+    "text": "20.1 他章との接続\n\nコントラスト・符号化（設計行列を含む）: 第2章 2_ANOVAとカテゴリカル変数のコーディング.qmd\n反復測定/階層データでの拡張: 第6章 6_混合効果モデル_2値ロジスティック回帰.qmd\n\n\n\n\n\n\n\nAiken, L. S., & West, S. G. (1991年). Multiple Regression: Testing and Interpreting Interactions. SAGE.\n\n\nBabyak, M. A. (2004年). What You See May Not Be What You Get: A Brief, Nontechnical Introduction to Overfitting in Regression-Type Models. Psychosomatic Medicine, 66(3), 411–421. https://doi.org/10.1097/01.psy.0000127692.23278.a9\n\n\nBaranger, D. A. A., Finsaas, M. C., Goldstein, B. L., Vize, C. E., Lynam, D. R., & Olino, T. M. (2023年). Tutorial: Power Analyses for Interaction Effects in Cross-Sectional Regressions. Advances in Methods and Practices in Psychological Science, 6(3), 1–17. https://doi.org/10.1177/25152459231187531\n\n\nBarr, D. J., Levy, R., Scheepers, C., & Tily, H. J. (2013年). Random effects structure for confirmatory hypothesis testing: Keep it maximal. Journal of Memory and Language, 68(3), 255–278. https://doi.org/10.1016/j.jml.2012.11.001\n\n\nBauer, D. J., & Curran, P. J. (2005年). Probing Interactions in Fixed and Multilevel Regression: Inferential and Graphical Techniques. Multivariate Behavioral Research, 40(3), 373–400. https://doi.org/10.1207/s15327906mbr4003_5\n\n\nBrown, E. C., & Abulela, M. A. A. (2025年). Power Analysis for Moderated Multiple Regression: An Incremental Model-Building Approach Using R. Practical Assessment, Research & Evaluation, 30(1), Article 5. https://doi.org/10.7275/pare.2233\n\n\nBrysbaert, M., & Stevens, M. (2018年). Power Analysis and Effect Size in Mixed Effects Models: A Tutorial. Journal of Cognition, 1(1), 17. https://doi.org/10.5334/joc.10\n\n\nBurnham, K. P., & Anderson, D. R. (2002年). Model Selection and Multimodel Inference: A Practical Information-Theoretic Approach (2nd 版). Springer.\n\n\nCohen, J., Cohen, P., West, S. G., & Aiken, L. S. (2003年). Applied Multiple Regression/Correlation Analysis for the Behavioral Sciences (3rd 版). Routledge.\n\n\nCunnings, I. (2012年). An Overview of Mixed-Effects Statistical Models for Second Language Researchers. Second Language Research, 28(3), 369–382. https://doi.org/10.1177/0267658311415718\n\n\nHayes, A. F., & Montoya, A. K. (2017年). A Tutorial on Testing, Visualizing, and Probing an Interaction Involving a Multicategorical Variable in Linear Regression Analysis. Communication Methods and Measures, 11(1), 1–30. https://doi.org/10.1080/19312458.2016.1271116\n\n\nJaeger, T. F. (2008年). Categorical Data Analysis: Away from ANOVAs (transformation or not) and towards Logit Mixed Models. Journal of Memory and Language, 59(4), 434–446. https://doi.org/10.1016/j.jml.2007.11.007\n\n\nLenth, R. V. (2026年a). emmeans vignette: Basics of Estimated Marginal Means. emmeans Documentation. https://rvlenth.github.io/emmeans/articles/basics.html\n\n\nLenth, R. V. (2026年b). emmeans: Estimated Marginal Means, aka Least-Squares Means. CRAN. https://cran.r-project.org/package=emmeans\n\n\nLenth, R. V. (2026年c). emtrends – Estimated Marginal Trends. emmeans Documentation. https://rvlenth.github.io/emmeans/reference/emtrends.html\n\n\nLi, S. (2015年). The Associations Between Language Aptitude and Second Language Grammar Acquisition: A Meta-Analytic Review of Five Decades of Research. System, 52, 188–203. https://doi.org/10.1016/j.system.2015.04.001\n\n\nLong, J. A. (2026年). interactions: Comprehensive, User-Friendly Toolkit for Probing Interactions. CRAN. https://cran.r-project.org/package=interactions\n\n\nLong, J. S., & Ervin, L. H. (2000年). Using Heteroscedasticity Consistent Standard Errors in the Linear Regression Model. The American Statistician, 54(3), 217–224. https://doi.org/10.1080/00031305.2000.10474549\n\n\nLuedeke, D., Ben-Shachar, M. S., Patil, I., & Makowski, D. (2026年). check_model: Visual Diagnostics for Regression Models. easystats performance reference. https://easystats.github.io/performance/reference/check_model.html\n\n\nLuedeke, D., Ben-Shachar, M. S., Patil, I., Waggoner, P., & Makowski, D. (2026年). performance: Assessment of Regression Models Performance. CRAN. https://cran.r-project.org/package=performance\n\n\nMacKinnon, J. G., & White, H. (1985年). Some Heteroskedasticity-Consistent Covariance Matrix Estimators with Improved Finite Sample Properties. Journal of Econometrics, 29(3), 305–325. https://doi.org/10.1016/0304-4076(85)90158-7\n\n\nPreacher, K. J., Curran, P. J., & Bauer, D. J. (2006年). Computational Tools for Probing Interactions in Multiple Linear Regression, Multilevel Modeling, and Latent Curve Analysis. Journal of Educational and Behavioral Statistics, 31(4), 437–448. https://doi.org/10.3102/10769986031004437\n\n\nR Core Team. (2026年). stats::step – Choose a Model by AIC in a Stepwise Algorithm. R Project for Statistical Computing. https://stat.ethz.ch/R-manual/R-devel/library/stats/html/step.html\n\n\nUCLA Statistical Consulting Group. (2026年). How Can I Explain a Continuous by Continuous Interaction? https://stats.oarc.ucla.edu/stata/faq/how-can-i-explain-a-continuous-by-continuous-interaction-stata-12/\n\n\nUVA Library StatLab. (2026年). Getting Started with Simple Slopes Analysis. https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#チュートリアル論文の具体例本章との対応",
+    "href": "4_重回帰分析_simple_slope_analysis.html#チュートリアル論文の具体例本章との対応",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "8.1 チュートリアル論文の具体例（本章との対応）",
+    "text": "8.1 チュートリアル論文の具体例（本章との対応）\n\nBauer & Curran (2005): simple slope だけでなく Johnson-Neyman（J-N）法を使って「有意となるモデレータ範囲」を示す。 本章の emtrends() と J-N 節はこの流れに対応 (Bauer & Curran, 2005)。\nPreacher et al. (2006): 交互作用のプロービングを計算ツールで実装する実務手順を提示。 本章の「式だけで終わらず、条件付き効果を計算して報告する」方針に直結 (Preacher ほか, 2006)。\nHayes & Montoya (2017): 3群以上のカテゴリ変数が絡む回帰交互作用で、符号化と条件付き効果比較をどう行うかを整理。 本章では2水準を扱うが、拡張時の設計はこの枠組みに接続 (Hayes & Montoya, 2017)。\nBaranger et al. (2023): 交互作用検出力の具体例として、相関を入力した解析的/シミュレーションベースの power 分析を提示 （例: r.x1.y, r.x2.y, r.x1.x2, r.x1x2.y）(Baranger ほか, 2023)。\nBrown & Abulela (2025): MMR の power を段階的に組み立てるチュートリアル。 「小さな交互作用」「信頼性」「抑制/増幅」を見込んだ設計を、Rコード付きで示す (Brown & Abulela, 2025)。\n\n本章後半に、以下の4テーマをコード付きレシピとしてまとめます。\n\nBauer/Curran: emtrends() + Johnson-Neyman\nPreacher: 条件付き効果の計算手順\nHayes/Montoya: 多カテゴリ交互作用\nBaranger/Brown: 交互作用の検出力設計\n\n\n\n\n\n\n\n読み方の実務ルール\n\n\n\n\n交互作用が有意でも、simple slope と予測図を併記しない限り教育的含意は確定しない。\n係数の有意性だけでなく、効果量・信頼区間・教育的に意味のある差を同時に報告する。\nコントラストの設計行列や符号化の厳密な扱いは、第2章 （2_ANOVAとカテゴリカル変数のコーディング.qmd）で確認する。\n反復測定・項目効果が中心の設計は、第6章 （6_混合効果モデル_2値ロジスティック回帰.qmd）に接続する (Brysbaert & Stevens, 2018; Cunnings, 2012)。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#bauercurran-emtrends-johnson-neyman",
+    "href": "4_重回帰分析_simple_slope_analysis.html#bauercurran-emtrends-johnson-neyman",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "15.1 1. Bauer/Curran: emtrends() + Johnson-Neyman",
+    "text": "15.1 1. Bauer/Curran: emtrends() + Johnson-Neyman\n\n15.1.1 手順A: simple slope（カテゴリ × 連続）\n\n\nコード\nslopes_bauer &lt;- emtrends(\n  m_theory,\n  pairwise ~ Treatment | Time,\n  var = \"Proficiency\"\n)\n\n# 各条件での傾き\nsummary(slopes_bauer$emtrends, infer = c(TRUE, TRUE))\n\n\nTime = Immediate:\n Treatment Proficiency.trend    SE  df lower.CL upper.CL t.ratio p.value\n Glossing              1.291 0.183 472    0.931     1.65   7.051 &lt;0.0001\n Writing               2.175 0.183 472    1.815     2.53  11.880 &lt;0.0001\n\nTime = Delayed:\n Treatment Proficiency.trend    SE  df lower.CL upper.CL t.ratio p.value\n Glossing              0.735 0.183 472    0.375     1.09   4.014 &lt;0.0001\n Writing               1.619 0.183 472    1.259     1.98   8.843 &lt;0.0001\n\nConfidence level used: 0.95 \n\n\nコード\n# 傾き差（交互作用の実質的検定）\nsummary(slopes_bauer$contrasts, infer = c(TRUE, TRUE), adjust = \"holm\")\n\n\nTime = Immediate:\n contrast           estimate    SE  df lower.CL upper.CL t.ratio p.value\n Glossing - Writing   -0.884 0.211 472     -1.3    -0.47  -4.196 &lt;0.0001\n\nTime = Delayed:\n contrast           estimate    SE  df lower.CL upper.CL t.ratio p.value\n Glossing - Writing   -0.884 0.211 472     -1.3    -0.47  -4.196 &lt;0.0001\n\nConfidence level used: 0.95 \n\n\n判定の目安: - slopes_bauer$contrasts の p が有意なら、群間で傾きが異なる。 - 推定値の符号で、どちらの群の傾きが強いかを判断する。\n\n\n15.1.2 手順B: J-N（連続 × 連続）\n\n\nコード\nif (requireNamespace(\"interactions\", quietly = TRUE)) {\n  m_bauer_jn &lt;- lm(Score_Recall ~ Treatment + Time + Proficiency * Aptitude, data = wide_scores)\n  jn_bauer &lt;- interactions::johnson_neyman(\n    m_bauer_jn,\n    pred = Proficiency,\n    modx = Aptitude,\n    alpha = 0.05,\n    control.fdr = FALSE,\n    plot = TRUE\n  )\n  jn_bauer\n} else {\n  message(\"interactions 未インストールのため J-N をスキップ\")\n}\n\n\nJOHNSON-NEYMAN INTERVAL\n\nWhen Aptitude is OUTSIDE the interval [-92.87, -3.12], the slope of\nProficiency is p &lt; .05.\n\nNote: The range of observed values of Aptitude is [-2.16, 2.44]\n\n\n\n\n\n\n\n\n\n判定の目安: - J-N 結果は「どのモデレータ範囲で効果が有意か」を示す。 - 観測されていない範囲（外挿）の解釈はしない。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#preacher-条件付き効果の計算手順",
+    "href": "4_重回帰分析_simple_slope_analysis.html#preacher-条件付き効果の計算手順",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "15.2 2. Preacher: 条件付き効果の計算手順",
+    "text": "15.2 2. Preacher: 条件付き効果の計算手順\nPreacher et al. (2006) の流れに合わせ、条件付き効果を係数と分散共分散行列から計算します (Preacher ほか, 2006)。\n\\[\n\\hat{\\\\tau}(z)=\\hat{\\\\beta}_{T}+z\\hat{\\\\beta}_{T\\\\times Z},\\quad\nSE\\\\{\\\\hat{\\\\tau}(z)\\\\}=\\\\sqrt{Var(\\\\hat{\\\\beta}_{T})+z^2Var(\\\\hat{\\\\beta}_{T\\\\times Z})+2zCov(\\\\hat{\\\\beta}_{T},\\\\hat{\\\\beta}_{T\\\\times Z})}\n\\]\n\n\nコード\ndat_preacher &lt;- wide_scores |&gt;\n  mutate(Treatment01 = relevel(factor(Treatment), ref = \"Glossing\"))\n\nm_preacher &lt;- lm(\n  Score_Recall ~ Treatment01 * Proficiency + Time + Aptitude,\n  data = dat_preacher\n)\n\ncalc_conditional_effect &lt;- function(z, model,\n                                    b_main = \"Treatment01Writing\",\n                                    b_int = \"Treatment01Writing:Proficiency\") {\n  b &lt;- coef(model)\n  V &lt;- vcov(model)\n  df &lt;- df.residual(model)\n\n  est &lt;- b[b_main] + z * b[b_int]\n  var_est &lt;- V[b_main, b_main] + (z^2) * V[b_int, b_int] + 2 * z * V[b_main, b_int]\n  se &lt;- sqrt(var_est)\n  t_val &lt;- est / se\n  p_val &lt;- 2 * pt(abs(t_val), df = df, lower.tail = FALSE)\n  ci &lt;- est + qt(c(0.025, 0.975), df = df) * se\n\n  tibble(\n    Proficiency = z,\n    Estimate = est,\n    SE = se,\n    t = t_val,\n    p = p_val,\n    CI_low = ci[1],\n    CI_high = ci[2]\n  )\n}\n\nmanual_conditional &lt;- purrr::map_dfr(c(-1, 0, 1), calc_conditional_effect, model = m_preacher)\nmanual_conditional\n\n\n# A tibble: 3 × 7\n  Proficiency Estimate    SE     t        p CI_low CI_high\n        &lt;dbl&gt;    &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;\n1          -1     1.31 0.299  4.37 1.55e- 5  0.719    1.90\n2           0     2.19 0.212 10.4  8.64e-23  1.78     2.61\n3           1     3.08 0.299 10.3  1.77e-22  2.49     3.66\n\n\n\n\nコード\n# emmeans による同等の確認（条件付き群差）\nrg_preacher &lt;- ref_grid(m_preacher, at = list(Proficiency = c(-1, 0, 1)))\nemmeans(rg_preacher, pairwise ~ Treatment01 | Proficiency)\n\n\n$emmeans\nProficiency = -1:\n Treatment01 emmean    SE  df lower.CL upper.CL\n Glossing      5.32 0.212 474     4.91     5.74\n Writing       6.63 0.212 474     6.22     7.05\n\nProficiency =  0:\n Treatment01 emmean    SE  df lower.CL upper.CL\n Glossing      6.34 0.150 474     6.04     6.63\n Writing       8.53 0.150 474     8.24     8.82\n\nProficiency =  1:\n Treatment01 emmean    SE  df lower.CL upper.CL\n Glossing      7.35 0.212 474     6.93     7.77\n Writing      10.43 0.212 474    10.01    10.84\n\nResults are averaged over the levels of: Time \nConfidence level used: 0.95 \n\n$contrasts\nProficiency = -1:\n contrast           estimate    SE  df t.ratio p.value\n Glossing - Writing    -1.31 0.299 474  -4.366 &lt;0.0001\n\nProficiency =  0:\n contrast           estimate    SE  df t.ratio p.value\n Glossing - Writing    -2.19 0.212 474 -10.355 &lt;0.0001\n\nProficiency =  1:\n contrast           estimate    SE  df t.ratio p.value\n Glossing - Writing    -3.08 0.299 474 -10.270 &lt;0.0001\n\nResults are averaged over the levels of: Time \n\n\n判定の目安: - 手計算と emmeans の結果が実質的に一致することを確認する。 - -1SD, 0, +1SD で効果の向きや大きさがどう変わるかを記述する。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#hayesmontoya-多カテゴリ交互作用のr実装",
+    "href": "4_重回帰分析_simple_slope_analysis.html#hayesmontoya-多カテゴリ交互作用のr実装",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "15.3 3. Hayes/Montoya: 多カテゴリ交互作用のR実装",
+    "text": "15.3 3. Hayes/Montoya: 多カテゴリ交互作用のR実装\nHayes & Montoya (2017) の要点は、3水準以上のカテゴリ変数でも 「条件付き効果 + 多重比較」を系統的に示すことです(Hayes & Montoya, 2017)。\n\n\nコード\nset.seed(2026)\nn_multi &lt;- 360\n\ndat_multi &lt;- tibble(\n  Treatment3 = factor(\n    rep(c(\"Glossing\", \"Writing\", \"Retrieval\"), each = n_multi / 3),\n    levels = c(\"Glossing\", \"Writing\", \"Retrieval\")\n  ),\n  Proficiency = rnorm(n_multi),\n  Aptitude = rnorm(n_multi)\n) |&gt;\n  mutate(\n    Score = 7.5 +\n      1.0 * (Treatment3 == \"Writing\") +\n      1.8 * (Treatment3 == \"Retrieval\") +\n      1.2 * Proficiency +\n      0.6 * (Treatment3 == \"Writing\") * Proficiency +\n      1.0 * (Treatment3 == \"Retrieval\") * Proficiency +\n      0.5 * Aptitude +\n      rnorm(n_multi, 0, 2)\n  )\n\nm_hayes &lt;- lm(Score ~ Treatment3 * Proficiency + Aptitude, data = dat_multi)\nsummary(m_hayes)\n\n\n\nCall:\nlm(formula = Score ~ Treatment3 * Proficiency + Aptitude, data = dat_multi)\n\nResiduals:\n    Min      1Q  Median      3Q     Max \n-6.0137 -1.2525 -0.0634  1.1568  6.7601 \n\nCoefficients:\n                                Estimate Std. Error t value Pr(&gt;|t|)    \n(Intercept)                       7.5110     0.1792  41.910  &lt; 2e-16 ***\nTreatment3Writing                 0.8608     0.2545   3.382 0.000800 ***\nTreatment3Retrieval               1.7900     0.2534   7.065 8.60e-12 ***\nProficiency                       1.1034     0.1761   6.267 1.07e-09 ***\nAptitude                          0.5512     0.1013   5.441 9.94e-08 ***\nTreatment3Writing:Proficiency     0.9579     0.2574   3.721 0.000231 ***\nTreatment3Retrieval:Proficiency   0.7459     0.2652   2.813 0.005185 ** \n---\nSignif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1\n\nResidual standard error: 1.952 on 353 degrees of freedom\nMultiple R-squared:  0.4821,    Adjusted R-squared:  0.4733 \nF-statistic: 54.76 on 6 and 353 DF,  p-value: &lt; 2.2e-16\n\n\n\n\nコード\n# モデレータ水準ごとの群差（多重比較補正）\nrg_hayes &lt;- ref_grid(m_hayes, at = list(Proficiency = c(-1, 0, 1)))\nemmeans(rg_hayes, pairwise ~ Treatment3 | Proficiency, adjust = \"holm\")\n\n\n$emmeans\nProficiency = -1:\n Treatment3 emmean    SE  df lower.CL upper.CL\n Glossing     6.42 0.238 353     5.95     6.89\n Writing      6.32 0.281 353     5.77     6.88\n Retrieval    7.47 0.274 353     6.93     8.00\n\nProficiency =  0:\n Treatment3 emmean    SE  df lower.CL upper.CL\n Glossing     7.53 0.179 353     7.17     7.88\n Writing      8.39 0.181 353     8.03     8.74\n Retrieval    9.32 0.179 353     8.96     9.67\n\nProficiency =  1:\n Treatment3 emmean    SE  df lower.CL upper.CL\n Glossing     8.63 0.264 353     8.11     9.15\n Writing     10.45 0.240 353     9.98    10.92\n Retrieval   11.16 0.261 353    10.65    11.68\n\nConfidence level used: 0.95 \n\n$contrasts\nProficiency = -1:\n contrast             estimate    SE  df t.ratio p.value\n Glossing - Writing     0.0971 0.368 353   0.264  0.7918\n Glossing - Retrieval  -1.0441 0.363 353  -2.877  0.0116\n Writing - Retrieval   -1.1412 0.392 353  -2.908  0.0116\n\nProficiency =  0:\n contrast             estimate    SE  df t.ratio p.value\n Glossing - Writing    -0.8608 0.255 353  -3.382  0.0008\n Glossing - Retrieval  -1.7900 0.253 353  -7.065 &lt;0.0001\n Writing - Retrieval   -0.9292 0.255 353  -3.641  0.0006\n\nProficiency =  1:\n contrast             estimate    SE  df t.ratio p.value\n Glossing - Writing    -1.8188 0.356 353  -5.105 &lt;0.0001\n Glossing - Retrieval  -2.5359 0.371 353  -6.844 &lt;0.0001\n Writing - Retrieval   -0.7171 0.354 353  -2.024  0.0437\n\nP value adjustment: holm method for 3 tests \n\n\nコード\n# 群ごとの Proficiency 傾き差\nslopes_hayes &lt;- emtrends(m_hayes, pairwise ~ Treatment3, var = \"Proficiency\")\nsummary(slopes_hayes$contrasts, infer = c(TRUE, TRUE), adjust = \"holm\")\n\n\n contrast             estimate    SE  df lower.CL upper.CL t.ratio p.value\n Glossing - Writing     -0.958 0.257 353   -1.577   -0.339  -3.721  0.0007\n Glossing - Retrieval   -0.746 0.265 353   -1.384   -0.108  -2.813  0.0104\n Writing - Retrieval     0.212 0.273 353   -0.445    0.869   0.776  0.4382\n\nConfidence level used: 0.95 \nConf-level adjustment: bonferroni method for 3 estimates \nP value adjustment: holm method for 3 tests \n\n\n\n\nコード\nemmip(rg_hayes, Treatment3 ~ Proficiency, CIs = TRUE)\n\n\n\n\n\n\n\n\n\n判定の目安: - 多カテゴリでは、まず「どの群ペアが有意か」を確認する。 - 次に「傾き差が有意か」を確認し、平均差と傾き差を分けて報告する。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#barangerbrown-交互作用-power-分析",
+    "href": "4_重回帰分析_simple_slope_analysis.html#barangerbrown-交互作用-power-分析",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "15.4 4. Baranger/Brown: 交互作用 power 分析",
+    "text": "15.4 4. Baranger/Brown: 交互作用 power 分析\n\n15.4.1 手順A: 論文値で解析的 power 曲線を作る（power_interaction_r2）\n以下は、チュートリアル論文で示される代表値を用いた設計例です。\n\nBaranger et al. (2023) の例: r.x1.y=.51, r.x2.y=.22, r.x1.x2=.09 を固定し、 r.x1x2.y=.09（比較的大きい交互作用）と r.x1x2.y=.045（小さい交互作用）を比較 (Baranger ほか, 2023)。\nBrown & Abulela (2025) の例: r.x1.y=-.18, r.x2.y=-.03, r.x1.x2=.64, r.x1x2.y=.10 を使い、 信頼性 rel.x1=.89, rel.x2=.95, rel.y=.79 を反映した場合と、 完全信頼性（1.0）を比較 (Brown & Abulela, 2025)。\n\n\n\nコード\nif (requireNamespace(\"InteractionPoweR\", quietly = TRUE)) {\n  # Baranger: 交互作用の大きさの違い\n  pwr_baranger_large &lt;- InteractionPoweR::power_interaction_r2(\n    N = seq(500, 2000, by = 50),\n    r.x1.y = 0.51,\n    r.x2.y = 0.22,\n    r.x1x2.y = 0.09,\n    r.x1.x2 = 0.09\n  ) |&gt;\n    mutate(Scenario = \"Baranger: r.x1x2.y = .09\")\n\n  pwr_baranger_small &lt;- InteractionPoweR::power_interaction_r2(\n    N = seq(500, 6000, by = 250),\n    r.x1.y = 0.51,\n    r.x2.y = 0.22,\n    r.x1x2.y = 0.045,\n    r.x1.x2 = 0.09\n  ) |&gt;\n    mutate(Scenario = \"Baranger: r.x1x2.y = .045\")\n\n  # Brown: 信頼性補正あり/なし\n  pwr_brown_reliability &lt;- InteractionPoweR::power_interaction_r2(\n    N = seq(500, 1500, by = 25),\n    r.x1.y = -0.18,\n    r.x2.y = -0.03,\n    r.x1x2.y = 0.10,\n    r.x1.x2 = 0.64,\n    rel.x1 = 0.89,\n    rel.x2 = 0.95,\n    rel.y = 0.79\n  ) |&gt;\n    mutate(Scenario = \"Brown: reliability adjusted\")\n\n  pwr_brown_ideal &lt;- InteractionPoweR::power_interaction_r2(\n    N = seq(500, 1500, by = 25),\n    r.x1.y = -0.18,\n    r.x2.y = -0.03,\n    r.x1x2.y = 0.10,\n    r.x1.x2 = 0.64\n  ) |&gt;\n    mutate(Scenario = \"Brown: reliability = 1.0\")\n\n  pwr_lit &lt;- bind_rows(\n    pwr_baranger_large,\n    pwr_baranger_small,\n    pwr_brown_reliability,\n    pwr_brown_ideal\n  )\n\n  pwr_targets &lt;- pwr_lit |&gt;\n    group_by(Scenario) |&gt;\n    summarise(\n      N_for_80 = if (any(pwr &gt;= 0.80)) min(N[pwr &gt;= 0.80]) else NA_real_,\n      N_for_90 = if (any(pwr &gt;= 0.90)) min(N[pwr &gt;= 0.90]) else NA_real_,\n      .groups = \"drop\"\n    )\n\n  pwr_targets\n} else {\n  message(\"InteractionPoweR 未インストールのためスキップ: install.packages('InteractionPoweR')\")\n}\n\n\n# A tibble: 4 × 3\n  Scenario                    N_for_80 N_for_90\n  &lt;chr&gt;                          &lt;dbl&gt;    &lt;dbl&gt;\n1 Baranger: r.x1x2.y = .045       3000     3750\n2 Baranger: r.x1x2.y = .09         700      950\n3 Brown: reliability = 1.0         775     1025\n4 Brown: reliability adjusted     1100     1475\n\n\n\n\nコード\nif (exists(\"pwr_lit\")) {\n  ggplot(pwr_lit, aes(x = N, y = pwr, color = Scenario)) +\n    geom_line(linewidth = 0.9) +\n    geom_hline(yintercept = 0.80, linetype = 2) +\n    geom_hline(yintercept = 0.90, linetype = 3) +\n    scale_y_continuous(limits = c(0, 1)) +\n    labs(\n      title = \"Literature-Based Power Curves for Interaction Effects\",\n      x = \"Sample Size (N)\",\n      y = \"Power\",\n      color = NULL\n    ) +\n    theme(legend.position = \"bottom\")\n}\n\n\n\n\n\n\n\n\n\n判定の目安: - N_for_80 を最低ライン、N_for_90 を推奨ラインとして扱う。 - 信頼性補正ありの曲線を優先し、過度に楽観的な見積りを避ける。\n\n\n15.4.2 手順B: 解析解とモンテカルロの照合（Barangerの強い交互作用例）\n\n\nコード\nif (requireNamespace(\"InteractionPoweR\", quietly = TRUE)) {\n  # 解析解\n  pwr_baranger_analytic &lt;- InteractionPoweR::power_interaction_r2(\n    N = 940,\n    r.x1.y = 0.51,\n    r.x2.y = 0.22,\n    r.x1x2.y = 0.09,\n    r.x1.x2 = 0.09\n  )\n\n  # モンテカルロ（時間短縮のため反復数は抑えめ。最終報告時は増やす）\n  set.seed(2026)\n  pwr_baranger_mc &lt;- InteractionPoweR::power_interaction(\n    n.iter = 500,\n    N = 940,\n    r.x1.y = 0.51,\n    r.x2.y = 0.22,\n    r.x1x2.y = 0.09,\n    r.x1.x2 = 0.09,\n    alpha = 0.05\n  )\n\n  bind_rows(\n    pwr_baranger_analytic |&gt; mutate(Method = \"Analytic\"),\n    pwr_baranger_mc |&gt; mutate(Method = \"Monte Carlo\")\n  ) |&gt;\n    dplyr::select(Method, N, pwr)\n}\n\n\n       Method   N       pwr\n1    Analytic  NA 0.9045146\n2 Monte Carlo 940 0.9140000\n\n\n判定の目安: - Analytic と Monte Carlo の pwr が概ね一致するか確認する。 - 差が大きい場合は n.iter を増やし、仮定（相関・信頼性）を再点検する。\n\n\n15.4.3 手順C: 段階的モデル比較（BrownのMMR手順に対応）\nInteractionPoweR に加えて、増分説明率（ΔR²）に基づく anova(m0, m1) のシミュレーションで、BrownのMMR的な考え方を再現します。\n\n\nコード\nsimulate_mmr &lt;- function(n, beta_x1 = 0.25, beta_x2 = 0.20, beta_int = 0.10, sigma = 1) {\n  x1 &lt;- rnorm(n)\n  x2 &lt;- rnorm(n)\n  y &lt;- beta_x1 * x1 + beta_x2 * x2 + beta_int * (x1 * x2) + rnorm(n, 0, sigma)\n  tibble(y, x1, x2)\n}\n\npower_delta_r2 &lt;- function(n, nsim = 150, beta_int = 0.10) {\n  p_vals &lt;- replicate(nsim, {\n    d &lt;- simulate_mmr(n = n, beta_int = beta_int)\n    m0 &lt;- lm(y ~ x1 + x2, data = d)\n    m1 &lt;- lm(y ~ x1 * x2, data = d)\n    anova(m0, m1)$`Pr(&gt;F)`[2]\n  })\n  mean(p_vals &lt; 0.05, na.rm = TRUE)\n}\n\nset.seed(2026)\npower_grid &lt;- tibble(N = seq(120, 320, by = 20)) |&gt;\n  mutate(power = purrr::map_dbl(N, power_delta_r2, nsim = 150, beta_int = 0.10))\n\npower_grid |&gt;\n  dplyr::filter(power &gt;= 0.80) |&gt;\n  dplyr::slice_head(n = 1)\n\n\n# A tibble: 0 × 2\n# ℹ 2 variables: N &lt;dbl&gt;, power &lt;dbl&gt;\n\n\n\n\nコード\nggplot(power_grid, aes(x = N, y = power)) +\n  geom_line() +\n  geom_point() +\n  geom_hline(yintercept = 0.80, linetype = 2, color = \"red\") +\n  scale_y_continuous(limits = c(0, 1)) +\n  labs(\n    title = \"Power Curve for Interaction Detection (ΔR² approach)\",\n    x = \"Sample Size (N)\",\n    y = \"Power\"\n  )\n\n\n\n\n\n\n\n\n\n判定の目安: - ΔR² ベースの結果が InteractionPoweR の結果と同方向かを確認する。 - 不一致なら、効果量の仮定と誤差分散の設定を再検討する。",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
+  },
+  {
+    "objectID": "4_重回帰分析_simple_slope_analysis.html#迷ったときのチェックポイント1分版",
+    "href": "4_重回帰分析_simple_slope_analysis.html#迷ったときのチェックポイント1分版",
+    "title": "6  重回帰分析とSimple Slope Analysis",
+    "section": "15.5 迷ったときのチェックポイント（1分版）",
+    "text": "15.5 迷ったときのチェックポイント（1分版）\n\n\nコード\ntibble::tribble(\n  ~Step, ~What_to_check, ~Decision_rule,\n  \"1. 交互作用係数\", \"`summary(m_theory)` の `Treatment × Proficiency`\", \"p &lt; .05 かつ符号が理論と整合\",\n  \"2. Simple slope\", \"`summary(slopes_bauer$contrasts)`\", \"傾き差の有意性を確認\",\n  \"3. 条件付き平均差\", \"`emmeans(... | Proficiency)`\", \"-1SD/0/+1SD の差を比較\",\n  \"4. 図の整合\", \"`emmip()`\", \"線の交差・傾き方向が統計結果と一致\",\n  \"5. 頑健性\", \"`check_model()` と HC3\", \"結論が大きく変わらない\"\n)\n\n\n# A tibble: 5 × 3\n  Step              What_to_check                                  Decision_rule\n  &lt;chr&gt;             &lt;chr&gt;                                          &lt;chr&gt;        \n1 1. 交互作用係数   `summary(m_theory)` の `Treatment × Proficienc… p &lt; .05 かつ符号…\n2 2. Simple slope   `summary(slopes_bauer$contrasts)`              傾き差の有意性を確認……\n3 3. 条件付き平均差 `emmeans(... | Proficiency)`                   -1SD/0/+1SD …\n4 4. 図の整合       `emmip()`                                      線の交差・傾き方向が統計…\n5 5. 頑健性         `check_model()` と HC3                         結論が大きく変わらない……",
+    "crumbs": [
+      "第II部：回帰分析",
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>重回帰分析とSimple Slope Analysis</span>"
+    ]
   }
 ]

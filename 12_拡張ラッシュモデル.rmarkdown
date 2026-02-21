@@ -2813,3 +2813,4 @@ check.monotonicity(SAT12_binary)     # 単調性チェック
 - [TAM: CRAN package page](https://cran.r-project.org/package=TAM)  
 - [mokken: CRAN package page](https://cran.r-project.org/package=mokken)  
 - [mokken: Reference manual (PDF)](https://cran.r-project.org/web/packages/mokken/mokken.pdf)
+

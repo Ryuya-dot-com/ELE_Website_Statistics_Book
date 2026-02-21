@@ -110,18 +110,52 @@ pre {
 
 # はじめに
 
-5章・6章で扱ったロジスティック回帰では、
-「ある説明変数が正答確率にどう影響するか」をモデル化しました。
+5章・6章で扱ったロジスティック回帰では、「ある説明変数が正答確率にどう影響するか」をモデル化しました。しかし教育テストでは、同じ受験者が複数の項目に回答するため、**「どの項目が難しいか」と「誰が高能力か」を同時に推定したい**場面が頻出します。
 
-項目応答理論（Item Response Theory; IRT）は、ここに
-**受験者の潜在能力（\(\theta\)）と項目特性（困難度・識別力）**を同時に組み込み、
-「誰にとって、どの項目が、どれくらい難しいか」を推定する枠組みです[@cai2016]。
+項目応答理論（Item Response Theory; IRT）は、この要請に直接応える枠組みです。受験者の潜在能力（\(\theta\)）と項目特性（困難度・識別力）を同時にモデル化し、「誰にとって、どの項目が、どれくらい難しいか」を推定します[@cai2016]。特にラッシュモデル（1PL）は、測定モデルとしての単純さ、項目母数の不変性、教育評価における解釈しやすさのため、言語テスト研究で広く利用されています[@rasch1980; @andersen1973; @boone2017]。
 
-特にラッシュモデル（1PL）は、
-- 測定モデルとしての単純さ
-- 項目母数の不変性（一定条件下）
-- 教育評価における解釈しやすさ
-のため、言語テスト研究で広く利用されています[@rasch1980; @andersen1973; @boone2017]。
+## 最初にここだけ（はじめに）
+
+### Step 1: 問題を1文で捉える
+
+「同じ合計点の受験者が、本当に同じ能力なのかは、どの項目を正解したかを考慮しないと判断できない。」
+
+### Step 2: 覚える式は1つだけ
+
+$$
+P(X_{ij}=1\mid \theta_i, b_j)=\frac{\exp(\theta_i-b_j)}{1+\exp(\theta_i-b_j)}
+$$
+
+正答確率は、受験者能力 \(\theta_i\) と項目困難度 \(b_j\) の**差**だけで決まります。
+
+### Step 3: この章でやること
+
+1. ロジスティック回帰から Rasch モデルへの接続を確認する。
+2. `eRm` で Rasch 推定 → 適合度 → Wright Map まで一気に実行する。
+3. DIF 分析で公平性を検証し、論文報告形式にまとめる。
+
+### Step 4: どこまで読めば実務に使えるか
+
+- **最低限**: 「はじめに」→「glm()からRaschへ」→「Rasch推定」→「適合度」→「まとめ」で研究に使える。
+- **標準**: 上記 + 「前提チェック」+「DIF分析」まで進めると査読対応力が上がる。
+- **拡張**: 上記 + 「指数型分布族」+「CML導出」+「パッケージ比較」で理論的基盤を固める。第12章で順序データ・多次元・ノンパラメトリックに進む。
+
+::: {.callout-note}
+### 読む順序（迷ったとき）
+- 最短ルート（30分）: はじめに → glm()からRaschへ → Rasch推定 → Wright Map → まとめ
+- 標準ルート（60分）: 上記 + 適合度 + 前提チェック + DIF
+- 拡張ルート（90分+）: 上記 + 指数型分布族 + CML導出 + パッケージ比較
+:::
+
+::: {.callout-note}
+### 用語ミニ辞典
+- **\(\theta\)（シータ）**: 受験者の潜在能力。ロジット尺度で表す。
+- **\(b\)（項目困難度）**: 正答確率が50%になる \(\theta\) の値。大きいほど難しい。
+- **ICC（項目特性曲線）**: \(\theta\) に対する正答確率のS字カーブ。ロジスティック曲線そのもの。
+- **Wright Map（Person-Item Map）**: \(\theta\) と \(b\) を同一尺度上に並べた図。IRT の中核可視化。
+- **Infit / Outfit**: モデル期待からの逸脱を測る適合統計量。1.0が期待値。
+- **DIF（項目機能差異）**: 同能力の受験者でも群間で項目反応が異なる現象。
+:::
 
 ::: {.callout-tip}
 ## この章の到達目標
@@ -152,19 +186,6 @@ pre {
 - `sirt`: [CRAN package page](https://CRAN.R-project.org/package=sirt), [reference index](https://alexanderrobitzsch.github.io/sirt/reference/index.html)
 :::
 
-# 用語定義の整理（先行研究ベース）
-
-| 用語 | 先行研究での中核定義 | 研究実務での揺れ・補足 | 本章での採用定義 |
-|---|---|---|---|
-| Infit | 情報量で重み付けされた適合統計。能力水準に近い項目への予期しない反応に敏感[@mair2007; @boone2017]。 | `mirt`/`TAM`/`eRm`で算出法の実装差はあるが、解釈の方向性は概ね共通[@chalmers2012; @tam2025]。 | 「中核領域の不適合」を捉える統計として解釈。 |
-| Outfit | 非重み付け適合統計。外れ値的な反応パターンに敏感[@mair2007; @boone2017]。 | 閾値運用は領域依存（固定カットオフの機械適用は非推奨）[@boone2017; @zhao2017]。 | Infitと対で確認し、内容妥当性判断と統合。 |
-| Wright Map（Person-Item Map） | 受験者能力と項目困難度を同一潜在尺度上に配置する図[@mair2007; @tam2025; @wrightmap2024]。 | 実装によりヒストグラム型・しきい値表示型など描画様式が異なる。 | 本章では `plotPImap()` を Wright Map と同義で扱う。 |
-| Pathway Map | Bond & Fox系では「困難度（縦）×適合統計（横）」で項目/人物を俯瞰する図[@bondfox2007; @mair2007]。 | 横軸を Infit t で定義する流儀と、Outfit MNSQを使う流儀が併存[@sattelmayer2020; @sattelmayer2021]。 | 狭義（Infit t軸）と広義（fit軸一般）を区別して記述する。 |
-
-::: {.callout-note}
-Pathway Map は文献横断で定義が完全一致しないため、論文では「横軸に何を置いたか（Infit t か Outfit MNSQ か）」を明記するのが安全です。
-:::
-
 ```{r}
 #| label: setup
 #| message: false
@@ -186,13 +207,46 @@ set.seed(1234)
 theme_set(theme_bw(base_size = 12))
 ```
 
+# 先行研究マップ
+
+言語テスト研究における IRT/Rasch の主要応用を先に概観しておくと、本章の位置づけが明確になります。
+
+```{r}
+#| label: literature-map
+
+literature_map <- tibble::tribble(
+  ~Study, ~Context, ~MainUse, ~PracticalImplication,
+  "Boone (2016)", "理科教育における尺度開発", "Rasch適合度とWright Mapによる項目評価",
+    "適合度の閾値を機械的に適用せず、内容妥当性と併用する重要性を提示",
+  "Runnels (2013)", "EFL語彙テストのDIF検出", "多群Raschモデルによる公平性検証",
+    "L1背景によるDIFをアンカー浄化付きで検出する手順を示す",
+  "Ha & Yaneva (2021)", "大規模英語検定の項目分析", "Rasch + 2PLによる項目バンク管理",
+    "項目母数の不変性を利用した等化・項目プール管理の実務例",
+  "McNamara & Knoch (2012)", "言語テストにおけるRasch採用史", "Rasch測定の哲学的議論",
+    "記述的IRT vs 規範的Raschの立場の違いを整理",
+  "Aryadoust et al. (2021)", "応用言語学21誌のレビュー(215論文)", "Rasch/MFRM/IRTの研究動向分析",
+    "ライティング評価でMFRMが最頻、文法評価は研究が少ないことを指摘"
+)
+
+literature_map |>
+  gt() |>
+  tab_header(
+    title = "Research Map: IRT/Rasch in Language Testing",
+    subtitle = "How prior studies inform the workflow in this chapter"
+  ) |>
+  cols_label(
+    Study = "Study",
+    Context = "Context",
+    MainUse = "How IRT/Rasch was used",
+    PracticalImplication = "Implication for your research"
+  )
+```
+
 # CTT から IRT へ：何が変わるのか
 
-古典的テスト理論（CTT）は、合計点や平均点を中心に扱うため実務上は有用ですが、
-「項目ごとの違い」を十分にモデル化しにくいという限界があります[@cai2016]。
+ここで具体的な場面を考えてみましょう。500人の EFL 学習者に語彙テスト（20項目）を実施したとします。受験者 A と受験者 B はどちらも合計12点でした。CTT ではこの2名は「同じ得点」として扱われます。しかし、A は易しい項目ばかり正解し、B は難しい項目を多く正解していたとしたらどうでしょうか。**実際の語彙力に差がある可能性**が高いのに、合計点だけではそれが見えません。
 
-一方 IRT は、受験者能力と項目特性を分離して推定し、
-項目レベルで測定の質を検討できます[@rasch1980; @mair2007]。
+IRT はまさにこの問題を解決します。「どの項目を正解したか」というパターン情報を使い、受験者能力と項目困難度を分離して推定します[@cai2016; @rasch1980; @mair2007]。
 
 ```{r}
 #| label: ctt-irt-comparison
@@ -233,6 +287,8 @@ comparison_tbl |>
     IRT = "項目応答理論 (IRT)"
   )
 ```
+
+この表のポイントは、CTT が「テスト全体のスコア」に焦点を当てるのに対し、IRT は「各項目と各受験者のレベルでの確率モデル」を構築する点です。IRT では、能力水準ごとに測定精度（情報量）を評価できるため、テストがどの能力帯で精密に測れているかを可視化できます。
 
 ## CTT と IRT の違いを1分で確認するミニ例
 
@@ -279,6 +335,79 @@ mini_tbl |>
 
 # Rasch モデルをロジスティック回帰として理解する
 
+前節で CTT と IRT の違いを確認しました。ここでは、5章・6章で馴染みのあるロジスティック回帰から、Rasch モデルへ**1ステップで橋渡し**します。
+
+## glm() から Rasch へ：見慣れた回帰の延長線上
+
+まず、テストデータを「受験者×項目」のロング形式に変換し、項目をダミー変数として通常のロジスティック回帰を当ててみましょう。これは「項目ごとに正答しやすさが違う」ことをモデル化する、最も素朴なアプローチです。
+
+```{r}
+#| label: glm-bridge
+#| message: false
+
+# 後のセクションで使うシミュレーションデータを先に作成
+n_person_pre <- 500
+n_item_pre <- 20
+b_pre <- seq(-2, 2, length.out = n_item_pre)
+theta_pre <- rnorm(n_person_pre, mean = 0, sd = 1)
+eta_pre <- outer(theta_pre, b_pre, "-")
+prob_pre <- plogis(eta_pre)
+resp_pre <- matrix(rbinom(n_person_pre * n_item_pre, 1, prob_pre),
+                   nrow = n_person_pre, ncol = n_item_pre)
+colnames(resp_pre) <- paste0("Item", sprintf("%02d", 1:n_item_pre))
+resp_df_pre <- as.data.frame(resp_pre)
+
+# ロング形式に変換
+long_df <- resp_df_pre |>
+  mutate(person = row_number()) |>
+  pivot_longer(-person, names_to = "item", values_to = "response")
+
+# 素朴なロジスティック回帰（項目効果のみ）
+glm_fit <- glm(response ~ 0 + item, family = binomial, data = long_df)
+
+# Rasch推定（eRm）
+rasch_fit_pre <- eRm::RM(resp_df_pre)
+
+# 係数を比較
+bridge_tbl <- tibble(
+  item = colnames(resp_df_pre),
+  glm_logit = coef(glm_fit)[paste0("item", colnames(resp_df_pre))],
+  rasch_beta = -as.numeric(coef(rasch_fit_pre)),
+  true_b = b_pre
+) |>
+  mutate(
+    glm_logit = round(glm_logit, 3),
+    rasch_beta = round(rasch_beta, 3),
+    true_b = round(true_b, 3)
+  )
+
+bridge_tbl |>
+  gt() |>
+  tab_header(
+    title = "glm() Coefficients vs Rasch Difficulty",
+    subtitle = "The logistic regression bridge to IRT"
+  ) |>
+  cols_label(
+    item = "Item",
+    glm_logit = "glm() log-odds",
+    rasch_beta = "Rasch difficulty (b)",
+    true_b = "True difficulty"
+  )
+```
+
+::: {.callout-tip}
+### glm() と Rasch の違いは何か
+
+上表で `glm()` の log-odds と Rasch の困難度推定は**近い値**になります。これは偶然ではありません。
+
+- `glm(response ~ 0 + item)` は「全受験者が同じ能力」と暗に仮定し、項目の正答しやすさだけを推定します。
+- Rasch モデルは「受験者ごとに異なる潜在能力 \(\theta_i\) がある」ことを明示的にモデル化し、その上で項目困難度 \(b_j\) を推定します。
+
+つまり **Rasch は、ロジスティック回帰に受験者ごとの潜在能力を加えた拡張**です。数式で書けば、`glm()` の `logit(P) = β_j`（項目効果のみ）を `logit(P) = θ_i - b_j`（受験者効果 + 項目効果）に拡張しただけです。
+:::
+
+## Rasch モデルの数理的定義
+
 2値 Rasch モデルは次式で表されます[@rasch1980; @andersen1973]。
 
 $$
@@ -286,18 +415,25 @@ P(X_{ij}=1\mid \theta_i, b_j)=\frac{\exp(\theta_i-b_j)}{1+\exp(\theta_i-b_j)}
 $$
 
 ここで、
+
 - \(X_{ij}\): 受験者 \(i\) が項目 \(j\) に正答したか（1/0）
-- \(\theta_i\): 受験者能力
-- \(b_j\): 項目困難度
+- \(\theta_i\): 受験者能力（ロジット尺度）
+- \(b_j\): 項目困難度（正答確率50%になる \(\theta\) の値）
 
-です。
+です。言い換えれば、正答確率は受験者能力と項目困難度の**差**だけで決まるロジスティック関数です。
 
-回帰分析の言葉で言い換えると、
-- **リンク関数はロジット**
-- **切片に相当する項目効果が \(b_j\)**
-- **受験者ごとの潜在的な傾き方向の位置が \(\theta_i\)**
+::: {.callout-tip}
+### なぜ Rasch モデルを「処方」するのか
 
-となります。Rasch では識別力を等しい（1PL）と仮定する点が、2PL と異なります[@birnbaum1968]。
+IRT には2つの立場があります[@boone2017]。
+
+- **記述的アプローチ**（IRT一般）: データに最も当てはまるモデル（1PL/2PL/3PL）を選ぶ。
+- **規範的アプローチ**（Rasch学派）: 公平な測定の条件を満たすモデルを**先に決め**、データがそれに適合するか検証する。
+
+Rasch モデルでは、識別力を等しいと仮定する（1PL）ことで、**項目母数の不変性**（標本によらない推定）と**合計点の十分統計量性**が保証されます。英語教育テストでは、異なる受験者集団間でも項目パラメータが安定していることが実務上重要であり、この規範的アプローチが広く採用されています。
+:::
+
+Rasch では識別力を等しいと仮定する点が、2PL と異なります[@birnbaum1968]。2PL/3PL への拡張は本章後半で扱います。
 
 ## 指数型分布族としての表現
 
@@ -429,11 +565,21 @@ $$
 
 # チュートリアル用データの作成（EFL 語彙テスト想定）
 
-ここでは、英語教育の評価場面を意識して、
+前節では Rasch モデルの数理的基礎を確認しました。ここからは、実際のデータを使って推定・診断・報告の一連の流れを実行します。
+
+::: {.callout-tip}
+### 最初にここだけ（データ作成〜推定）
+1. シミュレーションデータを作成する（500名 × 20項目、DIF埋め込み済み）。
+2. `eRm::RM()` で Rasch 推定を実行する。
+3. Wright Map で人-項目関係を可視化する。
+:::
+
+英語教育の評価場面を意識して、以下のデータをシミュレーションします。
+
 - 受験者 500 名
 - 語彙項目 20 項目（正誤データ）
-- 2 群（L1背景）
-を持つデータをシミュレーションします。
+- 2 群（L1背景: L1_Japanese / L1_Other）
+- 教示目的で 2 項目（Item05, Item17）に DIF を埋め込み
 
 ```{r}
 #| label: simulate-data
@@ -493,6 +639,8 @@ item_desc |>
   )
 ```
 
+通過率（Pass rate）は Item01 が最も高く（易しい）、Item20 が最も低い（難しい）ことが確認できます。真の困難度 \(b\) が \(-2\) から \(+2\) に等間隔で設定されているため、通過率は困難度の増加に伴い単調に低下しています。
+
 ```{r}
 #| label: score-distribution
 #| fig-width: 8
@@ -516,47 +664,19 @@ ggplot(score_df, aes(x = total_score, fill = group)) +
 
 # Rasch モデルの推定（eRm）
 
-Rasch モデルは `eRm::RM()` で推定できます[@mair2007]。
+得点分布を確認したところで、いよいよ Rasch モデルを推定します。`eRm::RM()` を用いて、条件付き最大尤度法（CML）で項目困難度を推定します[@mair2007]。
 
-## CML と MML の位置づけ
+::: {.callout-note}
+### 推定法の比較（CML / MML / JML）
 
-Rasch 文脈で使われる代表的な推定は次の2つです。
+| 推定法 | 原理 | 主なRパッケージ | 特徴 |
+|--------|------|-----------------|------|
+| **CML** | 素点で条件付けて \(\theta\) を消去 | `eRm` | Rasch の十分統計量性を直接利用。理論的に一貫[@andersen1973] |
+| **MML** | \(\theta\) に分布仮定を置き積分 | `mirt`, `TAM` | 2PL/3PL に柔軟。標本が大きいほど安定[@bock1981] |
+| **JML** | \(\theta\) と \(b\) を同時最適化 | `TAM::tam.jml()` | 直感的だが incidental parameter problem あり[@neyman1948] |
 
-- **CML（Conditional Maximum Likelihood）**: 受験者素点で条件付け、\(\theta_i\) を消去して \(b_j\) を推定。
-- **MML（Marginal Maximum Likelihood）**: \(\theta\) に分布仮定を置いて積分し、周辺尤度を最大化[@bock1981]。
-
-本章の `eRm::RM()` は CML を採用しており、Rasch の「具体的客観性」の議論と親和的です。
-一方、`mirt::mirt()` は MML ベースで 2PL などの拡張モデルに柔軟です[@chalmers2012]。
-
-## JML（Joint Maximum Likelihood）はどう位置づけるか
-
-JML は
-
-$$
-\ell(\boldsymbol{\theta},\mathbf{b})
-=
-\sum_{i=1}^{N}\sum_{j=1}^{J}
-\left[
-x_{ij}(\theta_i-b_j)-\log\{1+\exp(\theta_i-b_j)\}
-\right]
-$$
-
-を \(\boldsymbol{\theta}\) と \(\mathbf{b}\) で同時最適化する方法です[@baker2004]。  
-実装は比較的直感的ですが、\(N\) が増えても \(J\) が固定だと \(\theta_i\) が増え続けるため、
-項目母数推定に「incidental parameter problem」が生じることが知られています[@neyman1948]。
-
-したがって Rasch 研究では、理論的一貫性と有限標本での安定性の観点から CML が重視されます。  
-一方、実務では JML も使われるため、**推定法（CML/MML/JML）を必ず明記**するのが望ましいです[@deayala2009]。
-
-```{r}
-#| label: jml-example
-#| eval: false
-
-# JML の実行例（TAM パッケージ）
-library(TAM)
-jml_fit <- tam.jml(resp_df)
-summary(jml_fit)
-```
+本章では CML（`eRm::RM()`）を主に使います。MML ベースの `mirt` はモデル比較（2PL/3PL）で利用します。論文では**推定法を必ず明記**してください[@deayala2009]。
+:::
 
 ```{r}
 #| label: rasch-fit
@@ -564,6 +684,8 @@ summary(jml_fit)
 rasch_fit <- eRm::RM(resp_df)
 summary(rasch_fit)
 ```
+
+前節で Rasch 推定を実行しました。次に、推定された項目困難度の意味を確認し、Wright Map で受験者と項目の関係を可視化します。
 
 ## 項目困難度の解釈
 
@@ -602,7 +724,11 @@ ggplot(item_difficulty_tbl, aes(x = reorder(item, b_est), y = b_est)) +
   )
 ```
 
+項目困難度の棒グラフから、Item01 が最も易しく（\(b\) が最小）、Item20 が最も難しいことが視覚的に確認できます。推定値は真値（`seq(-2, 2, ...)`）と良い対応を示しており、500名の標本で CML 推定が安定していることがわかります。
+
 ## ICC と Person-Item Map
+
+項目特性曲線（ICC）は、各項目について「能力 \(\theta\) が上がるにつれて正答確率がどう変化するか」を示します。Rasch モデルでは全項目の ICC は同じ傾き（識別力）を持ち、位置（困難度）だけが異なります。
 
 ```{r}
 #| label: icc-plot
@@ -612,6 +738,12 @@ ggplot(item_difficulty_tbl, aes(x = reorder(item, b_est), y = b_est)) +
 plotICC(rasch_fit, item.subset = "all", empICC = list("raw"), legend = FALSE)
 ```
 
+ICC の読み方: 各曲線の変曲点（正答確率 = 0.5 の位置）が、その項目の困難度 \(b_j\) に対応します。経験的 ICC（点）が理論曲線から大きくずれている項目があれば、モデル不適合の兆候です。
+
+### Wright Map（Person-Item Map）
+
+Wright Map は IRT の**中核可視化**です。受験者能力（\(\theta\)）と項目困難度（\(b\)）を同一ロジット尺度上に並べ、テストがどの能力帯をカバーしているかを一目で把握できます。
+
 ```{r}
 #| label: pi-map
 #| fig-width: 9
@@ -620,7 +752,24 @@ plotICC(rasch_fit, item.subset = "all", empICC = list("raw"), legend = FALSE)
 plotPImap(rasch_fit)
 ```
 
+::: {.callout-tip}
+### Wright Map の読み方（3つのポイント）
+
+1. **受験者分布と項目位置の対応**: 受験者が集中している能力帯に項目が十分配置されていれば、そのテストはその能力帯で精密に測定できています。逆に、受験者が多いのに項目が少ない帯域は「測定の穴」です。
+2. **天井効果・床効果の確認**: 最も易しい項目より下に多くの受験者がいれば床効果、最も難しい項目より上に多くの受験者がいれば天井効果です。
+3. **項目の等間隔性**: Rasch の利点は、項目困難度がロジット尺度上で等間隔に解釈できる点です。Wright Map 上で項目が一部に偏っていれば、テスト改良の指針になります。
+:::
+
 # 適合度の確認
+
+Wright Map で人-項目関係の全体像を把握したところで、次は個々の項目がモデルの期待通りに機能しているかを検証します。
+
+::: {.callout-tip}
+### 最初にここだけ（適合度）
+- **Infit**: 能力が項目困難度に近い受験者の反応パターンに重点を置く適合統計量。
+- **Outfit**: 全受験者を等重みで評価する適合統計量（外れ値の影響を受けやすい）。
+- **MSQ（Mean Square）**: 期待値は 1.0。1.0 より大きい = 予想外の不規則反応、1.0 より小さい = 予想以上に規則的。
+:::
 
 Rasch では、Infit/Outfit を使って「モデル期待からの逸脱」を検討します[@mair2007; @boone2017]。
 
@@ -648,6 +797,8 @@ fit_tbl |>
   fmt_number(columns = c(infit_msq, outfit_msq, infit_z, outfit_z), decimals = 3)
 ```
 
+Infit MSQ と Outfit MSQ がおおむね 0.7〜1.3 の範囲に収まっていれば、Rasch モデルの期待に概ね沿った反応パターンと解釈できます。Outfit が大きい項目（例: 1.5 を超える場合）は、能力と不釣り合いな正解・不正解パターン（外れ値的反応）の影響を受けている可能性があります。
+
 ::: {.callout-warning}
 ## Fit 指標の読み方（実務上の注意）
 
@@ -656,10 +807,59 @@ fit_tbl |>
 - モデル不適合は、推定値だけでなく等化・DIF解釈にも影響します[@zhao2017]。
 :::
 
+## 「不適合」が何を意味するか：ミニデモ
+
+不適合統計量が何を捉えているかを直感的に理解するため、意図的に「おかしな項目」を1つ作成し、Infit/Outfit がどう反応するかを確認します。
+
+```{r}
+#| label: misfit-demo
+#| message: false
+
+# 正常データのコピーを作成し、1項目だけランダムに回答を入れ替える
+resp_misfit <- resp_df
+set.seed(999)
+# Item10 について、能力の高い受験者の正答を不正答に、低い受験者の不正答を正答に入れ替え
+high_ability <- which(rowSums(resp_df) >= quantile(rowSums(resp_df), 0.75))
+low_ability <- which(rowSums(resp_df) <= quantile(rowSums(resp_df), 0.25))
+resp_misfit[high_ability, "Item10"] <- 1 - resp_misfit[high_ability, "Item10"]
+resp_misfit[low_ability, "Item10"] <- 1 - resp_misfit[low_ability, "Item10"]
+
+# Rasch推定 → 適合度
+rasch_misfit <- eRm::RM(resp_misfit)
+pp_misfit <- person.parameter(rasch_misfit)
+fit_misfit <- eRm::itemfit(pp_misfit)
+
+# 比較表
+misfit_compare <- tibble(
+  item = names(fit_misfit$i.infitMSQ),
+  infit_msq = as.numeric(fit_misfit$i.infitMSQ),
+  outfit_msq = as.numeric(fit_misfit$i.outfitMSQ)
+) |>
+  mutate(manipulated = ifelse(item == "Item10", "manipulated", "normal")) |>
+  arrange(desc(outfit_msq))
+
+misfit_compare |>
+  gt() |>
+  tab_header(
+    title = "Misfit Demo: Item10 Deliberately Corrupted",
+    subtitle = "High-ability correct → incorrect, low-ability incorrect → correct"
+  ) |>
+  fmt_number(columns = c(infit_msq, outfit_msq), decimals = 3) |>
+  tab_style(
+    style = cell_fill(color = "#FFE0E0"),
+    locations = cells_body(rows = manipulated == "manipulated")
+  )
+```
+
+::: {.callout-tip}
+### このデモの読み方
+
+操作した Item10 は、高能力者が不正解・低能力者が正解するパターンを人為的に作ったため、Rasch モデルの「能力が高いほど正答確率が高い」という期待に反します。結果として Infit/Outfit が他の項目と比べて明確に大きくなります。**実データでこのような値を示す項目は、項目の質（曖昧な選択肢、文化的バイアスなど）を再検討する必要があります。**
+:::
+
 ## Pathway Map（Bond & Fox型）の可視化
 
-用語整理で示した通り、Pathway Map は縦軸に困難度、横軸に適合統計を置く可視化です。  
-`eRm::plotPWmap()` は Bond & Fox 系の実装として利用できます[@mair2007; @bondfox2007]。
+Pathway Map は、縦軸に困難度、横軸に適合統計量を配置することで、「どの困難度帯の項目が不適合を示しているか」を一目で把握できる可視化です[@mair2007; @bondfox2007]。
 
 ```{r}
 #| label: pathway-map
@@ -680,17 +880,20 @@ plotPWmap(
 )
 ```
 
+Pathway Map 上で横軸の中心（Infit t ≈ 0）から大きく離れた点は、モデル適合に問題がある項目です。縦軸の位置と合わせて「難しい項目に不適合が集中しているか」「特定の困難度帯に問題があるか」を読み取ります。
+
 ::: {.callout-note}
-Pathway Map の横軸は文献により Infit t / Outfit MNSQ が混在します。  
+Pathway Map の横軸は文献により Infit t / Outfit MNSQ が混在します。
 本章では狭義の定義に合わせ、`Infit t statistic` を採用しています。
 :::
 
 # IRT の前提チェック
 
+適合度分析で個々の項目の振る舞いを確認しました。ここでは、Rasch モデルが依拠する2つの統計的前提、すなわち**一次元性**と**局所独立性**を検証します。これらの前提が崩れると、推定値の解釈やDIF分析の妥当性に影響が及びます。
+
 ## 1. 一次元性（Unidimensionality）
 
-一次元性は「主要な潜在特性が1つであるか」を問う前提です。
-ここでは tetrachoric 相関の固有値を確認します[@cai2016]。
+一次元性は「主要な潜在特性が1つであるか」を問う前提です。2値データに対しては、ピアソン相関よりも tetrachoric 相関に基づく固有値分析が適切です[@cai2016]。
 
 ```{r}
 #| label: unidimensionality
@@ -735,10 +938,11 @@ uni_index |>
   fmt_number(columns = everything(), decimals = 3)
 ```
 
+第1固有値と第2固有値の比が大きい（例: 3以上）場合、主要因子が1つであると判断できます。スクリープロットで第1固有値の後に明確な「肘」があり、第2固有値以降が基準線（固有値 = 1）付近に落ちていれば、一次元性の根拠になります。
+
 ## 2. 局所独立性（Local Independence）
 
-局所独立性は「能力 \(\theta\) を固定すれば、項目残差同士は独立である」という前提です。
-ここでは Yen の Q3 を用います[@yen1984; @christensen2017]。
+一次元性を確認したら、次に局所独立性を検証します。局所独立性は「能力 \(\theta\) を固定すれば、項目残差同士は独立である」という前提です。違反の兆候は、特定の項目ペアの残差相関が高い場合に現れます。ここでは Yen の Q3 を用います[@yen1984; @christensen2017]。
 
 ```{r}
 #| label: local-independence
@@ -763,11 +967,15 @@ q3_pairs |>
   fmt_number(columns = q3, decimals = 3)
 ```
 
+Q3 の絶対値が 0.20 を大きく超える項目ペアがある場合、局所依存（LD）の兆候です。LD が見られる場合は、テストレット構造（同一パッセージに基づく複数項目など）の存在を確認し、必要に応じてテストレットモデルや bi-factor モデルの適用を検討します。
+
 ::: {.callout-note}
 Q3 の閾値は固定値ではなく、項目数・標本サイズ・カテゴリ数に依存します。可能ならブートストラップ等で臨界値を設定してください[@christensen2017]。
 :::
 
 # 2PLM・3PLM はどう理解すべきか
+
+前節までの分析は、すべて Rasch（1PL）モデルに基づいていました。ここでは、識別力パラメータ \(a_j\) を項目ごとに自由推定する **2PL**、さらに当て推量パラメータ \(c_j\) を加える **3PL** への拡張を確認します。
 
 Rasch（1PL）から 2PL, 3PL への拡張は次式で表せます[@birnbaum1968; @deayala2009]。
 
@@ -825,6 +1033,8 @@ cmp_tbl |>
   fmt_number(columns = where(is.numeric), decimals = 3)
 ```
 
+モデル比較表で AIC/BIC が小さいモデルがデータへの当てはまりが良いことを意味しますが、パラメータ数の増加（2PL: +19、3PL: +38）に対するゲインが実質的かどうかを判断することが重要です。シミュレーションデータは Rasch で生成しているため、1PL が最適になることが期待されます。
+
 ```{r}
 #| label: discrimination-table
 
@@ -857,6 +1067,8 @@ guess_tbl |>
   fmt_number(columns = c(a, b, g), decimals = 3)
 ```
 
+2PL の識別力 \(a\) が項目間で大きく異なる場合は、Rasch の等識別力仮定が不適切である可能性を示唆します。3PL の当て推量パラメータ \(g\) が 0.25 を超える項目は、推定が不安定か、選択肢の質に問題がある可能性があります。
+
 ```{r}
 #| label: test-information
 #| fig-width: 8
@@ -886,10 +1098,11 @@ ggplot(info_df, aes(x = theta, y = information, color = model)) +
   )
 ```
 
+テスト情報曲線は、テストが各能力水準でどの程度精密に測定できているかを示します。情報量が高い帯域ほど測定精度が高く、標準誤差が小さくなります。Rasch（1PL）は中央付近で最大情報量を示す対称形になる傾向がありますが、2PL/3PL では識別力の違いにより情報量の分布が変わります。
+
 # 公式ドキュメント準拠：mirt・TAM・sirt の拡張実装
 
-本節では、各パッケージの公式ドキュメントで推奨される代表関数を使って、
-同一データに対する推定結果を比較します[@chalmers2012; @tam2025; @sirt2025]。
+前節で1PL/2PL/3PLのモデル比較を行いました。ここでは、R の IRT パッケージエコシステムを整理し、同一データに対する推定結果がパッケージ間でどの程度一致するかを確認します[@chalmers2012; @tam2025; @sirt2025]。
 
 ```{r}
 #| label: package-overview
@@ -921,14 +1134,16 @@ package_tbl |>
   )
 ```
 
-## TAM ワークフロー（MML/JML/fit/WLE）
+::: {.callout-note collapse="true"}
+## TAM ワークフロー（MML/JML/fit/WLE）— 展開して確認
+
+TAM は Rasch 系運用に強く、`tam.mml()` → `tam.fit()` → `tam.wle()` の順でワークフローが完結します。
 
 ```{r}
 #| label: tam-workflow
 
 tam_mml <- TAM::tam.mml(resp_df, irtmodel = "1PL", verbose = FALSE)
 
-# tam.jml / tam.fit / tam.wle は進捗出力が多いため捕捉
 tam_jml <- suppressWarnings({
   capture.output(tmp <- TAM::tam.jml(resp_df, verbose = FALSE))
   tmp
@@ -996,7 +1211,13 @@ tam_wle_summary |>
   fmt_number(columns = everything(), decimals = 3)
 ```
 
-## sirt ワークフロー（rasch.mml2 / rasch.jml / modelfit.sirt）
+TAM の WLE（Warm 推定量）信頼性は、Rasch 文脈での人物推定の信頼性係数です。0.80 を超えていれば実用上十分とされます。
+:::
+
+::: {.callout-note collapse="true"}
+## sirt ワークフロー（rasch.mml2 / rasch.jml / modelfit.sirt）— 展開して確認
+
+sirt は補助的な IRT 手法やグローバル適合検定に強みがあります。`rasch.mml2()` → `modelfit.sirt()` で残差適合診断まで一貫して実行できます。
 
 ```{r}
 #| label: sirt-workflow
@@ -1045,6 +1266,9 @@ sirt_stat_tbl |>
   fmt_number(columns = everything(), decimals = 3)
 ```
 
+SRMSR（Standardized Root Mean Square Residual）が 0.05 未満であれば、モデルの残差適合が良好と判断できます。
+:::
+
 ## パッケージ間の Rasch 項目母数比較
 
 ```{r}
@@ -1083,11 +1307,20 @@ as_tibble(cross_corr, rownames = "estimate_source") |>
   fmt_number(columns = -estimate_source, decimals = 3)
 ```
 
+パッケージ間の相関が .99 以上であれば、推定法の違い（CML vs MML）にかかわらず実質的に同じ項目順序を得ていると判断できます。これは Rasch モデルの頑健性を示す好材料です。研究報告では、使用パッケージと推定法を明記した上で、結果の一致を補足的に言及すると査読者への説得力が増します。
+
 # DIF とバイアス分析
+
+::: {.callout-tip}
+### 最初にここだけ（DIF 分析）
+- **DIF（Differential Item Functioning）**: 同じ能力水準の受験者でも、所属する群（L1背景、性別、受験形式など）によって特定項目の正答確率が系統的に異なる現象。
+- **なぜ重要か**: DIF がある項目は、測定したい構成概念とは無関係な要因で正答率が変わるため、テストの公平性を脅かす。
+- **DIF ≠ バイアス**: DIF は統計的検出であり、バイアスは「その差が不公平か」の実質的判断。DIF が見つかっても、内容検討の結果「正当な差」であれば除外不要。
+:::
 
 英語教育テストでは、L1背景・専攻・受験形式などで項目機能が変わらないかを確認する必要があります[@runnels2013; @tan2024]。
 
-ここではシミュレーション上、`Item05` と `Item17` に DIF を埋め込んでいます。  
+ここではシミュレーション上、`Item05` と `Item17` に DIF を埋め込んでいます。
 実務では、アンカー項目選定と反復的な浄化手続きを行ってください[@runnels2013]。
 
 ```{r}
@@ -1128,9 +1361,11 @@ dif_tbl |>
   fmt_number(columns = c(X2, p, adj_p), decimals = 3)
 ```
 
+DIF スクリーニングの結果、調整済み p 値（FDR 補正）が有意な項目が DIF 候補です。シミュレーションでは Item05 と Item17 に DIF を埋め込んでいるため、これらが検出されることが期待されます。
+
 ## DIF 効果量（群間の項目困難度差）
 
-統計的有意性だけでなく、\(\Delta b\)（群間困難度差）を併記して実質的影響を確認します。
+統計的有意性だけでなく、\(\Delta b\)（群間困難度差）を併記して実質的影響を確認します。ETS の分類基準では、\(|\Delta b| < 0.43\) を A（無視可能）、\(0.43 \leq |\Delta b| < 0.64\) を B（中程度）、\(|\Delta b| \geq 0.64\) を C（大きい）と分類します。
 
 ```{r}
 #| label: dif-effect-size
@@ -1157,10 +1392,14 @@ dif_effect_tbl |>
   fmt_number(columns = c(b_L1_Japanese, b_L1_Other, delta_b, abs_delta_b), decimals = 3)
 ```
 
+\(\Delta b\) の大きい項目は、群間で項目困難度が実質的に異なることを意味します。この値が大きいほど、テスト全体のスコアに対する影響も大きくなります。
+
 ## Uniform DIF と Non-uniform DIF の分離
 
-- **Uniform DIF**: 群差が主に困難度（\(b\)）に現れる
-- **Non-uniform DIF**: 群差が識別力（\(a\)）にも現れ、能力水準で差が変化する
+DIF にはさらに2つの種類があります。
+
+- **Uniform DIF**: 群差が主に困難度（\(b\)）に現れる（ICC が平行移動する形）
+- **Non-uniform DIF**: 群差が識別力（\(a\)）にも現れ、能力水準によって群差の大きさが変化する（ICC が交差する形）
 
 ```{r}
 #| label: dif-types
@@ -1268,9 +1507,11 @@ bias_effect_tbl |>
   fmt_number(columns = c(estimate, std_error, statistic, p_value), decimals = 3)
 ```
 
+バイアス影響チェックの結果、アンカー能力で条件付けた後もなお suspect score（DIF 項目の合計）に有意な群差が残っていれば、DIF が実際にスコアに影響を与えている（DTF: Differential Test Functioning）と判断できます。逆に、全項目合計点では群差が吸収される場合もあり、DIF の影響は項目レベルとテストレベルで異なりうる点に注意が必要です。
+
 # 英語教育研究での実装上の示唆
 
-近年の言語テスト研究では、
+ここまでの分析をまとめ、実務でのチェックリストと論文報告に必要な要素を整理します。近年の言語テスト研究では、
 - Rasch による構成概念妥当性の検討
 - 項目施設値（正答率）だけでは見えない測定上の歪みの同定
 - DIF/DTF を含む公平性評価
