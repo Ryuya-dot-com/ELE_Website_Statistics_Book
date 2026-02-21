@@ -11,6 +11,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Configure Git for UTF-8 filenames
+        run: git config --global core.quotepath false
+
       - name: Checkout
         uses: actions/checkout@v4
 
