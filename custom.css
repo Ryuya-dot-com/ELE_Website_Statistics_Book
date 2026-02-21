@@ -27,7 +27,8 @@ body {
 }
 
 /* 見出しのアカデミックスタイル */
-h1 {
+/* h2 = セクション見出し（旧 h1） */
+h2 {
   font-size: 1.8em;
   font-weight: 700;
   color: #1a1a1a;
@@ -39,7 +40,8 @@ h1 {
   letter-spacing: 0.03em;
 }
 
-h2 {
+/* h3 = サブセクション見出し（旧 h2） */
+h3 {
   font-size: 1.4em;
   font-weight: 600;
   color: #343a40;
@@ -47,14 +49,15 @@ h2 {
   margin-bottom: 0.8em;
 }
 
-h2:before {
+h3:before {
   content: "\00A7"; /* § */
   margin-right: 0.5em;
   color: #6c757d;
   font-weight: 400;
 }
 
-h3 {
+/* h4 = サブサブセクション見出し（旧 h3） */
+h4 {
   font-size: 1.2em;
   font-weight: 600;
   color: #495057;

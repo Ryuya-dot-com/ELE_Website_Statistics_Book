@@ -64,7 +64,7 @@ format:
     css: custom.css
     toc: true
     toc-depth: 3
-    toc-location: left
+    toc-location: right
     toc-title: "目次"
     number-sections: true
     number-depth: 3
