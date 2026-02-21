@@ -1,0 +1,19 @@
+{
+  "hash": "20a13b392aa4982e3f07b8638418828c",
+  "result": {
+    "engine": "knitr",
+    "markdown": "# はじめに {.unnumbered}\n\nこちらのサイトは、英語教育および第二言語習得理論の研究で必要とされる統計解析手法について、Rを用いて実践的に学ぶことを目的に作成されました。\n\n## 特徴\n\n- **実践的なアプローチ**：理論と実践のバランスを重視\n- **再現可能な分析**：すべてのコードが実行可能\n- **段階的な学習**：基礎から応用まで体系的に構成\n\n## 対象\n\n- 英語教育・第二言語習得研究に携わる研究者\n- Rを用いた統計解析を学びたい方\n- 言語テスト理論に興味のある方\n- 時系列・空間データの扱いに興味のある方\n\n## 構成\n\n**第I部：統計モデルの基礎**  \nt検定から分散分析まで、基本的な統計手法を扱います。\n\n**第II部：回帰分析**  \n線形回帰から一般化線形モデル、混合効果モデルまでカバーします。\n\n**第III部：ベイズ統計と機械学習**  \n近年広く用いられている統計手法について扱います。\n\n**第IV部：多変量解析**  \n因子分析や項目応答理論など、多変量解析に関する手法を扱います。\n\n**第V部：時系列解析**  \n時系列データの扱い方と可視化・分析を扱います。\n\n**第VI部：地理空間データ**  \n地理空間データの扱い方と可視化・分析を扱います。\n\n**第VII部：ネットワーク分析**  \n学習者間・変数間の関係構造を可視化し、中心性・コミュニティ検出を扱います。\n\n**第VIII部：メタ分析**  \n研究成果の統合、異質性・出版バイアスの評価、メタ回帰を扱います。\n\n## 必要な環境\n\n\n::: {.cell}\n\n```{.r .cell-code}\n# 必要なパッケージの一括インストール（例）\nrequired_packages <- c(\n  # 基本パッケージ\n  \"tidyverse\", \"knitr\", \"rmarkdown\",\n  \n  # 表作成・可視化\n  \"gt\", \"gtExtras\", \"patchwork\", \"GGally\",\n  \n  # 統計解析（一般）\n  \"car\", \"effectsize\", \"pwr\", \"emmeans\", \"psych\",\n  \n  # 回帰分析\n  \"lme4\", \"lmerTest\",\n  \n  # 構造方程式モデリング\n  \"lavaan\",\n  \n  # IRT/ラッシュモデル\n  \"mirt\", \"eRm\", \"TAM\", \"mokken\",\n  \n  # ベイズ推定\n  \"brms\", \"rstanarm\", \"bayesplot\",\n\n  # ネットワーク分析\n  \"igraph\",\n\n  # メタ分析\n  \"metafor\", \"clubSandwich\", \"meta\", \"netmeta\"\n)\n\ninstall.packages(required_packages)\n```\n:::\n\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {
+      "knitr": [
+        "{\"type\":\"list\",\"attributes\":{},\"value\":[]}"
+      ]
+    },
+    "preserve": null,
+    "postProcess": false
+  }
+}

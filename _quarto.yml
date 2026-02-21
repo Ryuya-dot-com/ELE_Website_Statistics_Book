@@ -46,8 +46,6 @@ book:
         - 14_地理空間データ分析_入門.qmd
         - 15_地理空間データ分析_応用.qmd
     
-    - 参考文献_おすすめの書籍.qmd
-    
     - part: "第VII部：ネットワーク分析"
       chapters:
         - 16_ネットワーク分析.qmd
@@ -56,11 +54,14 @@ book:
       chapters:
         - 17_メタ分析.qmd
 
+    - 参考文献_おすすめの書籍.qmd
+
 csl: apa-7th-edition.csl
 
 format:
   html:
     theme: journal
+    css: custom.css
     toc: true
     toc-depth: 3
     toc-location: left
@@ -72,6 +73,9 @@ format:
     code-tools: true
     code-copy: hover
     code-overflow: wrap
+    fontsize: 1.1em
+    linestretch: 1.8
+    mainfont: "Noto Serif JP"
     fig-align: center
     fig-responsive: true
     tbl-cap-location: top
@@ -112,7 +116,6 @@ format:
           \setsansjfont{Noto Sans JP}
     
   epub:
-    cover-image: cover.png
     toc: true
     toc-depth: 2
     epub-chapter-level: 2

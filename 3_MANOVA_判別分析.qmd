@@ -1,121 +1,12 @@
 ---
 title: "MANOVA・判別分析"
-author: "小室竜也"
-date: today
 bibliography:
   - references_manova_discriminant.bib
-format:
-  html:
-    toc: true
-    toc-depth: 3
-    toc-location: left
-    toc-title: "目次"
-    number-sections: true
-    code-fold: show
-    theme: journal
-    fontsize: 1.1em
-    linestretch: 1.8
-    mainfont: "Noto Serif JP"
-lang: ja
 ---
 
-```{=html}
-<style>
-/* journalテーマ用のアカデミックなカスタムスタイル */
-body {
-  font-family: 'Noto Serif JP', 'Times New Roman', serif;
-  color: #2c3e50;
-  line-height: 1.8;
-}
-
-/* タイトルブロックをジャーナル風に */
-.quarto-title-banner {
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  border-bottom: 4px double #495057;
-  padding: 2.5em 2em;
-  text-align: center;
-}
-
-.quarto-title-banner .title {
-  color: #212529 !important;
-  font-size: 2.2em !important;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-family: 'Noto Sans JP', sans-serif;
-}
-
-/* 見出しのアカデミックスタイル */
-h1 {
-  font-size: 1.8em;
-  font-weight: 700;
-  color: #1a1a1a;
-  border-bottom: 2px solid #212529;
-  padding-bottom: 0.5em;
-  margin-top: 2em;
-  margin-bottom: 1em;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-h2 {
-  font-size: 1.4em;
-  font-weight: 600;
-  color: #343a40;
-  margin-top: 1.5em;
-  margin-bottom: 0.8em;
-}
-
-h2:before {
-  content: "§";
-  margin-right: 0.5em;
-  color: #6c757d;
-  font-weight: 400;
-}
-
-h3 {
-  font-size: 1.2em;
-  font-weight: 600;
-  color: #495057;
-  font-style: italic;
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
-}
-
-/* テーブルを学術論文風に */
-table {
-  margin: 2em auto;
-  border-collapse: collapse;
-  font-size: 0.95em;
-  width: 90%;
-  border-top: 2px solid #212529;
-  border-bottom: 2px solid #212529;
-}
-
-thead {
-  background: #f8f9fa;
-  border-bottom: 1px solid #212529;
-}
-
-/* コードブロックをシンプルに */
-pre {
-  background: #f8f9fa !important;
-  border: 1px solid #dee2e6;
-  border-radius: 0;
-  padding: 1em;
-  font-size: 0.9em;
-}
-
-/* 数式を強調 */
-.math {
-  color: #212529;
-  font-size: 1.05em;
-  font-style: italic;
-}
-</style>
-```
-
 # パッケージの読み込み
+
+ここでは、本章で必要なパッケージを一括で読み込みます。`heplots` はMANOVAのH行列とE行列を楕円として可視化するためのパッケージ、`candisc` は正準判別分析のプロットに使用します。`WebPower` はMANOVAの検定力分析に使います。
 
 ```{r}
 #| message: false
@@ -133,7 +24,10 @@ pacman::p_load(
   gt,
   GGally,
   broom,
-  patchwork
+  patchwork,
+  heplots,
+  candisc,
+  WebPower
 )
 
 set.seed(123)
@@ -142,24 +36,49 @@ theme_set(theme_bw())
 
 # はじめに
 
-本章は、**英語語彙学習研究**を想定して、
-2つの目的変数（`Recall`, `Recognition`）を同時に扱う **MANOVA** と、
-群の分離可能性を評価する **判別分析（LDA/QDA）** を、
-「実装できる」だけでなく「論文結果節として説明できる」水準まで整理します。
+本章は、**英語語彙学習研究**を想定して、2つの従属変数（`Recall`, `Recognition`）を同時に扱う **MANOVA（多変量分散分析）** と、群の分離構造を評価する **判別分析（DDA / LDA / QDA）** を、「実装できる」だけでなく「論文結果節として説明できる」水準まで整理します。
 
-回帰分析の既習者向けに、次の対応関係を明示して進めます。
+回帰分析の既習者向けに、以下の対応関係を明示して進めます。
 
-- 単回帰・重回帰: 1つの目的変数
-- MANOVA: 複数目的変数を同時に扱う多変量線形モデル
-- 判別分析: 目的変数がカテゴリ（群）で、説明変数が連続
+- **単回帰・重回帰**: 1つの従属変数に対する線形モデル
+- **MANOVA**: 複数の従属変数を**同時に**扱う多変量線形モデル
+- **判別分析（DDA）**: MANOVAの追跡法として、群分離の方向と構造を明らかにする
 
 ::: {.callout-tip}
 ## この章の到達目標
 
 - MANOVAの前提を、設計上の論点と統計検定の論点に分けて説明できる。
-- Pillai / Wilks / Hotelling-Lawley / Roy の読み分けができる。
-- 有意性だけでなく、追跡分析・効果量・分類性能まで一貫して報告できる。
+- H行列とE行列の意味を直感的に説明し、HEプロットを読むことができる。
+- Pillai / Wilks / Hotelling-Lawley / Roy の読み分けと選択根拠を説明できる。
+- DDA（判別分析）をMANOVAの主要追跡法として実装・解釈できる。
+- 構造係数（structure coefficients）を用いてDVの寄与を評価できる。
+- 有意性だけでなく、効果量・分類性能・検定力まで一貫して報告できる。
+- `WebPower` を用いた検定力分析でサンプルサイズ計画ができる。
 :::
+
+## なぜ個別ANOVAの繰り返しではだめなのか
+
+従属変数が複数ある場合、「DVごとにANOVAを繰り返す」アプローチをとりたくなるかもしれません。しかし、このアプローチには2つの根本的な問題があります。
+
+1. **Type Iエラーの膨張**: DV が $p$ 個あれば、各 $\alpha = .05$ で検定を繰り返すと、族全体での偽陽性率は $1 - (1 - .05)^p$ に膨張します。$p = 2$ でも 9.75%、$p = 5$ なら 22.6% に達します。Smith et al. [-@smith2020] は英才教育研究の56本を体系的にレビューし、ほぼすべての論文がMANOVA後に単変量ANOVAのみで追跡しており、Type Iエラー率が最大76%に達しうるケースがあったと報告しています。
+
+2. **DV間の相関構造の無視**: 個別ANOVAは各DVを独立に扱うため、DV間の共変動パターンに埋め込まれた群差を検出できません。MANOVAが有意でも、すべてのANOVAが非有意になるケースは珍しくありません。Warne [-@warne2014] はMANOVAの58本の実証論文をレビューし、「MANOVAを実施しながらも追跡分析で多変量構造を適切に考慮した論文はほとんどない」と指摘しています。
+
+::: {.callout-important}
+### 「MANOVA = 同時ANOVA」という誤解
+
+MANOVAは単にANOVAを同時に実行するものではありません。MANOVAは**DV間の共分散構造を考慮した上で群差を検定**します。これは、H行列（群間変動）とE行列（群内変動）の相対的な大きさを多変量的に評価するものであり、個別ANOVAにはこの情報がありません [@warne2014; @huberty2006]。Huberty & Olejnik [-@huberty2006] は、MANOVAの本質を「DVの最適な重み付け線形結合に対する検定」と定義しており、これは個別ANOVAでは原理的にアクセスできない情報です。
+:::
+
+では、MANOVAが常に最善かというと、DV間の相関の程度によって判断が変わります。
+
+| DV間相関の範囲 | MANOVAへの適合性 | 推奨 |
+|:---:|:---|:---|
+| .00 -- .30 | DVがほぼ独立。MANOVAの付加価値は小さい | 個別ANOVAでも可（Bonferroni補正付き） |
+| **.30 -- .70** | **理想的。MANOVAが最も有効に機能する** | **MANOVA推奨** |
+| .70 以上 | 多重共線性の懸念。推定が不安定になりうる | DVの統合・再検討を検討 |
+
+: DV間相関とMANOVAの適合性 {.striped}
 
 ## 回帰分析との接続
 
@@ -169,63 +88,170 @@ $$
 \mathbf{Y} = \mathbf{X}\mathbf{B} + \mathbf{E}
 $$
 
-と書けます。ここで、$\mathbf{Y}$ は複数の目的変数を列にもつ行列です。
-つまり「回帰式を同時に推定し、誤差の共分散も含めて効果を検定する」
-という理解が、回帰既習者には最も自然です [@warne2014; @huberty2006]。
+と書けます。ここで、$\mathbf{Y}$ は $n \times p$ の従属変数行列（$p$ 個のDVを列に持つ）、$\mathbf{X}$ は計画行列、$\mathbf{B}$ は係数行列、$\mathbf{E}$ は誤差行列です。つまり「回帰式を同時に推定し、**誤差の共分散構造も含めて**効果を検定する」という理解が、回帰既習者には最も自然です [@warne2014; @huberty2006]。
 
-# 統計チュートリアル文献との接続
+## H行列とE行列: MANOVAの核心
 
-本章は、以下のチュートリアル／一次資料を実務ガイドとして統合しています。
+MANOVAを理解する鍵は、**H行列**（Hypothesis SSCP）と**E行列**（Error SSCP）の関係です [@huberty2006; @psu505_lesson08]。これは、単変量ANOVAにおける群間平方和（$SS_B$）と群内平方和（$SS_W$）の多変量版です。Warne [-@warne2014] はMANOVAの理解において「H行列とE行列の比が全統計量の基盤であることを把握することが最も重要」と述べています。
 
-- MANOVAの設計と解釈: Warne (2014) [@warne2014]
-- 多変量検定統計量の性質（Pillaiの頑健性）: Olson (1974), R公式ドキュメント [@olson1974; @r_summary_manova]
-- 前提チェック（多変量正規性）: MVNパッケージ論文 [@korkmaz2014]
-- 判別分析の実装原理: MASS（`lda`, `qda`） [@venables2002; @mass_lda_doc; @mass_qda_doc]
-- 実務向けWeb教材: Penn State STAT 505 [@psu505_lesson08; @psu505_lesson10]
+| 単変量ANOVA | MANOVA | 意味 |
+|:---:|:---:|:---|
+| $SS_B$（群間平方和） | **H行列**（Hypothesis SSCP） | 群平均の散らばり（効果の大きさ） |
+| $SS_W$（群内平方和） | **E行列**（Error SSCP） | 群内のばらつき（ノイズ） |
+| $F = SS_B / SS_W$ | $\mathbf{H}\mathbf{E}^{-1}$ の固有値 | 効果がノイズに比べてどれだけ大きいか |
 
-## 主要ソースの要点（本章への反映）
+: ANOVAとMANOVAの対応関係 {.striped}
 
-### Warne (2014) から採用した点
-
-- MANOVAは、従属変数間の相関を考慮した上で群差を検討できるため、従属変数ごとにANOVAを繰り返すより理論的に一貫しやすい [@warne2014]。
-- 推奨手順は「まず多変量の全体検定、次に必要なら単変量追跡」です。本章もこの順序で構成しています [@warne2014]。
-
-### Penn State STAT 505（Lesson 8）から採用した点
-
-- MANOVAの4統計量（Wilks, Hotelling-Lawley, Pillai, Roy）は、いずれも `H` と `E`（または `H+E`）の相対的な大きさを別視点で要約するものとして整理されています [@psu505_lesson08]。
-- 実務フローとして「前提確認→MANOVA→補正付き追跡ANOVA」の順を明示しており、本章でも同じ順序を採用しています [@psu505_lesson08]。
-
-### Olson (1974) と R公式ドキュメントから採用した点
-
-- `summary.manova` の公式説明では、Pillai統計量が最も頑健として推奨されています。本章でPillaiを主報告にした理由はここです [@r_summary_manova]。
-- そのうえで他統計量も併記し、結果の一貫性を確認する運用を採用しています [@olson1974; @r_summary_manova]。
-
-### MVN論文（Korkmaz et al., 2014）から採用した点
-
-- Henze-Zirkler（HZ）検定は多変量正規性検定の有力候補で、変数のアフィン変換に不変という性質が整理されています [@korkmaz2014]。
-- 本章では「群ごとにHZ検定を行い、散布構造も併せて確認する」形で、検定と可視化を併用しています [@korkmaz2014]。
-
-### Penn State Lesson 10 と MASSドキュメントから採用した点
-
-- 判別分析の意思決定は、事後確率最大化にもとづく分類規則として説明されます [@psu505_lesson10]。
-- LDAは群間で共通共分散を仮定し、QDAは群別共分散を許容する、という使い分けを明示しました [@mass_lda_doc; @mass_qda_doc; @psu505_lesson10]。
-- 分類性能は交差検証と混同行列で評価するのが実務的であり、本章ではLOOCVでそれを実装しています [@psu505_lesson10]。
+単変量ANOVAでは $F$ 値が1つだけですが、MANOVAでは $\mathbf{H}\mathbf{E}^{-1}$ の**固有値**が $s = \min(p, k-1)$ 個（$p$ = DV数、$k$ = 群数）得られます。各固有値 $\lambda_i$ は、多変量空間における群分離の「次元」ごとの大きさを表します。
 
 ::: {.callout-note}
-## 本章の分析デザイン上の前提
+### 固有値の直感的理解
 
-ここでは、**群間（between-subjects）設計**として説明します。
-同一参加者の反復測定や項目反復を主対象にする場合は、
-混合効果モデル（第6章）に接続する方が妥当です。
+固有値 $\lambda_i$ は「$i$ 番目に重要な群分離の方向で、群差がノイズの何倍あるか」を示します。
+
+- $\lambda_1$ が大きく $\lambda_2$ が小さければ、群分離はほぼ1次元で説明できます。
+- 複数の $\lambda_i$ が大きければ、群分離は多次元的です。
+- 4つの検定統計量（Pillai, Wilks, Hotelling-Lawley, Roy）は、これらの固有値を**異なる方法で要約**したものです。
+:::
+
+## 4つの検定統計量の比較
+
+4つの検定統計量はいずれもH行列とE行列の関係を要約しますが、要約の仕方が異なります [@olson1974; @r_summary_manova; @psu505_lesson08]。
+
+| 統計量 | 数式の直感 | 有意の方向 | 頑健性 | 推奨場面 |
+|:---|:---|:---:|:---:|:---|
+| **Pillai's Trace** | $\sum \frac{\lambda_i}{1 + \lambda_i}$ | 大きい = 効果大 | **最も頑健** | **デフォルト推奨** |
+| Wilks' $\Lambda$ | $\prod \frac{1}{1 + \lambda_i}$ | 小さい = 効果大 | 中程度 | 等共分散・大標本 |
+| Hotelling-Lawley | $\sum \lambda_i$ | 大きい = 効果大 | 中程度 | 等共分散・大標本 |
+| Roy's Largest Root | $\max(\lambda_i)$ | 大きい = 効果大 | **最も脆弱** | **非推奨** |
+
+: 4つのMANOVA検定統計量の比較 [@olson1974; @psu505_lesson08] {.striped}
+
+Olson [-@olson1974] は6つの多変量検定統計量をモンテカルロ・シミュレーションで比較し、以下の実務的な結論を導いています。
+
+- **正規性違反のみ**の場合: すべての統計量が比較的頑健であり、結果は大きく変わらない。
+- **共分散行列の不等質性（等共分散の違反）**: Pillai のトレースが最も頑健。Wilks や Hotelling-Lawley は保守的になりすぎるか自由主義的になるリスクがある。
+- **不等質性 + サンプルサイズの不均衡**: 最も実務的に危険な条件。このとき、Pillai のみが名義 $\alpha$ 水準を比較的よく維持する。
+- **Roy の最大根**: F近似が上界に過ぎないため、すべての条件で最も Type I エラー率が高く、群数が多い場合やDV数が多い場合に特に問題が大きい。
+
+Penn State STAT 505 [-@psu505_lesson08] も同様に、実務でまず確認すべきはPillaiであると明記しています。R の `summary.manova()` のデフォルトがPillaiであるのもこの根拠に基づいています [@r_summary_manova]。
+
+::: {.callout-important}
+### Roy's Largest Root は実務では非推奨
+
+Roy の最大根は最大の固有値のみに基づくため、多変量的な群差の全体像を反映しません。さらに、F近似が上界に過ぎないため、Type Iエラーが膨張しやすいことが知られています。Olson [-@olson1974] のモンテカルロ研究では、正規性・等共分散の両方が違反し、かつ群サイズが不均衡な条件で、Roy のType Iエラー率が名義水準の2倍以上に達する場合があることが示されています。本章では **Pillai を主報告**とし、他の統計量は一貫性確認のために併記します。
+:::
+
+## MANOVAとDDA（判別分析）の関係
+
+MANOVAと判別分析は、同じ数学的構造の「表と裏」です [@finch2013; @huberty2006]。
+
+- **MANOVA**: 「群間に多変量的な差があるか？」を検定する（有意性の判定）
+- **DDA（Descriptive Discriminant Analysis）**: 「どのDVが、どの方向に群分離に寄与しているか？」を明らかにする（効果の解釈）
+
+両者はともに $\mathbf{H}\mathbf{E}^{-1}$ の固有値分解に基づきますが、MANOVAは固有値の大きさを検定し、DDAは対応する固有ベクトル（＝判別関数の係数）を解釈します。このため、**DDAはMANOVAの最も自然な追跡法**であり、単変量ANOVAよりも理論的に一貫した追跡分析を提供します [@smith2020; @sherry2005]。
+
+にもかかわらず、実証研究の実態はDDAの使用率が極めて低いことを示しています。
+
+- **Warne [-@warne2014]** はMANOVAを用いた58本の実証論文をレビューし、DDAを追跡法として適切に使用した論文は**1本もなかった**と報告しています。ほぼすべてが単変量ANOVAのみで追跡しており、多変量構造の解釈が放棄されていました。
+- **Smith et al. [-@smith2020]** は英才教育研究の56本をレビューし、同様の傾向を確認しています。さらに、DDAを使用しないことでType Iエラーが深刻に膨張するリスクを定量的に示しました。
+- **Finch & French [-@finch2013]** は、DDAの判別関数がMANOVAの検定統計量と数学的に同一の情報源（$\mathbf{H}\mathbf{E}^{-1}$ の固有値・固有ベクトル）に基づくことを示し、追跡法としての理論的一貫性を強調しています。
+
+本章では、これらのレビューの知見を踏まえ、**DDAを主要追跡法として一貫して使用する**方針を採ります。
+
+::: {.callout-note}
+### 本章の分析デザイン上の前提
+
+ここでは、**群間（between-subjects）設計**として説明します。同一参加者の反復測定や項目反復を主対象にする場合は、混合効果モデル（第6章）に接続する方が妥当です。
 :::
 
 ::: {.callout-warning}
-## 重要: 本章は「反復測定データ」には適用しない
+### 重要: 本章は「反復測定データ」には適用しない
 
 - 本章のデータ構造は **1参加者1行** を前提にしています。
 - 同一参加者を複数時点で追跡したデータ（within-subjects）に、そのまま本章のMANOVA/判別分析を当てると、独立性仮定を損ねる可能性があります。
 - 反復測定デザインでは、反復測定MANOVAまたは混合効果モデルを優先してください。
 :::
+
+## 統計チュートリアル文献との接続
+
+::: {.callout-note collapse="true"}
+### 主要ソースの要点（クリックで展開）
+
+本章は以下の文献を統合しています。
+
+**MANOVAの設計と解釈**
+
+- **Warne [-@warne2014]**: MANOVAの実証論文58本をレビュー。DDAを追跡に使った論文は0本。推奨手順は「(1) 前提確認 → (2) 多変量検定 → (3) 効果量 → (4) DDAによる追跡」の4段階。
+- **Penn State STAT 505 [-@psu505_lesson08]**: 4統計量はH行列とE行列の比を異なる視点で要約するもの。フローは「前提確認→MANOVA→追跡」。各統計量の数式的導出も掲載。
+
+**検定統計量の頑健性**
+
+- **Olson [-@olson1974]**: モンテカルロ・シミュレーションで6統計量を比較。正規性違反・共分散不等質性・群サイズ不均衡の3条件を組み合わせた結果、Pillaiが最も名義 $\alpha$ 水準を維持。Royは全条件で最も脆弱。
+- **R公式ドキュメント [-@r_summary_manova]**: `summary.manova()` でPillaiがデフォルト。
+
+**前提チェック**
+
+- **Korkmaz et al. [-@korkmaz2014]**: MVNパッケージ。HZ検定はアフィン変換不変で、次元数と標本サイズに依存しにくい。Mardia の歪度・尖度検定やRoyston検定も提供。
+- **Tabachnick & Fidell [-@tabachnick2019]**: Box's M は過敏であるため $p < .001$ を実務基準とする。DV間相関が .90 を超える場合は多重共線性を疑い、DV の統合を検討。
+
+**判別分析（DDA）**
+
+- **Smith et al. [-@smith2020]**: 英才教育研究56本をレビュー。ほぼ全論文が単変量ANOVAのみで追跡。Type Iエラー率は最大76%に達しうることをシミュレーションで示す。DDAの使用を強く推奨。
+- **Sherry & Henson [-@sherry2005]**: 構造係数の解釈基準（$|r_s| \geq .30$ で実質的寄与）。標準化係数は多重共線性に敏感であるため、構造係数を優先すべきことを具体例で示す。
+- **Finch & French [-@finch2013]**: DDAとMANOVAが数学的に同一の固有値分解に基づくことの厳密な証明。DVが5個以上の場合でもDDAが安定していることを示す。
+- **Penn State STAT 505 [-@psu505_lesson10]**: 7段階の判別分析手順を提示。(1) 前提確認 → (2) 判別関数推定 → (3) 有意性検定 → (4) 構造係数 → (5) 分類規則 → (6) LOOCV → (7) 結果の解釈。
+
+**HEプロット**
+
+- **Friendly [-@friendly2007]**: H行列とE行列を楕円として可視化する方法論。H楕円がE楕円からはみ出す方向が、Roy の最大根の検定で有意な方向と対応するという幾何学的解釈を提供。
+
+**教科書的参照**
+
+- **Tabachnick & Fidell [-@tabachnick2019]**: 各群のN > DV数が最低条件。構造係数 $|r_s| \geq .30$ を実質的寄与の閾値とする。DV間相関の適正範囲は .30-.70。
+- **Stevens [-@stevens2009]**: 社会科学向け。検定力の観点から、各群20名以上を推奨。効果量小（$f = .10$）の検出には各群50名以上が必要。
+- **Hahs-Vaughn [-@hahs2017]**: MANOVA の前提条件を段階的に解説。初学者向けの判断フローチャートを提供。
+:::
+
+## 分析の全体像（フローチャート）
+
+本章の分析パイプラインは以下の順で進みます。
+
+```{mermaid}
+flowchart LR
+    A["1. 前提確認<br/>MVN・Box's M"] --> B["2. MANOVA<br/>Pillai主報告"]
+    B --> C["3. HEプロット<br/>H/E行列の可視化"]
+    C --> D["4. DDA<br/>（主要追跡）"]
+    D --> E["5. 単変量ANOVA<br/>（補助的追跡）"]
+    E --> F["6. 効果量・分類精度<br/>検定力分析"]
+    F --> G["7. 報告<br/>APA準拠"]
+
+    style A fill:#e8f4fd
+    style B fill:#fff3cd
+    style C fill:#fff3cd
+    style D fill:#fff3cd
+    style G fill:#d4edda
+```
+
+また、MANOVAを使うべきかどうかの判断は以下のフローで行います。
+
+```{mermaid}
+flowchart TD
+    A["研究の問い:<br/>複数DVに群差があるか?"] --> B{"DVは2つ以上か?"}
+    B -->|"No"| C["ANOVA / t検定<br/>（1つのDVで十分）"]
+    B -->|"Yes"| D{"DV間に中程度の<br/>相関 (.30-.70)<br/>があるか?"}
+    D -->|"No (.00-.30)"| E["個別ANOVAで十分<br/>MANOVAの付加価値は小さい"]
+    D -->|"Yes"| F["MANOVAを実施"]
+    D -->|"高すぎる (>.70)"| G["多重共線性の問題<br/>DVの再検討が必要"]
+    F --> H{"Pillai有意?"}
+    H -->|"Yes"| I["追跡分析へ<br/>（DDA優先、ANOVA補助）"]
+    H -->|"No"| J["検定力を確認<br/>N不足の可能性"]
+
+    style A fill:#e8f4fd
+    style F fill:#fff3cd
+    style I fill:#d4edda
+    style J fill:#fff3cd
+```
 
 # 分析課題とフロー
 
@@ -239,23 +265,24 @@ $$
 1. データ設計と記述統計
 2. 前提チェック（独立性、多変量正規性、共分散等質性）
 3. MANOVA（4統計量を併記、主報告はPillai）
-4. 単変量追跡分析（多重性調整つき）
-5. 判別分析（LDA/QDA、LOOCV分類精度）
-6. 論文結果節向けの要約
+4. HEプロット（H行列とE行列の可視化）
+5. DDA（判別分析を主要追跡法として）
+6. 単変量追跡分析（補助的、多重性調整つき）
+7. 検定力分析
+8. 論文結果節向けの要約
 
 ::: {.callout-tip}
 ## 初回読者向けの最短ルート（20分）
 
-1. `MANOVA統計量`表のPillai列だけを読む。  
-2. `単変量追跡分析`で、どの従属変数に効果が出たかを確認する。  
-3. `LDA/QDA比較`で、群分離の実務的な大きさを把握する。  
-4. 最後の`結果記述テンプレート`を自分のデータに置き換える。  
+1. HEプロットで群分離の全体像を視覚的に把握する。
+2. MANOVA統計量表のPillai列だけを読む。
+3. DDAの構造係数で、どのDVが群分離に寄与しているかを確認する。
+4. 最後の結果記述テンプレートを自分のデータに置き換える。
 :::
 
 # データ作成（語彙学習研究を想定）
 
-ここでは、4群（2×2）・各群45名のシミュレーションデータを作成します。
-`Recall`と`Recognition`には中程度の相関を持たせます。
+ここでは、2（Treatment: Glossing vs Writing）× 2（Time: Immediate vs Delayed）の4群・各群45名のシミュレーションデータを作成します。`Recall` と `Recognition` には中程度の相関（$r \approx .40$）を持たせます。この相関水準は、MANOVAが最も有効に機能する範囲（.30-.70）内です。
 
 ```{r}
 n_per_group <- 45
@@ -321,7 +348,17 @@ simulated |>
   fmt_number(columns = c(Recall_Mean, Recognition_Mean), decimals = 2)
 ```
 
+**出力の読み方**:
+
+| 出力項目 | 読み方 |
+|:---|:---|
+| `n` | 各群のサンプルサイズ（45 = バランスド・デザイン） |
+| `Recall_Mean` | 再生テストの群平均。Writing 群が Glossing 群より高い傾向 |
+| `Recognition_Mean` | 再認テストの群平均。同様に Writing 群が高い傾向 |
+
 # 記述統計と可視化
+
+ここでは、群ごとの記述統計量（平均・標準偏差）を算出し、プロファイルプロットで群パターンを視覚化します。
 
 ```{r}
 desc_tbl <- simulated |>
@@ -360,13 +397,50 @@ p_recall + p_recog +
   )
 ```
 
+**プロファイルプロットの読み方**:
+
+- 2本の線（Treatment: Glossing vs Writing）がほぼ平行 → 交互作用は小さい
+- 線の上下差が大きい → Treatment 主効果が大きい
+- Immediate → Delayed の傾き → Time 主効果の方向
+
+## DV間相関の確認
+
+MANOVAを実施する前に、DV間の相関が適切な範囲（.30-.70）にあるかを確認します。Tabachnick & Fidell [-@tabachnick2019] は、DV間相関が .90 を超える場合は「深刻な多重共線性」と判断し、DVの統合または一方の除外を推奨しています。一方、相関が .30 未満の場合はDVがほぼ独立であるため、MANOVAの付加価値は小さく、個別ANOVAで十分な場合があります。
+
+```{r}
+cor_dvs <- cor(simulated[, c("Recall", "Recognition")])
+
+tibble(
+  DV_Pair = "Recall -- Recognition",
+  Correlation = cor_dvs[1, 2],
+  Judgment = case_when(
+    abs(cor_dvs[1, 2]) < 0.30 ~ "低い: 個別ANOVAでも可",
+    abs(cor_dvs[1, 2]) <= 0.70 ~ "適切: MANOVA推奨",
+    TRUE ~ "高すぎる: 多重共線性の懸念"
+  )
+) |>
+  gt() |>
+  tab_header(
+    title = "DV Correlation Check",
+    subtitle = "Confirming suitability for MANOVA"
+  ) |>
+  fmt_number(columns = Correlation, decimals = 3)
+```
+
+```{r}
+GGally::ggpairs(
+  simulated,
+  columns = c("Recall", "Recognition"),
+  mapping = aes(color = Group, alpha = 0.6),
+  title = "Bivariate Structure by Group"
+)
+```
+
 # MANOVAの前提
 
 ## 独立性（設計で担保する前提）
 
-独立性は、検定結果だけで担保するよりも、
-**研究計画段階（割り付け・測定手順）で保証する**ことが原則です。
-ここでは「1参加者1行」であることを確認します。
+独立性は、検定結果だけで担保するよりも、**研究計画段階（割り付け・測定手順）で保証する**ことが原則です。ここでは「1参加者1行」であることをデータ構造から確認します。
 
 ```{r}
 id_check <- simulated |>
@@ -375,10 +449,13 @@ id_check <- simulated |>
 table(id_check$rows_per_id)
 ```
 
+**出力の読み方**: すべてのIDに対して行数が1であれば、1参加者1行のデータ構造が確認できます。
+
 ## 多変量正規性（群ごと）
 
-MANOVAで確認したいのは、**各群における従属変数ベクトルの多変量正規性**です。  
-本章では Henze-Zirkler（HZ）検定を用います [@korkmaz2014]。
+MANOVAで確認したいのは、**各群における従属変数ベクトルの多変量正規性**です。全体ではなく群ごとに検定することが重要です。なぜなら、MANOVAの仮定は「各群内の残差が多変量正規分布に従う」ことだからです。
+
+本章では Henze-Zirkler（HZ）検定を用います。HZ検定はアフィン変換に不変という望ましい性質を持ちます [@korkmaz2014]。
 
 ### HZ検定をRで実施する最小コード
 
@@ -406,6 +483,14 @@ hz_overall$multivariate_normality |>
   ) |>
   fmt_number(columns = c(Statistic, p_value), decimals = 3)
 ```
+
+**`MVN::mvn()` の読み方**:
+
+| 出力項目 | 読み方 |
+|:---|:---|
+| `Test` | 使用した検定名（Henze-Zirkler） |
+| `Statistic` | HZ検定統計量。大きいほど正規性からの逸脱が大きい |
+| `p_value` | $p < .05$ なら「MVNからの逸脱が示唆される」。ただし即中止ではない |
 
 ### 群ごとのHZ検定を自動化する
 
@@ -468,8 +553,7 @@ hz_action_tbl |>
 
 ### HZ検定の補助: マハラノビス距離による外れ値診断
 
-HZ検定だけでは「どの群で逸脱が起きているか」が見えにくい場合があります。  
-そこで、群ごとにマハラノビス距離を計算し、`qchisq(0.975, df = p)` を超える比率を確認します。
+HZ検定だけでは「どの群で逸脱が起きているか」が見えにくい場合があります。そこで、群ごとにマハラノビス距離を計算し、$\chi^2_{0.975, p}$ を超える比率を確認します。マハラノビス距離は、多変量空間における「中心からの距離」であり、単変量の外れ値検出では見逃す多変量的な外れ値を検出できます。
 
 ```{r}
 summarise_mahal_outliers <- function(df, vars = c("Recall", "Recognition"), cutoff_prob = 0.975) {
@@ -501,6 +585,16 @@ mahal_tbl |>
   fmt_number(columns = c(Cutoff, Outlier_Rate), decimals = 3)
 ```
 
+**マハラノビス距離の読み方**:
+
+| 出力項目 | 読み方 |
+|:---|:---|
+| `Cutoff` | $\chi^2_{0.975, p=2} \approx 7.38$。これを超える観測が多変量的外れ値の候補 |
+| `Outlier_N` | カットオフを超えた観測数 |
+| `Outlier_Rate` | 外れ値率。正規分布なら約2.5%が期待値。10%を超えると要注意 |
+
+次に、$\chi^2$ Q-Qプロットで多変量正規性を視覚的に確認します。点が対角線に沿っていれば、マハラノビス距離が $\chi^2$ 分布に従っている（＝多変量正規性が妥当）ことを示します。
+
 ```{r}
 mahal_qq_tbl <- simulated |>
   group_by(Group) |>
@@ -526,26 +620,24 @@ ggplot(mahal_qq_tbl, aes(x = theoretical, y = observed)) +
   )
 ```
 
-```{r}
-GGally::ggpairs(
-  simulated,
-  columns = c("Recall", "Recognition"),
-  mapping = aes(color = Group, alpha = 0.6),
-  title = "Bivariate Structure by Group"
-)
-```
+**Q-Qプロットの読み方**:
+
+- 点が対角線（破線）に沿っていれば → 多変量正規性は妥当
+- 右上で対角線から上方に逸脱 → 裾が重い（外れ値が多い）
+- 系統的なS字カーブ → 歪度の問題
 
 ::: {.callout-tip}
-## HZ検定の読み方（実務）
+## HZ検定の読み方（実務まとめ）
 
-- `p >= .05`: 「MVNを棄却しない」。通常どおりMANOVAへ進む。  
-- `p < .05`: 「逸脱の示唆」。即中止ではなく、外れ値確認・図示・Pillai中心報告で対応する。  
-- 本章のように群ごとに判定し、どの群で逸脱が強いかを先に把握すると解釈が安定する。  
+- `p >= .05`: 「MVNを棄却しない」。通常どおりMANOVAへ進む。
+- `p < .05`: 「逸脱の示唆」。即中止ではなく、外れ値確認・図示・Pillai中心報告で対応する。
+- 群ごとに判定し、どの群で逸脱が強いかを先に把握すると解釈が安定する。
+- Pillai の Trace は MVN 逸脱に最も頑健な検定統計量である [@olson1974]。
 :::
 
 ### 前提チェックを一括実行する関数
 
-以下を他章にコピーすれば、`dv` と `group` を変えるだけで同じ流れを再利用できます。
+以下の関数は他章でも再利用できます。`dv` と `group` を変えるだけで同じ流れを適用できます。
 
 ```{r}
 check_manova_assumptions <- function(
@@ -624,11 +716,22 @@ assump_obj$summary |>
   )
 ```
 
+**一括チェック結果の読み方**:
+
+| Assumption | Proceed の条件 | 要注意の対応 |
+|:---|:---|:---|
+| Independence | 1参加者1行 | 反復あり → 混合モデルを検討 |
+| MVN (HZ) | 全群で p > .05 | フラグ群あり → Pillai優先 |
+| Outlier burden | 外れ値率 < 10% | 高い → 感度分析 |
+| Box's M | p > .001 | p < .001 → Pillai優先、群サイズの均衡を確認 |
+
 ## 共分散行列の等質性（Box's M）
 
-Box's M検定は有意になりやすいため、
-実務では厳しめに `p < .001` を目安に注意喚起する運用がしばしば推奨されます
-[@box1949; @huberty2006]。
+Box's M検定は「群間で共分散行列が等しい」という帰無仮説を検定します [@box1949]。MANOVAの検定統計量（特にWilks' $\Lambda$）は等共分散を仮定するため、この前提の確認が必要です。
+
+ただし、Box's M は標本サイズに対して過敏であり、大標本では実質的に無視できる程度の違いでも有意になることがあります。このため、Tabachnick & Fidell [-@tabachnick2019] および Huberty & Olejnik [-@huberty2006] は、$p < .05$ ではなく **$p < .001$ を実務的な基準**として採用することを推奨しています。
+
+さらに、Olson [-@olson1974] のモンテカルロ研究は、等共分散の違反があっても**群サイズが均衡していればPillaiのトレースは比較的頑健**であることを示しています。最も危険なのは「共分散不等質 + 群サイズ不均衡」の組み合わせであり、この条件ではすべての検定統計量が影響を受けますが、Pillaiが最も安定しています。
 
 ```{r}
 box_m <- biotools::boxM(
@@ -654,6 +757,15 @@ box_tbl |>
   fmt_number(columns = c(Statistic, p_value), decimals = 3) |>
   fmt_number(columns = df, decimals = 0)
 ```
+
+**`Box's M` の読み方**:
+
+| 出力項目 | 読み方 |
+|:---|:---|
+| `Statistic` | Box の M 統計量。大きいほど群間の共分散行列の差が大きい |
+| `df` | 近似 $\chi^2$ の自由度（群数とDV数に依存） |
+| `p_value` | $p < .001$ なら共分散等質性に注意。$p < .05$ でも即問題ではない |
+| `Decision` | 判定結果。注意の場合は Pillai を優先し、群サイズの均衡を確認 |
 
 ```{r}
 assumption_summary <- tibble(
@@ -686,8 +798,7 @@ assumption_summary |>
 
 ## 4つの統計量を併記して確認
 
-小標本や前提違反の可能性があるときは、
-Pillai統計量が比較的頑健とされます [@olson1974; @r_summary_manova]。
+ここでは、`manova()` 関数を用いて多変量分散分析を実行します。`cbind(Recall, Recognition)` で2つの従属変数を同時に指定し、Treatment と Time の主効果および交互作用を検定します。4つの検定統計量を併記しますが、**Pillai のトレースを主報告**とします [@olson1974; @r_summary_manova]。
 
 ```{r}
 fit_manova <- manova(
@@ -729,6 +840,17 @@ manova_tbl |>
   )
 ```
 
+**MANOVA出力の読み方**:
+
+| 出力項目 | 読み方 |
+|:---|:---|
+| `Test` | 使用した検定統計量（Pillai を主報告） |
+| `Effect` | Treatment（主効果）、Time（主効果）、Treatment:Time（交互作用） |
+| `Statistic` | 検定統計量の値。Pillai は 0-1 の範囲で、1 に近いほど効果が大きい |
+| `Approx_F` | F 近似値。大きいほど効果が強い |
+| `df1, df2` | 仮説自由度と誤差自由度 |
+| `p_value` | $p < .05$ なら多変量的に有意（太字で強調） |
+
 ## 主報告（Pillai）を抽出
 
 ```{r}
@@ -747,95 +869,218 @@ pillai_focus |>
   fmt_number(columns = c(Statistic, Approx_F, p_value), decimals = 3)
 ```
 
-# 単変量追跡分析（Follow-up）
+## 多変量効果量（Pillai のトレースに基づく $\eta^2$）
 
-MANOVAで有意な効果が見られた場合、
-どの従属変数が効果を担っているかを単変量で追跡します。
-ここでは6つの検定（2従属変数 × 3効果）に対して Holm 補正を適用します。
+Pillai のトレース自体が 0-1 の範囲をとるため、多変量効果量の指標として直接的に解釈できます。ただし、Warne [-@warne2014] の4段階手順にならい、効果量を明示的に算出して報告します。多変量 $\eta^2$ は $\text{Pillai} / s$（$s = \min(p, k-1)$）で近似できます [@tabachnick2019]。
 
 ```{r}
-aov_recall <- aov(Recall ~ Treatment * Time, data = simulated)
-aov_recognition <- aov(Recognition ~ Treatment * Time, data = simulated)
+# 多変量効果量の算出
+p_dvs <- 2  # DV数
+k_groups <- 4  # 群数（Treatment × Time）
+s_value <- min(p_dvs, k_groups - 1)
 
-followup_tbl <- bind_rows(
-  broom::tidy(aov_recall) |>
-    mutate(Outcome = "Recall"),
-  broom::tidy(aov_recognition) |>
-    mutate(Outcome = "Recognition")
-) |>
-  filter(term != "Residuals") |>
+multivariate_eta2 <- pillai_focus |>
   mutate(
-    p_holm = p.adjust(p.value, method = "holm")
+    s = s_value,
+    Multivariate_eta2 = Statistic / s,
+    Size_label = case_when(
+      Multivariate_eta2 >= 0.14 ~ "大きい",
+      Multivariate_eta2 >= 0.06 ~ "中程度",
+      Multivariate_eta2 >= 0.01 ~ "小さい",
+      TRUE ~ "ほぼゼロ"
+    )
   ) |>
-  dplyr::select(Outcome, term, df, statistic, p.value, p_holm)
+  dplyr::select(Effect, Statistic, s, Multivariate_eta2, Size_label)
 
-followup_tbl |>
+multivariate_eta2 |>
   gt() |>
   tab_header(
-    title = "Univariate Follow-up Tests",
-    subtitle = "ANOVA with Holm-adjusted p-values"
+    title = "Multivariate Effect Size",
+    subtitle = "Approximate multivariate eta-squared based on Pillai's trace"
   ) |>
-  fmt_number(columns = c(statistic, p.value, p_holm), decimals = 4) |>
-  fmt_number(columns = df, decimals = 0) |>
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = p_holm, rows = p_holm < 0.05)
-  )
+  fmt_number(columns = c(Statistic, Multivariate_eta2), decimals = 3)
 ```
 
-## 効果量（偏η²）
+**多変量 $\eta^2$ の解釈基準**（Cohen の基準を準用）:
+
+| $\eta^2$ | 効果の大きさ |
+|:---:|:---|
+| .01 | 小さい |
+| .06 | 中程度 |
+| .14 | 大きい |
+
+::: {.callout-important}
+### MANOVAの有意性と追跡検定のType Iエラー
+
+「MANOVAが有意なら、追跡ANOVAのType Iエラーは制御されている」と書かれることがありますが、これは**誤り**です。MANOVAの有意性は多変量空間での検定結果であり、個々のDVに対する保護効果は提供しません。追跡分析では依然として多重性調整（Holm法など）が必要です [@huberty2006]。
+
+Smith et al. [-@smith2020] は56本のレビューにより、この誤解に基づく慣行が広く定着していることを実証しました。さらに重要なことに、単変量ANOVAによる追跡は**多変量パターンを見逃す**可能性があります。Warne [-@warne2014] は58本のレビューでDDAを使った論文がゼロであったことを示し、DDAこそがMANOVAの数学的構造と整合した追跡法であると強調しています。
+:::
+
+# HEプロット: H行列とE行列の可視化
+
+HEプロットは、MANOVA のH行列（群間変動）とE行列（群内変動）を**楕円として可視化**する手法です [@friendly2007]。Friendly [-@friendly2007] はこの手法を体系的に定式化し、多変量一般線形モデルの効果を2次元散布図上で幾何学的に解釈する方法を示しました。
+
+HEプロットの核心的な読み方は次のとおりです。
+
+- **E楕円**は群内変動（誤差）の大きさと方向を表す。E楕円は全効果で共通です。
+- **H楕円**は各効果の群間変動を表す。効果ごとに1つずつ描かれます。
+- **H楕円がE楕円からはみ出す方向**は、その効果が統計的に有意な方向を示す。Friendly [-@friendly2007] はこれが**Roy の最大根の検定で有意になる方向と幾何学的に対応する**ことを証明しています。
+- H楕円がE楕円に完全に収まる場合、その効果は（少なくともその2DV平面では）有意ではない。
+
+この幾何学的対応は、数値だけでは把握しにくい多変量的な群差のパターンを直感的に読み取ることを可能にします。
+
+## H行列とE行列の確認
+
+まず、H行列とE行列を数値で確認します。
 
 ```{r}
-eta_tbl <- bind_rows(
-  as.data.frame(effectsize::eta_squared(aov_recall, partial = TRUE)) |>
-    mutate(Outcome = "Recall"),
-  as.data.frame(effectsize::eta_squared(aov_recognition, partial = TRUE)) |>
-    mutate(Outcome = "Recognition")
+# Treatment × Time の2要因MANOVAフィット（再利用）
+H_matrices <- summary(fit_manova)$SS
+E_matrix <- H_matrices$Residuals
+H_treatment <- H_matrices$Treatment
+H_time <- H_matrices$Time
+H_interaction <- H_matrices$`Treatment:Time`
+
+# H行列の表示
+tibble(
+  Effect = c("Treatment", "Time", "Interaction"),
+  H_Recall_Recall = c(H_treatment[1,1], H_time[1,1], H_interaction[1,1]),
+  H_Recall_Recog = c(H_treatment[1,2], H_time[1,2], H_interaction[1,2]),
+  H_Recog_Recog = c(H_treatment[2,2], H_time[2,2], H_interaction[2,2])
 ) |>
-  dplyr::select(Outcome, Parameter, Eta2_partial, CI_low, CI_high)
-
-eta_tbl |>
   gt() |>
   tab_header(
-    title = "Effect Sizes",
-    subtitle = "Partial eta-squared for follow-up ANOVAs"
+    title = "Hypothesis SSCP Matrices (H)",
+    subtitle = "Between-group variation for each effect"
   ) |>
-  fmt_number(columns = c(Eta2_partial, CI_low, CI_high), decimals = 3)
+  fmt_number(decimals = 2)
 ```
 
-## 事後比較（セル平均の比較）
+**H行列の読み方**:
+
+| 要素 | 意味 |
+|:---|:---|
+| `H_Recall_Recall` | Recall における群間変動（対角要素 = 分散成分） |
+| `H_Recog_Recog` | Recognition における群間変動 |
+| `H_Recall_Recog` | Recall と Recognition の群間共変動（非対角要素）。正なら両DVが同方向に群差を持つ |
+
+## 2要因MANOVAのHEプロット
+
+ここでは、`heplots::heplot()` を用いて各効果のH楕円とE楕円を重ねてプロットします。
 
 ```{r}
-lm_recall <- lm(Recall ~ Treatment * Time, data = simulated)
-lm_recognition <- lm(Recognition ~ Treatment * Time, data = simulated)
+#| fig-height: 6
+#| fig-width: 8
 
-pairs_recall <- emmeans::emmeans(lm_recall, ~ Treatment * Time) |>
-  pairs(adjust = "holm") |>
-  as.data.frame() |>
-  mutate(Outcome = "Recall")
+# lm() オブジェクトが必要（heplot は lm を受け付ける）
+fit_lm_mv <- lm(cbind(Recall, Recognition) ~ Treatment * Time, data = simulated)
 
-pairs_recognition <- emmeans::emmeans(lm_recognition, ~ Treatment * Time) |>
-  pairs(adjust = "holm") |>
-  as.data.frame() |>
-  mutate(Outcome = "Recognition")
-
-bind_rows(pairs_recall, pairs_recognition) |>
-  dplyr::select(Outcome, contrast, estimate, SE, df, t.ratio, p.value) |>
-  gt() |>
-  tab_header(
-    title = "Post-hoc Pairwise Comparisons",
-    subtitle = "Estimated marginal means (Holm-adjusted)"
-  ) |>
-  fmt_number(columns = c(estimate, SE, t.ratio, p.value), decimals = 4) |>
-  fmt_number(columns = df, decimals = 0)
+heplots::heplot(
+  fit_lm_mv,
+  fill = TRUE,
+  fill.alpha = 0.1,
+  main = "HE Plot: Treatment × Time Effects on Recall and Recognition",
+  xlab = "Recall",
+  ylab = "Recognition"
+)
 ```
 
-# 判別分析（LDA / QDA）
+**HEプロットの読み方**:
 
-MANOVAが「平均ベクトル差の有無」を検定するのに対し、
-判別分析は「どの程度、群を分離できるか」を示します。
+| プロット要素 | 意味 |
+|:---|:---|
+| **E楕円**（最も大きい楕円） | 群内のばらつき（誤差）の大きさと形状 |
+| **H楕円**（効果ごとの小さい楕円） | 各効果（Treatment, Time, 交互作用）の群間変動 |
+| H楕円がE楕円を**超える方向** | その方向で群差が統計的に有意 |
+| H楕円がE楕円に**収まる** | その効果はその方向では非有意 |
+| 楕円の**傾き** | DV間の相関の方向（正の相関なら右上がり） |
+
+::: {.callout-tip}
+### HEプロットの実務的な読み方
+
+HEプロットでは「H楕円がE楕円からはみ出す方向」に注目してください [@friendly2007]。
+
+1. **はみ出す方向**: H楕円がE楕円の外に出る方向が、統計的に有意な群差の方向です。これはRoyの最大根の検定方向と幾何学的に対応します。
+2. **楕円の大きさ**: H楕円が大きいほど群間変動が大きい。E楕円に完全に収まるH楕円は、その効果が（その平面では）小さいことを示します。
+3. **楕円の傾き**: DV間に正の相関がある場合、楕円は右上がりに傾きます。この傾きの方向は DV 間の共分散構造を反映しています。
+4. **複数の効果の比較**: Treatment のH楕円が大きく、Interaction のH楕円が小さければ、主効果が支配的で交互作用は弱いことが一目でわかります。
+
+Friendly [-@friendly2007] は、HEプロットの最大の利点を「数表だけでは見えない多変量的パターンを、研究者が直感的に把握できること」と述べています。特に、MANOVAが有意なのに全ANOVAが非有意なケース（DVの組み合わせが群差を担う場合）では、HEプロットが唯一の視覚的手がかりを提供します。
+:::
+
+## 1要因（Group）でのHEプロット
+
+4群をまとめた1要因モデルでのHEプロットも確認します。
+
+```{r}
+#| fig-height: 6
+#| fig-width: 8
+
+fit_lm_oneway <- lm(cbind(Recall, Recognition) ~ Group, data = simulated)
+
+heplots::heplot(
+  fit_lm_oneway,
+  fill = TRUE,
+  fill.alpha = 0.1,
+  main = "HE Plot: Group Effect (One-way)",
+  xlab = "Recall",
+  ylab = "Recognition"
+)
+```
+
+## 正準判別プロット
+
+正準判別分析は、群分離を最大化する線形結合（正準判別関数）を求め、その空間にデータを射影します。
+
+```{r}
+#| fig-height: 6
+#| fig-width: 8
+
+can_fit <- candisc::candisc(fit_lm_oneway)
+plot(can_fit,
+     main = "Canonical Discriminant Plot")
+```
+
+**正準判別プロットの読み方**:
+
+| 要素 | 意味 |
+|:---|:---|
+| Can1（横軸） | 第1正準判別関数。群分離を最も多く説明する方向 |
+| Can2（縦軸） | 第2正準判別関数。Can1 に直交する方向での追加的な群分離 |
+| 各群の点と楕円 | 群の分布。楕円が離れているほど群分離が大きい |
+| 矢印（ベクトル） | 各DVが正準空間でどの方向に寄与しているか |
+
+# 判別分析による追跡（DDA）: 主要追跡法
+
+MANOVAは「群間に多変量的な差があるか？」を検定しますが、**どのDVが、どの方向に群分離に寄与しているか**は明らかにしません。DDA（Descriptive Discriminant Analysis）は、MANOVAと同じ固有値分解を逆方向から解釈することで、この問いに答えます [@smith2020; @finch2013; @sherry2005]。
+
+Penn State STAT 505 [-@psu505_lesson10] は、判別分析を以下の7段階で体系化しています。本章もこの流れに沿って進めます。
+
+1. **前提の確認**: 多変量正規性、共分散行列の等質性（Box's M）
+2. **判別関数の推定**: $\mathbf{H}\mathbf{E}^{-1}$ の固有値分解から判別関数を導出
+3. **有意性の検定**: 各判別関数のWilks' $\Lambda$ 検定（MANOVAと等価）
+4. **構造係数の評価**: DVと判別関数の相関（$|r_s| \geq .30$ が実質的寄与の基準; @tabachnick2019）
+5. **分類規則の構築**: 事前確率と誤分類コストに基づく判別境界
+6. **交差検証**: LOOCVによる分類精度の評価
+7. **結果の解釈**: 構造係数・分散説明割合・分類精度を統合的に報告
+
+::: {.callout-note}
+### DDAとANOVA追跡の比較
+
+| 追跡法 | 利点 | 限界 |
+|:---|:---|:---|
+| **DDA（判別分析）** | 多変量構造を保持し、DV間の相関を考慮。MANOVAと数学的に整合 [@finch2013] | 英語教育研究では馴染みが薄い場合がある |
+| 個別ANOVA | 直感的に理解しやすい。個々のDVの効果量が明確 | DV間の相関を無視。Type Iエラー膨張（最大76%; @smith2020）。多変量パターンを見逃す |
+
+Warne [-@warne2014] のレビューでは、MANOVAを使った58本中DDAを適切に使った論文は0本でした。本章では **DDAを主要追跡法**とし、個別ANOVAは補助的な追跡法として後に報告します。
+:::
 
 ## LDAの推定と係数
+
+ここでは、`MASS::lda()` を用いて線形判別分析を実行します [@venables2002; @mass_lda_doc]。DDAとして使う場合、分類精度よりも**判別関数の係数**と**構造係数**に注目します。
+
+Finch & French [-@finch2013] が示したように、LDAの判別関数は $\mathbf{H}\mathbf{E}^{-1}$ の固有ベクトルに対応しており、MANOVAの固有値と同一の情報源です。つまり、LDAの結果を解釈することは、MANOVAの結果を「群分離の方向と構造」という観点から補完することに相当します。
 
 ```{r}
 lda_fit <- MASS::lda(
@@ -865,7 +1110,93 @@ centroid_tbl |>
   fmt_number(columns = c(Recall, Recognition), decimals = 2)
 ```
 
+**LDA係数の読み方**:
+
+| 出力項目 | 読み方 |
+|:---|:---|
+| `LD1`, `LD2`, ... | 判別関数の係数。各DVにどの重みをかけて線形結合を作るか |
+| 群重心 | 各群がLD空間のどこに位置するか。重心が離れているほど群分離が良い |
+
+## 構造係数（Structure Coefficients）
+
+構造係数は、各DVと判別関数の相関であり、**各DVが判別関数にどれだけ寄与しているか**を示します。Sherry & Henson [-@sherry2005] は構造係数を「判別関数が捉える多変量的パターンの中で、各DVがどの程度そのパターンを共有しているか」と定義しています。
+
+標準化係数（LDA係数）は回帰分析の $\beta$ 係数と同様に多重共線性の影響を受けますが、構造係数は**DV間の相関に対してより安定**しています。Tabachnick & Fidell [-@tabachnick2019] は、DV間相関が .40 を超える場合、標準化係数と構造係数の乖離が大きくなりうることを示しており、そのような場合に構造係数の優先使用を推奨しています。
+
+```{r}
+lda_pred <- predict(lda_fit, newdata = simulated)
+
+# 構造係数 = 各DVと判別関数スコアの相関
+structure_coefs <- cor(
+  simulated[, c("Recall", "Recognition")],
+  lda_pred$x
+)
+
+as.data.frame(structure_coefs) |>
+  rownames_to_column("Variable") |>
+  gt() |>
+  tab_header(
+    title = "Structure Coefficients",
+    subtitle = "Correlations between DVs and discriminant functions"
+  ) |>
+  fmt_number(columns = starts_with("LD"), decimals = 3)
+```
+
+**構造係数の解釈基準** [@tabachnick2019]:
+
+| 構造係数の絶対値 | 解釈 |
+|:---:|:---|
+| $\geq .30$ | **実質的な寄与**。その判別関数への重要な貢献 |
+| .15 -- .30 | 中程度の寄与。補助的に解釈 |
+| $< .15$ | 寄与はわずか。その判別関数には実質的に貢献していない |
+
+::: {.callout-important}
+### 標準化係数 vs 構造係数: どちらを報告すべきか
+
+LDA の標準化係数は回帰分析の $\beta$ と同様に、多重共線性の影響を受けます。DV間の相関が高い場合、一方のDVの係数が不安定になったり、符号が反転したりすることがあります。
+
+Sherry & Henson [-@sherry2005] は以下の指針を示しています。
+
+1. **構造係数を常に報告する**。標準化係数のみの報告は、多変量構造の解釈を歪める。
+2. **両者が一致する場合**: DV間の多重共線性が低い。標準化係数も信頼できる。
+3. **両者が乖離する場合**: DV間の多重共線性が高い。構造係数を優先し、標準化係数は参考として報告する。
+4. **構造係数の符号が逆転する場合**: そのDVは他のDVを通じて間接的に判別関数に関与している（抑圧効果の可能性）。
+
+Tabachnick & Fidell [-@tabachnick2019] も同じ立場をとり、「構造係数 $\geq .30$ を実質的寄与の閾値とする」という基準を広く普及させています。
+:::
+
+## 分散説明割合（Proportion of Trace）
+
+各判別関数が群間分散のどれだけを説明するかを確認します。
+
+```{r}
+prop_trace <- lda_fit$svd^2 / sum(lda_fit$svd^2)
+
+tibble(
+  Function = paste0("LD", seq_along(prop_trace)),
+  Eigenvalue = lda_fit$svd^2,
+  Proportion = prop_trace,
+  Cumulative = cumsum(prop_trace)
+) |>
+  gt() |>
+  tab_header(
+    title = "Proportion of Trace",
+    subtitle = "Variance explained by each discriminant function"
+  ) |>
+  fmt_number(columns = Eigenvalue, decimals = 3) |>
+  fmt_percent(columns = c(Proportion, Cumulative), decimals = 1)
+```
+
+**Proportion of Trace の読み方**:
+
+- LD1 の Proportion が 90% 以上 → 群分離はほぼ1次元で説明できる
+- 複数のLDが大きな割合を占める → 群分離は多次元的（DVの役割が異なる方向で発揮される）
+
 ## LOOCVによる分類精度
+
+DDAの分類性能を Leave-One-Out Cross-Validation（LOOCV）で評価します [@psu505_lesson10]。LOOCVは各観測を1つずつ除外して残りで判別関数を推定し、除外した観測の群を予測します。これにより、過学習を軽減した分類精度が得られます。
+
+Penn State STAT 505 [-@psu505_lesson10] の7段階手順では、LOOCVは第6段階に位置づけられ、「判別関数の予測的妥当性を新データに対して検証する」ステップとして位置づけられています。再代入精度（学習データ自体での正解率）は過大評価されるため、LOOCVまたはk分割交差検証が標準的です。
 
 ```{r}
 lda_cv <- MASS::lda(
@@ -904,6 +1235,15 @@ lda_metric_tbl |>
   ) |>
   fmt_percent(columns = Value, decimals = 1)
 ```
+
+**混同行列の読み方**:
+
+| 指標 | 意味 |
+|:---|:---|
+| 対角線 | 正しく分類された数。大きいほど良い |
+| 非対角線 | 誤分類。どの群がどの群に間違われやすいかを示す |
+| Overall accuracy | 全体正解率。チャンス水準（25.0%、4群均等の場合）を大きく上回るか確認 |
+| Balanced accuracy | 群サイズの不均衡を補正した正解率 |
 
 ### 群別指標（Precision / Recall / F1）
 
@@ -968,9 +1308,9 @@ lda_acc_ci |>
 
 ## LDA判別空間の可視化
 
-```{r}
-lda_pred <- predict(lda_fit, newdata = simulated)
+判別関数スコアの散布図で、4群がどの程度分離しているかを視覚的に確認します。
 
+```{r}
 lda_scores <- as_tibble(lda_pred$x) |>
   mutate(Group = simulated$Group)
 
@@ -990,7 +1330,15 @@ ggplot(lda_scores, aes(x = LD1, y = LD2, color = Group)) +
   )
 ```
 
+**判別空間の読み方**:
+
+- 楕円が重なりが少ないほど → 群分離が良好
+- LD1 方向で分離 → 第1判別関数が支配的
+- LD2 方向でも分離 → 2次元的な群差がある
+
 ## QDAとの比較
+
+LDAは**全群で共通の共分散行列を仮定**しますが、QDA（Quadratic Discriminant Analysis）は**群ごとに異なる共分散行列を許容**します [@venables2002; @mass_lda_doc; @mass_qda_doc]。Box's M検定が有意で、群間の共分散構造が異なる場合はQDAの方が適切な可能性があります。ただし、QDAはパラメータ数が多いため、各群に十分な標本サイズが必要です。
 
 ```{r}
 qda_cv <- MASS::qda(
@@ -1050,6 +1398,15 @@ bind_rows(
   ) |>
   fmt_percent(columns = c(Accuracy, CI_low, CI_high), decimals = 1)
 ```
+
+**LDA vs QDA の選択基準**:
+
+| 条件 | 推奨 |
+|:---|:---|
+| Box's M が非有意（$p > .001$） | LDA（よりパーシモニアス） |
+| Box's M が有意（$p < .001$）かつ各群のN > DV数 + 1 | QDA を検討 |
+| LDA と QDA の精度がほぼ同じ | LDA を選択（より安定） |
+| QDA が明らかに優れる | QDA を報告（Box's M の有意性と合わせて根拠を明記） |
 
 ### 判別分析を再利用する関数（汎用）
 
@@ -1111,23 +1468,430 @@ bind_rows(demo_lda$summary, demo_qda$summary) |>
   fmt_percent(columns = c(Overall_Accuracy, Balanced_Accuracy, Chance_Level), decimals = 1)
 ```
 
-# 結果記述テンプレート（論文の結果節向け）
+# 単変量追跡分析（Follow-up）: 補助的追跡法
 
-以下の順で書くと、英語教育分野の実証論文でも読みやすくなります。
+前節でDDAを主要追跡法として実施しました。ここでは、**補助的な追跡法**として単変量ANOVAを実行します。Warne [-@warne2014] の推奨手順に沿いつつも、個々のDVについて効果量を確認するために補助的に報告します。DV間の相関構造は考慮されない点に留意してください。
 
-1. 前提チェック（独立性は設計で担保、多変量正規性と共分散等質性の結果）
-2. MANOVA主結果（Pillaiを主報告、他統計量は補足）
-3. 単変量追跡（どの従属変数で効果が出たか）
-4. 効果量（偏η²）
-5. 判別分析（分類精度がチャンス水準をどれだけ上回るか）
+::: {.callout-warning}
+### 単変量追跡の限界
+
+**注意**: 単変量ANOVAを追跡法として使う場合、以下の2つの問題があります [@smith2020; @finch2013]。
+
+1. **Type Iエラーの膨張**: 2 DV × 3 効果 = 6検定。Holm補正が必要。Smith et al. [-@smith2020] は、無補正の単変量追跡でType Iエラー率が最大76%に達しうることをシミュレーションで示しています。
+2. **多変量パターンの見逃し**: DV間の相関を無視するため、個々のANOVAでは非有意でもMANOVAでは有意になるケースを説明できない。Finch & French [-@finch2013] はこのケースをDDAでのみ解釈できることを示しています。
+
+Warne [-@warne2014] の58本レビューでは、ほぼすべてがANOVAのみで追跡しDDAを使っていませんでした。本章では**DDAを主要追跡法**とし、ANOVAは補助的に使います。
+:::
+
+MANOVAで有意な効果が見られた場合、どの従属変数が効果を担っているかを単変量で追跡します。ここでは6つの検定（2従属変数 × 3効果）に対して Holm 補正を適用します。
+
+```{r}
+aov_recall <- aov(Recall ~ Treatment * Time, data = simulated)
+aov_recognition <- aov(Recognition ~ Treatment * Time, data = simulated)
+
+followup_tbl <- bind_rows(
+  broom::tidy(aov_recall) |>
+    mutate(Outcome = "Recall"),
+  broom::tidy(aov_recognition) |>
+    mutate(Outcome = "Recognition")
+) |>
+  filter(term != "Residuals") |>
+  mutate(
+    p_holm = p.adjust(p.value, method = "holm")
+  ) |>
+  dplyr::select(Outcome, term, df, statistic, p.value, p_holm)
+
+followup_tbl |>
+  gt() |>
+  tab_header(
+    title = "Univariate Follow-up Tests",
+    subtitle = "ANOVA with Holm-adjusted p-values"
+  ) |>
+  fmt_number(columns = c(statistic, p.value, p_holm), decimals = 4) |>
+  fmt_number(columns = df, decimals = 0) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = p_holm, rows = p_holm < 0.05)
+  )
+```
+
+**追跡ANOVAの読み方**:
+
+| 出力項目 | 読み方 |
+|:---|:---|
+| `Outcome` | どのDVの結果か |
+| `term` | 効果名（Treatment, Time, 交互作用） |
+| `statistic` | F値 |
+| `p.value` | 補正前のp値 |
+| `p_holm` | Holm補正後のp値。**こちらを報告に使用する** |
+
+## 効果量（偏η²）
+
+```{r}
+eta_tbl <- bind_rows(
+  as.data.frame(effectsize::eta_squared(aov_recall, partial = TRUE)) |>
+    mutate(Outcome = "Recall"),
+  as.data.frame(effectsize::eta_squared(aov_recognition, partial = TRUE)) |>
+    mutate(Outcome = "Recognition")
+) |>
+  dplyr::select(Outcome, Parameter, Eta2_partial, CI_low, CI_high)
+
+eta_tbl |>
+  gt() |>
+  tab_header(
+    title = "Effect Sizes",
+    subtitle = "Partial eta-squared for follow-up ANOVAs"
+  ) |>
+  fmt_number(columns = c(Eta2_partial, CI_low, CI_high), decimals = 3)
+```
+
+**偏η²の解釈基準**:
+
+| 偏η² | 効果の大きさ |
+|:---:|:---|
+| .01 | 小さい効果 |
+| .06 | 中程度の効果 |
+| .14 | 大きい効果 |
+
+## 事後比較（セル平均の比較）
+
+```{r}
+lm_recall <- lm(Recall ~ Treatment * Time, data = simulated)
+lm_recognition <- lm(Recognition ~ Treatment * Time, data = simulated)
+
+pairs_recall <- emmeans::emmeans(lm_recall, ~ Treatment * Time) |>
+  pairs(adjust = "holm") |>
+  as.data.frame() |>
+  mutate(Outcome = "Recall")
+
+pairs_recognition <- emmeans::emmeans(lm_recognition, ~ Treatment * Time) |>
+  pairs(adjust = "holm") |>
+  as.data.frame() |>
+  mutate(Outcome = "Recognition")
+
+bind_rows(pairs_recall, pairs_recognition) |>
+  dplyr::select(Outcome, contrast, estimate, SE, df, t.ratio, p.value) |>
+  gt() |>
+  tab_header(
+    title = "Post-hoc Pairwise Comparisons",
+    subtitle = "Estimated marginal means (Holm-adjusted)"
+  ) |>
+  fmt_number(columns = c(estimate, SE, t.ratio, p.value), decimals = 4) |>
+  fmt_number(columns = df, decimals = 0)
+```
+
+# 検定力分析
+
+MANOVAは多変量検定であるため、推定すべきパラメータが単変量ANOVAよりも多くなります。十分な検定力（通常 $\geq .80$）を確保するには、サンプルサイズの事前計画が不可欠です。
+
+Tabachnick & Fidell [-@tabachnick2019] は、MANOVAにおけるサンプルサイズの基本ルールとして以下を示しています。
+
+| ルール | 内容 | 根拠 |
+|:---|:---|:---|
+| **最低条件** | 各セルの $n >$ DV数 | 群内共分散行列が非特異であるために必要 |
+| **推奨条件** | 各セルの $n \geq 20$ | 検定統計量のF近似が安定するために推奨 [@stevens2009] |
+| **DDA用の追加条件** | 各セルの $n \geq$ DV数 + 1（QDA使用時は特に重要） | QDAの群別共分散推定に必要 |
+| **検定力の確保** | 総N に対して検定力計算で .80 以上 | 事前のパワー分析で確認 [@zhang2018] |
+
+: MANOVAのサンプルサイズに関する基本ルール {.striped}
+
+ここでは `WebPower` パッケージの `wp.kanova()` を用いてMANOVA近似の検定力を計算します [@zhang2018]。MANOVAの場合、分子自由度は $\text{ndf} = p \times (k - 1)$（DV数 × 群の自由度）となります。4群・2DVの場合、$\text{ndf} = 2 \times 3 = 6$ です。
+
+## 本データの検定力
+
+```{r}
+# MANOVA近似: ndf = p × (k-1) = 2 × 3 = 6
+wp_result <- WebPower::wp.kanova(
+  n = nrow(simulated),
+  ndf = 6,
+  f = 0.25,
+  ng = 4,
+  alpha = 0.05,
+  power = NULL
+)
+
+tibble(
+  Parameter = c("Total N", "Groups (ng)", "Numerator df (ndf)", "Effect size (f)", "Alpha", "Power"),
+  Value = c(
+    wp_result$n,
+    wp_result$ng,
+    wp_result$ndf,
+    wp_result$f,
+    wp_result$alpha,
+    round(wp_result$power, 3)
+  )
+) |>
+  gt() |>
+  tab_header(
+    title = "Power Analysis for Current Design",
+    subtitle = "WebPower::wp.kanova() — MANOVA approximation"
+  )
+```
+
+**検定力分析の読み方**:
+
+| パラメータ | 意味 |
+|:---|:---|
+| `n` | 総サンプルサイズ |
+| `ng` | 群数 |
+| `ndf` | 分子自由度（MANOVA: DV数 × 群の自由度） |
+| `f` | Cohen の f（中程度 = 0.25） |
+| `power` | 検定力。.80以上が望ましい |
+
+## サンプルサイズと検定力の関係
+
+```{r}
+n_seq <- seq(40, 300, by = 20)
+power_curve <- purrr::map_dfr(n_seq, ~ {
+  res <- WebPower::wp.kanova(
+    n = .x, ndf = 6, f = 0.25,
+    ng = 4, alpha = 0.05, power = NULL
+  )
+  tibble(n = .x, power = res$power)
+})
+
+ggplot(power_curve, aes(x = n, y = power)) +
+  geom_line(linewidth = 1.1, color = "#2c3e50") +
+  geom_hline(yintercept = 0.80, linetype = "dashed", color = "red") +
+  annotate("text", x = 250, y = 0.82, label = "Power = .80 threshold", color = "red") +
+  labs(
+    title = "Power Curve for MANOVA",
+    subtitle = "4 groups, 2 DVs, Cohen's f = 0.25 (ndf = 6)",
+    x = "Total sample size",
+    y = "Statistical power"
+  )
+```
+
+## 必要サンプルサイズの算出
+
+目標検定力 .80 に必要な総サンプルサイズを逆算します。
+
+```{r}
+wp_n <- WebPower::wp.kanova(
+  n = NULL,
+  ndf = 6,
+  f = 0.25,
+  ng = 4,
+  alpha = 0.05,
+  power = 0.80
+)
+
+tibble(
+  Target_Power = 0.80,
+  Required_N = ceiling(wp_n$n),
+  Per_Group = ceiling(wp_n$n / 4)
+) |>
+  gt() |>
+  tab_header(
+    title = "Required Sample Size",
+    subtitle = "For 4 groups, 2 DVs, f = 0.25, power = .80"
+  )
+```
 
 ::: {.callout-tip}
-## 記述例（日本語）
+### 英語教育研究における効果量の目安
 
-「Treatment と Time を要因、Recall と Recognition を従属変数とする2要因MANOVAを実施した。  
-Pillaiのトレースに基づく検定の結果、Treatment主効果は有意であった（F(...)=..., p=...）。  
-追跡的な単変量分散分析では、Recognitionにおいて同効果が確認され、Holm補正後も有意であった。  
-さらにLDAのLOOCV分類精度はチャンス水準を上回り、群分離の実務的妥当性が示唆された。」
+| 効果量 (f) | 英語教育研究での目安 | 必要N（4群, 2DV, power=.80） |
+|:---:|:---|:---:|
+| 0.10（小） | 語彙学習法間の微差 | 約800 |
+| 0.25（中） | 指導法間の一般的な差 | 約180 |
+| 0.40（大） | 介入の顕著な効果 | 約80 |
+
+先行研究の効果量を参照してサンプルサイズを計画することが重要です。英語教育研究では $f = 0.25$ 前後が現実的な目安となることが多いです [@stevens2009; @hahs2017]。
+
+**実務上のポイント**:
+
+- Stevens [-@stevens2009] は、効果量が小さい（$f = .10$）場合の検出には各群50名以上が必要であると指摘しており、教育研究で典型的な30名前後のクラスサイズでは検出が困難であることを示唆しています。
+- 英語教育研究では1クラス20-30名が現実的な制約であるため、**2-3クラスをまとめて1群40-60名**を確保するか、効果量が中程度以上の介入に焦点を絞る戦略が必要です。
+- Tabachnick & Fidell [-@tabachnick2019] は「各セルの $n >$ DV数」を最低条件としていますが、これはあくまり行列演算上の最低限であり、検定力の観点ではさらに大きなNが必要です。
+:::
+
+# よくある誤解
+
+::: {.callout-important}
+### 誤解1: 「MANOVAが有意なら追跡ANOVAのType Iエラーは制御される」
+
+**事実**: MANOVAの有意性は多変量空間全体での検定結果であり、個々のDVへの追跡ANOVAに対する「保護的ゲートキーパー」機能は限定的です。Huberty & Olejnik [-@huberty2006] はこの点を明確に指摘し、追跡ANOVAにはHolm法などの多重性補正が依然として必要であると述べています。
+
+Smith et al. [-@smith2020] は英才教育研究の56論文を体系的にレビューし、ほぼすべてがMANOVA後に無補正の単変量ANOVAのみで追跡していることを発見しました。シミュレーションにより、DV数が増えるとこの慣行のType Iエラー率が最大76%に達しうることを示しています。
+:::
+
+::: {.callout-important}
+### 誤解2: 「MANOVAが非有意なら群差はない」
+
+**事実**: 非有意の結果は「差がない」ことの証拠ではなく、「差を検出できなかった」可能性があります。検定力が不足している場合（N不足、効果量が小さい場合）、真の差があっても検出できません。必ず検定力分析で確認し、「power = XX であった」と報告してください [@stevens2009]。
+:::
+
+::: {.callout-important}
+### 誤解3: 「追跡ANOVAだけで十分」
+
+**事実**: 追跡ANOVAは各DVを個別に検定するため、DV間の相関構造を無視します。MANOVAが有意でも全てのANOVAが非有意になるケースがあります（DVの組み合わせが群差のパターンを担う場合）。
+
+Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に使った論文が**1本もなかった**ことを報告しています。このことは、追跡ANOVAのみに頼る慣行がいかに根深いかを示しています。Finch & French [-@finch2013] は、DDAがMANOVAと数学的に同一の情報源（$\mathbf{H}\mathbf{E}^{-1}$ の固有値分解）に基づくことを示し、追跡法としての理論的一貫性を強調しています。DDAを併用することで、単変量では見えない多変量的パターンを捉えることが可能になります。
+:::
+
+::: {.callout-important}
+### 誤解4: 「MANOVAは同時ANOVAにすぎない」
+
+**事実**: MANOVAはDV間の共分散構造を考慮した上で群差を検定します。H行列とE行列の比がMANOVAの検定統計量の基盤であり、DVを個別に検定するANOVAにはこの情報がありません。Huberty & Olejnik [-@huberty2006] はMANOVAの本質を「DVの最適な重み付け線形結合に対する検定」と定義しています。
+
+この違いは、HEプロットで視覚的に確認できます。Friendly [-@friendly2007] のHEプロット手法では、H楕円がE楕円からはみ出す方向が多変量的な群差の方向を示しますが、この方向は個々のDV軸とは異なる場合があります。つまり、MANOVAは個別ANOVAでは原理的にアクセスできない「DV間の組み合わせに基づく群差」を検出する能力を持ちます。
+:::
+
+# トラブルシューティング（実務で詰まりやすい点）
+
+::: {.callout-warning}
+### 多変量正規性（MVN）の逸脱
+
+**症状**: HZ検定で $p < .05$。Q-Qプロットが対角線から乖離。
+
+**原因**: 外れ値、床効果・天井効果、本質的に非正規な変数。
+
+**修正**:
+
+1. マハラノビス距離で外れ値を特定し、感度分析（含む/除く）を行う。
+2. Pillai統計量を主報告にする。Olson [-@olson1974] のモンテカルロ研究で、正規性違反に最も頑健であることが確認されている。
+3. 逸脱が著しい場合、変数変換（log, sqrt）を検討。
+4. 大標本（各群 $n > 30$）であれば中心極限定理により頑健性が高まる [@tabachnick2019]。
+5. 論文には「HZ検定の結果と対応策」を明記する。
+:::
+
+::: {.callout-warning}
+### Box's M検定の有意
+
+**症状**: Box's M が $p < .001$。
+
+**原因**: 群間で共分散行列の構造が異なる。群サイズの不均衡があるとさらに影響が大きい。Box's M は標本サイズに過敏であるため、$p < .05$ ではなく $p < .001$ を実務基準とすることが推奨されます [@tabachnick2019; @huberty2006]。
+
+**修正**:
+
+1. 群サイズがバランスしていれば、Pillai統計量は比較的頑健。Olson [-@olson1974] はこの条件でPillaiが名義 $\alpha$ 水準を維持することを示している。
+2. 群サイズが不均衡なら、最も危険な条件（共分散不等質 + 不均衡N）に該当するため、結果の解釈に特に慎重になる。
+3. 群ごとの共分散楕円を可視化し（HEプロットで確認可能）、逸脱の程度を確認する。
+4. QDAの使用を検討する（群別共分散を許容）。ただし各群の $n >$ DV数 + 1 が必要 [@tabachnick2019]。
+:::
+
+::: {.callout-warning}
+### DV間の多重共線性
+
+**症状**: DV間相関が .70 を超える。判別関数の係数が不安定。Tabachnick & Fidell [-@tabachnick2019] は .90 以上を「深刻な多重共線性」として警告している。
+
+**原因**: DVが測定している構成概念がほぼ同一。
+
+**修正**:
+
+1. 一方のDVを除外するか、複合スコアに統合することを検討。
+2. 構造係数を優先して解釈する。Sherry & Henson [-@sherry2005] は、DV間相関が高い場合に標準化係数が不安定になることを示しており、構造係数のみでの解釈を推奨している。
+3. 理論的にDVが異なる構成概念であることを再確認する。
+4. DV間相関が .30-.70 の「理想的な範囲」に収まるようDVの選択を見直す。
+:::
+
+::: {.callout-warning}
+### サンプルサイズの不足
+
+**症状**: MANOVAが非有意だが、記述統計では明らかな群差がある。
+
+**原因**: 検定力不足。MANOVAは推定パラメータが多いため、ANOVAより大きなNが必要。
+
+**修正**:
+
+1. `WebPower::wp.kanova()` で事後検定力を計算する。
+2. power < .80 の場合、「検定力不足の可能性」を明記する。
+3. 次回研究のために必要サンプルサイズを報告する。
+:::
+
+::: {.callout-warning}
+### MANOVAは有意だが全てのANOVAが非有意
+
+**症状**: Pillai が $p < .05$ だが、追跡ANOVAでは全DVが $p > .05$。
+
+**原因**: 群差がDV間の相関パターンに埋め込まれており、個々のDVでは表面化しない。これは「矛盾」ではなく、**MANOVAの利点が発揮された場面**です。Warne [-@warne2014] はこの状況を「MANOVAの存在意義を最もよく示すケース」と述べています。
+
+**修正**:
+
+1. DDA（判別分析）で多変量的な群分離パターンを確認する。構造係数を読むことで、DVの組み合わせがどの方向に群差を形成しているかがわかります。
+2. HEプロットで視覚的にパターンを確認する。Friendly [-@friendly2007] のHEプロットでは、H楕円がE楕円からはみ出す方向がDV軸と斜めになる場合、個別のDVでは検出できない「斜め方向」の群差が存在していることを示します。
+3. 論文には「多変量検定は有意であったが、単変量では個別に有意な変数は見られなかった。DDAにより、DVの組み合わせとして群分離が確認された」と報告する [@smith2020; @finch2013]。
+:::
+
+::: {.callout-warning}
+### 外れ値による結果の不安定化
+
+**症状**: マハラノビス距離がカットオフを大きく超える観測がある。外れ値の除外前後で結果が変わる。
+
+**原因**: データ入力ミス、異質な参加者（タスク不理解など）。
+
+**修正**:
+
+1. 外れ値の「含む/除く」の両方で分析し、結果の安定性を確認（感度分析）。
+2. 除外する場合は、理論的根拠（タスク不理解の記録など）を明記する。
+3. 「統計的にだけ外れ値」という理由での除外は避ける。
+:::
+
+::: {.callout-warning}
+### QDAが収束しない（rank deficiency）
+
+**症状**: `MASS::qda()` で "some group is too small" や "rank deficiency" エラー。
+
+**原因**: 群内の観測数がDV数以下、または群内共分散行列が特異（ランク落ち）。
+
+**修正**:
+
+1. 各群の $n >$ DV数 であることを確認する（最低でも $n > p + 1$）。
+2. LDAに切り替える（共通共分散を仮定するため、少数サンプルに対応しやすい）。
+3. DV数を減らすか、正則化判別分析を検討する。
+:::
+
+# 結果記述テンプレート（論文の結果節向け）
+
+::: {.panel-tabset}
+
+### Method
+
+以下は、本章のデータに基づいた Method セクションの記述例です。自分のデータに置き換えて使用してください。
+
+> We examined the effects of Treatment (Glossing vs. Writing) and Time (Immediate vs. Delayed) on two vocabulary outcomes (Recall and Recognition) using a two-way multivariate analysis of variance (MANOVA). Assumptions of multivariate normality were evaluated using the Henze-Zirkler test (Korkmaz et al., 2014) applied group-wise, and homogeneity of covariance matrices was assessed with Box's M test. Pillai's trace was used as the primary test statistic due to its robustness to assumption violations (Olson, 1974). Descriptive discriminant analysis (DDA) served as the primary multivariate follow-up, with univariate ANOVAs as supplementary analyses (Holm-adjusted). Classification accuracy was evaluated using leave-one-out cross-validation. Analyses were conducted in R using the MASS, heplots, MVN, and effectsize packages.
+
+### Results（MANOVA + DDA）
+
+> Pillai's trace indicated a significant main effect of Treatment, *V* = X.XX, *F*(2, 173) = XX.XX, *p* < .001. The Time main effect was also significant, *V* = X.XX, *F*(2, 173) = XX.XX, *p* = .0XX. The Treatment × Time interaction was non-significant, *V* = X.XX, *F*(2, 173) = X.XX, *p* = .XXX.
+>
+> Descriptive discriminant analysis revealed that the first discriminant function (LD1) accounted for XX% of the between-group variance. Structure coefficients indicated that both Recall ($r_s$ = .XX) and Recognition ($r_s$ = .XX) contributed substantially to group separation (criterion: $|r_s| \geq .30$; Tabachnick & Fidell, 2019). LOOCV classification accuracy was XX.X% (balanced = XX.X%), exceeding the chance level of 25.0%, 95% CI [XX.X%, XX.X%].
+
+### Results（単変量追跡）
+
+> Supplementary univariate ANOVAs (Holm-adjusted) indicated that the Treatment effect was significant for both Recall, *F*(1, 176) = XX.XX, *p* < .001, $\eta^2_p$ = .XXX, and Recognition, *F*(1, 176) = XX.XX, *p* < .001, $\eta^2_p$ = .XXX.
+
+### 査読者チェックリスト
+
+1. **前提チェックの報告**: MVN（HZ検定）と Box's M の結果を記載したか
+2. **検定統計量**: Pillai を主報告し、他の統計量は補足として併記したか
+3. **DDA の報告**: 判別関数の構造係数と分散説明割合を報告したか
+4. **分類精度**: LOOCV精度をチャンス水準と比較し、95% CI を付けたか
+5. **効果量**: 偏η² を 95% CI 付きで報告したか
+6. **多重性調整**: 追跡ANOVAに Holm 補正を適用し、補正前後の p 値を併記したか
+7. **HEプロット**: 視覚的に群分離を示したか（推奨）
+8. **検定力**: 事後検定力または事前のサンプルサイズ計画を記載したか
+9. **ソフトウェア**: 使用したR パッケージとバージョンを明記したか
+
+:::
+
+::: {.callout-tip}
+### APA 7 最低限の表記ルール
+
+- 統計記号はイタリック: *V*, *F*, *p*, $\eta^2_p$
+- Pillai's trace は *V* = .XXX と表記
+- *p* 値は `p = .032`、非常に小さい場合は `p < .001`
+- 効果量は $\eta^2_p$ = .XXX, 95% CI [LL, UL]
+- 分類精度は % で報告し、チャンス水準と比較
+:::
+
+::: {.callout-tip}
+### コピペ用 1 文テンプレート
+
+**Method**: "A two-way MANOVA was conducted with Treatment and Time as independent variables and Recall and Recognition as dependent variables. Pillai's trace was the primary test statistic. DDA served as the multivariate follow-up."
+
+**Results**: "Pillai's trace indicated a significant Treatment effect, *V* = .XX, *F*(2, 173) = XX.XX, *p* < .001. DDA structure coefficients indicated both DVs contributed to group separation (Recall $r_s$ = .XX; Recognition $r_s$ = .XX)."
 :::
 
 ```{r}
@@ -1138,6 +1902,7 @@ summary_tbl <- tibble(
   Component = c(
     "Primary multivariate test (Pillai)",
     "Best univariate effect size",
+    "LD1 proportion of trace",
     "LDA overall accuracy",
     "QDA overall accuracy",
     "Chance level"
@@ -1156,6 +1921,7 @@ summary_tbl <- tibble(
       largest_eta$Outcome, " / ", largest_eta$Parameter,
       ": eta_p2 = ", round(largest_eta$Eta2_partial, 3)
     ),
+    paste0(round(prop_trace[1] * 100, 1), "%"),
     paste0(round(lda_overall * 100, 1), "%"),
     paste0(round(qda_overall * 100, 1), "%"),
     paste0(round(chance_level * 100, 1), "%")
@@ -1172,15 +1938,49 @@ summary_tbl |>
 
 # まとめ
 
-- MANOVAは、複数アウトカムを同時に扱うことで、
-  単変量ANOVAの反復より整合的な推論を提供する。
-- 主報告はPillaiを中心に置き、追跡分析でどの従属変数が効果を担うかを明確化する。
-- 判別分析は「有意差があるか」ではなく「どれくらい分類できるか」を補完する。
-- 報告では、p値だけでなく効果量・補正法・分類精度（チャンス比較）を併記する。
+本章では、MANOVA と判別分析（DDA）を用いた多変量解析の一連のワークフローを整理しました。先行研究のチュートリアル論文の知見を統合し、以下の主要なポイントを実装しています。
+
+1. **MANOVAは、複数DVを同時に扱う**ことで、単変量ANOVAの反復より整合的な推論を提供する [@warne2014]。DV間の相関構造（理想的には .30-.70 の範囲; @tabachnick2019）を考慮できることが本質的な強みである。
+
+2. **H行列とE行列**がMANOVAの基盤であり、HEプロット [@friendly2007] によりその関係を直感的に把握できる。H楕円がE楕円を超える方向が、有意な群差の方向を示す（Royの最大根と幾何学的に対応）。
+
+3. **Pillai のトレース**を主報告とする。Olson [-@olson1974] のモンテカルロ研究で、正規性違反・共分散不等質性・群サイズ不均衡の全条件を通じて最も頑健であることが確認されている。
+
+4. **DDA（判別分析）はMANOVAの主要追跡法**である。構造係数（$|r_s| \geq .30$ を基準; @tabachnick2019; @sherry2005）により、各DVの群分離への寄与を安定的に評価できる。Warne [-@warne2014] の58本レビューおよびSmith et al. [-@smith2020] の56本レビューが示すように、DDAの使用率は極めて低いのが現状であるが、理論的にはMANOVAの最も自然な追跡法である [@finch2013]。
+
+5. **分類精度**（LOOCV; @psu505_lesson10）をチャンス水準と比較することで、「統計的に有意かどうか」だけでなく「実務的にどの程度群を分離できるか」を示す。
+
+6. **検定力分析** [@zhang2018] により、研究の事前計画（必要サンプルサイズ）および事後評価（実際の検定力）を定量化する。Tabachnick & Fidell [-@tabachnick2019] の「各セルの $n >$ DV数」を最低条件とし、Stevens [-@stevens2009] の「各群20名以上」を推奨条件とする。
+
+7. **報告では**、p値だけでなく多変量効果量（Pillai のトレースに基づく $\eta^2$）・構造係数・分類精度（チャンス比較）・検定力を併記する。
 
 # 参考Webリソース（再学習用）
 
-- Penn State STAT 505: One-Way MANOVA [@psu505_lesson08]
-- Penn State STAT 505: Discriminant Analysis [@psu505_lesson10]
+::: {.panel-tabset}
+
+### MANOVAの基礎
+
+- Warne (2014): MANOVAの設計と解釈の実務ガイド [@warne2014]
+- Penn State STAT 505 Lesson 8: One-Way MANOVA [@psu505_lesson08]
 - R Documentation: `summary.manova` [@r_summary_manova]
+
+### DDA（判別分析）を深めたい
+
+- Smith et al. (2020): MANOVAの多変量追跡法としてのDDA [@smith2020]
+- Sherry & Henson (2005): 構造係数の解釈 [@sherry2005]
+- Penn State STAT 505 Lesson 10: Discriminant Analysis [@psu505_lesson10]
 - R Documentation: `MASS::lda` / `MASS::qda` [@mass_lda_doc; @mass_qda_doc]
+
+### HEプロット・可視化
+
+- Friendly (2007): HEプロットの理論と実装 [@friendly2007]
+- `heplots` パッケージ: MANOVA可視化
+- `candisc` パッケージ: 正準判別分析の可視化 [@friendly2021candisc]
+
+### 教科書的参照
+
+- Tabachnick & Fidell (2019): 多変量統計の標準的教科書 [@tabachnick2019]
+- Stevens (2009): 社会科学向け応用多変量統計 [@stevens2009]
+- Huberty & Olejnik (2006): Applied MANOVA and Discriminant Analysis [@huberty2006]
+
+:::

@@ -1,0 +1,15 @@
+{
+  "hash": "95a89b40056b4a387c1554d46b1ce584",
+  "result": {
+    "engine": "knitr",
+    "markdown": "# はじめに {.unnumbered}\n\n本書は、英語教育および第二言語習得（SLA）研究に携わる大学院生・研究者を対象に、統計解析の理論と実践をRで学ぶためのガイドです。研究論文で頻出する手法を体系的に取り上げ、すべてのコードを実行可能な形で提供しています。\n\n## 本書の特徴\n\n| | |\n|---|---|\n| **実践的** | 英語教育・SLA研究の具体的なデータと研究課題を用いて解説 |\n| **再現可能** | すべてのRコードが実行可能。コピー&ペーストですぐに試せる |\n| **体系的** | t検定からメタ分析まで、基礎から応用へ段階的に構成 |\n| **幅広い** | 回帰分析、IRT、ベイズ推定、時系列、空間分析、ネットワーク分析まで網羅 |\n\n## 対象読者\n\n- 英語教育・第二言語習得研究に携わる大学院生・研究者\n- Rを用いた統計解析を基礎から学びたい方\n- 言語テスト理論（IRT・ラッシュモデル・一般化可能性理論）に関心のある方\n- 時系列データや地理空間データの分析手法を知りたい方\n\n## 構成\n\n::: {.callout-note appearance=\"minimal\"}\n### 第I部：統計モデルの基礎\nt検定、効果量、分散分析（ANOVA）、MANOVA、判別分析を扱います。カテゴリカル変数のコーディング方法についても詳しく解説します。\n:::\n\n::: {.callout-note appearance=\"minimal\"}\n### 第II部：回帰分析\n重回帰分析、交互作用の解釈（simple slope analysis）、一般化線形モデル（GLM）、一般化加法モデル（GAM）、混合効果モデル、2値ロジスティック回帰を扱います。\n:::\n\n::: {.callout-note appearance=\"minimal\"}\n### 第III部：ベイズ統計と機械学習\nbrmsを用いたベイズ推定の基礎と、決定木・ランダムフォレスト・XGBoostによる予測分析、ROC曲線を用いたモデル評価を扱います。\n:::\n\n::: {.callout-note appearance=\"minimal\"}\n### 第IV部：多変量解析\n因子分析、主成分分析、コレスポンデンス分析、多次元尺度法、一般化可能性理論（G理論）、項目応答理論（IRT）、ラッシュモデル、拡張ラッシュモデルを扱います。\n:::\n\n::: {.callout-note appearance=\"minimal\"}\n### 第V部：時系列解析\nARIMA、介入時系列分析（ITS）、音声波形の時系列処理を扱います。\n:::\n\n::: {.callout-note appearance=\"minimal\"}\n### 第VI部：地理空間データ\nsfパッケージによる地図作成の入門から、空間自己相関・空間回帰・施策評価の応用まで扱います。\n:::\n\n::: {.callout-note appearance=\"minimal\"}\n### 第VII部：ネットワーク分析\n学習者間・変数間の関係構造を可視化し、中心性指標やコミュニティ検出の手法を扱います。\n:::\n\n::: {.callout-note appearance=\"minimal\"}\n### 第VIII部：メタ分析\n研究成果の統合、異質性の評価、出版バイアスの検出、メタ回帰を扱います。\n:::\n\n## 必要な環境\n\n- **R**（最新版を推奨）：[https://cran.r-project.org/](https://cran.r-project.org/)\n- **RStudio**（推奨）：[https://posit.co/download/rstudio-desktop/](https://posit.co/download/rstudio-desktop/)\n\n各章で使用するパッケージは章の冒頭で読み込んでいますが、以下のコードで主要なパッケージを一括インストールできます。\n\n\n::: {.cell}\n\n```{.r .cell-code}\n# 主要パッケージの一括インストール\nrequired_packages <- c(\n  # データ操作・可視化\n  \"tidyverse\", \"gt\", \"gtExtras\", \"patchwork\", \"GGally\",\n\n  # 統計解析（基礎）\n  \"car\", \"effectsize\", \"pwr\", \"emmeans\", \"psych\",\n\n  # 回帰・混合効果モデル\n  \"lme4\", \"lmerTest\", \"lavaan\",\n\n  # IRT・ラッシュモデル\n  \"mirt\", \"eRm\", \"TAM\", \"mokken\",\n\n  # ベイズ推定\n  \"brms\", \"rstanarm\", \"bayesplot\",\n\n  # ネットワーク分析\n  \"igraph\",\n\n  # メタ分析\n  \"metafor\", \"clubSandwich\", \"meta\", \"netmeta\"\n)\n\ninstall.packages(required_packages)\n```\n:::\n\n\n::: {.callout-tip}\n### 図表の言語について\n本書では、OSやフォント環境による文字化けを防ぐため、図のラベル・タイトルは英語で統一し、本文で日本語の解説を添えています。\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
