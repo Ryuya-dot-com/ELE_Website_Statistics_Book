@@ -1,50 +1,25 @@
-name: Quarto Publish
+# ==========================================================
+# Quarto Book のデプロイは quarto publish gh-pages で行います
+# ローカルでレンダリング → gh-pages ブランチに直接 push
+#
+# 手順:
+#   1. quarto render --to html     (ローカルでレンダリング)
+#   2. quarto publish gh-pages     (gh-pages にデプロイ)
+#
+# 自動 CI は無効化しています（R パッケージのインストールが
+# 複雑で CI 環境では不安定なため）
+# ==========================================================
+
+name: Quarto Publish (disabled)
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  build-deploy:
+  placeholder:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Configure Git for UTF-8 filenames
-        run: git config --global core.quotepath false
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Quarto
-        uses: quarto-dev/quarto-actions/setup@v2
-
-      - name: Setup R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
-
-      - name: Install system dependencies
+      - name: Info
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev \
-                                  libudunits2-dev libgdal-dev libgeos-dev libproj-dev \
-                                  libharfbuzz-dev libfribidi-dev libfreetype6-dev \
-                                  libpng-dev libtiff5-dev libjpeg-dev
-
-      - name: Install R dependencies (base + pacman)
-        run: |
-          Rscript -e 'install.packages(c("pacman"), repos="https://cloud.r-project.org")'
-
-      - name: Render (HTML only)
-        env:
-          CI: true
-        run: |
-          quarto render --to html
-
-      - name: Publish to GitHub Pages (gh-pages branch)
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: _book
+          echo "This workflow is disabled."
+          echo "Deploy locally using: quarto publish gh-pages"

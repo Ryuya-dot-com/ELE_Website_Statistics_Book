@@ -341,7 +341,7 @@ res_pca <- FactoMineR::PCA(pca_data, graph = FALSE)
 # Eigenvalue table
 pca_eig_df <- as.data.frame(res_pca$eig) |>
   mutate(Dimension = row_number()) |>
-  select(Dimension, everything())
+  dplyr::select(Dimension, everything())
 
 pca_eig_df |>
   gt() |>
@@ -735,7 +735,7 @@ efa_summary <- load_tbl |>
   slice_max(order_by = Abs, n = 1, with_ties = FALSE) |>
   ungroup() |>
   mutate(Uniqueness = 1 - pmin(Communality, 1)) |>
-  select(Item, Factor, Loading, Communality, Uniqueness) |>
+  dplyr::select(Item, Factor, Loading, Communality, Uniqueness) |>
   arrange(Factor, desc(abs(Loading)))
 
 efa_summary |>
@@ -1093,7 +1093,7 @@ semPaths(fit_cfa_3f, whatLabels = "std", layout = "tree", rotation = 2,
 std_sol <- standardizedSolution(fit_cfa_3f) |>
   as_tibble() |>
   filter(op == "=~") |>
-  select(lhs, rhs, est.std, ci.lower, ci.upper, pvalue)
+  dplyr::select(lhs, rhs, est.std, ci.lower, ci.upper, pvalue)
 
 std_sol |>
   gt() |>
@@ -1353,7 +1353,7 @@ fit_sem_boot <- lavaan::sem(
 parameterEstimates(fit_sem_boot, boot.ci.type = "perc") |>
   as_tibble() |>
   filter(op == ":=") |>
-  select(lhs, rhs, est, ci.lower, ci.upper) |>
+  dplyr::select(lhs, rhs, est, ci.lower, ci.upper) |>
   gt() |>
   tab_header(
     title = "Bootstrap Confidence Intervals for Indirect Effects",
@@ -1413,7 +1413,7 @@ mi_tbl <- modindices(fit_sem) |>
   as_tibble() |>
   arrange(desc(mi)) |>
   filter(mi > 10) |>
-  select(lhs, op, rhs, mi, epc)
+  dplyr::select(lhs, op, rhs, mi, epc)
 
 mi_tbl |>
   gt() |>
@@ -1678,7 +1678,7 @@ lgm_data <- tibble(
 
 # Quick descriptives
 lgm_data |>
-  select(starts_with("vocab")) |>
+  dplyr::select(starts_with("vocab")) |>
   pivot_longer(everything(), names_to = "Time", values_to = "Score") |>
   group_by(Time) |>
   summarise(
@@ -1702,7 +1702,7 @@ lgm_data |>
 
 # Spaghetti plot with group mean overlay
 lgm_long <- lgm_data |>
-  select(id, motivation, starts_with("vocab")) |>
+  dplyr::select(id, motivation, starts_with("vocab")) |>
   pivot_longer(cols = starts_with("vocab"),
                names_to = "time_label",
                values_to = "score") |>
@@ -1809,7 +1809,7 @@ summary(fit_lgm_cond, fit.measures = TRUE, standardized = TRUE)
 # Display structural paths
 parameterEstimates(fit_lgm_cond) |>
   filter(op == "~") |>
-  select(lhs, rhs, est, se, z, pvalue, ci.lower, ci.upper) |>
+  dplyr::select(lhs, rhs, est, se, z, pvalue, ci.lower, ci.upper) |>
   mutate(across(c(est, se, z, ci.lower, ci.upper), ~round(.x, 3)),
          pvalue = ifelse(pvalue < .001, "< .001", round(pvalue, 3))) |>
   gt() |>
@@ -1930,7 +1930,7 @@ et_data <- tibble(
 
 # Descriptives
 et_data |>
-  select(starts_with("GD")) |>
+  dplyr::select(starts_with("GD")) |>
   pivot_longer(everything(), names_to = "Session", values_to = "GD_ms") |>
   group_by(Session) |>
   summarise(M = round(mean(GD_ms), 1),
@@ -1969,7 +1969,7 @@ summary(fit_et, fit.measures = TRUE, standardized = TRUE)
 # Structural paths
 parameterEstimates(fit_et) |>
   filter(op == "~") |>
-  select(lhs, rhs, est, se, z, pvalue) |>
+  dplyr::select(lhs, rhs, est, se, z, pvalue) |>
   mutate(across(c(est, se, z), ~round(.x, 3)),
          pvalue = ifelse(pvalue < .001, "< .001", round(pvalue, 3))) |>
   gt() |>
@@ -2064,7 +2064,7 @@ lgm_fit_vals <- fitmeasures(fit_lgm_cond, c("chisq", "df", "pvalue",
                                               "cfi", "tli", "rmsea", "srmr"))
 lgm_means <- parameterEstimates(fit_lgm_cond) |>
   filter(op == "~1") |>
-  select(lhs, est)
+  dplyr::select(lhs, est)
 
 lgm_paths <- parameterEstimates(fit_lgm_cond) |>
   filter(op == "~", rhs == "motivation")
@@ -2235,7 +2235,7 @@ fviz_ca_biplot(res_ca, repel = TRUE,
 # Eigenvalues and inertia
 ca_eig <- as_tibble(res_ca$eig) |>
   mutate(Dimension = row_number()) |>
-  select(Dimension, everything())
+  dplyr::select(Dimension, everything())
 
 ca_eig |>
   gt() |>
@@ -2387,7 +2387,7 @@ fviz_mca_biplot(res_mca, repel = TRUE,
 # MCA eigenvalues
 mca_eig <- as_tibble(res_mca$eig) |>
   mutate(Dimension = row_number()) |>
-  select(Dimension, everything()) |>
+  dplyr::select(Dimension, everything()) |>
   slice(1:6)
 
 mca_eig |>

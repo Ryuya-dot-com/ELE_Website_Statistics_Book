@@ -1151,7 +1151,7 @@ if (requireNamespace("orchaRd", quietly = TRUE)) {
                    data = dat,
                    method = "REML")
 
-  orchard_plot(m_orch, mod = "1", xlab = "Hedges g",
+  orchard_plot(m_orch, mod = "1", group = "study_id", xlab = "Hedges g",
                trunk.size = 3, branch.size = 1.5,
                twig.size = 0.5, k = TRUE)
 } else {
@@ -1177,13 +1177,14 @@ if (requireNamespace("orchaRd", quietly = TRUE)) {
 #| fig-height: 7
 if (requireNamespace("orchaRd", quietly = TRUE)) {
   # サブグループ（教育段階）別
+  dat$level_f <- factor(dat$level)
   m_orch_mod <- rma.mv(yi, vi,
-                       mods = ~ factor(level),
+                       mods = ~ level_f,
                        random = ~ 1 | study_id,
                        data = dat,
                        method = "REML")
 
-  orchard_plot(m_orch_mod, mod = "factor(level)",
+  orchard_plot(m_orch_mod, mod = "level_f", group = "study_id",
                xlab = "Hedges g",
                trunk.size = 3, branch.size = 1.5,
                twig.size = 0.5, k = TRUE)
@@ -1223,7 +1224,8 @@ if (requireNamespace("metaviz", quietly = TRUE)) {
   viz_forest(x = m,
              xlab = "Hedges g",
              method = "REML",
-             type = "thick_forest",
+             type = "standard",
+             variant = "thick",
              text_size = 3)
 }
 ```
@@ -1403,10 +1405,13 @@ F_val <- 6.0
 d_from_F <- sqrt(F_val) * sqrt(1/n1 + 1/n2)
 cat("F =", F_val, "→ d ≈", round(d_from_F, 3), "\n")
 
-# escalc を使う方法（推奨）
-es_from_t <- escalc(measure = "SMDH", ti = t_val, n1i = n1, n2i = n2)
-cat("\nescalc(ti=): g ≈", round(es_from_t$yi, 3),
-    ", vi ≈", round(es_from_t$vi, 4), "\n")
+# escalc で分散を直接計算する方法
+# t値から d を計算した後、Hedges' correction で g を求める
+J <- 1 - 3 / (4 * (n1 + n2 - 2) - 1)  # Hedges' correction factor
+g_from_t <- d_from_t * J
+vi_from_t <- (n1 + n2) / (n1 * n2) + g_from_t^2 / (2 * (n1 + n2))
+cat("\nHedges g ≈", round(g_from_t, 3),
+    ", vi ≈", round(vi_from_t, 4), "\n")
 ```
 
 ::: {.callout-note}
