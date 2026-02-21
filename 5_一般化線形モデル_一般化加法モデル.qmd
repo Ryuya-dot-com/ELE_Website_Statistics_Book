@@ -535,7 +535,7 @@ plot_link <- new_bin_link |>
     values_to = "prob"
   ) |>
   mutate(
-    link = recode(
+    link = dplyr::recode(
       link,
       p_logit = "logit",
       p_probit = "probit",
@@ -649,7 +649,7 @@ plot_bin <- new_bin |>
     values_to = "prob"
   ) |>
   mutate(
-    model = recode(model, prob_glm = "GLM", prob_gam = "GAM"),
+    model = dplyr::recode(model, prob_glm = "GLM", prob_gam = "GAM"),
     same_class = factor(same_class, levels = c(0, 1), labels = c("Different class", "Same class"))
   )
 
@@ -883,7 +883,7 @@ plot_count <- new_count |>
     values_to = "mu"
   ) |>
   mutate(
-    model = recode(model, mu_nb_glm = "NB-GLM", mu_nb_gam = "NB-GAM"),
+    model = dplyr::recode(model, mu_nb_glm = "NB-GLM", mu_nb_gam = "NB-GAM"),
     same_class = factor(same_class, levels = c(0, 1), labels = c("Different class", "Same class"))
   )
 
@@ -1057,7 +1057,7 @@ plot_pos <- new_pos |>
     names_to = "model",
     values_to = "mu"
   ) |>
-  mutate(model = recode(model, mu_gamma_glm = "Gamma-GLM", mu_gamma_gam = "Gamma-GAM"))
+  mutate(model = dplyr::recode(model, mu_gamma_glm = "Gamma-GLM", mu_gamma_gam = "Gamma-GAM"))
 
 ggplot(plot_pos, aes(x = baseline_score_sc, y = mu, color = model, linetype = class)) +
   geom_line(linewidth = 1) +

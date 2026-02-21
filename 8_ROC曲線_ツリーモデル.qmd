@@ -2,6 +2,9 @@
 title: "ツリーモデルで学ぶ予測分析：ROCを実務に活かす"
 author: "小室竜也"
 date: today
+bibliography: references_tree_roc.bib
+nocite: |
+  @zhang2025, @mau2025, @niu2025, @yagci2022, @kuhn2022, @delong1988, @robin2011, @strumbelj2013
 format:
   html:
     toc: true
@@ -115,130 +118,336 @@ pre {
 
 # はじめに
 
-この章の主役は**ツリーモデル**です。具体的には、
+5章・6章で扱ったロジスティック回帰では、「ある説明変数が正答確率にどう影響するか」を1本のグローバルな式でモデル化しました。しかし英語教育データでは、学習者要因と語彙項目要因の**複雑な組み合わせパターン**が頻出します。たとえば、習熟度が高い学習者は retrieval practice 条件で特に効果が大きいが、低習熟者ではその差が消える、といったパターンです。回帰分析でこうしたパターンを捉えるには交互作用項を手動で指定する必要がありますが、どの変数の組み合わせが重要かを事前に知ることは難しいのが実情です。
 
-- 決定木（Decision Tree）
-- ランダムフォレスト（Random Forest）
-- XGBoost
+**ツリーモデル**（決定木・ランダムフォレスト・XGBoost）は、こうした非線形関係や相互作用を、分析者が事前に指定しなくても自動的に発見できる手法群です。本章では、これら3つのツリーモデルを同じ教育データで比較し、モデルの性能評価に**ROC曲線とAUC**を用います。
 
-を扱います。
-
-そして、これらのモデルの精度を評価する方法の1つとして、**ROC曲線とAUC**を導入します。
-
-英語教育研究では、たとえば以下のような予測課題が実務で登場します。
+英語教育研究で想定される予測課題の例:
 
 - 語彙テスト項目の正誤（正解/不正解）を予測する
 - 学習者が次の小テストで基準を超えるかを予測する
 - CEFR到達判定の補助指標を構築する
 
-この章では、こうした課題に近い**架空データ（英語語彙学習）**を用いて、モデル比較から評価までを体系的に実装します。
+本章を通して、「**どの学習者が、どの語彙項目を、どの条件で正答するか**」を予測し、その予測を教育判断に変換する一連の流れを体系的に学びます。
+
+## 最初にここだけ（はじめに）
+
+- **ツリーモデル** = データを「もし proficiency > 0.4 ならば…」のような条件分岐で繰り返し分割し、局所ごとに予測を出す方法。回帰分析が1本の式で全データを説明するのに対し、ツリーモデルはデータの「区画」ごとに異なる予測を出す。
+- **ROC-AUC** = ランダムに正答者と誤答者を1人ずつ選んだとき、モデルが正答者に高い確率を正しく与える割合。1.0が完璧、0.5がランダム。
+
+::: {.callout-note}
+### 読む順序（迷ったとき）
+- 最短ルート（20分）: はじめに → ケース設定 → 決定木 → 3モデル比較 → まとめ
+- 標準ルート（60分）: 上記 + RF + XGBoost + 閾値 + キャリブレーション
+- 拡張ルート（90分+）: 上記 + 回帰→MLの橋渡し + SHAP + ハイパーパラメータ詳細 + 重要度比較
+:::
 
 ::: {.callout-tip}
+## この章の到達目標
+
+1. ロジスティック回帰とツリーモデルの違いを、「的のずれ」と「散らばり」（バイアスとバリアンス）の観点から説明できる。
+2. 決定木・ランダムフォレスト・XGBoostの3モデルを同じデータで比較できる。
+3. ROC-AUCだけでなく、複数の評価指標（PR-AUC・閾値依存指標・予測確率の信頼性）も確認し、報告できる。
+4. 変数の相対的重要性を測る複数の方法（SHAP、dominance analysis、permutation importance）の違いを理解し、使い分けられる。
+5. 「精度が高い」で終わらず、教育実務で使える判断に落とし込める。
+:::
+
+::: {.callout-note}
 ## Conventions
-- Figure labels are in English.
+- Figure labels are in English.（国際誌への投稿を想定し、図のラベルは英語で統一しています。）
 - All code chunks are R.
 - 数式は最小限にし、実装と解釈を重視します。
+- 専門用語は初出時に定義します。急いでいる場合はcalloutボックスだけ読めば要点がわかります。
 :::
-
-::: {.callout-note}
-## 本章の到達目標
-1. ツリーモデル3種を同じデータで比較できる。
-2. ROC-AUCだけでなくPR-AUC・閾値・キャリブレーションも確認できる。
-3. 「精度が高い」で終わらず、教育実務で使える判断に落とし込める。
-:::
-
-::: {.callout-tip}
-## 本章の要点
-- 分析課題: 「どの学習者・どの語彙項目が正答しやすいか」を予測する。
-- 使うモデル: 単純（決定木）から高精度（RF, XGBoost）へ段階的に比較する。
-- 最終判断: ROC-AUCだけでなく、閾値・PR・キャリブレーションまで見て運用設計する。
-:::
-
-::: {.callout-note}
-## 読み方ガイド
-1. まず「ケース設定」まで読み、どんな教育データを想定しているかをつかむ。  
-2. 次に「決定木 → RF → XGBoost」を比較し、モデルごとの強みを理解する。  
-3. 最後に「ROC/PR・閾値・キャリブレーション」で運用判断の流れを確認する。  
-:::
-
-## 英語教育分野の先行研究（ツリーモデル）
-
-この章の設計は、英語教育・応用言語学での最近の機械学習研究に合わせています。代表例は次の通りです。
-
-1. **CEFR難易度分類**  
-   Zhang & Lu (2025) は、L2英語学習者向けテキストをCEFRレベルに分類するために**Random Forest**を使用し、複数レベルで実用的な精度を報告しました。
-2. **L2アカデミックライティング評価**  
-   Mau & Feng (2025) は、自動作文評価で**XGBoost分類器**を採用し、move分析情報を統合した評価モデルを報告しました。
-3. **英語教育評価へのRF応用（会議報告）**  
-   Niu (2025) は、英語教育評価の精度改善に向けた**Random Forest**活用を報告しています。
-
-この章で「単木 → RF → XGBoost」を順に扱うのは、こうした先行研究の流れを、大学院レベルで再現可能な形に落とし込むためです。
-
-本章の目的は、先行研究の読解にとどまらず、**同一の分析発想を再実装できること**にあります。
-
-※ なお、会議論文は査読誌より方法報告が簡潔な場合があるため、再現時は必ず評価設計（分割・指標・閾値）を明示します。
-
-## SHAP / Dominance Analysis のチュートリアル文献
-
-本章で追加した解釈手法（SHAPとdominance analysis）については、次の文献が実装理解に有用です。
 
 ```{r}
-#| label: tutorial-paper-map
+#| label: pre-setup
+#| include: false
 
-tibble::tribble(
-  ~Method, ~Paper, ~How_Used_in_Paper, ~Concrete_Example,
-  "SHAP",
-  "Lundberg & Lee (2017)",
-  "SHAPを『予測 = ベースライン + 各特徴の寄与』で説明する統一枠組みとして定式化。",
-  "単一予測について、各特徴がどれだけ予測値を押し上げ/下げたかを分解。",
-  "SHAP",
-  "Lundberg et al. (2020)",
-  "TreeExplainerを使って、local説明を集約しglobal理解へつなぐ手順を提示。",
-  "医療データで、希少だが高リスクな要因や相互作用、性能劣化要因を可視化。",
-  "SHAP",
-  "Štrumbelj & Kononenko (2013)",
-  "感度分析ベースで個別予測の特徴寄与を算出し、モデル理解支援を検証。",
-  "人工/実データで説明可能性を評価し、122名実験で理解改善を報告。",
-  "Dominance",
-  "Budescu (1993); Azen & Budescu (2003)",
-  "標準化回帰係数比較の代替として、全サブモデル比較に基づく相対的重要性評価を提案・整理。",
-  "予測子ごとに一般的優位性（general dominance）を算出し順位化。",
-  "Dominance (Logistic)",
-  "Azen & Traxel (2009)",
-  "ロジスティック回帰へ拡張し、R2類似指標とブートストラップ推論を検討。",
-  "一般的優位性の信頼区間や再現性を、シミュレーションと実データ例で検証。",
-  "Applied Linguistics",
-  "Mizumoto (2022)",
-  "応用言語学向けに dominance analysis と random forests の実践手順を提示。",
-  "既存実証研究の再解析を通じ、β係数だけに依存しない重要度解釈を実演。"
-) |>
+library(tidyverse)
+```
+
+## 回帰分析から機械学習への橋渡し
+
+読者の多くは、5章・6章でロジスティック回帰を学んでいるはずです。ツリーモデルに進む前に、「なぜ回帰だけでは不十分な場面があるのか」「ツリーモデルは何が本質的に異なるのか」を整理します。この節を理解すると、以降の決定木・RF・XGBoostの位置づけがはっきりします。
+
+### 回帰分析の限界を直感で理解する
+
+ロジスティック回帰は、すべてのデータに対して**1本のグローバルな式**をあてはめます。
+
+$$
+\log\frac{P(\text{correct})}{1-P(\text{correct})} = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \cdots
+$$
+
+この式は、$x_1$（たとえば習熟度）が1単位増えると対数オッズが $\beta_1$ だけ変化する、という**全データに共通のルール**を仮定しています。しかし教育データでは、「習熟度が高い層では retrieval practice が特に効く」「低頻度語では語長の影響が大きくなる」のように、**ある条件下でだけ効く変数**が少なくありません。
+
+回帰分析でも交互作用項（`proficiency:condition`）を手動で追加すれば対応可能ですが、どの交互作用を入れるかは分析者が事前に決める必要があります。変数が10個あれば交互作用の候補は45通り、3次の交互作用まで含めればさらに膨大になります。
+
+ツリーモデルは、この交互作用の発見を**データから自動的に**行います。
+
+以下の図は、同じデータに対して「回帰の線形フィット」と「ツリーの矩形分割」がどう異なるかを示しています。コードでは (1) 非線形な真の関係を持つデータを生成し、(2) ロジスティック回帰でフィットし、(3) 決定木でフィットして、3パネルの比較図を作成します。
+
+```{r}
+#| label: regression-vs-tree-intuition
+#| fig-width: 10
+#| fig-height: 4
+#| fig-cap: "Regression fits a single global curve; a tree partitions the feature space into local regions"
+
+set.seed(42)
+demo_dat <- tibble(
+  x = seq(-3, 3, length.out = 200),
+  y_true = plogis(1.5 * sin(2 * x) + 0.3 * x),
+  y_obs = rbinom(200, 1, y_true)
+)
+
+# (A) 真の非線形関係
+p1 <- demo_dat |>
+  ggplot(aes(x, y_true)) +
+  geom_line(linewidth = 1.2, color = "#2C7FB8") +
+  geom_point(aes(y = y_obs), alpha = 0.15, size = 0.8) +
+  labs(title = "(A) True relationship", x = "x", y = "P(correct)") +
+  ylim(0, 1)
+
+# (B) ロジスティック回帰（線形）
+glm_demo <- glm(y_obs ~ x, data = demo_dat, family = binomial())
+demo_dat$glm_pred <- predict(glm_demo, type = "response")
+
+p2 <- demo_dat |>
+  ggplot(aes(x, y_true)) +
+  geom_line(linewidth = 0.6, color = "gray60", linetype = "dashed") +
+  geom_line(aes(y = glm_pred), linewidth = 1.2, color = "#D95F02") +
+  geom_point(aes(y = y_obs), alpha = 0.15, size = 0.8) +
+  labs(title = "(B) Logistic regression", x = "x", y = "P(correct)") +
+  ylim(0, 1)
+
+# (C) ツリー分割
+tree_demo <- rpart::rpart(y_obs ~ x, data = demo_dat, method = "class",
+                          control = rpart::rpart.control(maxdepth = 3, cp = 0.01))
+demo_dat$tree_pred <- predict(tree_demo, type = "prob")[, "1"]
+
+p3 <- demo_dat |>
+  ggplot(aes(x, y_true)) +
+  geom_line(linewidth = 0.6, color = "gray60", linetype = "dashed") +
+  geom_step(aes(y = tree_pred), linewidth = 1.2, color = "#1B9E77") +
+  geom_point(aes(y = y_obs), alpha = 0.15, size = 0.8) +
+  labs(title = "(C) Decision tree", x = "x", y = "P(correct)") +
+  ylim(0, 1)
+
+library(patchwork)
+p1 + p2 + p3
+```
+
+- **(A)** 真の関係は非線形のS字曲線。
+- **(B)** ロジスティック回帰は1本の単調なシグモイドで近似するため、波形を捉えきれない。
+- **(C)** 決定木は区間ごとに異なる確率を割り当て、局所的なパターンにフィットする。
+
+::: {.callout-tip}
+## 回帰とツリーの本質的な違い
+- **回帰**: 全データに1本の式（グローバル）。係数を読めば「何が効くか」がわかる。
+- **ツリー**: データを条件分岐で分割し、各領域で別の予測を出す（ローカル）。分岐規則を読めば「どの条件で効くか」がわかる。
+:::
+
+### バイアスとバリアンスのトレードオフ
+
+モデル選択を理解するうえで最も重要な概念が、**バイアス・バリアンスのトレードオフ**です[@hastie2009; @james2021]。
+
+- **バイアス（bias）**: モデルが現実を単純化しすぎることによる系統的な誤差。ロジスティック回帰が非線形な関係を直線的に近似するとき、これが生じる。
+- **バリアンス（variance）**: データが変わるとモデルの予測が大きく変わる不安定さ。深い決定木はデータの細部まで追いかけるため、別のサンプルでは異なる構造になりやすい。
+
+```{r}
+#| label: bias-variance-tradeoff
+#| fig-width: 8
+#| fig-height: 5
+#| fig-cap: "Bias-variance tradeoff: as model complexity increases, training error decreases monotonically, but test error first decreases then increases"
+
+bv_dat <- tibble(
+  complexity = seq(0.5, 10, length.out = 100),
+  train_error = 0.45 * exp(-0.5 * complexity) + 0.02,
+  test_error  = 0.45 * exp(-0.5 * complexity) + 0.02 + 0.005 * complexity^1.8,
+  bias2       = 0.45 * exp(-0.5 * complexity),
+  variance    = 0.005 * complexity^1.8
+)
+
+bv_dat |>
+  ggplot(aes(x = complexity)) +
+  geom_line(aes(y = train_error, color = "Training error"), linewidth = 1) +
+  geom_line(aes(y = test_error, color = "Test error"), linewidth = 1) +
+  geom_line(aes(y = bias2, color = "Bias²"), linewidth = 0.8, linetype = "dashed") +
+  geom_line(aes(y = variance, color = "Variance"), linewidth = 0.8, linetype = "dashed") +
+  geom_vline(xintercept = 3.5, linetype = "dotted", color = "gray40") +
+  annotate("text", x = 3.7, y = 0.42, label = "Optimal complexity", hjust = 0, size = 3.5) +
+  scale_color_manual(values = c(
+    "Training error" = "#2C7FB8",
+    "Test error"     = "#D95F02",
+    "Bias²"          = "#7570B3",
+    "Variance"       = "#E7298A"
+  )) +
+  labs(
+    title = "Bias-Variance Tradeoff",
+    subtitle = "Underfitting (left) vs. Overfitting (right)",
+    x = "Model complexity",
+    y = "Error",
+    color = NULL
+  ) +
+  theme(legend.position = "bottom")
+```
+
+この図の読み方:
+
+- **左側（低複雑度）**: モデルが単純すぎてデータのパターンを拾えない（**未学習、バイアスが大きい**）。
+- **右側（高複雑度）**: モデルがデータのノイズまで拾ってしまう（**過学習、バリアンスが大きい**）。
+- **最適点**: テスト誤差が最小になる複雑度。この点を交差検証（後述）で探すのが本章の基本戦略。
+
+**数値で実感する**: 仮に語彙テストの正答率予測で以下のような結果が出たとします。
+
+| モデル | 訓練データ正答率 | テストデータ正答率 | 症状 |
+|--------|:---:|:---:|------|
+| 浅い決定木（深さ2） | 67% | 65% | バイアス大（両方低い＝パターンを捉えきれていない） |
+| 深い決定木（深さ10） | 95% | 60% | バリアンス大（訓練とテストの差＝ノイズを学習） |
+| ランダムフォレスト | 78% | 73% | バギングでバリアンスを抑制 |
+| XGBoost | 80% | 75% | ブースティングでバイアスも改善 |
+
+訓練データとテストデータの正答率が**両方とも低い**ならバイアスの問題、**訓練だけ高くテストが低い**ならバリアンスの問題です。
+
+本章の3つのツリーモデルは、このトレードオフの異なる位置にいます:
+
+- **決定木**: 深くすれば表現力は高いが、バリアンスが大きい（データの揺れに弱い）。
+- **ランダムフォレスト**: 多数の木の多数決（バギング）でバリアンスを抑制する。
+- **XGBoost**: 前の木の誤差を次の木が修正（ブースティング）し、バイアスを段階的に減らす。
+
+::: {.callout-important}
+## 3モデルの位置づけ（バイアス・バリアンスの視点）
+| モデル | 主な戦略 | 効果 |
+|--------|----------|------|
+| 決定木 | 1本の木で分割 | 解釈しやすいが不安定 |
+| ランダムフォレスト | 独立な木の多数決（バギング） | バリアンスを削減 |
+| XGBoost | 前段の残差を逐次修正（ブースティング） | バイアスを削減 |
+:::
+
+### ツリーモデルの分岐ロジック：再帰分割
+
+決定木がデータを分ける仕組みを、小さな例で追ってみましょう。
+
+6人の学習者のデータがあるとします。目的変数は正答/誤答、説明変数は `proficiency`（習熟度）です。
+
+```{r}
+#| label: manual-split-example
+
+mini_split <- tibble(
+  learner = LETTERS[1:6],
+  proficiency = c(-1.2, -0.5, 0.1, 0.4, 0.9, 1.5),
+  correct = factor(c("incorrect", "incorrect", "incorrect", "correct", "correct", "correct"),
+                   levels = c("incorrect", "correct"))
+)
+
+mini_split |>
   gt() |>
   tab_header(
-    title = "How Tutorial Papers Use SHAP and Dominance Analysis",
-    subtitle = "What they did and concrete examples"
+    title = "Mini Example: 6 Learners",
+    subtitle = "Where should the tree split proficiency?"
   )
 ```
 
-::: {.callout-tip}
-## この章での対応づけ
-- 論文の「SHAP: local→global」を、本章では `xgb-shap-local` と `xgb-shap-global` に対応させています。  
-- 論文の「dominance: 全サブモデル比較」を、本章では `glm-dominance-analysis` と `glm-dominance-level` に対応させています。  
+木は「どこで分けると、分けた後のグループが最も"純粋"になるか」を探します。**Gini不純度**で純粋さを測ります:
+
+$$
+G = 1 - \sum_{k=1}^{K} p_k^2
+$$
+
+ここで $p_k$ はノード内のクラス $k$ の割合です。$G = 0$（完全に1クラス）が最も純粋で、$G = 0.5$（2クラスが半々）が最も不純です。
+
+```{r}
+#| label: gini-calculation
+
+gini <- function(labels) {
+  p <- table(labels) / length(labels)
+  1 - sum(p^2)
+}
+
+# 分割前のGini
+gini_before <- gini(mini_split$correct)
+
+# 候補分割点: proficiency = 0.25（CとDの間）
+left  <- mini_split |> filter(proficiency <= 0.25)
+right <- mini_split |> filter(proficiency > 0.25)
+gini_after <- (nrow(left) / 6) * gini(left$correct) +
+              (nrow(right) / 6) * gini(right$correct)
+
+tibble(
+  Step = c("Before split (all 6)", "Left (prof ≤ 0.25)", "Right (prof > 0.25)", "Weighted Gini after split"),
+  Gini = c(gini_before, gini(left$correct), gini(right$correct), gini_after)
+) |>
+  mutate(Gini = round(Gini, 3)) |>
+  gt() |>
+  tab_header(
+    title = "Gini Impurity Calculation",
+    subtitle = "Split at proficiency = 0.25"
+  )
+```
+
+分割前のGiniは 0.500（2クラスが半々）。`proficiency = 0.25` で分けると、左は全員 incorrect（$G = 0$）、右は全員 correct（$G = 0$）となり、加重Giniは 0.000 です。これが**最も純粋な分割**です。
+
+実際の決定木アルゴリズム（CART）は、すべての変数×すべての分割点でこのGini改善量を計算し、最大の改善をもたらす分割を選びます。これを再帰的に繰り返し、停止条件（最小サンプル数、最大深さなど）に達するまで分岐を続けます[@breiman1984]。
+
+::: {.callout-note}
+## 回帰との対比
+- **ロジスティック回帰**: 全データに対して $\beta$ を最適化する（1つのグローバルな最適化問題）。
+- **決定木**: 各ノードで局所的に最良の分割を選ぶ（貪欲な局所最適化の繰り返し）。
 :::
 
-### 論文の手順をこの章で再現するミニガイド
+### 交差検証の直感的理解
 
-1. **Dominance（Budescu, Azen系）**  
-   まず回帰モデルを固定し、全サブモデルで「その変数を追加したときの改善量」を平均して重要度を出します。  
-   Azen & Traxel (2009) はロジスティック回帰でこの考え方を拡張し、擬似R2とブートストラップで安定性を検討しました。  
-   本章では `glm-dominance-analysis` で平均寄与、`glm-dominance-level` でモデルサイズ別寄与を確認します。  
-2. **SHAP（Lundberg系）**  
-   1件ごとの予測を「ベースライン + 特徴寄与」に分解し、そのlocal説明を多数集約してglobal理解へ進みます。  
-   Lundberg et al. (2020) はこの流れで、希少だが高リスクな要因、相互作用、性能劣化要因を抽出しました。  
-   本章では `xgb-shap-local`（個別）と `xgb-shap-global`（全体）で同じ読み方を再現します。  
-3. **教育データでの読み替え例**  
-   たとえばある学習者のlocal SHAPで `test_time_delayed` が負、`proficiency` が正なら、  
-   「遅延テスト条件は不利だが、習熟度がそれを一部補っている」と解釈できます。  
-   さらにglobal SHAPで `condition` や `word_freq` が上位なら、授業介入と語彙難度の設計に優先順位をつけられます。  
+ツリーモデルのハイパーパラメータ（木の深さ、学習率など）を決めるために、本章では**交差検証（Cross-Validation; CV）**を使います。CVの仕組みを先に押さえておきましょう。
+
+```{r}
+#| label: cv-schematic
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: "K-fold cross-validation schematic (K=3)"
+
+cv_dat <- expand_grid(
+  fold = paste0("Iteration ", 1:3),
+  block = 1:3
+) |>
+  mutate(
+    role = case_when(
+      fold == "Iteration 1" & block == 1 ~ "Test",
+      fold == "Iteration 2" & block == 2 ~ "Test",
+      fold == "Iteration 3" & block == 3 ~ "Test",
+      TRUE ~ "Train"
+    ),
+    label = paste0("Fold ", block)
+  )
+
+cv_dat |>
+  ggplot(aes(x = label, y = fold, fill = role)) +
+  geom_tile(color = "white", linewidth = 1.5) +
+  geom_text(aes(label = role), size = 4, fontface = "bold") +
+  scale_fill_manual(values = c("Train" = "#2C7FB8", "Test" = "#D95F02")) +
+  labs(
+    title = "3-Fold Cross-Validation",
+    subtitle = "Each fold takes a turn as the test set; results are averaged",
+    x = NULL, y = NULL, fill = NULL
+  ) +
+  theme(
+    legend.position = "bottom",
+    panel.grid = element_blank()
+  )
+```
+
+CVの手順:
+
+1. データをK個に分割する（本章ではK=3）。
+2. 1つ目の分割をテスト用に取っておき、残りで学習する。
+3. 2つ目、3つ目でも同様に繰り返す。
+4. K回の結果を平均して、モデルの汎化性能を推定する。
+
+この方法の利点は、テストデータを「使い切る前に」汎化性能を安定的に推定できる点です。ハイパーパラメータのチューニング（後述の `tune_grid`）はすべてこのCV上で行い、最終評価は別に確保したテストデータで行います。
+
+::: {.callout-tip}
+## なぜ3-foldなのか
+本章はチュートリアルのため計算時間を短縮する目的で3-foldを採用しています。実際の研究では **5-fold または10-fold** が一般的です[@james2021]。
+:::
 
 ---
 
@@ -252,10 +461,10 @@ tibble::tribble(
 #| warning: false
 
 pacman::p_load(
-  tidyverse, gt,
-  tidymodels, workflowsets,
-  rpart.plot, vip, ranger, xgboost,
-  probably, scales, dominanceanalysis
+  tidyverse, gt, patchwork,     # データ操作・表・図の結合
+  tidymodels, workflowsets,     # モデリングフレームワーク
+  rpart.plot, vip, ranger, xgboost,  # ツリーモデル群
+  probably, scales, dominanceanalysis # 評価・重要度
 )
 
 set.seed(2026)
@@ -290,7 +499,7 @@ metric_tbl
 ::: {.callout-important}
 ## なぜROCだけでなくPRも見るのか
 - ROC-AUCは閾値に依存しない便利な比較指標。
-- ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合がある（Saito & Rehmsmeier, 2015）。
+- ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合がある[@saito2015]。
 :::
 
 ## 混同行列の確認（最小例）
@@ -349,6 +558,11 @@ bind_rows(
 ---
 
 # ケース設定：英語語彙学習データ（架空）
+
+::: {.callout-tip}
+## 最初にここだけ（ケース設定）
+6つの学習者特徴（習熟度・学習時間・不安など）と5つの語彙特性（頻度・語長など）で正答/誤答を予測する架空データを作成します。3人の典型的な学習者プロフィール（Case A/B/C）を設定し、全モデルで追跡します。
+:::
 
 この節の目的は、モデル比較の基盤となるデータ構造を明確にすることです。
 
@@ -509,6 +723,11 @@ profile_tbl |>
 
 # 学習・評価の分割（リーク防止）
 
+::: {.callout-tip}
+## 最初にここだけ（分割と前処理）
+データを8:2に分け、テスト側は最終評価まで触らない。前処理（対数化・ダミー化）は訓練データだけで計算する。ハイパーパラメータのチューニングは訓練データ内の交差検証で行う。
+:::
+
 この節の目的は、「評価の信頼性を担保する実験設計」を先に固定することです。
 
 ## データ分割
@@ -567,7 +786,12 @@ rec_glm <- rec_tree |>
 
 ::: {.callout-warning}
 ## 重要: 前処理のfit先
-`recipe`の`prep`は必ず学習データ側で行います。テストデータ情報を前処理に混ぜるとリークになります。
+`recipe`の`prep`は必ず学習データ側で行います。テストデータ情報を前処理に混ぜるとリーク（data leakage）になります。リークとは、テストデータの情報が学習過程に漏れ込むことです。期末テストの問題を事前に見てしまうのと同じで、見かけの成績は上がりますが、本当の実力（汎化性能）は測れなくなります。
+:::
+
+::: {.callout-note}
+## ハイパーパラメータとは
+ハイパーパラメータとは、**モデルがデータから学ぶ前に人間が決める設定値**です。たとえば「木の最大深さ」「各分岐に必要な最小サンプル数」「学習率」などがこれにあたります。ロジスティック回帰ではこの概念はほとんど意識しませんが、ツリーモデルでは**ハイパーパラメータの設定が性能を大きく左右します**。最適値は交差検証で探索します（後述の `tune_grid`）。各モデルのセクションで、それぞれのハイパーパラメータの意味と効果を詳しく説明します。
 :::
 
 ---
@@ -576,7 +800,7 @@ rec_glm <- rec_tree |>
 
 読者の既存知識（回帰分析）に接続するため、まずGLMをベースラインに置きます。
 
-ここでの位置づけは「比較の出発点」です。勝者を決めるためではなく、ツリーモデルの上積みを判断する基準にします。
+ここでの位置づけは「比較の出発点」です。勝者を決めるためではなく、ツリーモデルの上積みを判断する基準にします。GLMは1つの式で全データを説明するため、非線形や交互作用を手動で指定しない限り、ツリーモデルに比べて柔軟性が低い側面があります。逆に言えば、GLMで十分な性能が出るなら、あえて複雑なモデルを使う必要はありません。
 
 ```{r}
 #| label: fit-glm-baseline
@@ -603,18 +827,18 @@ glm_fit |>
 
 ## 補助解析：Dominance Analysis（GLM）
 
-係数表は「方向と有意性」を示すのに有用ですが、  
-説明変数が複数あると「相対的重要性」は読み取りにくくなります。  
-そこで、GLMに対して dominance analysis を追加します（Budescu, 1993; Azen & Budescu, 2003; Azen & Traxel, 2009）。
+係数表は「方向と有意性」を示すのに有用ですが、変数間でスケールが異なるため「どの変数が最も重要か」の比較は直接できません。標準化係数を使う方法もありますが、変数間の相関が強い場合は不安定です。Dominance analysisは、すべてのサブモデルの組み合わせを比較することでこの問題を解決します[@budescu1993; @azen2003; @azen2009]。
 
 文献での活用ポイント（具体）:
 
-- Azen & Traxel (2009) は、ロジスティック回帰で dominance analysis を使うために、  
-  R2類似指標の選定とブートストラップ推論を組み合わせて、重要度の再現性を検討しました。  
-- Mizumoto (2022) は、応用言語学データの再解析で dominance analysis を併用し、  
+- @azen2009 は、ロジスティック回帰で dominance analysis を使うために、
+  R2類似指標の選定とブートストラップ推論を組み合わせて、重要度の再現性を検討しました。
+- @mizumoto2022 は、応用言語学データの再解析で dominance analysis を併用し、
   「標準化βだけでは見えにくい相対的重要性」を示しました。  
 - 本章での具体例としては、`proficiency` と `condition` の relative share を比較し、  
   「学習者要因と授業デザイン要因のどちらが予測改善に効いているか」を同じ尺度で読む、という使い方になります。  
+
+以下のコードでは、(1) 通常のglmオブジェクトを作成し、(2) `dominanceanalysis`パッケージで全てのサブモデルの組み合わせにおける各変数の平均的な改善量を計算し、(3) Nagelkerke R2ベースの結果を表にします。
 
 ```{r}
 #| label: glm-dominance-analysis
@@ -706,13 +930,23 @@ da_level_tbl |>
 
 ::: {.callout-note}
 ## Dominance と SHAP の役割分担
-- Dominance（ここ）: **GLM全体**で、説明変数の相対的重要性を比較する。  
-- SHAP（後半）: **XGBoost**で、全体と個別予測の寄与を説明する。  
+- Dominance（ここ）: **GLM全体**で、説明変数の相対的重要性を比較する。
+- SHAP（後半）: **XGBoost**で、全体と個別予測の寄与を説明する。
+:::
+
+::: {.callout-tip}
+## GLMの限界とツリーモデルへの動機
+GLMは全データに1つの式をあてはめるため、交互作用を捉えるには `proficiency:condition` のように手動で指定する必要があります。変数が多い場合、すべての交互作用を事前に列挙するのは現実的ではありません。次節以降のツリーモデルは、この**交互作用の発見を自動的に**行う点が根本的に異なります。
 :::
 
 ---
 
 # 決定木（Decision Tree）
+
+::: {.callout-tip}
+## 最初にここだけ（決定木）
+決定木は「もし proficiency > 0.4 ならば…」のようなif-thenルールの積み重ね。1本見れば予測根拠が明確にわかる。ただし1本の木はデータの揺れに弱い（高バリアンス）。
+:::
 
 この節の目的は、解釈可能性の高い木モデルを構築し、分岐規則を確認することです。
 
@@ -725,12 +959,43 @@ da_level_tbl |>
 - 注意点: 1本の木はデータの小さな揺れに影響されやすい。  
 :::
 
-英語教育の文脈では、「どの条件の学習者が正答しやすいか」を  
-if-then ルールで説明できる点が、決定木の大きな利点です。
+英語教育の文脈では、「どの条件の学習者が正答しやすいか」をif-thenルールで説明できる点が、決定木の大きな利点です。分岐ロジックの詳細（Gini不純度による分割選択）は、先の「回帰から機械学習への橋渡し」で解説しました。ここではその仕組みを実際の教育データに適用し、ハイパーパラメータのチューニングから可視化までを行います。
+
+## 決定木のハイパーパラメータ
+
+決定木には、木の「形」を制御する3つの主要なハイパーパラメータがあります。
+
+```{r}
+#| label: tree-hyperparameter-table
+#| echo: false
+
+tibble::tribble(
+  ~Parameter, ~tidymodels_name, ~Meaning, ~Large_value, ~Small_value,
+  "コスト複雑度", "cost_complexity", "木を刈り込む度合い。分岐1つあたりのペナルティ", "単純な木（高バイアス、低バリアンス）", "複雑な木（低バイアス、高バリアンス）",
+  "最大深さ", "tree_depth", "根から葉までの最大ステップ数", "表現力は高いがデータのノイズも拾う", "単純だが大まかなルールしか捉えない",
+  "最小ノードサイズ", "min_n", "分岐に必要な最小観測数", "慎重な分岐（過学習を抑制）", "細かい分岐（データの揺れに敏感）"
+) |>
+  gt() |>
+  tab_header(
+    title = "Decision Tree Hyperparameters",
+    subtitle = "These control the bias-variance tradeoff of the tree"
+  ) |>
+  cols_label(
+    Parameter = "パラメータ",
+    tidymodels_name = "tidymodels名",
+    Meaning = "意味",
+    Large_value = "大きくすると…",
+    Small_value = "小さくすると…"
+  )
+```
+
+これらの最適値は、交差検証（CV）で探索します。`tune_grid` は、指定したグリッドの全組み合わせで3-fold CVを実行し、各設定のROC-AUCを比較して最良の組み合わせを選びます。
 
 ## モデルとチューニング
 
 まずは「深すぎる木を避ける」ことを意識して、単純な探索から始めます。
+
+`grid_regular`は各ハイパーパラメータの範囲を等間隔に区切ってグリッドを作ります。`levels = c(3, 2, 2)`は、cost_complexityを3段階、tree_depthを2段階、min_nを2段階に設定し、計3x2x2=12通りの組み合わせを試すという意味です。
 
 ```{r}
 #| label: tune-decision-tree
@@ -790,9 +1055,15 @@ rpart.plot::rpart.plot(tree_model, type = 2, extra = 104,
 
 ## 解釈ポイント
 
-- 決定木は「if-then」規則で説明しやすい。
-- ただし単木は分散が高く、データの揺れに弱い。
-- したがって、教育現場では「説明用のモデル」として特に有用です。
+決定木の最大の強みは**透明性**です。上の図を見れば、「proficiency が高い → さらに word_freq が大きい → 正答確率が高い」のように、予測の根拠をif-thenルールとして直接読み取れます。これは教育現場で「なぜこの学習者が正答/誤答と判定されたのか」を説明する際に非常に有用です。
+
+一方、単木の限界も明確です:
+
+- **高バリアンス**: データの一部を変えるだけで、木の構造が大きく変わることがある。
+- **貪欲アルゴリズム**: 各分岐で局所最適を選ぶため、全体最適とは限らない。
+- **外挿不可**: 訓練データの範囲外の値に対して、最も近いリーフの予測をそのまま返す。
+
+したがって、決定木は「予測の仕組みを説明するモデル」として使い、精度を求める場合は次節以降のアンサンブル手法を検討します。
 
 ## どの変数でよく分岐しているか（具体確認）
 
@@ -812,23 +1083,59 @@ tibble(split_var = tree_model$frame$var) |>
 
 この表は、木がどの変数を重視して意思決定しているかを確認するための基礎資料です。
 
+決定木の主な限界は、データの揺れに弱い（高バリアンス）ことでした。次に紹介するランダムフォレストは、多数の木の多数決でこのバリアンスの問題を克服します。
+
 ---
 
 # ランダムフォレスト（Random Forest）
 
-この節の目的は、単木の弱点（不安定性）をアンサンブルで補うことです。
-
-::: {.callout-note}
-## ランダムフォレストの基本原理
-- ランダムフォレストは、たくさんの決定木の「多数決」で予測します。  
-- 各木は、別々のブートストラップ標本で学習します（bagging）。  
-- 各分岐では、全変数でなく一部の変数だけを候補にします。  
-- これにより木どうしの似すぎを防ぎ、過学習を抑えやすくなります。  
-- 代償として、単木より説明はやや複雑になります。  
+::: {.callout-tip}
+## 最初にここだけ（ランダムフォレスト）
+不安定な単木をたくさん作って多数決する。各木は別々のデータ（ブートストラップ）と別々の変数（ランダム選択）で育てるので、木どうしが似すぎない。結果としてバリアンスが大幅に下がる。
 :::
 
-英語教育データでは、学習者要因と語彙要因の相互作用が多く、  
-単木よりもランダムフォレストの方が安定して高い再現性能を得やすい場面が多くあります。
+この節の目的は、単木の弱点（不安定性）をアンサンブルで補うことです[@breiman2001]。
+
+## バギングの原理
+
+ランダムフォレストの土台は**バギング（Bootstrap Aggregating）**です。手順は以下の通りです:
+
+1. 元データからブートストラップ標本（復元抽出）を作る。
+2. その標本で1本の決定木を育てる。
+3. 1-2をB回繰り返す（本章ではB = 300）。
+4. 全B本の木の予測を**多数決**（分類の場合）または**平均**（回帰の場合）で統合する。
+
+比喩で言えば、「多数の専門家に別々の資料を渡し、独立に判断してもらって多数決をとる」イメージです。1人の判断は偏りやすくても、独立した多数の専門家の多数決は安定します。本章では300本の木（`trees = 300`）を使用します。
+
+ランダムフォレストはバギングに加えて、各分岐で**変数のランダム選択**（mtry個だけ候補にする）を行います。これにより、強い変数（例: proficiency）がすべての木で最初に選ばれる状況を防ぎ、木どうしの**相関を下げて**バリアンス削減効果を高めます[@breiman2001]。
+
+## ランダムフォレストのハイパーパラメータ
+
+```{r}
+#| label: rf-hyperparameter-table
+#| echo: false
+
+tibble::tribble(
+  ~Parameter, ~tidymodels_name, ~Meaning, ~Large_value, ~Small_value,
+  "候補変数数", "mtry", "各分岐で候補にする変数の数", "木どうしが似やすくなる（相関が高い）", "木が多様になりバリアンスが下がる",
+  "最小ノードサイズ", "min_n", "リーフの最小観測数", "各木が単純（過学習を抑制）", "各木が複雑（データの揺れに敏感）",
+  "木の本数", "trees", "アンサンブルに含める木の数", "予測が安定するが計算時間が増加", "計算は速いが予測が不安定"
+) |>
+  gt() |>
+  tab_header(
+    title = "Random Forest Hyperparameters",
+    subtitle = "mtry is the most important parameter to tune"
+  ) |>
+  cols_label(
+    Parameter = "パラメータ",
+    tidymodels_name = "tidymodels名",
+    Meaning = "意味",
+    Large_value = "大きくすると…",
+    Small_value = "小さくすると…"
+  )
+```
+
+一般的な目安として、分類問題では $\text{mtry} = \sqrt{p}$（$p$は変数の数）が推奨されます。本章では $p = 10$ なので $\sqrt{10} \approx 3$ が出発点ですが、CVで最適値を探索します。
 
 ## モデルとチューニング
 
@@ -867,6 +1174,8 @@ rf_best <- select_best(rf_res, metric = "roc_auc")
 rf_best
 ```
 
+CVで最適と判断されたハイパーパラメータを`finalize_workflow`でワークフローに組み込み、訓練データ全体で最終モデルを学習します。
+
 ```{r}
 #| label: finalize-rf
 
@@ -893,9 +1202,20 @@ tibble(
   )
 ```
 
+::: {.callout-note}
+## OOB（Out-of-Bag）エラーとは
+各木はブートストラップ標本で学習するため、約3分の1のデータが「使われない」まま残ります。この残りデータで予測精度を算出したものがOOBエラーです。交差検証と同等の汎化推定が、追加コストなしで得られる点がランダムフォレストの利点です。
+:::
+
 ## 変数重要度
 
-ここは「どの要因が予測に効いていたか」を説明する節です。
+ここは「どの要因が予測に効いていたか」を説明する節です。ランダムフォレストでは**Permutation importance**（並べ替え重要度）を使います。原理は次の通りです:
+
+1. テストデータ（またはOOBデータ）で元の予測精度を記録する。
+2. ある変数の値をランダムにシャッフルして、予測精度を再計算する。
+3. 精度の**低下幅**がその変数の重要度になる。
+
+大きく低下する変数は「その変数がないと予測が壊れる」＝重要な変数です。Gini不純度ベースの重要度（impurity importance）とは異なり、permutation importanceはカテゴリカル変数のカーディナリティに対するバイアスが小さいとされています[@strobl2007]。
 
 ```{r}
 #| label: rf-importance
@@ -930,11 +1250,101 @@ rf_vi |>
 
 # XGBoost
 
-この節の目的は、高精度モデルを構築しつつ、重要特徴を解釈可能な形で確認することです。
+::: {.callout-tip}
+## 最初にここだけ（XGBoost）
+XGBoostは「前の木が間違えた部分を、次の木が重点的に修正する」逐次学習法。ランダムフォレストが木を並列に育てるのに対し、XGBoostは**直列に**育てて誤差を段階的に減らす。強力だが設定項目が多い。
+:::
+
+この節の目的は、高精度モデルを構築しつつ、重要特徴を解釈可能な形で確認することです[@chen2016]。
+
+## ブースティングの原理：バギングとの対比
+
+ランダムフォレスト（バギング）とXGBoost（ブースティング）は、アンサンブルの組み立て方が根本的に異なります。
+
+```{r}
+#| label: bagging-vs-boosting-table
+#| echo: false
+
+tibble::tribble(
+  ~Aspect, ~Bagging_RF, ~Boosting_XGBoost,
+  "木の育て方", "各木を独立に並列で育てる", "前の木の誤差を踏まえて逐次に育てる",
+  "学習データ", "ブートストラップ標本（復元抽出）", "全データ（ただし誤差が大きい観測に重点）",
+  "予測の統合", "多数決 or 平均", "加重和（学習率で縮小しながら積み上げ）",
+  "主な効果", "バリアンスの削減", "バイアスの段階的削減",
+  "各木の深さ", "通常は深い木", "通常は浅い木（stump〜数段）",
+  "過学習リスク", "低い（木の独立性が高い）", "反復数が多いと過学習しやすい",
+  "チューニング難度", "比較的容易（mtryが主要）", "やや高い（学習率・反復数・深さなど）"
+) |>
+  gt() |>
+  tab_header(
+    title = "Bagging (RF) vs. Boosting (XGBoost)",
+    subtitle = "Two fundamentally different ensemble strategies"
+  ) |>
+  cols_label(
+    Aspect = "観点",
+    Bagging_RF = "バギング（RF）",
+    Boosting_XGBoost = "ブースティング（XGBoost）"
+  )
+```
+
+ブースティングの手順を、比喩を使って説明します:
+
+1. **1回目の家庭教師**が全体を見て、「習熟度が低い学習者は苦手」と大まかに判断する（浅い木）。
+2. **2回目の家庭教師**は、1回目が見逃した部分（例: 同根語なのに間違えた高習熟者）を重点的に指導する。
+3. **3回目**はさらに細かい見逃しを拾う。
+4. 最終予測は、全家庭教師の判断を**学習率（learn_rate）で縮小しながら足し合わせた**もの。
+
+数式で書くと、$m$回目までのモデルの予測は:
+
+$$
+\hat{f}_m(x) = \hat{f}_{m-1}(x) + \eta \cdot h_m(x)
+$$
+
+ここで $h_m(x)$ は $m$回目の木の予測、$\eta$ は学習率（0〜1）です。学習率を小さくすると各木の寄与が控えめになり、より多くの反復が必要になりますが、過学習しにくくなります[@friedman2001]。
+
+::: {.callout-note}
+## XGBoostの「勾配」とは
+XGBoostの正式名称は eXtreme Gradient Boosting です。「勾配」という言葉は、回帰分析で傾き（slope）を意味するのと同じ数学的概念です。回帰では損失関数を微分して最適な係数を求めましたが、XGBoostでも同様に損失関数の勾配を使って「次の木がどの方向に改善すべきか」を計算します。残差ではなく勾配を使うことで、対数損失（分類）や二乗誤差（回帰）など任意の損失関数に対応できます。
+:::
+
+## XGBoostのハイパーパラメータ
+
+XGBoostは設定項目が多いため、各パラメータの意味を整理しておきます。
+
+```{r}
+#| label: xgb-hyperparameter-table
+#| echo: false
+
+tibble::tribble(
+  ~Parameter, ~tidymodels_name, ~xgboost_name, ~Meaning, ~Large_value, ~Small_value,
+  "反復回数", "trees", "nrounds", "ブースティングの反復回数", "表現力が上がるが過学習リスク", "学習不足",
+  "木の深さ", "tree_depth", "max_depth", "各木の最大深さ", "複雑な相互作用を捉える", "浅い木で穏やかに学習",
+  "学習率", "learn_rate", "eta", "各木の寄与の縮小率", "速く収束するが過学習しやすい", "慎重だが多くの反復が必要",
+  "最小ノードサイズ", "min_n", "min_child_weight", "リーフの最小サンプル重み", "過学習を抑制", "細かい分岐を許容",
+  "候補変数割合", "mtry", "colsample_bytree", "各木で使う変数の割合", "木が似やすくなる", "多様性が上がる",
+  "損失削減量", "loss_reduction", "gamma", "分岐に必要な最小損失改善", "慎重な分岐（正則化）", "積極的な分岐",
+  "サンプル割合", "sample_size", "subsample", "各木で使うデータの割合", "全データ使用", "ランダム性を導入"
+) |>
+  gt() |>
+  tab_header(
+    title = "XGBoost Hyperparameters",
+    subtitle = "7 parameters to tune; learn_rate and trees are the most critical"
+  ) |>
+  cols_label(
+    Parameter = "パラメータ",
+    tidymodels_name = "tidymodels名",
+    xgboost_name = "xgboost名",
+    Meaning = "意味",
+    Large_value = "大きくすると…",
+    Small_value = "小さくすると…"
+  )
+```
+
+実務上の指針として、まず `learn_rate` と `trees` のバランスを探り、次に `tree_depth` と正則化パラメータ（`loss_reduction`, `min_n`）を調整するのが効率的です。
 
 ## モデルとチューニング
 
-XGBoostは強力ですが、設定が多いため、ここでは小さめの探索空間で実行可能性を優先します。
+XGBoostは強力ですが、設定が多いため、ここでは小さめの探索空間で実行可能性を優先します。`grid_latin_hypercube` は、高次元のパラメータ空間をまんべんなくカバーするようにポイントを配置するグリッド生成法です。通常のグリッドサーチ（格子点の全組み合わせ）ではパラメータが7つもあると計算量が膨大になるため、少ない試行回数（ここでは15通り）で広い範囲を効率的に探索します。
 
 ```{r}
 #| label: tune-xgb
@@ -962,7 +1372,8 @@ xgb_grid <- grid_latin_hypercube(
   loss_reduction(),
   sample_prop(range = c(0.5, 1.0)),
   learn_rate(range = c(-3.5, -0.8)),
-  finalize(mtry(), juice(prep(rec_xgb)) |> select(-correct)),
+  # prep()でレシピを訓練データに適用し、bake()で前処理済みデータを取り出す（mtryの範囲設定用）
+  finalize(mtry(), bake(prep(rec_xgb, training = train_data), new_data = NULL) |> select(-correct)),
   size = 5
 )
 
@@ -977,6 +1388,8 @@ xgb_res <- tune_grid(
 xgb_best <- select_best(xgb_res, metric = "roc_auc")
 xgb_best
 ```
+
+CVで選ばれた学習率、反復回数、木の深さ等を確定し、訓練データ全体で最終モデルを構築します。
 
 ```{r}
 #| label: finalize-xgb
@@ -1011,22 +1424,29 @@ xgb.importance(model = xgb_engine_fit) |>
 
 ## SHAP（全体と個別の解釈）
 
-ここまでの可視化でも比較は可能ですが、大学院レベルの読み物としては、  
-「なぜその予測になったか」を説明できるSHAPを入れておくと実務との接続が強くなります（Lundberg & Lee, 2017; Lundberg et al., 2020）。
+### SHAPとは何か
 
-文献での活用ポイント（具体）:
+ロジスティック回帰では、係数（$\beta$）が「各変数の寄与」を表していました。たとえば $\beta_\text{proficiency} = 1.2$ なら、「習熟度が1単位上がると対数オッズが1.2増える」と読めます。しかしツリーモデルには係数がありません。**SHAP**はツリーモデルでも「この予測に各変数がいくらずつ貢献したか」を分解する手法です[@lundberg2017; @lundberg2020]。
 
-- Lundberg & Lee (2017) は、SHAPを「加法的特徴寄与」の統一枠組みとして定義し、  
-  1件予測の寄与分解を理論的に一意化しました。  
-- Lundberg et al. (2020) は、医療データに対して local説明を多数集約し、  
-  低頻度だが高リスクな要因や、特徴間の非線形相互作用、運用中モデルの劣化要因を特定しました。  
-- Štrumbelj & Kononenko (2013) は、個別予測の寄与説明がモデル理解を高めることを実験的に示しました。  
-- 本章ではこれを教育データに置き換え、  
-  `xgb-shap-global` で全体傾向、`xgb-shap-local` で個別学習者ケースの説明を行います。  
-- 具体的には、ある学習者で `anxiety` が負寄与、`weekly_study` が正寄与と出れば、  
-  「不安による不利を学習時間がどこまで補っているか」をケース単位で説明できます。  
+考え方の核は、ゲーム理論のShapley値に基づいています。「チーム（全特徴）の成果（予測）を、各メンバー（特徴）に公平に分配するにはどうすればよいか」を計算します。具体例で説明しましょう:
+
+- テストデータ全体の平均正答確率が 0.55 とする。
+- ある学習者（Case A）の予測が 0.85 なら、0.30 の「上積み」がある。
+- SHAPはこの 0.30 を「proficiency が +0.15、word_freq が +0.08、anxiety が +0.05、…」のように各特徴に分配する。
+
+この分解により、「**なぜ**この学習者は正答と予測されたのか」を特徴ごとに説明できます。
+
+### 論文での活用例
+
+先行研究マップの文献を、本章の実装に対応づけます:
+
+- **Dominance**（@budescu1993; @azen2003 系）: GLMベースラインで使用済み。全サブモデル比較で変数の相対的重要性を算出。本章の `glm-dominance-analysis` に対応。
+- **SHAP local → global**（@lundberg2017 系）: 1件の予測をベースライン＋寄与に分解し、多数集約して全体理解へ進む。@lundberg2020 は医療データで希少だが高リスクな要因を抽出。本章の `xgb-shap-local` → `xgb-shap-global` に対応。
+- **教育データでの読み替え**: たとえばある学習者のlocal SHAPで `test_time_delayed` が負、`proficiency` が正なら、「遅延テスト条件は不利だが、習熟度がそれを一部補っている」と解釈できます。
 
 ### 全体: どの特徴が平均的に効いたか
+
+SHAPの計算は3ステップで進みます: (1) テストデータをXGBoostが受け取れる行列形式に変換する、(2) `predcontrib = TRUE`オプションで各観測×各変数のSHAP値を取得する、(3) 全観測にわたる絶対値の平均（Mean |SHAP|）を計算して全体的な重要度を算出する。
 
 ```{r}
 #| label: xgb-shap-global
@@ -1125,11 +1545,144 @@ local_shap |>
 
 ---
 
+# 特徴量重要度の統合比較
+
+本章では4種類の重要度指標が登場しました。それぞれ測定対象が異なるため、結果が一致するとは限りません。ここで横断的に比較し、報告時の判断基準を整理します。
+
+## 4手法の比較
+
+```{r}
+#| label: importance-methods-comparison
+#| echo: false
+
+tibble::tribble(
+  ~Method, ~Model, ~Measures, ~Strengths, ~Limitations,
+  "Dominance analysis", "GLM", "全サブモデル比較での平均R²改善量", "理論的に厳密。相対的重要性を公平に比較", "線形モデル前提。計算コスト高（変数が多いと困難）",
+  "Permutation importance", "RF", "変数シャッフル後の精度低下幅", "モデル非依存。カーディナリティバイアスが小さい", "相関の強い変数間で重要度が分散する",
+  "Gain importance", "XGBoost", "分岐に使われた際の損失改善量の合計", "計算が速い。ツリー構造から直接算出", "カーディナリティの高い変数を過大評価しやすい",
+  "SHAP", "XGBoost", "各予測のShapley値の絶対値平均", "局所→全体の統一的枠組み。理論的に公平", "計算コストが高い。相互作用の直接解釈には追加分析が必要"
+) |>
+  gt() |>
+  tab_header(
+    title = "Comparison of Four Feature Importance Methods",
+    subtitle = "Different methods answer slightly different questions"
+  ) |>
+  cols_label(
+    Method = "手法",
+    Model = "対象モデル",
+    Measures = "測定対象",
+    Strengths = "長所",
+    Limitations = "限界"
+  )
+```
+
+## 統合プロット
+
+4手法のランキングを並列で比較します。変数名はモデル間で一致するよう、主要変数に絞っています。
+
+```{r}
+#| label: importance-comparison-plot
+#| fig-width: 12
+#| fig-height: 7
+#| fig-cap: "Feature importance rankings across four methods"
+
+# Dominance（GLM, r2.n）— 既存の da_tbl から取得
+dom_rank <- da_tbl |>
+  filter(Fit_Index == "r2.n") |>
+  transmute(Feature = Predictor,
+            Importance = Relative,
+            Method = "Dominance (GLM)")
+
+# Permutation（RF）— 既存の rf_vi から取得
+perm_rank <- rf_vi |>
+  transmute(Feature,
+            Importance = Importance / max(Importance),
+            Method = "Permutation (RF)")
+
+# Gain（XGBoost）— 再計算
+gain_raw <- xgb.importance(model = xgb_engine_fit) |> as_tibble()
+gain_rank <- gain_raw |>
+  transmute(Feature,
+            Importance = Gain / max(Gain),
+            Method = "Gain (XGBoost)")
+
+# SHAP（XGBoost）— 既存の shap_importance から取得
+shap_rank <- shap_importance |>
+  transmute(Feature,
+            Importance = MeanAbsSHAP / max(MeanAbsSHAP),
+            Method = "SHAP (XGBoost)")
+
+# 統合（上位8変数に絞る）
+top_features <- shap_rank |> slice_max(Importance, n = 8) |> pull(Feature)
+
+bind_rows(dom_rank, perm_rank, gain_rank, shap_rank) |>
+  filter(Feature %in% top_features) |>
+  ggplot(aes(x = reorder(Feature, Importance), y = Importance)) +
+  geom_col(fill = "#4C78A8") +
+  coord_flip() +
+  facet_wrap(~ Method, scales = "free_x", ncol = 2) +
+  labs(
+    title = "Feature Importance: 4 Methods Compared",
+    subtitle = "Normalized to [0, 1] within each method; top 8 features shown",
+    x = "Feature",
+    y = "Relative importance"
+  )
+```
+
+## 報告の指針
+
+4手法は「異なる質問に答える異なる道具」です。報告時は次のように使い分けます:
+
+- **GLMを主モデルとして使う場合**: Dominance analysisを主報告。係数表と組み合わせて相対的重要性を議論する。
+- **ツリーモデルを主モデルとして使う場合**: SHAPを主報告（理論的公平性が高い）。Permutation importanceを補助として併記し、Gain importanceは参考に留める[@strobl2007]。
+- **複数手法の合意**: 全手法で上位に来る変数（例: proficiency, word_freq）は頑健に重要と判断できる。手法間で順位が異なる変数は、「どの手法を信頼するか」の根拠を明記する。
+
+---
+
 # 3モデル比較（ROCはここで効く）
+
+::: {.callout-tip}
+## 最初にここだけ（モデル比較）
+4モデル（GLM・決定木・RF・XGBoost）をテストデータで比較する。まず具体ケースで直感を得てから、全体指標（ROC-AUC等）で定量的に比較し、最後にROC/PR曲線で視覚的に確認する。
+:::
 
 この節では、ケース別予測 → 全体指標 → ROC/PR の順で、読み手が迷わないように比較します。
 
+## モデル特性サマリー
+
+コードに入る前に、4モデルの特性を俯瞰します。
+
+```{r}
+#| label: model-properties-table
+#| echo: false
+
+tibble::tribble(
+  ~Property, ~Logistic, ~Decision_Tree, ~Random_Forest, ~XGBoost,
+  "解釈容易性", "高（係数表）", "高（分岐規則）", "中（重要度）", "中（SHAP）",
+  "非線形対応", "手動で指定", "自動", "自動", "自動",
+  "相互作用発見", "手動で指定", "自動", "自動", "自動",
+  "計算速度", "速い", "速い", "中程度", "やや遅い",
+  "チューニング複雑さ", "なし〜低", "低", "中", "高",
+  "過学習リスク", "低", "高", "低", "中",
+  "推奨場面", "ベースライン", "説明・教育用", "安定した予測", "最高精度追求"
+) |>
+  gt() |>
+  tab_header(
+    title = "Model Properties at a Glance",
+    subtitle = "No single model is best in all dimensions"
+  ) |>
+  cols_label(
+    Property = "特性",
+    Logistic = "GLM",
+    Decision_Tree = "決定木",
+    Random_Forest = "RF",
+    XGBoost = "XGBoost"
+  )
+```
+
 ## 予測値をまとめる
+
+4つのモデルの予測を同一フォーマットで集めるためのヘルパー関数を定義します。各モデルについて、正答確率（`.pred_correct`）とクラス予測（`.pred_class`）をテストデータに対して計算し、モデル名を付けて結合します。
 
 ```{r}
 #| label: collect-preds
@@ -1243,6 +1796,17 @@ metric_summary |>
 3. 予測確率そのものを使うなら `Brier` とキャリブレーション図を確認。
 :::
 
+## ROC曲線の直感
+
+ROC曲線がどうやって作られるかを直感的に理解しておきましょう。
+
+1. 閾値を **1.0**（全員を incorrect と判定）に設定する → TPR = 0, FPR = 0（左下の点）。
+2. 閾値を少しずつ**下げる** → correct と判定される人が増え、TPR（感度）が上がる。同時にFPR（偽陽性率）も上がる。
+3. 閾値を **0.0**（全員を correct と判定）にする → TPR = 1, FPR = 1（右上の点）。
+4. 各閾値で得られた (FPR, TPR) の点をつないだ曲線がROC曲線です。
+
+**AUCの直感的意味**: ランダムに正答者1人と誤答者1人を選んだとき、モデルが**正答者に高い確率を与える割合**。AUC = 1.0 なら完璧な識別、AUC = 0.5 ならランダムと同等です[@fawcett2006]。
+
 ## ROC曲線
 
 ```{r}
@@ -1293,9 +1857,39 @@ pred_all |>
 
 # 閾値をどう決めるか（ROCを運用に接続）
 
-AUCは「ランク付けの上手さ」を示しますが、現場では最終的に**閾値**が必要です。
+::: {.callout-tip}
+## 最初にここだけ（閾値）
+AUCは閾値なしの比較指標。実務では1つの閾値を決めて「介入する/しない」を判断する。閾値の選び方は目的次第: バランス型（Youden）、見逃し回避型（低閾値）、誤警報回避型（高閾値）。
+:::
 
-ここが「研究結果を実務判断へ変換する」一番重要な節です。
+AUCは「ランク付けの上手さ」を示しますが、現場では最終的に**閾値**が必要です。ここが「研究結果を実務判断へ変換する」一番重要な節です。
+
+## 閾値選択の3つのアプローチ
+
+閾値の決め方は目的によって異なります。以下の3つが代表的です。
+
+```{r}
+#| label: threshold-approaches-table
+#| echo: false
+
+tibble::tribble(
+  ~Approach, ~Formula, ~Best_for, ~Example,
+  "Youden's J（バランス型）", "Sensitivity + Specificity − 1 を最大化", "感度と特異度のバランスが重要な場面", "研究報告のデフォルト",
+  "コストベース", "FNコスト × FN + FPコスト × FP を最小化", "見逃しと誤警報のコストが非対称な場面", "語彙スクリーニング（見逃しが高コスト）",
+  "固定Sensitivity", "Sensitivity ≥ 0.90 に固定し、対応するSpecificityを確認", "一定以上の検出率を保証したい場面", "進級判定の補助ツール"
+) |>
+  gt() |>
+  tab_header(
+    title = "Three Approaches to Threshold Selection",
+    subtitle = "Choose based on your educational purpose"
+  ) |>
+  cols_label(
+    Approach = "アプローチ",
+    Formula = "計算方法",
+    Best_for = "適する場面",
+    Example = "教育での例"
+  )
+```
 
 ## 例: YoudenのJで閾値を選ぶ
 
@@ -1361,11 +1955,26 @@ threshold_cmp |>
 - その場合、Youden最適より低めの閾値にしてRecallを優先する設計がありえます。
 :::
 
+## 教育場面での閾値判断の具体例
+
+- **語彙習得スクリーニング**（学習困難リスクの早期検出）: 見逃し（FN）のコストが高い。学習困難な生徒を見逃すと支援が遅れる。→ **低閾値**でSensitivityを優先。FP（過剰検出）は追加テストで確認すればよい。
+- **進級判定**（合格基準の設定）: 誤判定（FP）で基準未達の学習者を通過させるコストが高い。→ **高閾値**でSpecificity/Precisionを優先。
+- **研究報告**（一般的なモデル比較）: 特定のコスト構造を仮定しない。→ **Youden's J** でバランスをとり、他の閾値候補も感度分析として併記する。
+
+先ほどの3ケースで考えると、Case A（高習熟+有利条件）とCase B（低習熟+不利条件）は閾値の影響を受けにくい（どちらもほぼ確実に一方に分類される）。**Case C（中習熟+中間条件）がボーダーライン**であり、閾値の選択によって判定が変わる典型的な学習者です。
+
 ---
 
 # キャリブレーション確認（確率をそのまま信じてよいか）
 
+::: {.callout-tip}
+## 最初にここだけ（キャリブレーション）
+予測確率が0.80なら、実際に80%の人が正答していてほしい。この一致度がキャリブレーション。AUCが高くてもキャリブレーションが悪いことがある。
+:::
+
 高いAUCでも、確率が歪んでいる場合があります。教育現場で「0.8の確率で正答」のように使うなら、校正の確認が必要です。
+
+**なぜキャリブレーションが重要か**: AUCは「順位の正しさ」（正答者に高い確率を与えるか）を測りますが、「確率そのものの正しさ」は保証しません。天気予報の比喩で言えば、「降水確率70%」と言った日のうち実際に雨が降ったのが70%なら、キャリブレーションが良いと言えます。教育現場で「この生徒は80%の確率で基準を超える」と伝えるなら、その80%が信頼できるかの確認が不可欠です。
 
 特に、学習支援の優先順位づけに確率を使う場合は、この確認を省略しないのが安全です。
 
@@ -1405,6 +2014,21 @@ xgb_calib |>
 - 点が対角線より**下**: 実際の正答率が予測より低い（過大評価気味）。
 :::
 
+## Brier scoreの解釈
+
+Brier scoreは予測確率の精度を定量化する指標です:
+
+$$
+\text{Brier} = \frac{1}{N}\sum_{i=1}^{N}(p_i - y_i)^2
+$$
+
+ここで $p_i$ は予測確率、$y_i$ は実際の結果（0 or 1）です。**0が完璧**（予測確率と実際が完全一致）で、ベースレートが50%のときの**ランダム予測は0.25**です。先ほどの指標テーブルでBrierが低いモデルほどキャリブレーションが良い傾向にあります。
+
+::: {.callout-note}
+## キャリブレーション改善の選択肢
+本章ではキャリブレーションの**確認**までを行いますが、系統的なずれがある場合の**改善手法**も存在します。代表的なものとしてPlatt scaling（ロジスティック変換による後処理）やisotonic regression（単調回帰による後処理）があり、Rでは `probably` パッケージで実装可能です。詳細は本章の範囲外としますが、確率値を直接使う運用では検討に値します[@steyerberg2010]。
+:::
+
 ---
 
 # 英語教育研究としての解釈
@@ -1423,16 +2047,30 @@ xgb_calib |>
 
 ## 教育的含意の例（この章のケース）
 
-- `retrieval`条件は`glossing`より正答率を押し上げる傾向。
-- ただし遅延テストで効果が減衰する可能性がある（交互作用）。
-- 学習時間だけでなく語彙特性（頻度・長さ・同根語）も予測に寄与。
+- `retrieval`条件は`glossing`より正答率を押し上げる傾向。これはretrieval practiceの文献知見と一致する。
+- ただし遅延テストで効果が減衰する可能性がある（交互作用）。カリキュラム設計では、retrieval practiceの間隔配置を検討すべき示唆を含む。
+- 学習時間だけでなく語彙特性（頻度・長さ・同根語）も予測に寄与。これは語彙教材の選定基準に直接関わる。
 
 ::: {.callout-note}
-## 結果記述テンプレート
-「XGBoostはテストデータでROC-AUC = XX、PR-AUC = XXを示した。  
-閾値を0.XX（Youden最適）に設定した場合、Sensitivity = XX、Specificity = XXであった。  
-教育実務では見逃しコストを考慮し、閾値を0.XXに下げる運用も妥当である。」  
+## 結果記述テンプレート（日本語）
+「XGBoostはテストデータでROC-AUC = .82、PR-AUC = .78を示した。閾値を0.52（Youden最適）に設定した場合、Sensitivity = .80、Specificity = .72であった。SHAP分析の結果、proficiencyとword_freqが最も強い予測因子であり、conditionとtest_timeの交互作用も確認された。教育実務では見逃しコストを考慮し、閾値を0.40に下げる運用も妥当である。」
+
+（上記の数値は仮の例です。ご自身の分析結果で置き換えてください。）
 :::
+
+::: {.callout-note}
+## Results Template (English)
+"An XGBoost classifier was trained on the vocabulary learning data (N = 3,500 observations) with 3-fold cross-validation for hyperparameter tuning. On the held-out test set, XGBoost achieved ROC-AUC = .82 and PR-AUC = .78. At the Youden-optimal threshold (0.52), sensitivity was .80 and specificity was .72. SHAP analysis revealed proficiency and word frequency as the strongest predictors. For practical deployment, a lower threshold may be warranted to minimize false negatives in early intervention contexts."
+
+(The numbers above are illustrative. Replace them with your actual results.)
+:::
+
+## 限界と今後の課題
+
+- **外的妥当性**: 本章のデータは架空の生成データであり、実データでの再現が必要。
+- **多水準構造の簡略化**: 本章では `learner_id` と `item_id` の変量効果を含めていない。実際のデータでは、6章で扱ったGLMMとの比較が必要になる場合がある。
+- **公平性**: 学習者の背景（L1, 性別等）によって予測精度が異なる可能性がある。サブグループ別の性能評価を行うことが望ましい。
+- **因果推論との区別**: ツリーモデルは予測に優れるが、「retrieval conditionが正答率を**因果的に**高める」とは直接言えない。因果推論には別の枠組み（例: 傾向スコア、差の差）が必要。
 
 ---
 
@@ -1458,15 +2096,44 @@ xgb_calib |>
 - 対応: 単純モデル（GLM/単木）を必ず比較対象に含める。
 :::
 
+::: {.callout-warning}
+## 留意点5: カテゴリカル変数の重要度に注意する
+- 対応: 水準数が多いカテゴリカル変数は、Gini/Gainベースの重要度で過大評価されやすい[@gries2020]。Permutation importanceやSHAPと併用する。
+:::
+
+::: {.callout-warning}
+## 留意点6: Gain重要度のカーディナリティバイアス
+- 対応: XGBoostのGain重要度は分岐回数に依存するため、連続変数を優遇しやすい。SHAPと併記して頑健性を確認する[@strobl2007]。
+:::
+
+::: {.callout-warning}
+## 留意点7: サンプルサイズとモデル複雑度のバランス
+- 対応: サンプルサイズが小さい場合（例: N < 500）、ツリーモデルよりGLMの方が安定することがある。データ量に見合ったモデル複雑度を常に検討する。
+:::
+
 ---
 
 # まとめ
 
-本章の主要な結論は次の3点である。
+::: {.callout-tip}
+## 最初にここだけ（まとめ）
+回帰→決定木→RF→XGBoostの順にモデルの複雑度を上げ、ROC/PR/閾値/キャリブレーションで評価した。ツリーモデルは非線形・相互作用に強いが、ROC-AUC単独ではなく複数指標で判断し、閾値は教育目的に合わせて選ぶ。
+:::
 
-1. ツリーモデルは、英語教育データで起こりやすい非線形・相互作用を扱いやすい。
-2. ROCは有用だが、**ROCだけでは不十分**。
-3. 実務では、PR・閾値・キャリブレーションまで見て初めて意思決定に使える。
+本章の主要な結論は次の通りである。
+
+1. **ツリーモデルは非線形・相互作用を自動的に捉える**: ロジスティック回帰では手動で交互作用項を指定する必要があるが、ツリーモデルはデータ駆動で最適な分割を発見する。英語教育データのように、学習者要因と項目要因が複雑に絡む場面で特に有用である。
+
+2. **ROCは有用だが、ROCだけでは不十分**: PR-AUC（陽性クラスが少ないとき特に重要）、Brier score（確率の信頼性）、閾値依存指標（Sensitivity/Specificity）を組み合わせて初めて、モデルの実力を多面的に評価できる。
+
+3. **実務判断には閾値とキャリブレーションが必要**: AUCは「モデルの潜在能力」を示すが、教育現場で「この学習者に介入する/しない」を決めるには閾値が必要。その閾値は教育目的（見逃し回避 vs 誤警報回避）に合わせて選ぶ。確率値を直接使う場合はキャリブレーションの確認が不可欠。
+
+4. **モデル選択は目的に依存する**: 精度だけでなく、解釈可能性、計算コスト、チューニング負荷を考慮する。以下のフローチャートを参考にされたい:
+
+- データが少ない（< 500行）→ **GLM**で十分な場合が多い。
+- 非線形・相互作用が複雑 → **RF**（安定性重視）or **XGBoost**（精度重視）。
+- 予測根拠の透明性が最優先 → **決定木**。
+- 最高精度を追求し、解釈にはSHAPを使う → **XGBoost + SHAP**。
 
 ---
 
@@ -1474,34 +2141,74 @@ xgb_calib |>
 
 - [ ] 予測課題は明確か（何を当てるか）。
 - [ ] データ分割とCV手順を明記したか。
+- [ ] ハイパーパラメータのチューニング手順を記載したか。
+- [ ] 交差検証の設計（fold数・層化）を報告したか。
 - [ ] ROC-AUCとPR-AUCの両方を示したか。
 - [ ] 閾値の根拠を記述したか。
+- [ ] キャリブレーション図を確認したか。
+- [ ] 複数の重要度指標を比較したか。
+- [ ] 比較モデル（GLM含む）の結果を併記したか。
 - [ ] 教育的解釈と限界（公平性含む）を書いたか。
+
+---
+
+# 先行研究マップ
+
+本章を通読した後の振り返り用として、各文献が本章のどの部分に対応するかを整理します。
+
+```{r}
+#| label: literature-map
+#| echo: false
+
+tibble::tribble(
+  ~Category, ~Study, ~Context, ~Relevance_to_Chapter,
+  "英語教育応用",
+  "Zhang & Lu (2025)",
+  "L2テキストのCEFRレベル分類にRFを使用",
+  "本章のRFセクションと変数重要度の読み方に対応",
+  "英語教育応用",
+  "Mau & Feng (2025)",
+  "L2ライティング自動評価にXGBoost分類器を使用",
+  "本章のXGBoostセクションとモデル比較の枠組みに対応",
+  "英語教育応用",
+  "Niu (2025)",
+  "英語教育評価の精度改善にRFを活用（会議報告）",
+  "本章のRFセクションに対応。会議論文のため再現時は評価設計を明示",
+  "方法論（ツリー）",
+  "Gries (2020)",
+  "コーパス言語学でのツリーモデルの落とし穴を指摘",
+  "本章の方法論上の留意点（カテゴリカル変数の過大評価等）に対応",
+  "方法論（重要度）",
+  "Mizumoto (2022)",
+  "応用言語学でdominance analysisとRFの実践手順を提示",
+  "本章のGLM dominanceとRF重要度セクションに対応",
+  "教科書",
+  "James et al. (2021)",
+  "ISLR: ツリーモデルの教育的標準テキスト",
+  "本章の概念説明（バイアスバリアンス・バギング・ブースティング）の理論的基盤",
+  "教科書",
+  "Kuhn & Silge (2022)",
+  "Tidy Modeling with R: tidymodelsワークフロー参照",
+  "本章のtidymodels実装パターン全体に対応"
+) |>
+  gt() |>
+  tab_header(
+    title = "Literature Map for This Chapter",
+    subtitle = "How each reference informs the chapter's design"
+  ) |>
+  cols_label(
+    Category = "Category",
+    Study = "Study",
+    Context = "What they did",
+    Relevance_to_Chapter = "Chapter connection"
+  )
+```
 
 ---
 
 # 参考文献
 
 ::: {#refs}
-- Azen, R., & Budescu, D. V. (2003). The dominance analysis approach for comparing predictors in multiple regression. *Psychological Methods*, 8(2), 129-148. https://doi.org/10.1037/1082-989X.8.2.129
-- Azen, R., & Traxel, N. (2009). Using dominance analysis to determine predictor importance in logistic regression. *Journal of Educational and Behavioral Statistics*, 34(3), 319-347. https://doi.org/10.3102/1076998609332754
-- Breiman, L. (2001). Random Forests. *Machine Learning*, 45, 5-32. https://doi.org/10.1023/A:1010933404324
-- Breiman, L., Friedman, J. H., Olshen, R. A., & Stone, C. J. (1984). *Classification and Regression Trees*. Wadsworth.
-- Budescu, D. V. (1993). Dominance analysis: A new approach to the problem of relative importance of predictors in multiple regression. *Psychological Bulletin*, 114(3), 542-551. https://doi.org/10.1037/0033-2909.114.3.542
-- Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. *KDD '16*. https://arxiv.org/abs/1603.02754
-- DeLong, E. R., DeLong, D. M., & Clarke-Pearson, D. L. (1988). Comparing the areas under two or more correlated ROC curves. *Biometrics*, 44, 837-845.
-- Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters*, 27(8), 861-874. https://doi.org/10.1016/j.patrec.2005.10.010
-- Lundberg, S. M., & Lee, S.-I. (2017). A unified approach to interpreting model predictions. *arXiv*. https://doi.org/10.48550/arXiv.1705.07874
-- Lundberg, S. M., Erion, G., Chen, H., DeGrave, A., Prutkin, J. M., Nair, B., Katz, R., Himmelfarb, J., Bansal, N., & Lee, S.-I. (2020). From local explanations to global understanding with explainable AI for trees. *Nature Machine Intelligence*, 2(1), 56-67. https://doi.org/10.1038/s42256-019-0138-9
-- Mizumoto, A. (2022). Calculating the relative importance of multiple regression predictor variables using dominance analysis and random forests. *Language Learning*, 73(1), 161-196. https://doi.org/10.1111/lang.12518
-- Robin, X., et al. (2011). pROC: an open-source package for R and S+ to analyze and compare ROC curves. *BMC Bioinformatics*, 12, 77. https://doi.org/10.1186/1471-2105-12-77
-- Saito, T., & Rehmsmeier, M. (2015). The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets. *PLOS ONE*, 10(3), e0118432. https://doi.org/10.1371/journal.pone.0118432
-- Steyerberg, E. W., et al. (2010). Assessing the performance of prediction models: a framework for traditional and novel measures. *Epidemiology*, 21(1), 128-138. https://doi.org/10.1097/EDE.0b013e3181c30fb2
-- Štrumbelj, E., & Kononenko, I. (2013). Explaining prediction models and individual predictions with feature contributions. *Knowledge and Information Systems*, 41(3), 647-665. https://doi.org/10.1007/s10115-013-0679-x
-- Mau, B.-R., & Feng, H.-H. (2025). Integrating move analysis and sentence reconstruction in automated writing evaluation for L2 academic writers. *Assessing Writing*, 66, 100984. https://doi.org/10.1016/j.asw.2025.100984
-- Niu, N. (2025). Enhancing English language teaching assessment through random forest algorithms. In *2025 4th International Conference on Distributed Computing and Electrical Circuits and Electronics (ICDCECE)* (pp. 1-7). https://doi.org/10.1109/ICDCECE65353.2025.11034840
-- Zhang, X., & Lu, X. (2025). Aligning linguistic complexity with the difficulty of English texts for L2 learners based on CEFR levels. *Studies in Second Language Acquisition*, 47(5), 1407-1434. https://doi.org/10.1017/S0272263125101125
-- Yağcı, M. (2022). Educational data mining: prediction of students' academic performance using machine learning algorithms. *Smart Learning Environments*, 9, 11. https://doi.org/10.1186/s40561-022-00192-z
 :::
 
 ## 関連リソース（実装ドキュメント）

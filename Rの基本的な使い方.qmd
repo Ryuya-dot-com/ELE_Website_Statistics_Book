@@ -114,36 +114,70 @@ pre {
 </style>
 ```
 
+# はじめに
+
+R は、応用言語学・英語教育研究において最も広く用いられている統計解析環境の一つです。無料かつオープンソースであり、*Language Learning*、*Studies in Second Language Acquisition*、*TESOL Quarterly* をはじめとする主要ジャーナルに掲載される量的研究の多くがRを用いて分析されています。混合効果モデル（`lme4`）、項目応答理論（`mirt`）、テキスト分析（`quanteda`）、ベイズ推定（`brms`）など、英語教育研究で必要とされる高度な分析手法のほぼすべてがRのパッケージとして提供されています。
+
+本章は、Rの基本的な操作方法を **リファレンスガイド** としてまとめたものです。本書の各章（T検定、ANOVA、一般化線形モデル等）を読み進める中で「この関数の使い方が分からない」「データ操作の方法を確認したい」といった場面で参照することを想定しています。Rが初めての方は、まず第1節から第5節までを通読し、基本的な操作に慣れてから他の章に進むことをお勧めします。
+
+本章では、120名の日本人大学EFL学習者を対象とした架空の語彙学習実験データを一貫して使用します。TOEFL得点、語彙テスト、読解テスト、ライティング評価、指導法（明示的指導 vs. 暗示的指導）、事前・事後テストなど、英語教育研究で実際に扱う変数を用いることで、読者が自身の研究に応用しやすい形で解説を進めます。
+
+::: {.callout-tip}
+## この章の読み方（初心者向け）
+- 本章は逐次的に読む章ではなく、他の章で不明な点があった際に参照する **リファレンスガイド** です。
+- **Rが初めての方:** まず第1節〜第5節を順に読み、Rの基本操作に慣れてください。
+- **他の章のコードが分からない時:** 第6節（tidyverse）と第7節（可視化）を参照してください。
+- **統計の基礎を確認したい時:** 第8節で t検定・相関・回帰分析の基本的な実行方法を確認できます。
+- **エラーが出て困った時:** 第11節（トラブルシューティング）を参照してください。
+:::
+
+::: {.callout-tip}
+## Conventions
+Figures use English labels. All code chunks are R.
+:::
+
 # RとRStudioの導入
 
 ## Rのインストール
 
-RはCRAN (Comprehensive R Archive Network) から無料でダウンロードできます。
+R は CRAN (Comprehensive R Archive Network) から無料でダウンロードできます。
 
 1. [CRAN](https://cran.r-project.org/) にアクセス
-2. お使いのOS（Windows/Mac/Linux）を選択
+2. お使いのOS（Windows / Mac / Linux）を選択
 3. 最新版をダウンロードしてインストール
 
 ## RStudioのインストール
 
-RStudioは、Rを使いやすくする統合開発環境（IDE）です。
+RStudio は、R を効率的に使用するための統合開発環境（IDE）です。コードの編集、実行、データの確認、図の表示を一つの画面で行うことができます。
 
-1. [RStudio Desktop](https://posit.co/download/rstudio-desktop/) にアクセス
-2. 無料版をダウンロード
-3. インストール後、RStudioを起動
+1. [Posit (RStudio Desktop)](https://posit.co/download/rstudio-desktop/) にアクセス
+2. 無料版（Open Source Edition）をダウンロード
+3. インストール後、RStudioを起動（R本体ではなく、RStudioを開きます）
 
 ## RStudioの画面構成
 
-RStudioは4つのペインで構成されています：
+RStudioは4つのペインで構成されています。
 
-- **Source（左上）**：スクリプトエディタ
-- **Console（左下）**：コマンド実行と結果表示
-- **Environment（右上）**：変数とデータの確認
-- **Files/Plots（右下）**：ファイル管理と図の表示
+- **Source（左上）**：Rスクリプトの編集画面。ここにコードを書き、`Ctrl + Enter`（Mac: `Cmd + Enter`）で実行します。
+- **Console（左下）**：コマンドの実行結果が表示されます。直接コマンドを入力することもできます。
+- **Environment（右上）**：現在のセッションで作成した変数やデータフレームが一覧表示されます。
+- **Files / Plots / Packages / Help（右下）**：ファイル管理、図の表示、パッケージの管理、ヘルプの閲覧に使用します。
+
+::: {.callout-note}
+## Posit Cloudについて
+ソフトウェアのインストールが困難な環境（大学の共用PC等）では、[Posit Cloud](https://posit.cloud/) を利用することでブラウザ上でRStudioと同等の環境を使用できます。無料プランでも基本的な分析には十分です。
+:::
+
+::: {.callout-warning}
+## Rのバージョンについて
+本書のコードは R 4.3.0 以降での動作を想定しています。古いバージョンでは一部のパッケージやネイティブパイプ演算子（`|>`）が使用できない場合があります。`R.version.string` で現在のバージョンを確認してください。
+:::
 
 # Rの基本操作
 
 ## 電卓として使う
+
+Rはコンソールに数式を入力するだけで計算結果を返します。まずは簡単な計算から始めましょう。
 
 ```{r}
 #| label: calculator
@@ -153,527 +187,3695 @@ RStudioは4つのペインで構成されています：
 4 * 5
 20 / 4
 
-# べき乗
+# べき乗と平方根
 2^3
 sqrt(16)
+
+# TOEFLスコアの平均を手計算で確認
+(85 + 90 + 78 + 92 + 88) / 5
 ```
 
 ## 変数への代入
 
-```{r}
-#| label: assignment
-# 代入演算子 <- を使用
-x <- 10
-y <- 20
-z <- x + y
-z
+計算結果や値を変数に保存することで、後から繰り返し使用できます。
 
-# = も使えるが、<- が推奨
-a = 5  # 動作するが非推奨
-b <- 5  # 推奨
+```{r}
+#| label: assignment-ele
+# 代入演算子 <- を使用（推奨）
+toefl_score <- 85
+vocab_size <- 3500
+study_hours <- 12.5
+
+# 変数を使った計算
+toefl_score + 10
+
+# 複数の変数を組み合わせる
+total <- toefl_score + vocab_size
+total
 ```
+
+::: {.callout-tip}
+## `<-` と `=` の違い
+Rでは `<-` と `=` の両方を代入に使用できますが、R コミュニティでは `<-` が標準です。`=` は関数の引数指定（例: `mean(x, na.rm = TRUE)`）と混同しやすいため、代入には常に `<-` を使用することを推奨します。RStudioでは `Alt + -`（Mac: `Option + -`）のショートカットで `<-` を入力できます。
+:::
 
 ## データ型
 
-Rには主に以下のデータ型があります：
+Rには主に以下のデータ型があります。英語教育研究で扱うデータを例に確認しましょう。
 
 ```{r}
-#| label: data-types
-# 数値（numeric）
-age <- 25
-class(age)
+#| label: data-types-ele
+# 数値（numeric）：テストスコア、年齢など
+toefl_score <- 85
+class(toefl_score)
 
-# 文字列（character）
-name <- "田中太郎"
-class(name)
+# 文字列（character）：参加者ID、条件名など
+participant_id <- "P001"
+class(participant_id)
 
-# 論理値（logical）
-is_student <- TRUE
-class(is_student)
+# 論理値（logical）：条件判定の結果
+passed_test <- TRUE
+class(passed_test)
 
-# 因子（factor）
-gender <- factor(c("男", "女", "男", "女"))
-class(gender)
-levels(gender)
+# 因子（factor）：カテゴリカル変数（熟達度レベル、指導法など）
+proficiency <- factor(
+  c("A2", "B1", "B2", "B1", "A2"),
+  levels = c("A2", "B1", "B2")
+)
+class(proficiency)
+levels(proficiency)
 ```
+
+::: {.callout-warning}
+## 日本語の変数名について
+Rは日本語の変数名（例: `得点 <- 85`）にも対応していますが、エラーの原因になりやすく、コードの共有時に文字化けが生じることがあります。変数名には **英語のスネークケース**（例: `toefl_score`, `vocab_test`）を使用してください。
+:::
+
+## 論理演算子と比較演算子
+
+データの条件抽出や分析に不可欠な演算子を確認します。
+
+```{r}
+#| label: logical-operators
+# 比較演算子
+toefl_score <- 85
+
+toefl_score > 80    # より大きい
+toefl_score >= 85   # 以上
+toefl_score == 85   # 等しい（= ではなく == を使う）
+toefl_score != 90   # 等しくない
+
+# 論理演算子
+proficiency_level <- "B1"
+toefl_score > 60 & proficiency_level == "B1"   # AND（両方TRUE）
+toefl_score > 90 | proficiency_level == "B2"   # OR（少なくとも一方がTRUE）
+
+# %in% 演算子（ベクトル内の存在確認）
+proficiency_level %in% c("B1", "B2")
+```
+
+## 出力関数：print(), cat(), paste()
+
+Rでは変数名をそのまま入力すると結果が表示されますが、スクリプト内で明示的に出力を制御したい場合は `print()`、`cat()`、`paste()` を使い分けます。
+
+```{r}
+#| label: output-functions
+# --- 暗黙の出力（コンソールで最もよく使う方法）---
+toefl_score <- 85
+toefl_score   # 変数名だけで出力される（対話的操作時のみ）
+
+# --- print()：オブジェクトの構造を保ったまま出力 ---
+print(toefl_score)
+print(c(85, 90, 78))
+
+# data.frame もそのまま出力される
+small_df <- data.frame(id = 1:3, score = c(85, 90, 78))
+print(small_df)
+
+# --- cat()：書式を自分で制御する出力 ---
+cat("TOEFLスコア:", toefl_score, "\n")
+cat("平均:", mean(c(85, 90, 78)), "  SD:", sd(c(85, 90, 78)), "\n")
+
+# --- paste()：文字列を結合する（出力ではなく文字列を「作る」関数）---
+msg <- paste("参加者数:", 120, "名")
+msg       # paste() だけでは出力されない → print() か cat() が必要
+cat(msg, "\n")
+
+# --- paste0()：区切り文字なしで結合 ---
+paste0("P", sprintf("%03d", 1:5))   # "P001" "P002" ... を生成
+
+# --- sprintf()：C言語風の書式指定 ---
+sprintf("M = %.2f, SD = %.2f", mean(c(85, 90, 78)), sd(c(85, 90, 78)))
+```
+
+::: {.callout-note}
+## print() と cat() の使い分け
+
+| | `print()` | `cat()` |
+|:---|:---|:---|
+| **用途** | オブジェクトをそのまま表示 | 書式を自由に整えて表示 |
+| **改行** | 自動的に改行される | `\n` を自分で指定する必要がある |
+| **引用符** | 文字列は `"..."` 付きで表示 | 引用符なしで表示 |
+| **戻り値** | 入力をそのまま返す（パイプで使える） | `NULL` を返す（パイプの流れが途切れる） |
+| **ベクトル** | `[1] 85 90 78` のように表示 | `85 90 78` のように表示 |
+| **data.frame** | テーブル形式で表示 | 行ごとにフラットに表示（見にくい） |
+
+**原則:** データフレームや分析結果の確認には `print()`、分析の進捗メッセージやAPA形式の結果報告文には `cat()` または `sprintf()` を使います。
+:::
+
+```{r}
+#| label: cat-sprintf-apa
+# 実用例：分析結果をAPA形式で出力する
+# 2群のスコアを比較するt検定
+group_a <- c(85, 90, 78, 92, 88, 76, 95, 82, 87, 91)  # 明示的指導群
+group_b <- c(75, 80, 70, 82, 78, 68, 85, 72, 77, 81)  # 暗示的指導群
+t_result <- t.test(group_a, group_b)
+
+cat(sprintf(
+  "t(%.1f) = %.2f, p = %.3f",
+  t_result$parameter,
+  t_result$statistic,
+  t_result$p.value
+), "\n")
+
+# 複数行の出力
+cat(
+  "=== 分析結果 ===\n",
+  sprintf("  平均 (Explicit): %.2f\n", t_result$estimate[1]),
+  sprintf("  平均 (Implicit): %.2f\n", t_result$estimate[2]),
+  sprintf("  差: %.2f\n", diff(t_result$estimate)),
+  sep = ""
+)
+```
+
+::: {.callout-warning}
+## for ループや関数内では print() が必要
+Rの対話的環境（コンソール）では変数名を入力するだけで出力されますが、`for` ループや自作関数の内部では **明示的に `print()` を呼ばないと出力されません**。
+
+```r
+# ループ内で print() なしだと何も表示されない
+for (i in 1:3) {
+  i          # ← 何も表示されない
+}
+
+# print() を使えば表示される
+for (i in 1:3) {
+  print(i)   # ← 表示される
+}
+
+# cat() でも OK
+scores <- c(85, 90, 78, 92, 88)
+for (s in scores) {
+  cat("Score:", s, "\n")
+}
+```
+:::
+
+# プログラミングの基礎
+
+本書の各章を読むだけであれば、以下の内容をすべて暗記する必要はありません。しかし、分析スクリプトを自分で書くようになると、条件分岐・繰り返し・自作関数は避けて通れません。ここでは英語教育研究の場面を想定しながら、Rプログラミングの基礎を解説します。
+
+## 条件分岐：if / else if / else
+
+条件に応じて処理を切り替える構文です。
+
+```{r}
+#| label: if-else-basic
+# 基本形
+score <- 78
+
+if (score >= 80) {
+  cat("合格（80点以上）\n")
+} else if (score >= 60) {
+  cat("条件付き合格（60-79点）\n")
+} else {
+  cat("不合格（60点未満）\n")
+}
+```
+
+```{r}
+#| label: if-else-practical
+# 実用例：分析手法の自動選択
+n_groups <- 3
+test_type <- "parametric"
+
+if (n_groups == 2 & test_type == "parametric") {
+  cat("→ t検定を実施\n")
+} else if (n_groups >= 3 & test_type == "parametric") {
+  cat("→ ANOVAを実施\n")
+} else {
+  cat("→ ノンパラメトリック検定を実施\n")
+}
+```
+
+::: {.callout-tip}
+## if文 と ifelse() / case_when() の使い分け
+
+| 構文 | 用途 | 入力 | 出力 |
+|:---|:---|:---|:---|
+| `if / else` | 制御フロー（処理の分岐） | スカラー値（長さ1） | 任意の処理を実行 |
+| `ifelse()` | ベクトルの条件変換 | ベクトル | 同じ長さのベクトル |
+| `case_when()` | 複数条件のベクトル変換 | ベクトル | 同じ長さのベクトル |
+
+`if` は「この条件ならこの分析を実行する」のようなスクリプト全体の流れを制御する場面で使い、`ifelse()` / `case_when()` は `mutate()` 内でデータフレームの列を変換する場面で使います。
+
+```r
+# ❌ if は長さ1の条件にしか使えない
+# if (scores > 80) { "合格" }  # Warning: 条件が2つ以上の値を持つ
+
+# ✅ ベクトルの条件変換には ifelse() を使う
+ifelse(scores > 80, "合格", "不合格")
+
+# ✅ 3つ以上の条件には case_when() を使う（第6節参照）
+# case_when(scores >= 80 ~ "A", scores >= 60 ~ "B", TRUE ~ "C")
+```
+:::
+
+## 繰り返し：for ループ
+
+同じ処理を繰り返し実行する構文です。
+
+```{r}
+#| label: for-loop-basic
+# 基本形：1から5まで繰り返す
+for (i in 1:5) {
+  cat("繰り返し", i, "回目\n")
+}
+```
+
+```{r}
+#| label: for-loop-practical
+# 実用例1：熟達度レベルごとに記述統計を出力
+proficiency_levels <- c("A2", "B1", "B2")
+scores_by_level <- list(
+  A2 = c(45, 52, 38, 50, 48),
+  B1 = c(65, 70, 62, 68, 71),
+  B2 = c(85, 88, 82, 90, 87)
+)
+
+for (level in proficiency_levels) {
+  s <- scores_by_level[[level]]
+  cat(sprintf("%s: M = %.1f, SD = %.1f\n", level, mean(s), sd(s)))
+}
+```
+
+```{r}
+#| label: for-loop-accumulate
+# 実用例2：結果をベクトルに蓄積する
+sample_sizes <- c(10, 20, 30, 50, 100)
+means <- numeric(length(sample_sizes))   # 結果を格納する空ベクトル
+
+set.seed(42)
+for (i in seq_along(sample_sizes)) {
+  simulated_scores <- rnorm(sample_sizes[i], mean = 70, sd = 10)
+  means[i] <- mean(simulated_scores)
+}
+
+data.frame(n = sample_sizes, sample_mean = round(means, 2))
+```
+
+::: {.callout-note}
+## for ループ vs ベクトル演算 vs purrr::map()
+Rでは可能な限り **ベクトル演算**（ループなしで一括処理）を使う方が高速で簡潔です。ただし、ファイルの一括読み込みや複雑な処理にはループや `purrr::map()` が必要になります。
+
+```r
+# ❌ ループで1つずつ計算（遅い）
+result <- numeric(100)
+for (i in 1:100) {
+  result[i] <- scores[i] * 2
+}
+
+# ✅ ベクトル演算（速い・簡潔）
+result <- scores * 2
+
+# ✅ 複雑な繰り返しには purrr::map() を使う
+# purrr::map_dbl(sample_sizes, ~ mean(rnorm(.x, 70, 10)))
+```
+:::
+
+## while ループ
+
+条件が `TRUE` の間、処理を繰り返します。繰り返し回数が事前に分からない場合に使います。
+
+```{r}
+#| label: while-loop
+# 例：ランダムにスコアを生成し、90点以上が出たら停止
+set.seed(123)
+attempt <- 0
+
+while (TRUE) {
+  attempt <- attempt + 1
+  score <- round(rnorm(1, mean = 75, sd = 10))
+  if (score >= 90) {
+    cat(sprintf("試行 %d 回目でスコア %d（90点以上）が出ました\n", attempt, score))
+    break   # ループを強制終了
+  }
+}
+```
+
+::: {.callout-warning}
+## while ループの注意点
+終了条件を正しく設定しないと **無限ループ** になります。必ず `break` や終了条件が成立する仕組みを入れてください。不安な場合は、最大繰り返し回数を設けるのが安全です。
+
+```r
+max_iter <- 10000
+iter <- 0
+while (条件) {
+  iter <- iter + 1
+  if (iter > max_iter) {
+    cat("最大回数に到達。終了します。\n")
+    break
+  }
+  # 処理
+}
+```
+:::
+
+## 自作関数
+
+繰り返し使う処理は関数として定義しておくと、コードの重複を避けられます。
+
+### 基本形
+
+```{r}
+#| label: function-basic
+# 効果量（Cohen's d）を手計算する関数
+cohens_d_manual <- function(group1, group2) {
+  m1 <- mean(group1)
+  m2 <- mean(group2)
+  sd_pooled <- sqrt((sd(group1)^2 + sd(group2)^2) / 2)
+  d <- (m1 - m2) / sd_pooled
+  return(d)
+}
+
+# 使用例
+explicit_scores <- c(85, 90, 78, 92, 88, 76, 95, 82)
+implicit_scores <- c(75, 80, 70, 82, 78, 68, 85, 72)
+
+d <- cohens_d_manual(explicit_scores, implicit_scores)
+cat(sprintf("Cohen's d = %.3f\n", d))
+```
+
+### 引数のデフォルト値
+
+```{r}
+#| label: function-default-args
+# 記述統計を一括で計算する関数（デフォルト引数付き）
+describe_scores <- function(x, digits = 2, label = "Score") {
+  result <- data.frame(
+    Variable = label,
+    n = length(x),
+    M = round(mean(x, na.rm = TRUE), digits),
+    SD = round(sd(x, na.rm = TRUE), digits),
+    Min = min(x, na.rm = TRUE),
+    Max = max(x, na.rm = TRUE)
+  )
+  return(result)
+}
+
+# デフォルト引数で呼び出し
+describe_scores(c(85, 90, 78, 92, 88))
+
+# 引数を変更して呼び出し
+describe_scores(c(85, 90, 78, 92, 88), digits = 1, label = "TOEFL Reading")
+```
+
+### 複数の値を返す関数
+
+Rの関数は1つのオブジェクトしか返せませんが、リストを使えば複数の結果をまとめて返すことができます。
+
+```{r}
+#| label: function-return-list
+# t検定の結果を整形して返す関数
+run_ttest <- function(formula, data, label = "Comparison") {
+  result <- t.test(formula, data = data)
+
+  # 結果をリストにまとめて返す
+  list(
+    label = label,
+    t_value = round(result$statistic, 3),
+    df = round(result$parameter, 1),
+    p_value = round(result$p.value, 4),
+    means = round(result$estimate, 2),
+    significant = result$p.value < 0.05
+  )
+}
+
+# 使用例（ele_data はこの後のセクションで作成されます）
+# out <- run_ttest(posttest ~ instruction_type, data = ele_data,
+#                  label = "Posttest by Instruction")
+# out$t_value
+# out$significant
+```
+
+### 無名関数（ラムダ式）
+
+名前をつけずに関数を定義する方法です。`purrr::map()` やパイプの中で一時的に使います。
+
+```{r}
+#| label: anonymous-functions
+# R 4.1以降のラムダ式記法: \(x) ...
+scores_list <- list(
+  reading = c(22, 18, 25, 20, 15),
+  listening = c(20, 23, 19, 25, 22),
+  writing = c(18, 20, 16, 22, 19)
+)
+
+# 各テストの平均を計算
+sapply(scores_list, \(x) round(mean(x), 1))
+
+# 従来の記法: function(x) ...（同じ結果）
+sapply(scores_list, function(x) round(mean(x), 1))
+```
+
+::: {.callout-tip}
+## 関数を書くタイミング
+以下の目安で関数化を検討してください。
+
+1. **同じコードを3回以上コピペしている** → 関数にまとめる
+2. **分析の一部を条件によって変えたい** → 引数で制御できる関数にする
+3. **複数のデータセットに同じ分析を適用したい** → 関数 + `purrr::map()` で繰り返す
+4. **共同研究者とコードを共有したい** → 関数にして使い方をコメントで説明する
+:::
+
+## apply系関数とpurrr::map()
+
+ループの代わりに、リストやデータフレームの各要素に関数を適用する方法です。
+
+```{r}
+#| label: apply-map
+# --- Base R: apply系 ---
+
+# sapply: リストやベクトルに関数を適用（結果をベクトルで返す）
+sapply(scores_list, mean)
+
+# lapply: リストに関数を適用（結果をリストで返す）
+lapply(scores_list, \(x) c(M = mean(x), SD = sd(x)))
+
+# apply: 行列やデータフレームの行 / 列に関数を適用
+score_matrix <- matrix(c(85, 90, 78, 75, 80, 70), nrow = 3)
+colnames(score_matrix) <- c("Test_A", "Test_B")
+apply(score_matrix, 2, mean)   # 2 = 列ごと
+apply(score_matrix, 1, mean)   # 1 = 行ごと
+```
+
+```{r}
+#| label: purrr-map
+# --- purrr::map系（tidyverse流、推奨）---
+
+# map(): リストを返す
+purrr::map(scores_list, mean)
+
+# map_dbl(): 数値ベクトルを返す（結果が数値1つの場合に便利）
+purrr::map_dbl(scores_list, mean)
+
+# map_dfr(): 各結果をデータフレームとして行方向に結合
+purrr::map_dfr(scores_list, \(x) {
+  data.frame(M = mean(x), SD = sd(x), n = length(x))
+}, .id = "test")
+```
+
+::: {.callout-note}
+## sapply / lapply と purrr::map の対応関係
+
+| Base R | purrr | 戻り値の型 |
+|:---|:---|:---|
+| `sapply(x, f)` | `map(x, f)` | リスト（`sapply` は自動簡約） |
+| `sapply(x, f)` | `map_dbl(x, f)` | 数値ベクトル |
+| `sapply(x, f)` | `map_chr(x, f)` | 文字列ベクトル |
+| `sapply(x, f)` | `map_lgl(x, f)` | 論理ベクトル |
+| `lapply(x, f)` | `map(x, f)` | リスト |
+| — | `map_dfr(x, f)` | データフレーム（行方向結合） |
+| — | `map2(x, y, f)` | 2つのリストを並列に処理 |
+| — | `walk(x, f)` | 副作用のみ（ファイル保存等） |
+
+`purrr::map()` 系は戻り値の型が明示的で、パイプと親和性が高いため、`tidyverse` を使用する本書では `map()` 系を推奨します。
+:::
+
+# シミュレーションによるデータ生成
+
+統計学の学習や研究計画の立案において、**シミュレーション（模擬データ生成）** は非常に強力なツールです。Rは豊富な確率分布関数を備えており、研究仮説に基づいたデータを自由に生成することができます。
+
+この章では、乱数生成の基礎から始め、英語教育研究で実際に使えるシミュレーション技法を段階的に解説します。ここで学ぶ技法は、次のセクション「データ構造」でサンプルデータセット `ele_data` を作成する際にも直接活用されています。
+
+::: {.callout-tip}
+## シミュレーションを学ぶ理由
+- **統計手法の理解が深まる:** 「真の値」がわかっているデータで検定を行うことで、手法の挙動を直観的に理解できる
+- **研究計画の質が上がる:** 必要なサンプルサイズや検出力を事前に見積もれる（検定力分析）
+- **前提条件の影響を検証できる:** 正規性やサンプルサイズの違反がどの程度結果に影響するかを確認できる
+- **分析コードのテストに使える:** 実データ取得前にパイプラインを構築・検証できる
+:::
+
+## 再現可能な乱数：set.seed()
+
+Rの乱数生成は**擬似乱数**に基づいています。`set.seed()` で**シード**（種）を指定すると、毎回まったく同じ「ランダムな」数列が生成されます。
+
+```{r}
+#| label: set-seed-demo
+# シードなし：実行するたびに異なる結果
+cat("シードなし（毎回異なる）:\n")
+cat(round(rnorm(5), 2), "\n\n")
+
+# シードあり：常に同じ結果
+set.seed(2024)
+cat("set.seed(2024) — 1回目:\n")
+cat(round(rnorm(5), 2), "\n")
+
+set.seed(2024)
+cat("set.seed(2024) — 2回目（同一の結果）:\n")
+cat(round(rnorm(5), 2))
+```
+
+::: {.callout-important}
+## set.seed() のベストプラクティス
+- 研究の再現性を保証するため、シミュレーションコードの**冒頭に必ず** `set.seed()` を記述する
+- シード値は任意の整数で可（本書では `2024` を使用）
+- `set.seed()` の効果は**次のシード設定まで持続する**が、乱数を生成するたびに内部状態が進むため、途中でコードの順番を変えると結果が変わる
+- 論文やレポートでは使用したシード値を明記する
+:::
+
+## 基本的な乱数生成関数
+
+Rには確率分布に基づいたさまざまな乱数生成関数が用意されています。
+
+```{r}
+#| label: random-generators
+set.seed(2024)
+
+# --- 連続分布 ---
+
+# 正規分布: rnorm(n, mean, sd)
+# 例: テストスコア（平均70点、標準偏差10点）
+test_scores <- rnorm(10, mean = 70, sd = 10)
+cat("正規分布（テストスコア）:\n")
+cat(round(test_scores, 1), "\n\n")
+
+# 一様分布: runif(n, min, max)
+# 例: 0〜100のランダムなスコア
+random_scores <- runif(10, min = 0, max = 100)
+cat("一様分布（ランダムスコア）:\n")
+cat(round(random_scores, 1), "\n\n")
+
+# --- 離散分布 ---
+
+# 二項分布: rbinom(n, size, prob)
+# 例: 20問の正誤テスト（正答率60%）10人分
+correct_answers <- rbinom(10, size = 20, prob = 0.6)
+cat("二項分布（20問中の正答数）:\n")
+cat(correct_answers, "\n\n")
+
+# ポアソン分布: rpois(n, lambda)
+# 例: 1分間のスピーキング中のフィラー回数（平均3回）
+filler_counts <- rpois(10, lambda = 3)
+cat("ポアソン分布（フィラー回数）:\n")
+cat(filler_counts)
+```
+
+```{r}
+#| label: sample-function
+set.seed(2024)
+
+# sample(): 離散的な値からのランダム抽出
+
+# 例1: CEFR水準のランダム割り当て（復元抽出）
+cefr_levels <- sample(c("A2", "B1", "B2"), size = 15, replace = TRUE)
+cat("CEFR水準（復元抽出）:\n")
+cat(cefr_levels, "\n\n")
+
+# 例2: データのランダム並べ替え（非復元抽出）
+participant_ids <- paste0("P", 1:10)
+shuffled <- sample(participant_ids)
+cat("参加者のランダム並べ替え:\n")
+cat(shuffled, "\n\n")
+
+# 例3: 確率を指定した抽出
+# B1水準が多い母集団を想定
+cefr_weighted <- sample(
+  c("A2", "B1", "B2"),
+  size = 20,
+  replace = TRUE,
+  prob = c(0.2, 0.5, 0.3)  # B1が最多
+)
+cat("重み付き抽出:\n")
+table(cefr_weighted)
+```
+
+::: {.callout-note}
+## 主な確率分布関数の命名規則
+
+Rの確率分布関数は、接頭辞（`d`, `p`, `q`, `r`）+ 分布名の規則で命名されています。
+
+| 接頭辞 | 意味 | 例（正規分布） |
+|:---|:---|:---|
+| `d` | 密度（density / PMF） | `dnorm(0, mean = 0, sd = 1)` → 0.3989 |
+| `p` | 累積確率（CDF） | `pnorm(1.96)` → 0.975 |
+| `q` | 分位点（quantile） | `qnorm(0.975)` → 1.96 |
+| `r` | 乱数（random） | `rnorm(10, mean = 0, sd = 1)` |
+
+よく使う分布: `norm`（正規）, `t`（t分布）, `binom`（二項）, `pois`（ポアソン）, `unif`（一様）, `chisq`（カイ二乗）, `f`（F分布）
+:::
+
+## 乱数の分布を可視化する
+
+生成した乱数が意図した分布に従っているかを確認するために、可視化は欠かせません。
+
+```{r}
+#| label: visualize-distributions
+#| fig-width: 8
+#| fig-height: 5
+set.seed(2024)
+
+# 3つの異なる分布からデータを生成
+sim_data <- data.frame(
+  score = c(
+    rnorm(1000, mean = 70, sd = 10),   # 正規分布
+    rnorm(1000, mean = 70, sd = 10) |>
+      (\(x) pmax(x, 40))(),            # 左打ち切り（床効果）
+    rbeta(1000, 2, 5) * 100            # ベータ分布（右歪み）
+  ),
+  distribution = rep(
+    c("正規分布\n(標準的)", "床効果あり\n(下限40点)", "右に歪んだ分布\n(ベータ分布)"),
+    each = 1000
+  )
+)
+
+ggplot(sim_data, aes(x = score)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 30, fill = "steelblue", alpha = 0.7) +
+  geom_density(color = "darkred", linewidth = 0.8) +
+  facet_wrap(~ distribution, scales = "free") +
+  labs(
+    title = "シミュレーションデータの分布比較",
+    x = "スコア", y = "密度"
+  ) +
+  theme_bw(base_size = 12)
+```
+
+## 相関のあるデータの生成
+
+英語教育研究では、TOEFL得点と語彙テスト得点のように**変数間に相関がある**データを扱うことが一般的です。`MASS::mvrnorm()` を使うと、指定した相関構造を持つ多変量正規分布からデータを生成できます。
+
+```{r}
+#| label: correlated-data
+set.seed(2024)
+
+# 相関行列の定義（TOEFL, 語彙, 読解の3変数）
+# TOEFL-語彙: r = 0.70, TOEFL-読解: r = 0.65, 語彙-読解: r = 0.55
+cor_matrix <- matrix(
+  c(1.00, 0.70, 0.65,
+    0.70, 1.00, 0.55,
+    0.65, 0.55, 1.00),
+  nrow = 3,
+  dimnames = list(
+    c("TOEFL", "Vocabulary", "Reading"),
+    c("TOEFL", "Vocabulary", "Reading")
+  )
+)
+
+cat("指定した相関行列:\n")
+print(cor_matrix)
+```
+
+```{r}
+#| label: mvrnorm-demo
+set.seed(2024)
+
+# 相関行列を再定義
+cor_matrix <- matrix(
+  c(1.00, 0.70, 0.65,
+    0.70, 1.00, 0.55,
+    0.65, 0.55, 1.00),
+  nrow = 3
+)
+
+# 平均と標準偏差の設定
+means <- c(TOEFL = 70, Vocabulary = 65, Reading = 68)
+sds   <- c(TOEFL = 12, Vocabulary = 10, Reading = 9)
+
+# 共分散行列に変換
+# Σ = diag(SD) %*% R %*% diag(SD)
+cov_matrix <- diag(sds) %*% cor_matrix %*% diag(sds)
+
+# 多変量正規分布から100名分のデータを生成
+sim_scores <- MASS::mvrnorm(n = 100, mu = means, Sigma = cov_matrix)
+sim_df <- as.data.frame(sim_scores)
+colnames(sim_df) <- c("TOEFL", "Vocabulary", "Reading")
+
+# 実際の相関を確認
+cat("生成データの相関行列:\n")
+cor(sim_df) |> round(2)
+```
+
+```{r}
+#| label: correlated-scatter
+#| fig-width: 7
+#| fig-height: 7
+# 相関の可視化
+GGally::ggpairs(
+  sim_df,
+  upper = list(continuous = GGally::wrap("cor", size = 5)),
+  lower = list(continuous = GGally::wrap("smooth", alpha = 0.4, color = "steelblue")),
+  diag = list(continuous = GGally::wrap("densityDiag", fill = "steelblue", alpha = 0.5))
+) +
+  labs(title = "シミュレーションデータの相関関係") +
+  theme_bw(base_size = 11)
+```
+
+::: {.callout-tip}
+## 相関行列 → 共分散行列の変換
+
+`MASS::mvrnorm()` は**共分散行列** Σ（sigma）を要求しますが、研究計画段階では**相関行列** R（rho）で考えるのが自然です。変換式は以下のとおりです:
+
+```r
+# 相関行列 R → 共分散行列 Σ
+Sigma <- diag(sd_vector) %*% R %*% diag(sd_vector)
+```
+
+ここで `sd_vector` は各変数の標準偏差ベクトルです。各変数の平均と標準偏差は先行研究の値を参考にすると、よりリアルなデータを生成できます。
+:::
+
+## 群間差を設計したデータの生成
+
+実験研究のシミュレーションでは、**処置群と統制群に意図した差**を持たせることが重要です。以下では、明示的指導 vs 暗示的指導の語彙テスト実験をシミュレートします。
+
+```{r}
+#| label: group-difference-sim
+set.seed(2024)
+n_per_group <- 30
+
+# Cohen's d = 0.5（中程度の効果量）を設定
+cohens_d <- 0.5
+common_sd <- 5
+
+# 2群のデータを生成
+explicit_gain <- rnorm(n_per_group, mean = 8, sd = common_sd)
+implicit_gain <- rnorm(n_per_group,
+                       mean = 8 - cohens_d * common_sd,  # d * SD だけ低い
+                       sd = common_sd)
+
+# データフレームにまとめる
+experiment_df <- data.frame(
+  participant = paste0("P", 1:(n_per_group * 2)),
+  instruction = factor(rep(c("Explicit", "Implicit"), each = n_per_group)),
+  gain_score = c(explicit_gain, implicit_gain)
+)
+
+# 確認
+experiment_df |>
+  summarise(
+    M = mean(gain_score),
+    SD = sd(gain_score),
+    .by = instruction
+  ) |>
+  mutate(across(where(is.numeric), \(x) round(x, 2))) |>
+  gt::gt() |>
+  gt::tab_header(title = "群別の得点変化量（gain score）")
+```
+
+```{r}
+#| label: group-diff-ttest
+# 実際にt検定を実行して効果が検出できるか確認
+t_result <- t.test(gain_score ~ instruction, data = experiment_df)
+cat("t検定の結果:\n")
+cat(sprintf("  t(%0.1f) = %0.3f, p = %0.4f\n",
+            t_result$parameter, t_result$statistic, t_result$p.value))
+cat(sprintf("  設定した Cohen's d = %0.1f\n", cohens_d))
+cat(sprintf("  実測 Cohen's d = %0.3f\n",
+            effectsize::cohens_d(gain_score ~ instruction,
+                                 data = experiment_df)$Cohens_d))
+```
+
+::: {.callout-note}
+## 効果量から群間差を計算する方法
+
+Cohen's *d* は次のように定義されます:
+
+$$d = \frac{M_1 - M_2}{SD_{pooled}}$$
+
+したがって、*d* = 0.5、共通SD = 5 と設定した場合、群間差は **0.5 × 5 = 2.5点** になります。先行研究のメタ分析（例: Plonsky & Oswald, 2014）から適切な効果量の目安を得ることで、よりリアルなシミュレーションが設計できます。
+
+| 分野 | 小 | 中 | 大 |
+|:---|:---|:---|:---|
+| L2研究の一般的な基準 | *d* = 0.40 | *d* = 0.70 | *d* = 1.00 |
+| Cohenの伝統的基準 | *d* = 0.20 | *d* = 0.50 | *d* = 0.80 |
+
+:::
+
+## モンテカルロシミュレーション：検定力分析
+
+**モンテカルロシミュレーション**は、同じ条件でデータ生成と検定を大量に繰り返し、結果の分布を調べる手法です。ここでは、「サンプルサイズと効果量によって、t検定の検出力がどう変わるか」をシミュレーションで確認します。
+
+```{r}
+#| label: power-simulation
+#| cache: true
+set.seed(2024)
+
+# シミュレーション関数
+simulate_power <- function(n_per_group, cohens_d, n_sim = 1000) {
+  significant <- 0
+
+  for (i in 1:n_sim) {
+    # 2群のデータを生成
+    group1 <- rnorm(n_per_group, mean = cohens_d, sd = 1)
+    group2 <- rnorm(n_per_group, mean = 0, sd = 1)
+
+    # t検定（p < .05 なら有意）
+    p_value <- t.test(group1, group2)$p.value
+    if (p_value < 0.05) significant <- significant + 1
+  }
+
+  return(significant / n_sim)  # 検出力 = 有意になった割合
+}
+
+# さまざまな条件の組み合わせ
+conditions <- expand.grid(
+  n = c(10, 20, 30, 50, 80, 100),
+  d = c(0.2, 0.5, 0.8)
+)
+
+# シミュレーション実行（各条件1000回）
+conditions$power <- mapply(
+  simulate_power,
+  n_per_group = conditions$n,
+  cohens_d = conditions$d
+)
+
+conditions$d_label <- paste0("d = ", conditions$d)
+```
+
+::: {.panel-tabset}
+
+## 結果テーブル
+
+```{r}
+#| label: power-table
+conditions |>
+  mutate(power_pct = paste0(power * 100, "%")) |>
+  select(n, d_label, power_pct) |>
+  tidyr::pivot_wider(names_from = d_label, values_from = power_pct) |>
+  gt::gt() |>
+  gt::tab_header(
+    title = "t検定の検出力（シミュレーション結果）",
+    subtitle = "各条件1,000回のシミュレーション"
+  ) |>
+  gt::cols_label(n = "1群あたりのn") |>
+  gt::tab_footnote(
+    footnote = "検出力 = シミュレーションで有意（p < .05）になった割合",
+    locations = gt::cells_title("title")
+  )
+```
+
+## 可視化
+
+```{r}
+#| label: power-plot
+#| fig-width: 8
+#| fig-height: 5
+ggplot(conditions, aes(x = n, y = power, color = d_label, group = d_label)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_hline(yintercept = 0.80, linetype = "dashed", color = "gray40") +
+  annotate("text", x = 95, y = 0.82, label = "検出力 = 80%",
+           color = "gray40", size = 3.5) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_color_brewer(palette = "Set2") +
+  labs(
+    title = "サンプルサイズと効果量による検出力の変化",
+    subtitle = "モンテカルロシミュレーション（各条件1,000回）",
+    x = "1群あたりのサンプルサイズ (n)",
+    y = "検出力（有意になる確率）",
+    color = "効果量"
+  ) +
+  theme_bw(base_size = 12)
+```
+
+:::
+
+::: {.callout-tip}
+## シミュレーションと power.t.test() の比較
+
+Rには解析的に検出力を計算する `power.t.test()` 関数もあります。
+
+```r
+# 解析的な検出力計算
+power.t.test(n = 30, delta = 0.5, sd = 1, sig.level = 0.05, type = "two.sample")
+```
+
+解析的手法が使える場合はそちらの方が高速ですが、シミュレーションには以下の利点があります:
+
+- 前提条件の違反（非正規分布、不等分散など）も組み込める
+- 複雑な研究デザイン（混合モデル等）にも対応可能
+- 分析パイプライン全体をテストできる
+:::
+
+## 前提条件違反の影響をシミュレーションで検証する
+
+「データが正規分布に従わない場合、t検定の結果はどの程度信頼できるか？」——このような疑問にもシミュレーションで答えることができます。
+
+```{r}
+#| label: assumption-violation
+#| cache: true
+set.seed(2024)
+
+# タイプI過誤率のシミュレーション（帰無仮説が真の場合）
+simulate_type1_error <- function(n, distribution = "normal", n_sim = 5000) {
+  significant <- 0
+
+  for (i in 1:n_sim) {
+    # 同じ分布から2群を生成（真の差 = 0）
+    if (distribution == "normal") {
+      g1 <- rnorm(n)
+      g2 <- rnorm(n)
+    } else if (distribution == "skewed") {
+      # 右に歪んだ分布（カイ二乗 df=3）
+      g1 <- rchisq(n, df = 3) - 3  # 平均を0に
+      g2 <- rchisq(n, df = 3) - 3
+    } else if (distribution == "heavy_tail") {
+      # 裾の重い分布（t分布 df=3）
+      g1 <- rt(n, df = 3)
+      g2 <- rt(n, df = 3)
+    }
+
+    p_value <- t.test(g1, g2)$p.value
+    if (p_value < 0.05) significant <- significant + 1
+  }
+
+  return(significant / n_sim)
+}
+
+# 各条件でシミュレーション
+type1_results <- expand.grid(
+  n = c(10, 30, 100),
+  distribution = c("normal", "skewed", "heavy_tail"),
+  stringsAsFactors = FALSE
+)
+
+type1_results$type1_error <- mapply(
+  simulate_type1_error,
+  n = type1_results$n,
+  distribution = type1_results$distribution
+)
+
+type1_results$distribution <- factor(
+  type1_results$distribution,
+  levels = c("normal", "skewed", "heavy_tail"),
+  labels = c("正規分布", "歪んだ分布\n(カイ二乗)", "裾の重い分布\n(t分布)")
+)
+
+type1_results |>
+  mutate(
+    type1_pct = sprintf("%.1f%%", type1_error * 100),
+    deviation = sprintf("%+.1f%%", (type1_error - 0.05) * 100)
+  ) |>
+  select(distribution, n, type1_pct, deviation) |>
+  gt::gt() |>
+  gt::tab_header(
+    title = "分布の形状がタイプI過誤率に与える影響",
+    subtitle = "帰無仮説が真の場合（各条件5,000回のシミュレーション）"
+  ) |>
+  gt::cols_label(
+    distribution = "分布",
+    n = "サンプルサイズ",
+    type1_pct = "タイプI過誤率",
+    deviation = "名目水準(5%)との差"
+  )
+```
+
+::: {.callout-note}
+## シミュレーション結果の解釈
+
+上の結果から、以下のことが読み取れます:
+
+- **正規分布の場合:** タイプI過誤率は名目水準（5%）にほぼ一致する
+- **歪んだ分布の場合:** サンプルサイズが小さいと名目水準からずれるが、n = 30 以上であればおおむね問題ない（中心極限定理の効果）
+- **裾の重い分布の場合:** 外れ値に引っ張られやすいため、n が小さいとやや保守的（過誤率が低い）になりうる
+
+このように、「t検定はどの程度頑健か」という問いに対して、シミュレーションによって具体的な数値で答えを得ることができます。
+:::
+
+## ブートストラップ法
+
+**ブートストラップ**は、手元のデータから**復元抽出**（同じ観測値を複数回引く可能性がある抽出）を繰り返すことで、統計量の分布を推定するノンパラメトリック手法です。正規性の仮定が不要なため、信頼区間の構築や標準誤差の推定に広く使われています。
+
+```{r}
+#| label: bootstrap-demo
+set.seed(2024)
+
+# 例: 小さいサンプル（n=15）のTOEFLスコア
+toefl_sample <- c(52, 67, 71, 58, 83, 45, 76, 62, 69, 74, 55, 80, 63, 72, 61)
+
+# ブートストラップ信頼区間の計算
+n_boot <- 10000
+boot_means <- numeric(n_boot)
+
+for (i in 1:n_boot) {
+  # 復元抽出して平均を計算
+  boot_sample <- sample(toefl_sample, replace = TRUE)
+  boot_means[i] <- mean(boot_sample)
+}
+
+# 95%信頼区間（パーセンタイル法）
+boot_ci <- quantile(boot_means, c(0.025, 0.975))
+
+cat(sprintf("元データの平均: %.2f\n", mean(toefl_sample)))
+cat(sprintf("ブートストラップ標準誤差: %.2f\n", sd(boot_means)))
+cat(sprintf("95%%信頼区間: [%.2f, %.2f]\n", boot_ci[1], boot_ci[2]))
+cat(sprintf("（参考）t分布による95%%CI: [%.2f, %.2f]\n",
+            t.test(toefl_sample)$conf.int[1],
+            t.test(toefl_sample)$conf.int[2]))
+```
+
+```{r}
+#| label: bootstrap-visualization
+#| fig-width: 7
+#| fig-height: 4
+# ブートストラップ分布の可視化
+boot_df <- data.frame(mean = boot_means)
+
+ggplot(boot_df, aes(x = mean)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 50, fill = "steelblue", alpha = 0.7) +
+  geom_density(color = "darkred", linewidth = 0.8) +
+  geom_vline(xintercept = mean(toefl_sample),
+             linetype = "solid", color = "darkblue", linewidth = 1) +
+  geom_vline(xintercept = boot_ci,
+             linetype = "dashed", color = "red", linewidth = 0.8) +
+  annotate("text", x = boot_ci[1] - 1.5, y = 0.01,
+           label = "2.5%", color = "red", size = 3.5) +
+  annotate("text", x = boot_ci[2] + 1.5, y = 0.01,
+           label = "97.5%", color = "red", size = 3.5) +
+  labs(
+    title = "ブートストラップ分布（10,000回復元抽出）",
+    subtitle = sprintf("元の平均 = %.1f, 95%%CI = [%.1f, %.1f]",
+                       mean(toefl_sample), boot_ci[1], boot_ci[2]),
+    x = "ブートストラップ平均", y = "密度"
+  ) +
+  theme_bw(base_size = 12)
+```
+
+::: {.callout-tip}
+## bootパッケージの活用
+
+上の例では教育的目的でforループを使いましたが、実務では `boot` パッケージを使うとより効率的です。
+
+```r
+library(boot)
+
+# ブートストラップ関数の定義
+boot_mean <- function(data, indices) {
+  mean(data[indices])
+}
+
+# 実行
+result <- boot(toefl_sample, boot_mean, R = 10000)
+
+# パーセンタイル法の信頼区間
+boot.ci(result, type = "perc")
+```
+
+また、`{infer}` パッケージを使えば、tidyverseスタイルでブートストラップを実行できます。
+:::
+
+## ELE研究のための実践的なシミュレーション例
+
+最後に、英語教育研究でよくある研究デザインをまとめてシミュレートする例を示します。この手法は、研究計画書の作成時や倫理審査の申請時に、予想されるデータのパターンを示すためにも役立ちます。
+
+```{r}
+#| label: practical-simulation
+set.seed(2024)
+
+# =============================================
+# 研究シナリオ: 語彙指導法の比較実験
+# - 2群（Explicit / Implicit）× 事前事後テスト
+# - 3つのCEFRレベル（A2 / B1 / B2）
+# - 群 × レベルの交互作用を想定
+# =============================================
+
+n_per_cell <- 20  # 各セル（群×レベル）20名
+
+# 実験計画の枠組み
+sim_experiment <- expand.grid(
+  participant = 1:n_per_cell,
+  instruction = c("Explicit", "Implicit"),
+  proficiency = c("A2", "B1", "B2")
+)
+sim_experiment$participant_id <- paste0("S", sprintf("%03d", 1:nrow(sim_experiment)))
+
+# 事前テストスコア（熟達度に応じた基準値）
+pretest_means <- c(A2 = 10, B1 = 15, B2 = 20)
+sim_experiment$pretest <- rnorm(
+  nrow(sim_experiment),
+  mean = pretest_means[sim_experiment$proficiency],
+  sd = 3
+) |> round() |> pmax(0) |> pmin(30)
+
+# 事後テストスコア（指導法 × 熟達度の交互作用を設計）
+# Explicit群は全レベルで高い効果、B2では特に顕著
+gain_matrix <- matrix(
+  c(5, 3,    # A2: Explicit=5, Implicit=3
+    6, 3.5,  # B1: Explicit=6, Implicit=3.5
+    8, 4),   # B2: Explicit=8, Implicit=4（交互作用）
+  nrow = 3, byrow = TRUE,
+  dimnames = list(c("A2", "B1", "B2"), c("Explicit", "Implicit"))
+)
+
+cat("設計した群間差（gain score の平均）:\n")
+print(gain_matrix)
+
+# 事後テストスコアの生成
+sim_experiment$gain <- rnorm(
+  nrow(sim_experiment),
+  mean = gain_matrix[cbind(
+    sim_experiment$proficiency,
+    sim_experiment$instruction
+  )],
+  sd = 2.5
+)
+sim_experiment$posttest <- round(pmax(pmin(
+  sim_experiment$pretest + sim_experiment$gain, 30), 0))
+
+# factor型に変換
+sim_experiment$instruction <- factor(sim_experiment$instruction)
+sim_experiment$proficiency <- factor(sim_experiment$proficiency,
+                                     levels = c("A2", "B1", "B2"))
+```
+
+```{r}
+#| label: practical-sim-summary
+# 群別の集計
+sim_experiment |>
+  mutate(gain_score = posttest - pretest) |>
+  summarise(
+    n = n(),
+    Pretest_M = mean(pretest),
+    Pretest_SD = sd(pretest),
+    Posttest_M = mean(posttest),
+    Posttest_SD = sd(posttest),
+    Gain_M = mean(gain_score),
+    Gain_SD = sd(gain_score),
+    .by = c(proficiency, instruction)
+  ) |>
+  arrange(proficiency, instruction) |>
+  mutate(across(where(is.numeric) & !n, \(x) round(x, 2))) |>
+  gt::gt() |>
+  gt::tab_header(
+    title = "シミュレーション実験の記述統計量",
+    subtitle = "指導法 × 熟達度レベル別"
+  ) |>
+  gt::fmt_number(columns = where(is.numeric), decimals = 2) |>
+  gt::cols_label(
+    proficiency = "熟達度",
+    instruction = "指導法",
+    n = "n",
+    Pretest_M = "事前M",
+    Pretest_SD = "事前SD",
+    Posttest_M = "事後M",
+    Posttest_SD = "事後SD",
+    Gain_M = "Gain M",
+    Gain_SD = "Gain SD"
+  )
+```
+
+```{r}
+#| label: practical-sim-plot
+#| fig-width: 8
+#| fig-height: 5
+# 交互作用の可視化
+sim_experiment |>
+  mutate(gain_score = posttest - pretest) |>
+  ggplot(aes(x = proficiency, y = gain_score,
+             fill = instruction)) +
+  geom_boxplot(alpha = 0.7, width = 0.6) +
+  stat_summary(fun = mean, geom = "point",
+               shape = 18, size = 3,
+               position = position_dodge(width = 0.6)) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "指導法 × 熟達度レベル別のGain Score",
+    subtitle = "シミュレーションデータ（各セル n = 20）",
+    x = "CEFR熟達度", y = "Gain Score（事後 − 事前）",
+    fill = "指導法"
+  ) +
+  theme_bw(base_size = 12)
+```
+
+::: {.callout-tip}
+## シミュレーションデータの活用場面
+
+| 場面 | 活用方法 |
+|:---|:---|
+| 研究計画書の作成 | 仮想データで分析結果を示し、研究の実現可能性を示す |
+| 倫理審査の申請 | 期待されるデータパターンと分析手順を具体的に提示 |
+| 分析コードの開発 | 実データ収集前にパイプラインを構築・テスト |
+| 検定力分析 | 必要なサンプルサイズを事前に見積もる |
+| 統計手法の学習 | 「正解」がわかっている状態で手法の挙動を確認 |
+| 前提条件の確認 | 正規性違反等がどの程度結果に影響するかを評価 |
+:::
+
+::: {.callout-warning}
+## シミュレーションの注意点
+
+1. **シミュレーション回数:** 検定力分析では最低 1,000回、タイプI過誤率の検証では 5,000回以上を推奨。回数が少ないと推定値のばらつきが大きくなる
+2. **現実的なパラメータ設定:** 平均、標準偏差、効果量は先行研究やメタ分析に基づいて設定する。非現実的な値を使うと、シミュレーション結果が実際の研究に適用できない
+3. **乱数シードの記録:** 結果の再現に必須。論文やレポートでは `set.seed()` の値を明記する
+4. **計算時間:** シミュレーション回数やモデルの複雑さに応じて時間がかかる。`#| cache: true` を活用する
+:::
 
 # データ構造
 
 ## ベクトル
 
-最も基本的なデータ構造です。同じ型の要素を持つ1次元配列です。
+ベクトルはRの最も基本的なデータ構造で、同じ型の要素を持つ1次元の配列です。
 
 ```{r}
-#| label: vectors
-# 数値ベクトル
-scores <- c(85, 90, 78, 92, 88)
-scores
+#| label: vectors-ele
+# 10名のTOEFLスコア
+toefl_scores <- c(85, 90, 78, 92, 88, 76, 95, 82, 87, 91)
+toefl_scores
 
-# 文字列ベクトル
-names <- c("Alice", "Bob", "Charlie", "David")
-names
+# 参加者ID
+participant_ids <- paste0("P", sprintf("%03d", 1:10))
+participant_ids
 
 # 連続した数値の生成
-1:10
-seq(from = 0, to = 100, by = 10)
-rep(1:3, times = 3)
-```
+1:10                            # 1から10
+seq(0, 120, by = 10)           # 0から120まで10刻み（TOEFLスコア範囲）
+rep(c("Explicit", "Implicit"), times = 5)  # 条件の繰り返し
 
-## マトリックス（行列）
-
-2次元の配列です。
-
-```{r}
-#| label: matrix
-# 3×3の行列を作成
-mat <- matrix(1:9, nrow = 3, ncol = 3)
-mat
-
-# 行名・列名の設定
-rownames(mat) <- c("Row1", "Row2", "Row3")
-colnames(mat) <- c("Col1", "Col2", "Col3")
-mat
-
-# 要素へのアクセス
-mat[2, 3]  # 2行3列の要素
-mat[2, ]   # 2行目全体
-mat[, 3]   # 3列目全体
+# ベクトルの基本的な操作
+length(toefl_scores)           # 要素数
+mean(toefl_scores)             # 平均
+sd(toefl_scores)               # 標準偏差
+sum(toefl_scores > 85)         # 85点より高い人数
+toefl_scores[toefl_scores > 85]  # 85点より高いスコアを抽出
 ```
 
 ## データフレーム
 
-異なる型の列を持つことができる表形式のデータ構造です。統計解析で最もよく使います。
+データフレームは異なる型の列を持てる表形式のデータ構造で、統計解析において最も頻繁に使用します。ここでは本章全体で使用するサンプルデータセットを作成します。
+
+::: {.callout-note}
+## 本章のサンプルデータについて
+以下のデータセットは、120名の日本人大学EFL学習者を対象とした架空の語彙学習実験です。参加者はCEFR熟達度（A2 / B1 / B2）に分類され、明示的指導（Explicit）または暗示的指導（Implicit）のいずれかを受けた後、語彙テスト（事前・事後）で評価されました。このデータは本章の以降のセクションで一貫して使用します。
+:::
 
 ```{r}
-#| label: dataframe
-# データフレームの作成
-students <- data.frame(
-  id = 1:5,
-  name = c("田中", "佐藤", "鈴木", "高橋", "渡辺"),
-  score = c(85, 90, 78, 92, 88),
-  pass = c(TRUE, TRUE, FALSE, TRUE, TRUE),
-  stringsAsFactors = FALSE
+#| label: setup
+#| message: false
+#| warning: false
+
+# パッケージの読み込み
+pacman::p_load(tidyverse, gt, psych, effectsize, GGally, broom)
+
+# テーマの設定
+theme_set(theme_bw())
+```
+
+```{r}
+#| label: create-ele-data
+# 再現可能なデータ生成
+set.seed(2024)
+n <- 120
+
+# 熟達度別の基礎スコアを生成
+proficiency_level <- factor(
+  rep(c("A2", "B1", "B2"), each = 40),
+  levels = c("A2", "B1", "B2")
 )
 
-students
+# 指導法の割り当て（各熟達度内で20名ずつ）
+instruction_type <- factor(
+  rep(rep(c("Explicit", "Implicit"), each = 20), 3)
+)
 
+# TOEFL iBTスコア（熟達度に応じた分布）
+toefl_base <- c(rnorm(40, 45, 8), rnorm(40, 65, 10), rnorm(40, 85, 7))
+toefl_score <- round(pmin(pmax(toefl_base, 0), 120))
+
+# 語彙サイズテスト（TOEFLと相関を持たせる）
+vocabulary_test <- round(pmin(pmax(
+  0.5 * scale(toefl_base)[,1] * 10 +
+  c(rnorm(40, 50, 7), rnorm(40, 65, 6), rnorm(40, 78, 5)), 0), 100))
+
+# 読解テスト
+reading_score <- round(pmin(pmax(
+  0.4 * scale(toefl_base)[,1] * 10 +
+  c(rnorm(40, 55, 8), rnorm(40, 68, 7), rnorm(40, 80, 5)), 0), 100))
+
+# ライティング評価
+writing_score <- round(pmin(pmax(
+  0.3 * scale(toefl_base)[,1] * 10 +
+  c(rnorm(40, 48, 9), rnorm(40, 62, 7), rnorm(40, 75, 6)), 0), 100))
+
+# 事前テスト（0-30点、熟達度に応じた分布）
+pretest <- round(pmin(pmax(
+  c(rnorm(40, 10, 3), rnorm(40, 15, 3), rnorm(40, 20, 3)), 0), 30))
+
+# 事後テスト（事前テスト + 学習効果、Explicit群がやや高いgain）
+gain <- ifelse(instruction_type == "Explicit",
+               rnorm(n, 6, 2),
+               rnorm(n, 4, 2))
+posttest <- round(pmin(pmax(pretest + gain, 0), 30))
+
+# 週あたり自習時間
+study_hours <- round(pmin(pmax(rnorm(n, 8, 3), 1), 20), 1)
+
+# データフレームの作成
+ele_data <- data.frame(
+  participant_id = paste0("P", sprintf("%03d", 1:n)),
+  proficiency_level = proficiency_level,
+  toefl_score = toefl_score,
+  vocabulary_test = vocabulary_test,
+  reading_score = reading_score,
+  writing_score = writing_score,
+  instruction_type = instruction_type,
+  pretest = pretest,
+  posttest = posttest,
+  study_hours = study_hours
+)
+```
+
+```{r}
+#| label: dataframe-explore
 # データフレームの構造を確認
-str(students)
+str(ele_data)
 
 # 要約統計量
-summary(students)
-
-# 列へのアクセス
-students$score
-students[, "score"]
-students[["score"]]
-
-# 行の選択
-students[students$score > 80, ]
+summary(ele_data)
 ```
+
+::: {.panel-tabset}
+## データ
+
+```{r}
+#| label: dataframe-head-gt
+# 先頭6行をgt()で表示
+head(ele_data) |>
+  gt() |>
+  tab_header(
+    title = "ELE学習者データ（先頭6行）"
+  ) |>
+  fmt_number(columns = c(toefl_score, vocabulary_test, reading_score,
+                         writing_score, pretest, posttest), decimals = 0) |>
+  fmt_number(columns = study_hours, decimals = 1)
+```
+
+## 可視化
+
+```{r}
+#| label: dataframe-overview-plot
+#| fig-width: 8
+#| fig-height: 5
+# TOEFLスコアの分布を熟達度別に確認
+ggplot(ele_data, aes(x = proficiency_level, y = toefl_score,
+                     fill = proficiency_level)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.3, size = 1.5) +
+  labs(title = "TOEFL Scores by Proficiency Level",
+       x = "CEFR Proficiency Level", y = "TOEFL iBT Score") +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Blues")
+```
+:::
+
+```{r}
+#| label: dataframe-access
+# 列へのアクセス方法（3通り）
+ele_data$toefl_score[1:5]        # $ 記法
+ele_data[1:5, "toefl_score"]     # [行, 列名] 記法
+ele_data[["toefl_score"]][1:5]   # [[]] 記法
+
+# 条件による行の選択
+ele_data[ele_data$toefl_score > 90, c("participant_id", "toefl_score", "proficiency_level")]
+```
+
+::: {.callout-tip}
+## data.frame と tibble
+`tidyverse` では `data.frame` の拡張版である `tibble` が使われます。`tibble` はコンソール表示が見やすく、意図しない型変換を防ぎます。`as_tibble(ele_data)` で変換できます。実用上、両者はほぼ同じように使えます。
+:::
 
 ## リスト
 
-異なる型・構造のオブジェクトを格納できる柔軟なデータ構造です。
+リストは異なる型・構造のオブジェクトを格納できるデータ構造です。Rでは統計モデルの結果（`lm()` の出力等）がリスト形式で返されるため、リストの基本操作を知っておくと便利です。
 
 ```{r}
-#| label: lists
-# リストの作成
-my_list <- list(
-  numbers = 1:5,
-  text = "Hello",
-  matrix = matrix(1:4, 2, 2),
-  dataframe = students[1:2, ]
+#| label: lists-basics
+# 分析結果をリストにまとめる例
+study_info <- list(
+  title = "Vocabulary Learning Experiment",
+  n_participants = nrow(ele_data),
+  mean_toefl = mean(ele_data$toefl_score),
+  proficiency_table = table(ele_data$proficiency_level),
+  sample_data = head(ele_data, 3)
 )
 
-my_list
-
 # リスト要素へのアクセス
-my_list$numbers
-my_list[[1]]
-my_list[["matrix"]]
+study_info$title
+study_info[["n_participants"]]
+study_info$proficiency_table
 ```
 
 # データの読み込みと書き出し
 
-## CSVファイルの操作
+## CSVファイル
+
+研究データの保存形式として最も一般的なCSV（カンマ区切り）ファイルの操作方法です。Rには Base R の関数（`read.csv()` / `write.csv()`）と、`readr` パッケージの関数（`read_csv()` / `write_csv()`）の2系統があります。
+
+### read.csv() と read_csv() の違い
 
 ```{r}
-#| label: csv-operations
+#| label: csv-read-compare
 #| eval: false
 
-# CSVファイルの読み込み
-data <- read.csv("data.csv", header = TRUE, stringsAsFactors = FALSE)
-
-# tidyverseのreadrパッケージを使う方法（推奨）
+# --- readr::read_csv()（推奨）---
 library(readr)
-data <- read_csv("data.csv")
+data <- read_csv("data/ele_vocabulary_study.csv")
 
-# CSVファイルの書き出し
-write.csv(data, "output.csv", row.names = FALSE)
-write_csv(data, "output.csv")
+# 特徴:
+# - 読み込みが高速（大規模データで顕著）
+# - tibble として読み込まれる（コンソール表示が見やすい）
+# - 文字列を factor に自動変換しない
+# - 列の型を自動推定し、推定結果を表示してくれる
+# - 日本語ファイルは locale 指定が必要な場合がある
+
+# --- Base R::read.csv() ---
+data <- read.csv("data/ele_vocabulary_study.csv",
+                 header = TRUE,
+                 stringsAsFactors = FALSE)
+
+# 特徴:
+# - 追加パッケージ不要（Base Rのみで動作）
+# - data.frame として読み込まれる
+# - stringsAsFactors = FALSE を指定しないと文字列が factor に変換される
+#   （R 4.0以降はデフォルトで FALSE だが、明示しておくと安全）
+# - 列名のスペースや特殊文字を自動的にドット(.)に変換する
 ```
 
-## Excelファイルの操作
+::: {.callout-tip}
+## read.csv() と read_csv() の選び方
+本書では `read_csv()` を推奨しますが、以下の場合は `read.csv()` が便利です。
+
+- パッケージをインストールできない環境で作業する場合
+- 他の研究者から受け取ったBase Rスクリプトを動かす場合
+- 列名に日本語を含むデータで `read_csv()` が意図通りに動作しない場合
+
+迷ったら `read_csv()` を使い、問題が起きたら `read.csv()` を試す、という方針で十分です。
+:::
+
+### write.csv() と write_csv() の違い
+
+CSVファイルへの書き出しにも2系統の関数があり、出力結果が微妙に異なります。
 
 ```{r}
-#| label: excel-operations
+#| label: csv-write-compare
 #| eval: false
 
-# readxlパッケージのインストール
-install.packages("readxl")
-library(readxl)
+# --- readr::write_csv()（推奨）---
+write_csv(ele_data, "output/results.csv")
 
-# Excelファイルの読み込み
-data <- read_excel("data.xlsx", sheet = 1)
+# 特徴:
+# - 行番号を出力しない（デフォルト）
+# - UTF-8 エンコーディングで書き出す
+# - 書き出し速度が速い
+# - BOM（Byte Order Mark）なしで書き出す → Excelで開くと文字化けする場合がある
 
-# openxlsxパッケージで書き出し
-install.packages("openxlsx")
-library(openxlsx)
-write.xlsx(data, "output.xlsx")
+# --- write_csv() で Excel 対応する場合 ---
+# BOM 付き UTF-8 で書き出す（Excelで日本語が正しく表示される）
+write_excel_csv(ele_data, "output/results_for_excel.csv")
+
+# --- Base R::write.csv() ---
+write.csv(ele_data, "output/results.csv", row.names = FALSE)
+
+# 特徴:
+# - row.names = FALSE を指定しないと行番号が余分な列として出力される（重要！）
+# - fileEncoding 引数でエンコーディングを指定できる
+# - quote = TRUE がデフォルト（文字列が引用符で囲まれる）
 ```
+
+::: {.callout-warning}
+## write.csv() の row.names に注意
+`write.csv()` は **デフォルトで行番号を出力します**。これを忘れると、再度読み込んだ際に不要な `X` という列が追加されてしまいます。必ず `row.names = FALSE` を指定してください。
+
+```r
+# 悪い例（行番号が出力される）
+write.csv(ele_data, "output.csv")
+# → 再読み込みすると "X" という不要な列ができる
+
+# 良い例
+write.csv(ele_data, "output.csv", row.names = FALSE)
+
+# さらに良い例（write_csv は row.names の問題がそもそも起きない）
+write_csv(ele_data, "output.csv")
+```
+:::
+
+::: {.callout-warning}
+## 文字コードの問題
+日本語を含むCSVファイル（特にExcelで作成されたもの）は Shift-JIS エンコーディングで保存されていることが多く、そのまま `read_csv()` で読み込むと文字化けします。以下のようにエンコーディングを指定してください。
+
+```r
+# 読み込み時: Shift-JIS → UTF-8
+data <- read_csv("data.csv", locale = locale(encoding = "Shift-JIS"))
+
+# 書き出し時: 共同研究者がExcelで開く場合
+write_excel_csv(data, "output.csv")  # BOM付きUTF-8（Excel対応）
+```
+:::
+
+### read.csv() / write.csv() の主要引数
+
+```{r}
+#| label: csv-args-table
+tibble::tribble(
+  ~関数,         ~引数,                ~デフォルト,  ~説明,
+  "read.csv()",  "header",             "TRUE",      "1行目を列名として扱うか",
+  "read.csv()",  "sep",                '","',       "区切り文字（TSVなら sep = \"\\t\"）",
+  "read.csv()",  "stringsAsFactors",   "FALSE",     "文字列をfactorに変換するか（R 4.0+）",
+  "read.csv()",  "na.strings",         '"NA"',      "NAとして扱う文字列",
+  "read.csv()",  "fileEncoding",       '""',        "ファイルのエンコーディング",
+  "read.csv()",  "skip",               "0",         "先頭から読み飛ばす行数",
+  "read.csv()",  "nrows",              "-1",        "読み込む最大行数（-1 = 全行）",
+  "write.csv()", "row.names",          "TRUE",      "行番号を出力するか（FALSEを推奨）",
+  "write.csv()", "quote",              "TRUE",      "文字列を引用符で囲むか",
+  "write.csv()", "fileEncoding",       '""',        "出力ファイルのエンコーディング",
+  "read_csv()",  "col_types",          "NULL",      "列の型を明示的に指定（cols()で指定）",
+  "read_csv()",  "locale",             "default",   "エンコーディング・小数点等のロケール設定",
+  "read_csv()",  "skip",               "0",         "先頭から読み飛ばす行数",
+  "read_csv()",  "n_max",              "Inf",       "読み込む最大行数",
+  "read_csv()",  "name_repair",        '"unique"',  "列名の重複をどう処理するか"
+) |>
+  gt() |>
+  tab_header(title = "CSVファイル操作関数の主要引数") |>
+  cols_label(
+    関数 = "関数", 引数 = "引数",
+    デフォルト = "デフォルト値", 説明 = "説明"
+  ) |>
+  tab_row_group(label = "readr（推奨）", rows = 11:15) |>
+  tab_row_group(label = "Base R: write.csv()", rows = 8:10) |>
+  tab_row_group(label = "Base R: read.csv()", rows = 1:7)
+```
+
+## Excelファイル
+
+```{r}
+#| label: excel-operations-ele
+#| eval: false
+
+# readxlパッケージ（読み込み専用）
+# install.packages("readxl")
+library(readxl)
+data <- read_excel("data/questionnaire_results.xlsx", sheet = 1)
+
+# 書き出しにはopenxlsxを使用
+# install.packages("openxlsx")
+library(openxlsx)
+write.xlsx(data, "output/results.xlsx")
+```
+
+## 複数CSVファイルの一括読み込み
+
+研究では、参加者ごと・セッションごとにCSVファイルが分かれている場合があります。`purrr::map()` と `list.files()` を組み合わせることで、フォルダ内の全CSVを一括で読み込み、1つのデータフレームに結合できます。
+
+```{r}
+#| label: multiple-csv
+#| eval: false
+
+# data/sessions/ フォルダ内の全CSVファイルを一括読み込み
+csv_files <- list.files("data/sessions/", pattern = "\\.csv$", full.names = TRUE)
+csv_files  # ファイルパスの一覧を確認
+
+# map_dfr() で全ファイルを読み込み、行方向に結合
+all_data <- csv_files |>
+  purrr::map_dfr(read_csv, .id = "file_id")
+
+# ファイル名から条件情報を抽出する例
+# 例: "data/sessions/participant_001_pretest.csv" → participant_id と timepoint
+all_data <- csv_files |>
+  purrr::map_dfr(~ {
+    df <- read_csv(.x)
+    df$source_file <- basename(.x)  # ファイル名を列として追加
+    df
+  })
+```
+
+::: {.callout-tip}
+## 大量のファイルを読み込む際の注意
+ファイル数が多い場合は、読み込み前に `csv_files` の中身を `print()` で確認し、意図しないファイルが混入していないかチェックしましょう。また、各ファイルの列名・列数が統一されていることを事前に確認してください。列構造が異なる場合は `map_dfr()` の代わりに `map()` でリストとして読み込み、個別に確認してから `bind_rows()` で結合します。
+:::
 
 ## RDS形式（Rのネイティブ形式）
 
+分析の途中経過を保存する際に便利な形式です。データ型や因子の水準順序がそのまま保持されます。
+
 ```{r}
-#| label: rds-operations
+#| label: rds-operations-ele
 #| eval: false
 
-# RDS形式で保存（単一のオブジェクト）
-saveRDS(students, "students.rds")
+# 単一オブジェクトの保存
+saveRDS(ele_data, "data/ele_data.rds")
 
-# RDS形式の読み込み
-students_loaded <- readRDS("students.rds")
+# 読み込み
+ele_data <- readRDS("data/ele_data.rds")
 
-# RData形式で保存（複数のオブジェクト）
-save(students, scores, file = "mydata.RData")
-
-# RData形式の読み込み
-load("mydata.RData")
+# 複数オブジェクトの一括保存（RData形式）
+save(ele_data, study_info, file = "data/analysis_workspace.RData")
+load("data/analysis_workspace.RData")
 ```
+
+## その他の形式
+
+```{r}
+#| label: other-formats
+#| eval: false
+
+# SPSSファイル（.sav）の読み込み
+# 英語教育研究では共同研究者がSPSSを使用している場合があります
+library(haven)
+data <- read_sav("data/spss_data.sav")
+
+# Googleスプレッドシートの読み込み
+library(googlesheets4)
+data <- read_sheet("https://docs.google.com/spreadsheets/d/xxxx")
+```
+
+::: {.callout-tip}
+## ファイルパスのベストプラクティス
+`setwd()` でディレクトリを変更するのではなく、**RStudioプロジェクト**（第10節参照）を使用し、`here::here()` で相対パスを構築することを推奨します。
+
+```r
+# 非推奨
+setwd("C:/Users/username/Documents/research")
+data <- read_csv("data.csv")
+
+# 推奨
+library(here)
+data <- read_csv(here("data", "ele_vocabulary_study.csv"))
+```
+:::
 
 # tidyverseによるデータ操作
 
-## tidyverseのインストールと読み込み
+`tidyverse` は、データの読み込み・整形・可視化・モデリングを一貫した文法で行うためのパッケージ群です。本書のすべての章で使用しており、Rでのデータ分析における事実上の標準となっています。
+
+## パイプ演算子
+
+パイプ演算子は、関数の出力を次の関数の入力として渡す記法です。データ分析では複数の操作を連鎖的に行うことが多いため、パイプを使いこなすことでコードの可読性と保守性が大幅に向上します。
+
+### なぜパイプが必要なのか
+
+まずパイプを使わない場合と使う場合を比較してみましょう。
 
 ```{r}
-#| label: tidyverse-setup
-#| message: false
-#| warning: false
+#| label: pipe-demo
+# 方法1: 入れ子にする（内側から外側に読む必要があり、読みにくい）
+round(mean(ele_data$toefl_score, na.rm = TRUE), 2)
 
-# インストール（初回のみ）
-# install.packages("tidyverse")
+# 方法2: 中間変数をたくさん作る（変数名を考える手間がかかる）
+tmp1 <- ele_data$toefl_score
+tmp2 <- mean(tmp1, na.rm = TRUE)
+tmp3 <- round(tmp2, 2)
+tmp3
 
-# パッケージの読み込み
-library(tidyverse)
+# 方法3: パイプを使う（左から右に自然に読める）
+ele_data$toefl_score |> mean(na.rm = TRUE) |> round(2)
 ```
 
-## dplyrによるデータ操作
+パイプは `x |> f(y)` を `f(x, y)` と解釈します。つまり、**左辺の結果を右辺の関数の第1引数に渡します**。
+
+### ネイティブパイプ `|>` とmagrittrパイプ `%>%`
+
+Rには2種類のパイプ演算子があります。
 
 ```{r}
-#| label: dplyr-operations
-# サンプルデータの作成
-exam_data <- data.frame(
-  student_id = 1:10,
-  name = paste0("Student", 1:10),
-  math = round(rnorm(10, 75, 10)),
-  english = round(rnorm(10, 70, 12)),
-  science = round(rnorm(10, 80, 8))
-)
+#| label: pipe-comparison
+# ネイティブパイプ |>（R 4.1以降）
+ele_data$toefl_score |> mean() |> round(2)
 
-exam_data
+# magrittrパイプ %>%（tidyverseに含まれる）
+ele_data$toefl_score %>% mean() %>% round(2)
 
-# select：列の選択
-exam_data %>%
-  select(name, math, english)
+# 基本的な用途では同じ結果を返す
+```
 
-# filter：行の絞り込み
-exam_data %>%
-  filter(math > 75)
+::: {.callout-note}
+## `|>` と `%>%` の詳細な違い
 
-# mutate：新しい列の作成
-exam_data %>%
+|  | ネイティブパイプ `\|>` | magrittrパイプ `%>%` |
+|:---|:---|:---|
+| **導入時期** | R 4.1（2021年5月） | 2014年（magrittrパッケージ） |
+| **パッケージ依存** | なし（R本体に組み込み） | `magrittr`（`tidyverse`で自動読み込み） |
+| **速度** | やや速い | やや遅い（ごく僅かな差） |
+| **プレースホルダ** | `_`（R 4.2以降、名前付き引数のみ） | `.`（自由度が高い） |
+| **無名関数** | `\(x) ...` 形式を使用 | `{ }` 内で `.` を使用可能 |
+| **RStudioショートカット** | `Ctrl + Shift + M` / `Cmd + Shift + M` | 同左（設定で切替可能） |
+| **本書での採用** | ✅ | — |
+
+日常的な `dplyr` 操作（`select()`, `filter()`, `mutate()` 等）では両者の違いを意識する必要はほとんどありません。本書では R 本体に組み込まれたネイティブパイプ `|>` を使用しますが、Stack Overflow や他の教材で `%>%` を見かけた場合もそのまま読み替えて構いません。
+:::
+
+### プレースホルダ：第1引数以外に渡す場合
+
+パイプは通常、左辺の結果を右辺の **第1引数** に渡します。しかし、第2引数以降に渡したい場合はプレースホルダを使います。
+
+```{r}
+#| label: pipe-placeholder
+# --- ネイティブパイプ |> のプレースホルダ: _ ---
+# R 4.2以降、名前付き引数でのみ使用可能
+
+# lm() の data 引数（第2引数）にデータを渡す
+ele_data |>
+  filter(proficiency_level == "B2") |>
+  lm(toefl_score ~ vocabulary_test, data = _) |>
+  summary()
+
+# --- magrittr %>% のプレースホルダ: . ---
+# 位置を問わず使用可能（より柔軟）
+
+# 同じ操作を %>% で書く場合
+# ele_data %>%
+#   filter(proficiency_level == "B2") %>%
+#   lm(toefl_score ~ vocabulary_test, data = .) %>%
+#   summary()
+```
+
+::: {.callout-warning}
+## プレースホルダの制約
+ネイティブパイプ `|>` の `_` は**名前付き引数でのみ**使用できます。以下のようなケースではエラーになります。
+
+```r
+# エラーになる例（位置引数に _ は使えない）
+# c(1, 2, 3) |> paste(_, "点")    # Error
+
+# 対処法: 無名関数を使う
+c(1, 2, 3) |> (\(x) paste(x, "点"))()
+
+# magrittr なら . で直接書ける
+# c(1, 2, 3) %>% paste(., "点")   # OK
+```
+
+この制約があるため、プレースホルダを多用する場面では `%>%` の方が簡潔に書けることがあります。ただし、日常的な `dplyr` 操作ではプレースホルダ自体をほとんど使わないため、大きな問題にはなりません。
+:::
+
+### パイプの改行ルール
+
+パイプで複数の操作をつなぐ際の改行ルールを確認します。
+
+```{r}
+#| label: pipe-linebreak
+# 推奨: パイプの後で改行（|> を行末に置く）
+result <- ele_data |>
+  filter(proficiency_level == "B2") |>
+  mutate(gain = posttest - pretest) |>
+  group_by(instruction_type) |>
+  summarize(mean_gain = mean(gain), .groups = "drop")
+
+result
+
+# 非推奨: パイプを行頭に置く（動作するが、スタイルガイドに反する）
+# result <- ele_data
+#   |> filter(proficiency_level == "B2")   # エラーになる場合がある
+```
+
+::: {.callout-warning}
+## パイプの行頭配置は避ける
+ネイティブパイプ `|>` を**行頭**に置くと、Rは前の行で式が完結したと解釈してエラーになることがあります。パイプ演算子は**必ず行末**に配置してください。
+
+```r
+# エラーになりうる書き方
+ele_data
+  |> filter(toefl_score > 80)  # Rは ele_data で式が終わったと判断
+
+# 正しい書き方
+ele_data |>
+  filter(toefl_score > 80)     # |> が行末にあるので次の行に続く
+```
+:::
+
+### パイプのデバッグ方法
+
+長いパイプチェーンでエラーが出た場合、途中の段階で結果を確認する方法を紹介します。
+
+```{r}
+#| label: pipe-debug
+# 方法1: パイプの途中で切って実行する
+# → 確認したい位置までを選択して Ctrl+Enter で実行
+ele_data |>
+  filter(proficiency_level == "B2") |>
+  mutate(gain = posttest - pretest)
+  # ここまで選択して実行し、中間結果を確認
+
+# 方法2: 途中に print() や glimpse() を挟む（パイプの流れは止まらない）
+# ele_data |>
+#   filter(proficiency_level == "B2") |>
+#   print() |>       # ← ここで中間結果が表示される（データはそのまま次に渡る）
+#   mutate(gain = posttest - pretest)
+
+# 方法3: 段階ごとに中間変数に代入する
+step1 <- ele_data |> filter(proficiency_level == "B2")
+step2 <- step1 |> mutate(gain = posttest - pretest)
+step3 <- step2 |> group_by(instruction_type) |>
+  summarize(mean_gain = mean(gain), .groups = "drop")
+step3
+```
+
+::: {.callout-tip}
+## RStudioでのパイプ入力設定
+RStudio の Tools → Global Options → Code → Use native pipe operator にチェックを入れると、ショートカット `Ctrl + Shift + M`（Mac: `Cmd + Shift + M`）で入力されるパイプが `%>%` から `|>` に切り替わります。本書のコードに合わせて `|>` に設定しておくことを推奨します。
+:::
+
+## select：列の選択
+
+`select()` はデータフレームから必要な列だけを取り出す関数です。列数の多いデータを扱う際に頻繁に使用します。
+
+::: {.callout-warning}
+## select() の衝突に注意
+`select()` は `dplyr` 以外のパッケージ（特に `MASS`）にも同名の関数が存在します。`MASS` パッケージを読み込んだ後に `select()` を使うと、意図しない動作やエラーが発生することがあります。
+
+```r
+# エラーの例（MASSを読み込んだ後に発生しうる）
+# Error in select(., participant_id, toefl_score) :
+#   unused arguments (participant_id, toefl_score)
+
+# 対処法 1: 明示的に名前空間を指定する（最も確実）
+ele_data |> dplyr::select(participant_id, toefl_score)
+
+# 対処法 2: conflicted パッケージで優先順位を明示する
+# library(conflicted)
+# conflict_prefer("select", "dplyr")
+# conflict_prefer("filter", "dplyr")
+```
+
+混合効果モデル（`lme4`）を使う章では `MASS` が間接的に読み込まれることが多いため、本書の他の章を参照する際は特に注意してください。エラーが出た場合は、まず `dplyr::select()` と明示的に書き直してみてください。
+:::
+
+### 基本的な列の選択
+
+```{r}
+#| label: select-demo
+# 列名を直接指定
+ele_data |>
+  select(participant_id, toefl_score, proficiency_level) |>
+  head(5)
+
+# 列の除外（- で指定）
+ele_data |>
+  select(-study_hours, -participant_id) |>
+  head(5)
+
+# 列の順序を変更（指定した列が先頭に来る）
+ele_data |>
+  select(proficiency_level, instruction_type, everything()) |>
+  head(3)
+```
+
+### ヘルパー関数による柔軟な列選択
+
+列名のパターンに基づいて柔軟に列を選択できます。列数が多いデータセットで特に便利です。
+
+```{r}
+#| label: select-helpers
+# ends_with(): 末尾が一致する列
+ele_data |>
+  select(participant_id, ends_with("score")) |>
+  head(3)
+
+# starts_with(): 先頭が一致する列
+ele_data |>
+  select(starts_with("toefl"), starts_with("vocab")) |>
+  head(3)
+
+# contains(): 部分一致する列
+ele_data |>
+  select(participant_id, contains("test")) |>
+  head(3)
+
+# matches(): 正規表現による一致
+ele_data |>
+  select(participant_id, matches("pre|post")) |>
+  head(3)
+
+# where(): 条件を満たす列（例: 数値列のみ）
+ele_data |>
+  select(where(is.numeric)) |>
+  head(3)
+
+# 列番号による選択（非推奨だが、知っておくと便利な場面がある）
+ele_data |>
+  select(1:3) |>
+  head(3)
+```
+
+::: {.callout-tip}
+## selectヘルパー関数の使い分け早見表
+
+| ヘルパー関数 | 用途 | 例 |
+|:---|:---|:---|
+| `starts_with("x")` | 先頭一致 | `starts_with("toefl")` |
+| `ends_with("x")` | 末尾一致 | `ends_with("score")` |
+| `contains("x")` | 部分一致 | `contains("test")` |
+| `matches("regex")` | 正規表現 | `matches("pre\|post")` |
+| `where(fn)` | 条件判定 | `where(is.numeric)` |
+| `all_of(vars)` | 変数名ベクトル（全一致必須） | `all_of(c("a", "b"))` |
+| `any_of(vars)` | 変数名ベクトル（部分一致OK） | `any_of(c("a", "b", "c"))` |
+| `everything()` | 残りの全列 | 列の並び替えに使用 |
+| `last_col()` | 最後の列 | `select(1:last_col(3))` |
+:::
+
+### all_of と any_of：プログラム的な列選択
+
+変数名を文字列ベクトルで指定する場合は `all_of()` または `any_of()` を使います。分析をループで回す場合や、関数化する際に重要です。
+
+```{r}
+#| label: select-all-any-of
+# 選択したい列名をベクトルで定義
+score_vars <- c("toefl_score", "vocabulary_test", "reading_score")
+
+# all_of(): ベクトル内の列がすべて存在しなければエラー
+ele_data |>
+  select(participant_id, all_of(score_vars)) |>
+  head(3)
+
+# any_of(): 存在する列だけ選択（存在しない列は無視）
+flexible_vars <- c("toefl_score", "ielts_score", "reading_score")  # ielts_scoreは存在しない
+ele_data |>
+  select(participant_id, any_of(flexible_vars)) |>
+  head(3)
+```
+
+### rename_with：列名の一括変換
+
+```{r}
+#| label: rename-with-demo
+# 数値列の列名をすべて大文字に変換
+ele_data |>
+  rename_with(toupper, where(is.numeric)) |>
+  head(3)
+
+# 特定のパターンを置換
+ele_data |>
+  rename_with(~ str_replace(.x, "_score", ""), ends_with("score")) |>
+  head(3)
+```
+
+## filter：行の絞り込み
+
+`filter()` は条件に合致する行だけを抽出する関数です。
+
+::: {.callout-warning}
+## filter() の衝突に注意
+`stats::filter()`（時系列フィルタリング用の関数）と `dplyr::filter()` は同名です。`tidyverse` を読み込んでいれば通常は `dplyr::filter()` が優先されますが、パッケージの読み込み順序によっては衝突が起こります。エラーが出た場合は `dplyr::filter()` と明示してください。
+:::
+
+### 基本的な行の絞り込み
+
+```{r}
+#| label: filter-demo
+# 単一条件
+ele_data |>
+  filter(proficiency_level == "B2") |>
+  head(5)
+
+# 複数条件（AND：カンマ区切り = & と同じ）
+ele_data |>
+  filter(proficiency_level == "B2", toefl_score > 85)
+
+# 複数条件（OR）
+ele_data |>
+  filter(proficiency_level %in% c("B1", "B2")) |>
+  head(5)
+```
+
+### よくある条件パターン
+
+```{r}
+#| label: filter-patterns
+# 文字列の部分一致（str_detect）
+ele_data |>
+  filter(str_detect(participant_id, "^P00")) |>   # P00で始まるID
+  head(5)
+
+# NAの除外
+# filter(data, !is.na(column))  # 特定列のNAを除外
+# drop_na(column)               # 同上（tidyr関数）
+
+# 範囲内の値（between）
+ele_data |>
+  filter(between(toefl_score, 60, 80)) |>
+  head(5)
+
+# 否定条件（!）
+ele_data |>
+  filter(proficiency_level != "A2", instruction_type != "Implicit") |>
+  head(5)
+
+# 複雑な条件の組み合わせ
+ele_data |>
+  filter(
+    (proficiency_level == "B2" & toefl_score > 80) |
+    (proficiency_level == "A2" & toefl_score > 50)
+  ) |>
+  nrow()
+```
+
+::: {.callout-tip}
+## filter() でよくあるミス
+- **`=` と `==` の混同:** `filter(x = 5)` はエラーになります。等値比較には `==` を使います。
+- **`|` と `%in%` の混同:** `filter(x == "A" | x == "B" | x == "C")` は `filter(x %in% c("A", "B", "C"))` と書いた方が簡潔です。
+- **NAの扱い:** `filter(x > 5)` は `NA` の行を自動的に除外します。NAを残したい場合は `filter(x > 5 | is.na(x))` とします。
+- **文字列の比較:** 因子型と文字列型は `==` で比較できますが、`levels()` で定義されていない値との比較は常に `FALSE` を返します。
+:::
+
+### slice系関数：位置・ランクに基づく行の選択
+
+`filter()` が条件に基づく抽出であるのに対し、`slice` 系関数は位置やランクに基づいて行を選択します。
+
+```{r}
+#| label: slice-patterns
+# 特定の行番号を選択
+ele_data |>
+  slice(1, 5, 10)
+
+# ランダムに5行抽出（set.seedで再現可能）
+set.seed(123)
+ele_data |>
+  slice_sample(n = 5)
+
+# グループごとに最小値の行を抽出
+ele_data |>
+  group_by(proficiency_level) |>
+  slice_min(order_by = toefl_score, n = 2) |>
+  select(participant_id, proficiency_level, toefl_score) |>
+  ungroup()
+```
+
+## mutate：新しい列の作成
+
+```{r}
+#| label: mutate-demo
+# gain score（事後 - 事前テスト）の計算
+ele_data |>
   mutate(
-    total = math + english + science,
-    average = total / 3
-  )
+    gain_score = posttest - pretest,
+    toefl_category = ifelse(toefl_score >= 72, "Upper", "Lower")
+  ) |>
+  select(participant_id, pretest, posttest, gain_score, toefl_category) |>
+  head(8)
+```
 
-# arrange：並び替え
-exam_data %>%
-  mutate(total = math + english + science) %>%
-  arrange(desc(total))
+## arrange：並び替え
 
-# group_by & summarize：グループ集計
-exam_data %>%
-  mutate(
-    average = (math + english + science) / 3,
-    grade = ifelse(average >= 75, "A", "B")
-  ) %>%
-  group_by(grade) %>%
+```{r}
+#| label: arrange-demo
+# TOEFLスコアの降順で並び替え
+ele_data |>
+  arrange(desc(toefl_score)) |>
+  select(participant_id, proficiency_level, toefl_score) |>
+  head(8)
+```
+
+## group_by + summarize：グループ集計
+
+データ分析で最も頻繁に使用するパターンです。
+
+```{r}
+#| label: group-summarize
+# 熟達度×指導法別の記述統計
+summary_table <- ele_data |>
+  mutate(gain_score = posttest - pretest) |>
+  group_by(proficiency_level, instruction_type) |>
   summarize(
     n = n(),
-    mean_score = mean(average),
-    sd_score = sd(average)
+    mean_gain = mean(gain_score),
+    sd_gain = sd(gain_score),
+    mean_toefl = mean(toefl_score),
+    .groups = "drop"
   )
 ```
 
-## パイプ演算子（%>%）の活用
+::: {.panel-tabset}
+## データ
 
 ```{r}
-#| label: pipe-example
-# パイプを使わない場合（読みにくい）
-result1 <- arrange(
+#| label: group-summarize-gt
+summary_table |>
+  gt() |>
+  tab_header(
+    title = "熟達度×指導法別の記述統計"
+  ) |>
+  fmt_number(columns = c(mean_gain, sd_gain, mean_toefl), decimals = 2) |>
+  cols_label(
+    proficiency_level = "熟達度",
+    instruction_type = "指導法",
+    n = "n",
+    mean_gain = "M (Gain)",
+    sd_gain = "SD (Gain)",
+    mean_toefl = "M (TOEFL)"
+  )
+```
+
+## 可視化
+
+```{r}
+#| label: group-summarize-plot
+#| fig-width: 8
+#| fig-height: 5
+ggplot(summary_table, aes(x = proficiency_level, y = mean_gain,
+                          fill = instruction_type)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_errorbar(aes(ymin = mean_gain - sd_gain, ymax = mean_gain + sd_gain),
+                position = position_dodge(0.9), width = 0.25) +
+  labs(title = "Mean Gain Scores by Proficiency Level and Instruction Type",
+       x = "CEFR Proficiency Level", y = "Mean Gain Score",
+       fill = "Instruction") +
+  scale_fill_brewer(palette = "Set2")
+```
+:::
+
+## tidyrによるデータ整形
+
+::: {.callout-note}
+## tidy dataの原則
+**Tidy data**（整然データ）とは、(1) 各変数が1つの列、(2) 各観測が1つの行、(3) 各値が1つのセルに対応するデータ形式です（Wickham, 2014）。Rの多くの統計関数やggplot2は tidy data（long format）を前提としています。
+:::
+
+```{r}
+#| label: pivot-longer
+# Wide → Long 変換：テストスコアを縦持ちにする
+ele_long <- ele_data |>
+  select(participant_id, proficiency_level, instruction_type,
+         toefl_score, vocabulary_test, reading_score, writing_score) |>
+  pivot_longer(
+    cols = c(toefl_score, vocabulary_test, reading_score, writing_score),
+    names_to = "test_type",
+    values_to = "score"
+  )
+
+head(ele_long, 8)
+```
+
+```{r}
+#| label: pivot-wider
+# Long → Wide 変換（元に戻す）
+ele_wide <- ele_long |>
+  pivot_wider(
+    names_from = test_type,
+    values_from = score
+  )
+
+head(ele_wide, 5)
+```
+
+## その他の便利な操作
+
+### count：度数の集計
+
+```{r}
+#| label: count-demo
+# 熟達度×指導法の度数表
+ele_data |>
+  count(proficiency_level, instruction_type)
+
+# 指導法別の人数（名前を変更）
+ele_data |>
+  count(instruction_type, name = "n_participants")
+```
+
+### rename：列名の変更
+
+```{r}
+#| label: rename-demo
+# 列名を変更（新しい名前 = 古い名前）
+ele_data |>
+  rename(
+    toefl = toefl_score,
+    vocab = vocabulary_test,
+    reading = reading_score
+  ) |>
+  head(3)
+```
+
+### case_when：複数条件による値の生成
+
+`ifelse()` の拡張版で、3つ以上の条件分岐に対応します。
+
+```{r}
+#| label: case-when-demo
+# TOEFLスコアに基づく熟達度ラベルの付与
+ele_data |>
   mutate(
-    filter(exam_data, math > 70),
-    total = math + english + science
-  ),
-  desc(total)
+    toefl_band = case_when(
+      toefl_score >= 80 ~ "High (80+)",
+      toefl_score >= 60 ~ "Mid (60-79)",
+      TRUE              ~ "Low (<60)"
+    )
+  ) |>
+  count(toefl_band)
+```
+
+### across：複数列への一括処理
+
+```{r}
+#| label: across-demo
+# 複数のスコア列に対して平均・標準偏差を一括計算
+ele_data |>
+  group_by(proficiency_level) |>
+  summarize(
+    across(
+      c(toefl_score, vocabulary_test, reading_score, writing_score),
+      list(mean = mean, sd = sd),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "熟達度別のテストスコア統計量") |>
+  fmt_number(columns = where(is.numeric), decimals = 2)
+```
+
+### left_join：データフレームの結合
+
+異なるデータフレーム（例: テストスコアとアンケート結果）を共通の列で結合します。
+
+```{r}
+#| label: join-demo
+# 学習動機に関する追加データ（架空）
+set.seed(100)
+motivation_data <- data.frame(
+  participant_id = paste0("P", sprintf("%03d", 1:120)),
+  intrinsic_motivation = round(rnorm(120, 4, 0.8), 1),
+  extrinsic_motivation = round(rnorm(120, 3.5, 0.9), 1)
 )
 
-# パイプを使う場合（読みやすい）
-result2 <- exam_data %>%
-  filter(math > 70) %>%
-  mutate(total = math + english + science) %>%
-  arrange(desc(total))
+# 元データにモチベーションデータを結合
+ele_merged <- ele_data |>
+  left_join(motivation_data, by = "participant_id")
 
-# 結果は同じ
-all.equal(result1, result2)
+ele_merged |>
+  select(participant_id, proficiency_level, toefl_score,
+         intrinsic_motivation, extrinsic_motivation) |>
+  head(5)
 ```
+
+::: {.callout-tip}
+## 結合の種類
+- `left_join(x, y)`: x のすべての行を残し、y の一致する行を結合（最も一般的）
+- `inner_join(x, y)`: 両方に存在する行のみ残す
+- `full_join(x, y)`: すべての行を残す（一致しない部分は `NA`）
+- `anti_join(x, y)`: y に存在しない x の行のみ残す（欠損データの確認に便利）
+:::
+
+### distinct と slice：行の操作
+
+```{r}
+#| label: distinct-slice-demo
+# 重複の除去
+ele_data |>
+  distinct(proficiency_level, instruction_type)
+
+# 上位N件の抽出
+ele_data |>
+  arrange(desc(toefl_score)) |>
+  slice_head(n = 5) |>
+  select(participant_id, proficiency_level, toefl_score)
+
+# グループ内の上位N件
+ele_data |>
+  group_by(proficiency_level) |>
+  slice_max(order_by = toefl_score, n = 3) |>
+  select(participant_id, proficiency_level, toefl_score) |>
+  ungroup()
+```
+
+# gt()によるテーブル作成
+
+`gt` パッケージは、出版品質のテーブルを作成するためのパッケージです。本書のすべての章で分析結果の表示に使用しています。ここでは基本的な使い方を紹介します。
+
+## gt()の基本構造
+
+`gt()` は、データフレームをパイプで渡すだけで基本的なテーブルが生成されます。そこに装飾・書式設定を段階的に追加していきます。
+
+```{r}
+#| label: gt-basic
+# 最も基本的な使い方
+ele_data |>
+  head(5) |>
+  gt()
+```
+
+## タイトル・サブタイトルの追加
+
+```{r}
+#| label: gt-header
+ele_data |>
+  head(5) |>
+  gt() |>
+  tab_header(
+    title = "ELE学習者データ（サンプル）",
+    subtitle = "最初の5名分のデータ"
+  )
+```
+
+## 列名の変更（cols_label）
+
+```{r}
+#| label: gt-cols-label
+ele_data |>
+  group_by(proficiency_level) |>
+  summarize(
+    n = n(),
+    mean_toefl = mean(toefl_score),
+    sd_toefl = sd(toefl_score),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "熟達度別TOEFL記述統計") |>
+  cols_label(
+    proficiency_level = "熟達度",
+    n = "人数",
+    mean_toefl = "M",
+    sd_toefl = "SD"
+  )
+```
+
+## 数値の書式設定（fmt_number, fmt_percent）
+
+```{r}
+#| label: gt-format
+ele_data |>
+  group_by(proficiency_level, instruction_type) |>
+  summarize(
+    n = n(),
+    mean_gain = mean(posttest - pretest),
+    sd_gain = sd(posttest - pretest),
+    pass_rate = mean(posttest >= 20),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "群別分析結果") |>
+  fmt_number(columns = c(mean_gain, sd_gain), decimals = 2) |>
+  fmt_percent(columns = pass_rate, decimals = 1) |>
+  cols_label(
+    proficiency_level = "熟達度",
+    instruction_type = "指導法",
+    n = "n",
+    mean_gain = "M (Gain)",
+    sd_gain = "SD (Gain)",
+    pass_rate = "合格率"
+  )
+```
+
+## 行のグループ化（tab_row_group）と脚注（tab_footnote）
+
+```{r}
+#| label: gt-groups-footnote
+ele_data |>
+  group_by(proficiency_level) |>
+  summarize(
+    n = n(),
+    mean_toefl = mean(toefl_score),
+    sd_toefl = sd(toefl_score),
+    mean_vocab = mean(vocabulary_test),
+    sd_vocab = sd(vocabulary_test),
+    .groups = "drop"
+  ) |>
+  gt(rowname_col = "proficiency_level") |>
+  tab_header(
+    title = "熟達度別テストスコア",
+    subtitle = "TOEFL iBT および語彙サイズテスト"
+  ) |>
+  fmt_number(columns = c(mean_toefl, sd_toefl, mean_vocab, sd_vocab),
+             decimals = 2) |>
+  cols_label(
+    n = "n", mean_toefl = "M", sd_toefl = "SD",
+    mean_vocab = "M", sd_vocab = "SD"
+  ) |>
+  tab_spanner(label = "TOEFL iBT", columns = c(mean_toefl, sd_toefl)) |>
+  tab_spanner(label = "Vocabulary Test", columns = c(mean_vocab, sd_vocab)) |>
+  tab_footnote(
+    footnote = "TOEFL iBT scores are on a 0-120 scale.",
+    locations = cells_column_spanners("TOEFL iBT")
+  ) |>
+  tab_source_note(source_note = "Note. Data are from a simulated ELE study.")
+```
+
+::: {.callout-tip}
+## gt()でよく使う関数のまとめ
+- `gt()`: テーブル生成
+- `tab_header()`: タイトル・サブタイトル
+- `cols_label()`: 列名の変更
+- `fmt_number()`: 小数点以下の桁数指定
+- `fmt_percent()`: パーセント表示
+- `tab_spanner()`: 列のグループ化（スパナー）
+- `tab_footnote()`: 脚注
+- `tab_source_note()`: ソースノート（テーブル下部の注記）
+- `cols_align()`: 列の配置（左寄せ・中央・右寄せ）
+
+詳細は [gt公式ドキュメント](https://gt.rstudio.com/) を参照してください。
+:::
+
+## gt() と print() の相性問題
+
+`gt()` で作成したテーブルは、`print()` を使うとHTMLソースコードがそのまま表示されてしまい、テーブルとして正しくレンダリングされません。これはRを学び始めた方が頻繁に遭遇する問題です。
+
+```{r}
+#| label: gt-print-problem
+# ❌ print() で gt オブジェクトを表示すると HTML ソースが出力される
+my_table <- ele_data |>
+  head(3) |>
+  gt() |>
+  tab_header(title = "テスト")
+
+# print(my_table) とすると：
+# コンソールには <table class="gt_table"> ... のようなHTMLが表示される
+# Quarto/RMarkdown上ではテーブルとして描画されるが、
+# cat() や print() でラップするとHTMLソースに戻ってしまう
+
+# ✅ gt オブジェクトはそのまま（変数名だけで）出力する
+my_table
+```
+
+::: {.callout-warning}
+## gt() を for ループや関数内で使う場合
+
+先ほど「`for` ループ内では `print()` が必要」と述べましたが、`gt()` オブジェクトに対して `print()` を使うと、テーブルではなくHTMLソースが表示されてしまいます。ループ内で `gt()` テーブルを表示したい場合は、以下の方法を使います。
+
+```r
+# ❌ 意図通りに表示されない
+for (level in c("A2", "B1", "B2")) {
+  ele_data |>
+    filter(proficiency_level == level) |>
+    head(3) |>
+    gt() |>
+    print()   # ← HTMLソースが出力される
+}
+
+# ✅ 方法1: Quarto/RMarkdown では各テーブルを個別のコードチャンクに分ける
+
+# ✅ 方法2: print() ではなく htmltools::html_print() を使う
+# for (level in c("A2", "B1", "B2")) {
+#   tbl <- ele_data |>
+#     filter(proficiency_level == level) |>
+#     head(3) |>
+#     gt() |>
+#     tab_header(title = paste("Proficiency:", level))
+#   htmltools::html_print(tbl)
+# }
+
+# ✅ 方法3: リストに格納して gt_group() で一括表示
+# tables <- map(c("A2", "B1", "B2"), ~ {
+#   ele_data |> filter(proficiency_level == .x) |> head(3) |>
+#     gt() |> tab_header(title = paste("Proficiency:", .x))
+# })
+# gt_group(.list = tables)
+```
+:::
+
+::: {.callout-note}
+## cat() と gt() の関係
+
+`cat()` は**テキストの出力**に特化した関数です。`gt()` オブジェクトを `cat()` に渡しても意味のある結果は得られません。`gt()` のテーブルと `cat()` のテキスト出力は、そもそも用途が異なります。
+
+- **テーブル表示** → `gt()` で作成し、変数名だけで出力（Quarto/RMarkdownで自動レンダリング）
+- **テキスト出力** → `cat()` や `sprintf()` を使用
+- **分析結果の表組み** → `broom::tidy()` でデータフレーム化 → `gt()` に渡す
+
+```r
+# ❌ gt() と cat() を混ぜようとする
+# cat(my_table)   # エラー、または意味不明な出力
+
+# ✅ テキストはテキスト、テーブルはテーブルで分ける
+cat("=== t検定の結果 ===\n")   # テキスト出力
+broom::tidy(t_result) |> gt()   # テーブル出力（次の行として表示される）
+```
+:::
+
+# 実践例：irisデータで学ぶデータハンドリング
+
+ここまでに紹介した `tidyverse`、`gt()`、`ggplot2` の操作を、Rに組み込みの `iris` データセットを使って実践的に確認します。`iris` はRを学ぶ際に世界中で使用される定番データセットで、3種のアヤメ（setosa, versicolor, virginica）の花弁・萼片の長さと幅を記録したものです。英語教育研究のデータとは異なりますが、**wide → long変換、グループ集計、可視化の一連の流れ**を練習するのに最適です。
+
+## irisデータの確認
+
+```{r}
+#| label: iris-overview
+# irisデータの構造を確認
+str(iris)
+
+# 先頭行をgt()で表示
+head(iris, 8) |>
+  gt() |>
+  tab_header(
+    title = "irisデータセット（先頭8行）",
+    subtitle = "3種のアヤメの花弁・萼片の計測データ"
+  )
+```
+
+```{r}
+#| label: iris-summary-by-species
+# 種別の記述統計
+iris |>
+  group_by(Species) |>
+  summarize(
+    n = n(),
+    across(
+      c(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width),
+      list(M = mean, SD = sd),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "種別の記述統計量") |>
+  fmt_number(columns = where(is.numeric) & !c(n), decimals = 2) |>
+  tab_spanner(label = "Sepal Length", columns = starts_with("Sepal.Length")) |>
+  tab_spanner(label = "Sepal Width", columns = starts_with("Sepal.Width")) |>
+  tab_spanner(label = "Petal Length", columns = starts_with("Petal.Length")) |>
+  tab_spanner(label = "Petal Width", columns = starts_with("Petal.Width"))
+```
+
+## pivot_longer の実践：wide → long変換
+
+`iris` データは **wide形式**（各計測値が別々の列）ですが、ggplot2で「計測値の種類ごとに色分けしたい」場合は **long形式** に変換する必要があります。
+
+```{r}
+#| label: iris-pivot-longer
+# wide → long 変換
+iris_long <- iris |>
+  mutate(id = row_number()) |>   # 行を識別するIDを追加
+  pivot_longer(
+    cols = c(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width),
+    names_to = "measurement",     # 列名 → "measurement" 列
+    values_to = "value"           # 値 → "value" 列
+  )
+
+# 変換結果の確認
+head(iris_long, 12)
+```
+
+::: {.callout-note}
+## pivot_longer の動作を理解する
+上のコードでは、元の4列（Sepal.Length, Sepal.Width, Petal.Length, Petal.Width）が2列（measurement, value）に「縦に伸びた」形になります。元の150行 × 4計測値 = 600行のlong形式データが得られます。
+
+- `cols`: 縦持ちにしたい列を指定
+- `names_to`: 元の列名を格納する新しい列の名前
+- `values_to`: 元の値を格納する新しい列の名前
+:::
+
+### names_sep と names_pattern の活用
+
+列名に構造がある場合（例: `Sepal.Length` → 部位 `Sepal` + 計測 `Length`）、`names_sep` や `names_pattern` で列名を複数の変数に分解できます。
+
+```{r}
+#| label: iris-pivot-names-sep
+# 列名を "." で分割し、部位と計測タイプに分ける
+iris_long2 <- iris |>
+  mutate(id = row_number()) |>
+  pivot_longer(
+    cols = c(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width),
+    names_to = c("part", "dimension"),  # 2つの変数に分割
+    names_sep = "\\.",                  # "." で分割（正規表現なのでエスケープ）
+    values_to = "cm"
+  )
+
+head(iris_long2, 12)
+
+# 部位×計測タイプ別の平均値
+iris_long2 |>
+  group_by(Species, part, dimension) |>
+  summarize(mean_cm = mean(cm), .groups = "drop") |>
+  gt() |>
+  tab_header(title = "種別 × 部位 × 計測タイプ別の平均値 (cm)") |>
+  fmt_number(columns = mean_cm, decimals = 2)
+```
+
+## pivot_wider の実践：long → wide変換
+
+long形式のデータをwide形式に戻す操作です。集計結果をテーブルとして見やすく整形する際にも活用します。
+
+```{r}
+#| label: iris-pivot-wider
+# 種別の平均値をlong形式で計算
+iris_means_long <- iris_long2 |>
+  group_by(Species, part, dimension) |>
+  summarize(mean_cm = mean(cm), .groups = "drop")
+
+# wide形式に変換（計測タイプを列に展開）
+iris_means_wide <- iris_means_long |>
+  pivot_wider(
+    names_from = dimension,
+    values_from = mean_cm
+  )
+
+iris_means_wide |>
+  gt() |>
+  tab_header(title = "種別 × 部位の平均計測値") |>
+  fmt_number(columns = c(Length, Width), decimals = 2) |>
+  cols_label(Species = "Species", part = "Part",
+             Length = "Length (cm)", Width = "Width (cm)")
+```
+
+::: {.callout-tip}
+## pivot_longer と pivot_wider の使い分け
+- **pivot_longer:** ggplot2 で `fill` や `color` に計測変数を割り当てたい時、`facet_wrap()` で変数ごとにパネル分割したい時に使います。
+- **pivot_wider:** 集計結果を見やすい表に整形する時、異なるソースのデータを列方向に結合したい時に使います。
+- 基本原則: **分析・可視化 → long形式**、**表示・レポート → wide形式** と覚えておくと判断しやすくなります。
+:::
+
+## ggplot2 の実践：irisデータの可視化
+
+### 散布図：基本とレイヤーの追加
+
+`ggplot2` はレイヤーを `+` で重ねていく仕組みです。1つずつレイヤーを追加する過程を確認しましょう。
+
+```{r}
+#| label: iris-ggplot-scatter-basic
+#| fig-width: 8
+#| fig-height: 5
+
+# Step 1: データとエステティックの指定（まだ何も描画されない）
+# ggplot(iris, aes(x = Petal.Length, y = Petal.Width))
+
+# Step 2: ジオメトリを追加（点が表示される）
+# ggplot(iris, aes(x = Petal.Length, y = Petal.Width)) +
+#   geom_point()
+
+# Step 3: 色で種を区別 + 回帰直線 + ラベル + テーマ（完成形）
+ggplot(iris, aes(x = Petal.Length, y = Petal.Width, color = Species)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, alpha = 0.15) +
+  labs(
+    title = "Petal Length vs. Petal Width by Species",
+    x = "Petal Length (cm)",
+    y = "Petal Width (cm)",
+    color = "Species"
+  ) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+### facet_wrap：パネル分割
+
+long形式のデータを使い、計測変数ごとにヒストグラムを描画します。
+
+```{r}
+#| label: iris-ggplot-facet
+#| fig-width: 10
+#| fig-height: 7
+
+# long形式データを使ったファセット分割
+ggplot(iris_long, aes(x = value, fill = Species)) +
+  geom_histogram(binwidth = 0.3, alpha = 0.7, color = "white",
+                 position = "identity") +
+  facet_wrap(~ measurement, scales = "free", ncol = 2) +
+  labs(
+    title = "Distribution of Measurements by Species",
+    x = "Value (cm)", y = "Frequency",
+    fill = "Species"
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_bw()
+```
+
+::: {.callout-note}
+## facet_wrap と facet_grid
+- `facet_wrap(~ variable)`: 1つの変数でパネル分割。`ncol` や `nrow` でレイアウトを制御。`scales = "free"` で各パネルの軸範囲を独立させる。
+- `facet_grid(row_var ~ col_var)`: 2つの変数で行×列のグリッド分割。例: `facet_grid(Species ~ measurement)` で種を行、計測タイプを列に配置。
+:::
+
+### 箱ひげ図 + ジッタープロット
+
+```{r}
+#| label: iris-ggplot-boxplot-jitter
+#| fig-width: 10
+#| fig-height: 5
+
+# long形式データで全計測値を一度に比較
+ggplot(iris_long, aes(x = Species, y = value, fill = Species)) +
+  geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.15, alpha = 0.3, size = 1) +
+  facet_wrap(~ measurement, scales = "free_y", ncol = 4) +
+  labs(
+    title = "Comparison of Measurements Across Species",
+    x = "Species", y = "Value (cm)"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+### 密度プロットとバイオリンプロット
+
+```{r}
+#| label: iris-ggplot-density-violin
+#| fig-width: 9
+#| fig-height: 5
+
+# names_sepで分割したデータを使用
+iris_long2 |>
+  filter(part == "Petal") |>
+  ggplot(aes(x = Species, y = cm, fill = Species)) +
+  geom_violin(alpha = 0.4, draw_quantiles = c(0.25, 0.5, 0.75)) +
+  geom_jitter(width = 0.1, alpha = 0.2, size = 1) +
+  facet_wrap(~ dimension, scales = "free_y") +
+  labs(
+    title = "Petal Measurements: Violin Plot with Quartiles",
+    x = "Species", y = "Measurement (cm)"
+  ) +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+### ヒートマップ：相関行列の可視化
+
+```{r}
+#| label: iris-ggplot-heatmap
+#| fig-width: 7
+#| fig-height: 6
+
+# 相関行列を計算
+iris_cor <- iris |>
+  select(where(is.numeric)) |>
+  cor()
+
+# long形式に変換してggplot2で描画
+iris_cor |>
+  as.data.frame() |>
+  rownames_to_column("var1") |>
+  pivot_longer(-var1, names_to = "var2", values_to = "correlation") |>
+  ggplot(aes(x = var1, y = var2, fill = correlation)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(correlation, 2)), size = 4) +
+  scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Correlation Matrix of Iris Measurements",
+       x = "", y = "", fill = "r") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## データハンドリングの総合演習
+
+最後に、irisデータを使って「データ読み込み → 整形 → 集計 → 可視化 → テーブル出力」の一連の流れを通しで実行します。これは英語教育研究でも同様のワークフローになります。
+
+```{r}
+#| label: iris-comprehensive-workflow
+#| fig-width: 9
+#| fig-height: 5
+
+# Step 1: データ準備（pivot_longer + 変数分割）
+iris_tidy <- iris |>
+  mutate(id = row_number()) |>
+  pivot_longer(
+    cols = -c(id, Species),
+    names_to = c("part", "dimension"),
+    names_sep = "\\.",
+    values_to = "cm"
+  )
+
+# Step 2: グループ集計
+iris_summary <- iris_tidy |>
+  group_by(Species, part, dimension) |>
+  summarize(
+    n = n(),
+    mean = mean(cm),
+    sd = sd(cm),
+    median = median(cm),
+    .groups = "drop"
+  )
+
+# Step 3: 可視化（平均値の比較）
+ggplot(iris_summary, aes(x = Species, y = mean, fill = dimension)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_errorbar(
+    aes(ymin = mean - sd, ymax = mean + sd),
+    position = position_dodge(0.9), width = 0.25
+  ) +
+  facet_wrap(~ part) +
+  labs(
+    title = "Mean Measurements (±SD) by Species and Part",
+    x = "Species", y = "Mean (cm)",
+    fill = "Dimension"
+  ) +
+  scale_fill_brewer(palette = "Set1") +
+  theme_bw()
+```
+
+```{r}
+#| label: iris-comprehensive-table
+# Step 4: テーブル出力（pivot_widerで整形 → gt()で装飾）
+iris_summary |>
+  mutate(label = paste0(round(mean, 2), " (", round(sd, 2), ")")) |>
+  select(Species, part, dimension, label) |>
+  pivot_wider(
+    names_from = c(part, dimension),
+    values_from = label,
+    names_sep = " "
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Iris計測データの記述統計",
+    subtitle = "M (SD)"
+  ) |>
+  tab_spanner(label = "Petal", columns = starts_with("Petal")) |>
+  tab_spanner(label = "Sepal", columns = starts_with("Sepal")) |>
+  tab_source_note("Note. Values represent M (SD) in centimeters.")
+```
+
+::: {.callout-tip}
+## このワークフローを英語教育研究に応用する
+上の一連の流れは、英語教育研究のデータにそのまま適用できます。
+
+- `iris` → テストスコアのデータフレーム
+- `Species` → 熟達度レベルや指導法
+- `Sepal.Length` 等 → TOEFL Reading, Writing, Listening, Speaking
+- `pivot_longer` → テストの種類を1列にまとめて `facet_wrap()` で比較
+- `group_by() |> summarize()` → 群別の記述統計
+- `gt()` + `tab_spanner()` → 論文に掲載するテーブル
+
+この「整形 → 集計 → 可視化 → テーブル」のパイプラインは、データ分析の基本的なワークフローとして身につけておくと、あらゆる分析場面で応用できます。
+:::
 
 # データの可視化
 
-## 基本的なプロット（Base R）
+`ggplot2` は「グラフィックスの文法」（Grammar of Graphics）に基づく可視化パッケージで、**データ**、**エステティックマッピング**（aes: 軸や色の対応付け）、**ジオメトリ**（geom: 図の種類）を組み合わせて図を構築します。
+
+## ヒストグラムと密度プロット
 
 ```{r}
-#| label: base-plots
-#| fig-width: 8
-#| fig-height: 6
-
-# サンプルデータ
-set.seed(123)
-x <- rnorm(100)
-y <- 2 * x + rnorm(100)
-
-# レイアウトの設定（2×2のグリッド）
-par(mfrow = c(2, 2))
-
-# ヒストグラム
-hist(x, main = "ヒストグラム", xlab = "値", ylab = "頻度", col = "lightblue")
-
-# 散布図
-plot(x, y, main = "散布図", xlab = "X", ylab = "Y", pch = 19, col = "blue")
-abline(lm(y ~ x), col = "red", lwd = 2)
-
-# 箱ひげ図
-boxplot(math ~ grade, 
-        data = data.frame(
-          math = c(exam_data$math, exam_data$english),
-          grade = rep(c("Math", "English"), each = 10)
-        ),
-        main = "箱ひげ図", ylab = "スコア", col = c("lightgreen", "lightcoral"))
-
-# 棒グラフ
-barplot(table(cut(x, breaks = 5)), 
-        main = "棒グラフ", xlab = "カテゴリ", ylab = "頻度",
-        col = rainbow(5))
-
-par(mfrow = c(1, 1))  # レイアウトをリセット
+#| label: ggplot-histogram
+#| fig-width: 9
+#| fig-height: 5
+# TOEFL得点分布を熟達度別に表示
+ggplot(ele_data, aes(x = toefl_score, fill = proficiency_level)) +
+  geom_histogram(binwidth = 5, alpha = 0.7, color = "white") +
+  facet_wrap(~ proficiency_level, scales = "free_y") +
+  labs(title = "TOEFL Score Distribution by Proficiency Level",
+       x = "TOEFL iBT Score", y = "Frequency") +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Blues")
 ```
 
-## ggplot2による可視化
+## 箱ひげ図とバイオリンプロット
 
 ```{r}
-#| label: ggplot2-basics
-#| message: false
-#| warning: false
+#| label: ggplot-boxplot
+#| fig-width: 8
+#| fig-height: 5
+# 指導法別の事後テストスコア比較
+ggplot(ele_data, aes(x = instruction_type, y = posttest,
+                     fill = instruction_type)) +
+  geom_violin(alpha = 0.3) +
+  geom_boxplot(width = 0.3, alpha = 0.7) +
+  geom_jitter(width = 0.1, alpha = 0.2, size = 1) +
+  facet_wrap(~ proficiency_level) +
+  labs(title = "Posttest Scores by Instruction Type and Proficiency",
+       x = "Instruction Type", y = "Posttest Score (0-30)") +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Set2")
+```
 
-# データの準備
-exam_long <- exam_data %>%
-  pivot_longer(cols = c(math, english, science), 
-               names_to = "subject", 
-               values_to = "score")
+## 散布図と回帰直線
 
-# ヒストグラム
-ggplot(exam_long, aes(x = score, fill = subject)) +
-  geom_histogram(binwidth = 5, alpha = 0.7, position = "identity") +
-  facet_wrap(~ subject) +
-  theme_minimal() +
-  labs(title = "科目別スコア分布",
-       x = "スコア",
-       y = "頻度")
+```{r}
+#| label: ggplot-scatter
+#| fig-width: 8
+#| fig-height: 6
+# 語彙テストと読解テストの関係
+ggplot(ele_data, aes(x = vocabulary_test, y = reading_score,
+                     color = proficiency_level)) +
+  geom_point(alpha = 0.6, size = 2) +
+  geom_smooth(method = "lm", se = TRUE, alpha = 0.2) +
+  labs(title = "Vocabulary Test vs. Reading Score",
+       x = "Vocabulary Test Score", y = "Reading Score",
+       color = "Proficiency") +
+  scale_color_brewer(palette = "Dark2")
+```
 
-# 箱ひげ図
-ggplot(exam_long, aes(x = subject, y = score, fill = subject)) +
-  geom_boxplot(alpha = 0.7) +
-  geom_jitter(width = 0.2, alpha = 0.5) +
-  theme_minimal() +
-  labs(title = "科目別スコアの比較",
-       x = "科目",
-       y = "スコア") +
-  theme(legend.position = "none")
+## 棒グラフ（平均値とエラーバー）
 
-# 散布図行列
-library(GGally)
-ggpairs(exam_data[, c("math", "english", "science")],
-        title = "科目間の相関")
+```{r}
+#| label: ggplot-bar
+#| fig-width: 8
+#| fig-height: 5
+# 事前・事後テストの平均を指導法別に比較
+ele_data |>
+  pivot_longer(cols = c(pretest, posttest),
+               names_to = "timepoint", values_to = "score") |>
+  mutate(timepoint = factor(timepoint,
+                            levels = c("pretest", "posttest"),
+                            labels = c("Pretest", "Posttest"))) |>
+  group_by(instruction_type, timepoint) |>
+  summarize(mean_score = mean(score), se = sd(score) / sqrt(n()),
+            .groups = "drop") |>
+  ggplot(aes(x = timepoint, y = mean_score, fill = instruction_type)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  geom_errorbar(aes(ymin = mean_score - se, ymax = mean_score + se),
+                position = position_dodge(0.9), width = 0.25) +
+  labs(title = "Pre-Post Test Scores by Instruction Type",
+       x = "Timepoint", y = "Mean Score (0-30)",
+       fill = "Instruction") +
+  scale_fill_brewer(palette = "Set2")
+```
+
+## テーマと体裁の調整
+
+```{r}
+#| label: ggplot-theme
+#| fig-width: 8
+#| fig-height: 5
+# 本書で使用するスタイルの例
+ggplot(ele_data, aes(x = toefl_score, y = vocabulary_test)) +
+  geom_point(aes(color = proficiency_level), alpha = 0.6, size = 2) +
+  geom_smooth(method = "lm", color = "black", linewidth = 0.8) +
+  labs(
+    title = "TOEFL Score and Vocabulary Test Performance",
+    subtitle = "N = 120 Japanese EFL learners",
+    x = "TOEFL iBT Score",
+    y = "Vocabulary Test Score",
+    color = "CEFR Level",
+    caption = "Note. Shaded area = 95% CI."
+  ) +
+  theme_bw(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "bottom"
+  ) +
+  scale_color_brewer(palette = "Dark2")
+```
+
+::: {.callout-tip}
+## 図の保存
+`ggsave()` を使用して、出版品質の図を保存できます。
+
+```r
+ggsave("figures/toefl_vocab_scatter.png", width = 8, height = 6, dpi = 300)
+```
+
+`ggsave()` は直前に描画した図を自動的に保存します。ファイル形式は拡張子から自動判定されます（`.png`, `.pdf`, `.svg` 等）。
+:::
+
+Base Rの `plot()`, `hist()`, `boxplot()` 等も使用できますが、本書では柔軟性と一貫性の観点から `ggplot2` を主に使用します。
+
+# 基礎的な統計解析
+
+本節では、英語教育研究で頻出する基礎的な統計手法のRでの実行方法を概説します。各手法の理論的背景や詳細な解釈については、該当する章を参照してください。
+
+::: {.callout-note}
+## 後続章との関係
+- **t検定の詳細** → 第1章「T検定と効果量」
+- **分散分析（ANOVA）** → 第2章「ANOVAとカテゴリカル変数のコーディング」
+- **重回帰分析** → 第4章「重回帰分析」
+- **一般化線形モデル** → 第5章「一般化線形モデル・一般化加法モデル」
+- **混合効果モデル** → 第6章「混合効果モデル」
+
+本節では上記の各手法を「Rでどう実行するか」に焦点を当て、最小限のコードで結果を得る方法を示します。
+:::
+
+## 記述統計量
+
+```{r}
+#| label: descriptive-stats
+# psych::describe() で包括的な記述統計を取得
+ele_data |>
+  select(toefl_score, vocabulary_test, reading_score,
+         writing_score, pretest, posttest) |>
+  psych::describe() |>
+  as.data.frame() |>
+  rownames_to_column("variable") |>
+  select(variable, n, mean, sd, median, min, max, skew, kurtosis) |>
+  gt() |>
+  tab_header(title = "記述統計量") |>
+  fmt_number(columns = c(mean, sd, median, skew, kurtosis), decimals = 2) |>
+  fmt_number(columns = c(min, max), decimals = 0)
+```
+
+## t検定
+
+**研究課題:** 明示的指導（Explicit）と暗示的指導（Implicit）で、事後テスト得点に統計的に有意な差があるか？
+
+```{r}
+#| label: ttest-ele
+# Welchのt検定（等分散を仮定しない：デフォルト）
+t_result <- t.test(posttest ~ instruction_type, data = ele_data)
+t_result
+```
+
+::: {.panel-tabset}
+## 結果
+
+```{r}
+#| label: ttest-gt
+# 結果をgt()テーブルで整理
+broom::tidy(t_result) |>
+  gt() |>
+  tab_header(title = "Welch's t-test: Posttest by Instruction Type") |>
+  fmt_number(columns = c(estimate, estimate1, estimate2,
+                         statistic, p.value, conf.low, conf.high),
+             decimals = 3) |>
+  cols_label(
+    estimate = "Mean Diff",
+    estimate1 = "M (Explicit)",
+    estimate2 = "M (Implicit)",
+    statistic = "t",
+    p.value = "p",
+    parameter = "df",
+    conf.low = "95% CI Lower",
+    conf.high = "95% CI Upper"
+  )
+```
+
+## 可視化
+
+```{r}
+#| label: ttest-plot
+#| fig-width: 6
+#| fig-height: 5
+ggplot(ele_data, aes(x = instruction_type, y = posttest,
+                     fill = instruction_type)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.15, alpha = 0.3, size = 1.5) +
+  labs(title = "Posttest Scores by Instruction Type",
+       x = "Instruction Type", y = "Posttest Score (0-30)") +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Set2")
+```
+:::
+
+## 相関分析
+
+**研究課題:** TOEFL得点と語彙テスト得点の間に有意な相関があるか？
+
+```{r}
+#| label: correlation-ele
+# Pearsonの相関係数
+cor_result <- cor.test(ele_data$toefl_score, ele_data$vocabulary_test)
+cor_result
+```
+
+```{r}
+#| label: correlation-matrix
+#| fig-width: 8
+#| fig-height: 7
+# テストスコア間の相関行列（散布図行列）
+ele_data |>
+  select(toefl_score, vocabulary_test, reading_score, writing_score) |>
+  GGally::ggpairs(
+    title = "Correlation Matrix of Test Scores",
+    lower = list(continuous = wrap("smooth", alpha = 0.3, size = 0.8)),
+    diag = list(continuous = wrap("densityDiag", alpha = 0.5))
+  )
+```
+
+## 回帰分析
+
+**研究課題:** TOEFL得点は、語彙テスト得点と読解テスト得点で予測できるか？
+
+```{r}
+#| label: regression-ele
+# 重回帰モデル
+model <- lm(toefl_score ~ vocabulary_test + reading_score, data = ele_data)
+summary(model)
+```
+
+```{r}
+#| label: regression-gt
+# 回帰係数をgt()テーブルで表示
+broom::tidy(model, conf.int = TRUE) |>
+  gt() |>
+  tab_header(
+    title = "重回帰分析の結果",
+    subtitle = "目的変数: TOEFL iBT Score"
+  ) |>
+  fmt_number(columns = c(estimate, std.error, statistic,
+                         p.value, conf.low, conf.high), decimals = 3) |>
+  cols_label(
+    term = "予測変数",
+    estimate = "B",
+    std.error = "SE",
+    statistic = "t",
+    p.value = "p",
+    conf.low = "95% CI Lower",
+    conf.high = "95% CI Upper"
+  )
+```
+
+## 効果量
+
+統計的有意性（p値）だけでなく、効果の実質的な大きさを報告することが現代の研究では求められています。
+
+```{r}
+#| label: effect-size-demo
+# t検定の効果量（Cohen's d）
+effectsize::cohens_d(posttest ~ instruction_type, data = ele_data)
+
+# 回帰モデルの決定係数（R²）
+cat("R² =", summary(model)$r.squared |> round(3), "\n")
+cat("Adjusted R² =", summary(model)$adj.r.squared |> round(3))
+```
+
+::: {.callout-tip}
+## APA形式での報告例
+**t検定:** "*t*(df) = x.xx, *p* = .xxx, *d* = x.xx, 95% CI [x.xx, x.xx]"
+
+**回帰分析:** "語彙テスト得点 (*B* = x.xx, *SE* = x.xx, *t* = x.xx, *p* < .001) と読解テスト得点 (*B* = x.xx, *SE* = x.xx, *t* = x.xx, *p* < .001) はTOEFL得点の有意な予測因子であった (*R*² = .xx)。"
+:::
+
+::: {.callout-important}
+## 統計的前提条件の確認
+統計検定を行う際は、各手法が前提とする仮定を確認する必要があります。
+
+- **t検定:** 正規性（`shapiro.test()`）、等分散性（`var.test()`）
+- **相関:** 線形性、正規性
+- **回帰:** 線形性、正規性、等分散性、独立性（残差プロットで確認: `plot(model)`）
+
+詳細は各章で扱います。Welchのt検定は等分散を仮定しないため、`t.test()` のデフォルト（`var.equal = FALSE`）をそのまま使用することを推奨します。
+:::
+
+```{mermaid}
+%%| label: analysis-flowchart
+%%| fig-cap: "分析手法の選択フローチャート"
+flowchart TD
+    A["研究仮説の設定"] --> B{"データの種類"}
+    B -->|"2群比較"| C["t検定 → 第1章"]
+    B -->|"3群以上"| D["ANOVA → 第2章"]
+    B -->|"相関・予測"| E["回帰分析 → 第4章"]
+    B -->|"2値データ"| F["GLM → 第5章"]
+    B -->|"階層構造"| G["混合効果モデル → 第6章"]
+    style A fill:#e3f2fd,stroke:#1976d2
+    style B fill:#fff9c4,stroke:#fbc02d
+    style C fill:#f3e5f5,stroke:#7b1fa2
+    style D fill:#f3e5f5,stroke:#7b1fa2
+    style E fill:#f3e5f5,stroke:#7b1fa2
+    style F fill:#f3e5f5,stroke:#7b1fa2
+    style G fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 # パッケージ管理
 
-## パッケージのインストールと読み込み
+## pacmanによるパッケージ管理
+
+本書ではすべての章で `pacman::p_load()` を使用しています。この関数は、パッケージが未インストールの場合は自動的にインストールし、その後読み込みを行います。
 
 ```{r}
-#| label: package-management
+#| label: pacman-demo
 #| eval: false
 
-# CRANからインストール
-install.packages("ggplot2")
+# pacmanのインストール（初回のみ）
+install.packages("pacman")
 
-# 複数パッケージを一度にインストール
-install.packages(c("dplyr", "tidyr", "readr"))
+# パッケージの読み込み（未インストールなら自動インストール）
+pacman::p_load(tidyverse, gt, psych, effectsize)
 
-# パッケージの読み込み
-library(ggplot2)
-
-# インストールされているか確認してから読み込む
-if (!require(ggplot2)) {
-  install.packages("ggplot2")
-  library(ggplot2)
-}
-
-# パッケージの更新
-update.packages()
-
-# パッケージ情報の確認
-packageVersion("ggplot2")
-sessionInfo()
+# 従来の方法（比較用）
+# install.packages("tidyverse")  # 手動インストールが必要
+# library(tidyverse)              # インストール済みでないとエラー
 ```
 
-## よく使うパッケージ
+::: {.callout-tip}
+## pacman::p_load() を使う理由
+`library()` は対象パッケージが未インストールの場合エラーになりますが、`p_load()` は自動的にインストールしてから読み込みます。本書のコードをそのまま実行する際に、パッケージの有無を気にする必要がなくなります。
+:::
 
-| カテゴリ | パッケージ | 用途 |
-|---------|-----------|------|
-| データ操作 | `dplyr`, `tidyr` | データの整形・変換 |
-| 可視化 | `ggplot2`, `plotly` | グラフ作成 |
-| 統計解析 | `car`, `emmeans` | 統計検定 |
-| 読み込み | `readr`, `readxl` | データ読み込み |
-| レポート | `knitr`, `rmarkdown` | 文書作成 |
+## CRANとGitHubパッケージ
+
+```{r}
+#| label: package-sources
+#| eval: false
+
+# CRANから個別にインストール
+install.packages("lme4")
+
+# 複数パッケージを一度にインストール
+install.packages(c("lme4", "lmerTest", "emmeans"))
+
+# GitHub上の開発版パッケージ
+# install.packages("remotes")
+remotes::install_github("author/package")
+
+# pacmanでGitHubパッケージを読み込む
+pacman::p_load_gh("author/package")
+
+# パッケージバージョンの確認
+packageVersion("tidyverse")
+```
+
+## 本書で使用する主なパッケージ
+
+```{r}
+#| label: package-table-ele
+# 本書で使用する主なパッケージ一覧
+tibble::tribble(
+  ~カテゴリ,       ~パッケージ,      ~用途,
+  "データ操作",    "tidyverse",      "dplyr, tidyr, readr, ggplot2等の統合パッケージ",
+  "データ操作",    "readxl",         "Excelファイルの読み込み",
+  "表作成",        "gt",             "出版品質のテーブル作成",
+  "可視化",        "ggplot2",        "グラフ作成（tidyverseに含まれる）",
+  "可視化",        "GGally",         "散布図行列（ggpairs）",
+  "可視化",        "patchwork",      "複数の図を並べる",
+  "統計（基礎）",  "psych",          "記述統計（describe）",
+  "統計（基礎）",  "car",            "分散分析の検定",
+  "統計（基礎）",  "effectsize",     "効果量の算出",
+  "統計（基礎）",  "emmeans",        "推定周辺平均・事後比較",
+  "統計（基礎）",  "pwr",            "検定力分析",
+  "混合効果",      "lme4",           "線形・一般化線形混合モデル",
+  "混合効果",      "lmerTest",       "混合モデルのp値算出",
+  "ベイズ推定",    "brms",           "ベイズ回帰モデル",
+  "テスト理論",    "mirt",           "多次元項目応答理論",
+  "テスト理論",    "eRm",            "ラッシュモデル",
+  "テキスト分析",  "quanteda",       "コーパス分析・テキスト量的分析",
+  "テキスト分析",  "tidytext",       "tidy原則に基づくテキスト分析",
+  "メタ分析",      "metafor",        "メタ分析",
+  "レポート",      "broom",          "モデル結果の整形",
+  "レポート",      "knitr",          "文書作成支援"
+) |>
+  gt() |>
+  tab_header(title = "本書で使用する主なRパッケージ") |>
+  cols_label(
+    カテゴリ = "カテゴリ",
+    パッケージ = "パッケージ",
+    用途 = "用途"
+  )
+```
+
+::: {.callout-warning}
+## パッケージの競合（マスキング問題）
+複数のパッケージで同名の関数が定義されている場合、**後から読み込んだパッケージの関数が優先されます**（マスキング）。`library()` や `pacman::p_load()` でパッケージを読み込んだ際に、コンソールに表示される「`The following objects are masked from ...`」というメッセージがこれに該当します。
+
+本書で特に注意が必要な競合を以下にまとめます。
+:::
+
+```{r}
+#| label: conflict-table
+tibble::tribble(
+  ~dplyr関数,         ~競合パッケージ,     ~競合関数,              ~発生しやすい場面,
+  "dplyr::select()",  "MASS",             "MASS::select()",       "lme4, lmerTest 読み込み時（MASSに依存）",
+  "dplyr::filter()",  "stats",            "stats::filter()",      "tidyverseより前にstatsが読み込まれている",
+  "dplyr::lag()",     "stats",            "stats::lag()",         "時系列データの分析時",
+  "dplyr::rename()",  "plyr",             "plyr::rename()",       "plyrとdplyrの併用時",
+  "dplyr::summarise()","plyr",            "plyr::summarise()",    "plyrとdplyrの併用時",
+  "dplyr::count()",   "plyr",             "plyr::count()",        "plyrとdplyrの併用時"
+) |>
+  gt() |>
+  tab_header(
+    title = "dplyr関数の主な競合一覧",
+    subtitle = "後から読み込まれたパッケージの関数がマスキングされる"
+  ) |>
+  cols_label(
+    dplyr関数 = "dplyr 関数",
+    競合パッケージ = "競合パッケージ",
+    競合関数 = "競合する関数",
+    発生しやすい場面 = "発生しやすい場面"
+  ) |>
+  tab_source_note("Note. 最も頻出するのは MASS::select() との競合です。")
+```
+
+::: {.callout-important}
+## MASS::select() との競合 — 本書で最も頻出する問題
+
+本書の第6章（混合効果モデル）などで `lme4` や `lmerTest` を使用すると、これらが内部で `MASS` パッケージに依存しているため、`MASS::select()` が `dplyr::select()` を上書きしてしまうことがあります。この場合、以下のようなエラーが発生します。
+
+```r
+# よくあるエラーメッセージ
+# Error in select(., participant_id, toefl_score) :
+#   unused arguments (participant_id, toefl_score)
+#
+# Error in select(., where(is.numeric)) :
+#   unused argument (where(is.numeric))
+```
+
+このエラーが出た場合は、以下のいずれかの方法で対処してください。
+
+```r
+# 方法 1: 名前空間を明示する（最も確実・推奨）
+ele_data |> dplyr::select(participant_id, toefl_score)
+
+# 方法 2: conflicted パッケージで優先順位を宣言する
+library(conflicted)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+# 方法 3: パッケージの読み込み順序を制御する
+# MASS を先に、tidyverse を後に読み込む
+library(MASS)
+library(tidyverse)  # dplyr::select が優先される
+
+# 方法 4: MASS をデタッチする（非推奨だが緊急時に）
+# detach("package:MASS", unload = TRUE)
+```
+:::
+
+::: {.callout-tip}
+## conflicted パッケージの活用
+スクリプトの先頭に以下を書いておくと、関数の競合が発生した際にエラーで知らせてくれるため、意図しないマスキングによるバグを未然に防げます。
+
+```r
+library(conflicted)
+conflicts_prefer(
+  dplyr::select,
+  dplyr::filter,
+  dplyr::lag,
+  dplyr::rename
+)
+```
+
+`conflicts_prefer()` は複数の関数を一度に宣言できるため、分析スクリプトの冒頭（パッケージ読み込み直後）に記述しておくことを推奨します。
+:::
 
 # プロジェクト管理とワークフロー
 
 ## RStudioプロジェクト
 
+研究プロジェクトごとにRStudioプロジェクト（`.Rproj` ファイル）を作成することを強く推奨します。プロジェクトを使用すると、作業ディレクトリが自動的にプロジェクトフォルダに設定され、相対パスでファイルにアクセスできるようになります。
+
 ```{r}
-#| label: project-setup
+#| label: project-structure
 #| eval: false
 
-# 現在の作業ディレクトリを確認
-getwd()
-
-# 作業ディレクトリの変更
-setwd("~/Documents/MyProject")
-
-# プロジェクト構造の例
-# MyProject/
-# ├── data/           # 生データ
-# ├── R/              # Rスクリプト
-# ├── output/         # 出力結果
-# ├── figures/        # 図表
-# └── MyProject.Rproj # プロジェクトファイル
+# 推奨するプロジェクト構造
+# MyELEProject/
+# ├── data/              # 生データ（CSV, Excel, SPSS等）
+# │   ├── raw/           # 元データ（編集しない）
+# │   └── processed/     # 加工済みデータ
+# ├── R/                 # Rスクリプト
+# ├── output/            # 分析結果（表、数値等）
+# ├── figures/           # 図表（PNG, PDF等）
+# ├── docs/              # メモ・論文草稿
+# └── MyELEProject.Rproj # プロジェクトファイル
 ```
+
+::: {.callout-important}
+## setwd() は使わない
+`setwd("C:/Users/...")` のようにスクリプト内で作業ディレクトリを変更すると、他の環境（共同研究者のPC等）でコードが動作しなくなります。代わりに **RStudioプロジェクト** を使用し、相対パスを用いてください。
+:::
 
 ## 再現可能な研究のためのベストプラクティス
 
-1. **プロジェクト構造を整理する**
-   - データ、スクリプト、出力を分離
-   - 相対パスを使用
+1. **乱数の種を固定する:**
+   `set.seed()` を使用して、シミュレーションやリサンプリングの結果を再現可能にします。
 
-2. **コードの文書化**
-   - コメントを適切に記述
-   - 変数名を分かりやすく
-
-3. **バージョン管理**
-   - Gitを使用
-   - 定期的にコミット
-
-4. **環境の記録**
-   - `sessionInfo()`で環境情報を保存
-   - `renv`パッケージで環境を固定
+2. **相対パスを使用する:**
+   `here::here()` を使うと、プロジェクトルートからの相対パスを簡潔に記述できます。
 
 ```{r}
-#| label: session-info
-# セッション情報の記録
-sessionInfo()
+#| label: here-demo
+#| eval: false
+library(here)
+data <- read_csv(here("data", "raw", "ele_vocabulary_study.csv"))
+ggsave(here("figures", "toefl_distribution.png"), width = 8, height = 6)
 ```
+
+3. **パッケージバージョンを記録する:**
+   `renv` パッケージを使用すると、プロジェクトで使用したパッケージのバージョンを固定できます。
+
+```{r}
+#| label: renv-demo
+#| eval: false
+# renvの初期化（プロジェクトごとに1回）
+renv::init()
+
+# パッケージの変更を記録
+renv::snapshot()
+
+# 記録された状態を復元（共同研究者のPC等で）
+renv::restore()
+```
+
+4. **セッション情報を記録する:**
+   分析スクリプトの末尾に `sessionInfo()` を置き、使用したRのバージョンとパッケージを記録します。
+
+5. **Quartoで分析を文書化する:**
+   本書自体がQuartoで作成されています。コード・解説文・出力結果を1つの文書にまとめることで、分析過程の透明性を確保できます。
+
+# トラブルシューティング
+
+Rでエラーに遭遇することは、初心者に限らず日常的なことです。ここでは、英語教育研究でRを使い始めた際によく遭遇するエラーとその対処法をまとめます。
+
+## よくあるエラーメッセージ
+
+### `Error: object 'x' not found`
+
+最も頻出するエラーです。指定した名前のオブジェクト（変数）が存在しないことを意味します。
+
+**主な原因と対処法:**
+
+- **タイポ（綴り間違い）:** `toefl_score` を `toelf_score` と打ち間違えていないか確認
+- **大文字・小文字の区別:** Rは大文字と小文字を区別します。`Toefl_Score` と `toefl_score` は異なるオブジェクトです
+- **コードの実行順序:** そのオブジェクトを定義するコードチャンクをまだ実行していない可能性があります。上から順に実行し直してください
+- **Environment タブ** （RStudio右上）で、オブジェクトが存在するか確認しましょう
+
+### `Error: could not find function "xxx"`
+
+指定した関数が見つからないエラーです。
+
+**主な原因と対処法:**
+
+- **パッケージが読み込まれていない:** `pacman::p_load(パッケージ名)` で読み込み
+- **関数名のタイポ:** `read_csv` を `read.csv`（別の関数）と混同していないか確認
+- **名前空間の指定:** `パッケージ名::関数名()` で直接呼び出す（例: `dplyr::filter()`）
+
+### `Error: unexpected 'x' in "..."`
+
+構文エラー（文法的な誤り）です。
+
+**主な原因と対処法:**
+
+- **括弧の不一致:** `(` と `)` の数が合っているか確認。RStudioでは対応する括弧がハイライトされます
+- **カンマの欠落・余剰:** 関数の引数間のカンマを確認
+- **引用符の閉じ忘れ:** `"文字列"` の `"` が対応しているか確認
+- **パイプの後の改行:** `|>` の後に次の関数が続いているか確認
+
+### `Error in file(file, "rt"): cannot open the connection`
+
+ファイルが見つからないエラーです。
+
+**主な原因と対処法:**
+
+- **ファイルパスの誤り:** `getwd()` で現在の作業ディレクトリを確認
+- **RStudioプロジェクトの使用:** プロジェクトを開いてから実行しているか確認
+- **ファイル名の確認:** 拡張子（`.csv` vs `.CSV`）を含め正確に指定
+
+### `Warning: NAs introduced by coercion`
+
+型変換に失敗して `NA`（欠損値）が生じた警告です。
+
+**主な原因と対処法:**
+
+- **文字列を数値に変換:** `as.numeric("abc")` は `NA` を返します
+- **データの確認:** `str(data)` でデータ型を確認し、意図しない文字列が混入していないかチェック
+
+### `Error: non-numeric argument to binary operator`
+
+数値演算に数値でないデータが渡されたエラーです。
+
+**主な原因と対処法:**
+
+- **データ型の確認:** `class()` で変数の型を確認
+- **型変換:** `as.numeric()` で数値に変換（ただし、元のデータが本当に数値であるか確認してから）
+
+## デバッグの基本戦略
+
+1. **1行ずつ実行する:** パイプでつないだ長い処理は、途中で区切って各段階の結果を確認
+2. **`str()` と `class()` で型を確認:** エラーの多くはデータ型の不一致が原因
+3. **`head()` と `tail()` でデータを目視確認:** 期待通りのデータが入っているか確認
+4. **エラーメッセージをそのままGoogle検索:** 多くの場合、Stack Overflow等で解決策が見つかります
+5. **最小限の再現例を作る:** `reprex` パッケージで再現可能な最小例を作成すると、問題の特定と他者への質問が容易になります
+
+## 助けを求める
+
+```{r}
+#| label: getting-help
+#| eval: false
+
+# 関数のヘルプを表示
+?t.test
+help(lm)
+
+# パッケージのチュートリアル（vignette）を表示
+vignette("dplyr")
+browseVignettes("ggplot2")
+
+# 再現可能な例の作成
+# install.packages("reprex")
+reprex::reprex({
+  x <- c(1, 2, "three")
+  mean(x)
+})
+```
+
+::: {.callout-tip}
+## エラーメッセージの読み方
+エラーが複数行にわたる場合は、**最後の行**（最も具体的なメッセージ）から読むと原因を特定しやすくなります。`Error in ...` の後に続く文言が、何が問題かを示しています。エラーメッセージは敵ではなく、問題解決のための手がかりです。
+:::
+
+::: {.callout-warning}
+## 日本語パスの問題
+ファイルパスに日本語（例: `C:/ユーザー/文書/データ.csv`）が含まれていると、特にWindows環境でエラーが生じることがあります。プロジェクトフォルダ名やファイル名には **英数字のみ** を使用することを推奨します。
+:::
+
+**日本語のRコミュニティ:**
+
+- **R-wakalang**（Slack）: 日本語でRに関する質問ができる活発なコミュニティ
+- **Qiita**: R関連の日本語記事が多数投稿されているプログラミング情報共有サイト
+- **Stack Overflow（日本語版）**: プログラミング全般の質問サイト
 
 # 練習問題
 
-## 問題1：ベクトル操作
+::: {.callout-tip}
+## 練習問題の進め方
+まずは自分でコードを書いてみて、その後に解答例と比較してください。エラーが出た場合は第11節（トラブルシューティング）を参照してください。解答例はコードブロックを展開すると表示されます。
+:::
 
-以下のタスクを実行してください：
+## 問題1：ベクトルとデータフレーム操作
 
-1. 1から100までの偶数のベクトルを作成
+**研究シナリオ:** あなたは20名の学生のTOEFL iBT Readingセクション（0–30点）の得点データを受け取りました。
+
+**タスク:**
+
+1. 以下の20名分のReadingスコアをベクトルとして作成: 22, 18, 25, 20, 15, 28, 19, 23, 16, 27, 21, 24, 17, 26, 20, 22, 19, 25, 23, 18
 2. 平均値、中央値、標準偏差を計算
-3. 80以上の値の個数を数える
+3. 20点以上の学生数を求める
+4. 参加者IDとスコアを含むデータフレームを作成し、スコアの高い順に並べる
 
 ```{r}
-#| label: exercise1
-#| code-fold: show
+#| label: exercise1-solution
+#| code-fold: true
+#| code-summary: "解答例を表示"
 
-# 解答例
-even_numbers <- seq(2, 100, by = 2)
-mean(even_numbers)
-median(even_numbers)
-sd(even_numbers)
-sum(even_numbers >= 80)
-```
+# 1. ベクトルの作成
+reading_scores <- c(22, 18, 25, 20, 15, 28, 19, 23, 16, 27,
+                    21, 24, 17, 26, 20, 22, 19, 25, 23, 18)
 
-## 問題2：データフレーム操作
+# 2. 記述統計
+cat("平均値:", mean(reading_scores), "\n")
+cat("中央値:", median(reading_scores), "\n")
+cat("標準偏差:", sd(reading_scores) |> round(2), "\n")
 
-以下の学生データを作成し、tidyverseを使って分析してください：
+# 3. 20点以上の学生数
+cat("20点以上:", sum(reading_scores >= 20), "名\n")
 
-1. 平均点が80点以上の学生を抽出
-2. 各科目の平均点を計算
-3. 総合得点でランキング
-
-```{r}
-#| label: exercise2
-#| code-fold: show
-
-# 解答例
-students <- data.frame(
-  name = c("A", "B", "C", "D", "E"),
-  math = c(85, 72, 90, 68, 88),
-  english = c(78, 85, 82, 90, 75),
-  science = c(92, 78, 88, 85, 90)
+# 4. データフレームの作成と並べ替え
+reading_data <- data.frame(
+  participant_id = paste0("P", sprintf("%02d", 1:20)),
+  reading_score = reading_scores
 )
 
-library(tidyverse)
+reading_data |>
+  arrange(desc(reading_score)) |>
+  gt() |>
+  tab_header(title = "TOEFL iBT Reading Scores（降順）")
+```
 
-# 1. 平均点80以上
-students %>%
-  mutate(average = (math + english + science) / 3) %>%
-  filter(average >= 80)
+## 問題2：tidyverseによるデータ分析
 
-# 2. 各科目の平均
-students %>%
+**研究シナリオ:** 語彙学習実験で、明示的指導群（n=15）と暗示的指導群（n=15）の事前・事後テスト得点を分析します。
+
+**タスク:**
+
+1. 以下のコードでデータセットを作成
+2. `mutate()` でgain score（事後 - 事前）を計算
+3. `group_by()` + `summarize()` で群別の平均・標準偏差を算出
+4. 結果を `gt()` テーブルで表示
+5. 箱ひげ図で群間のgain scoreを比較
+
+```{r}
+#| label: exercise2-data
+# データセットの作成（このコードをまず実行してください）
+set.seed(42)
+vocab_exp <- data.frame(
+  id = paste0("S", sprintf("%02d", 1:30)),
+  group = factor(rep(c("Explicit", "Implicit"), each = 15)),
+  pretest = c(round(rnorm(15, 12, 3)), round(rnorm(15, 11, 3))),
+  posttest = c(round(rnorm(15, 20, 3)), round(rnorm(15, 16, 3)))
+)
+```
+
+```{r}
+#| label: exercise2-solution
+#| code-fold: true
+#| code-summary: "解答例を表示"
+
+# 2. Gain scoreの計算
+vocab_exp <- vocab_exp |>
+  mutate(gain = posttest - pretest)
+
+# 3-4. 群別の記述統計をgt()で表示
+vocab_exp |>
+  group_by(group) |>
   summarize(
-    math_mean = mean(math),
-    english_mean = mean(english),
-    science_mean = mean(science)
+    n = n(),
+    mean_pre = mean(pretest),
+    sd_pre = sd(pretest),
+    mean_post = mean(posttest),
+    sd_post = sd(posttest),
+    mean_gain = mean(gain),
+    sd_gain = sd(gain),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "群別の記述統計") |>
+  fmt_number(columns = where(is.numeric) & !c(n), decimals = 2) |>
+  cols_label(
+    group = "群", n = "n",
+    mean_pre = "M (Pre)", sd_pre = "SD (Pre)",
+    mean_post = "M (Post)", sd_post = "SD (Post)",
+    mean_gain = "M (Gain)", sd_gain = "SD (Gain)"
   )
 
-# 3. ランキング
-students %>%
-  mutate(
-    total = math + english + science,
-    rank = rank(-total)
-  ) %>%
-  arrange(rank)
+# 5. 箱ひげ図
+ggplot(vocab_exp, aes(x = group, y = gain, fill = group)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.15, alpha = 0.5, size = 2) +
+  labs(title = "Gain Scores by Instruction Type",
+       x = "Instruction Group", y = "Gain Score") +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette = "Set2")
+```
+
+## 問題3：基礎的な統計解析
+
+**研究シナリオ:** 問題2のデータを用いて、指導法の効果を統計的に検証します。
+
+**タスク:**
+
+1. 事前テストに群間差がないことを t検定で確認
+2. gain score について t検定を実施し、群間差を検証
+3. Cohen's d を算出
+4. 結果をAPA形式で報告（コメント文として記述）
+
+```{r}
+#| label: exercise3-solution
+#| code-fold: true
+#| code-summary: "解答例を表示"
+
+# 1. 事前テストの群間比較（差がないことを確認）
+t_pre <- t.test(pretest ~ group, data = vocab_exp)
+cat("=== 事前テストの群間比較 ===\n")
+print(t_pre)
+
+# 2. Gain scoreのt検定
+t_gain <- t.test(gain ~ group, data = vocab_exp)
+cat("\n=== Gain Scoreの群間比較 ===\n")
+print(t_gain)
+
+# 3. 効果量
+d_gain <- effectsize::cohens_d(gain ~ group, data = vocab_exp)
+cat("\n=== 効果量 ===\n")
+print(d_gain)
+
+# 4. APA形式での報告例
+cat("\n=== APA報告例 ===\n")
+cat(sprintf(
+  "Gain scoreのt検定の結果、明示的指導群は暗示的指導群よりも\n有意に高いgain scoreを示した (t(%.1f) = %.2f, p = %.3f, d = %.2f)。",
+  t_gain$parameter, t_gain$statistic, t_gain$p.value,
+  abs(d_gain$Cohens_d)
+))
 ```
 
 # 参考資料
 
-- [R for Data Science](https://r4ds.had.co.nz/)
-- [RStudio Cheatsheets](https://www.rstudio.com/resources/cheatsheets/)
-- [The tidyverse style guide](https://style.tidyverse.org/)
+## 入門書・オンラインチュートリアル
+
+- Wickham, H., Çetinkaya-Rundel, M., & Grolemund, G. (2023). [R for Data Science (2nd ed.)](https://r4ds.hadley.nz/). O'Reilly. — Rでのデータ分析の最も標準的な教科書
+- Winter, B. (2019). *Statistics for Linguists: An Introduction Using R*. Routledge. — 言語学研究者のためのR統計入門
+- Larson-Hall, J. (2015). *A Guide to Doing Statistics in Second Language Research Using R*. Routledge. — SLA研究者向けのR統計ガイド
+- [LADAL Tutorials](https://ladal.edu.au/) — 言語データ分析のための包括的なRチュートリアル
+- [RStudio Cheatsheets](https://posit.co/resources/cheatsheets/) — 主要パッケージの操作早見表
+
+## 英語教育研究の統計に関する文献
+
+- Plonsky, L., & Oswald, F. L. (2014). How big is "big"? Interpreting effect sizes in L2 research. *Language Learning, 64*(4), 878–912.
+- Norris, J. M., & Ortega, L. (2006). *Synthesizing Research on Language Learning and Teaching*. John Benjamins.
+
+## 日本語リソース
+
+- [R-wakalang](https://github.com/tokyor/r-wakalang)（Slack）: 日本語でのR質問コミュニティ
+- [The tidyverse style guide（日本語版）](https://style.tidyverse.org/)
+- [Quarto公式ドキュメント](https://quarto.org/)
+
+# セッション情報
+
+```{r}
+#| label: session-info
+sessionInfo()
+```

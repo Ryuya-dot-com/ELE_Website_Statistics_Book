@@ -336,20 +336,18 @@ tibble(
 
 theta <- seq(-5, 5, length.out = 300)
 
-tibble(
-  theta = rep(theta, 3),
-  density = c(
-    dnorm(theta, 0, 10),     # 無情報事前分布
-    dnorm(theta, 0, 1),      # 弱情報事前分布
-    dnorm(theta, 0.5, 0.2)   # 情報的事前分布
+prior_specs <- tibble(
+  type = c(
+    "Flat / uninformative: Normal(0, 10)",
+    "Weakly informative: Normal(0, 1)",
+    "Informative: Normal(0.5, 0.2)"
   ),
-  type = rep(
-    c("Flat / uninformative: Normal(0, 10)",
-      "Weakly informative: Normal(0, 1)",
-      "Informative: Normal(0.5, 0.2)"),
-    each = 300
-  )
-) |>
+  mu = c(0, 0, 0.5),
+  sigma = c(10, 1, 0.2)
+)
+
+tidyr::crossing(prior_specs, theta = theta) |>
+  mutate(density = stats::dnorm(theta, mean = mu, sd = sigma)) |>
   mutate(type = factor(type, levels = unique(type))) |>
   ggplot(aes(x = theta, y = density, color = type)) +
   geom_line(linewidth = 1.2) +
@@ -578,18 +576,18 @@ tibble::tribble(
 theta <- seq(-1.5, 1.5, length.out = 500)
 
 # 3つのシナリオ
-scenarios <- tibble(
-  theta = rep(theta, 3),
-  density = c(
-    dnorm(theta, 0.6, 0.15),   # 効果あり：HDI が ROPE の外
-    dnorm(theta, 0.0, 0.04),   # 等価：HDI が ROPE 内
-    dnorm(theta, 0.15, 0.12)   # 保留：HDI が ROPE と部分重複
+scenario_specs <- tibble(
+  scenario = c(
+    "Reject: HDI outside ROPE",
+    "Accept: HDI inside ROPE",
+    "Undecided: HDI overlaps ROPE"
   ),
-  scenario = rep(c("Reject: HDI outside ROPE",
-                   "Accept: HDI inside ROPE",
-                   "Undecided: HDI overlaps ROPE"),
-                 each = 500)
-) |>
+  mu = c(0.6, 0.0, 0.15),
+  sigma = c(0.15, 0.04, 0.12)
+)
+
+scenarios <- tidyr::crossing(scenario_specs, theta = theta) |>
+  mutate(density = stats::dnorm(theta, mean = mu, sd = sigma)) |>
   mutate(scenario = factor(scenario, levels = unique(scenario)))
 
 ggplot(scenarios, aes(x = theta, y = density)) +
@@ -710,6 +708,9 @@ set.seed(20260221)
 
 # MCMC の並列処理
 options(mc.cores = parallel::detectCores())
+
+# モデル保存先
+dir.create("models", showWarnings = FALSE, recursive = TRUE)
 ```
 
 ## brms の基本構文
@@ -983,7 +984,7 @@ student_df <- tibble(
 
 # エッセイレベルのデータ
 dat_essay <- student_df |>
-  slice(rep(1:n(), each = n_essays)) |>
+  dplyr::slice(rep(1:n(), each = n_essays)) |>
   mutate(
     task_type      = rep(c("narrative", "argumentative"), times = n_students),
     essay_length_sc = rnorm(n(), 0, 1)
@@ -1074,7 +1075,7 @@ get_prior(
 )
 ```
 
-固定効果（class = "b"）には flat prior、切片には Student-t 分布、ランダム効果の SD には半 Student-t 分布が設定されています。今回はこのデフォルトで分析を進めます。
+固定効果（class = "b"）には flat prior、切片には Student-t 分布、ランダム効果の SD には半 Student-t 分布が設定されています。なお、`sample_prior = "only"` では固定効果に**適切な（proper）事前分布**が必要なため、事前予測チェックでは弱情報事前分布を明示します。
 
 ## 事前予測チェック
 
@@ -1085,11 +1086,18 @@ get_prior(
 #| cache: true
 #| message: false
 
+prior_pois_ppc <- c(
+  set_prior("normal(0, 1)", class = "b"),
+  set_prior("student_t(3, 2.0, 2.5)", class = "Intercept"),
+  set_prior("student_t(3, 0, 2.5)", class = "sd")
+)
+
 fit_pois_prior <- brm(
   error_count ~ proficiency + l1_background + task_type +
     essay_length_sc + (1|student_id),
   data         = dat_essay,
   family       = poisson(),
+  prior        = prior_pois_ppc,
   sample_prior = "only",
   chains       = 4,
   iter         = 2000,
@@ -1895,10 +1903,17 @@ get_prior(
 #| cache: true
 #| message: false
 
+prior_ord_ppc <- c(
+  set_prior("normal(0, 1)", class = "b"),
+  set_prior("student_t(3, 0, 2.5)", class = "Intercept"),
+  set_prior("student_t(3, 0, 2.5)", class = "sd")
+)
+
 fit_ord_prior <- brm(
   rating ~ proficiency + task_type + (1|student_id) + (1|rater_id),
   data         = dat_speaking,
   family       = cumulative(link = "logit"),
+  prior        = prior_ord_ppc,
   sample_prior = "only",
   chains       = 4,
   iter         = 2000,
@@ -1911,7 +1926,7 @@ pp_check(fit_ord_prior, ndraws = 100) +
   theme_bw()
 ```
 
-順序データの場合、事前予測チェックでは5つのカテゴリ（1〜5）の予測頻度が確認できます。デフォルトの事前分布で生成されたデータが、特定のカテゴリに極端に集中していないか、または5カテゴリすべてにある程度の確率が割り当てられているかを確認します。
+順序データの場合、事前予測チェックでは5つのカテゴリ（1〜5）の予測頻度が確認できます。`sample_prior = "only"` を安定して実行するため、ここでも固定効果に弱情報事前分布を明示し、特定カテゴリへの極端な集中がないかを確認します。
 
 ## モデルの実行
 

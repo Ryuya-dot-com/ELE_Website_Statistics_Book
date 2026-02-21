@@ -2,6 +2,7 @@
 title: "一般化可能性理論"
 author: "小室竜也"
 date: today
+bibliography: references_gtheory.bib
 format:
   html:
     toc: true
@@ -19,14 +20,12 @@ lang: ja
 
 ```{=html}
 <style>
-/* journalテーマ用のアカデミックなカスタムスタイル */
 body {
   font-family: 'Noto Serif JP', 'Times New Roman', serif;
   color: #2c3e50;
   line-height: 1.8;
 }
 
-/* タイトルブロックをジャーナル風に */
 .quarto-title-banner {
   background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
   border-bottom: 4px double #495057;
@@ -43,7 +42,6 @@ body {
   font-family: 'Noto Sans JP', sans-serif;
 }
 
-/* 見出しのアカデミックスタイル */
 h1 {
   font-size: 1.8em;
   font-weight: 700;
@@ -80,7 +78,6 @@ h3 {
   margin-bottom: 0.6em;
 }
 
-/* テーブルを学術論文風に */
 table {
   margin: 2em auto;
   border-collapse: collapse;
@@ -95,7 +92,6 @@ thead {
   border-bottom: 1px solid #212529;
 }
 
-/* コードブロックをシンプルに */
 pre {
   background: #f8f9fa !important;
   border: 1px solid #dee2e6;
@@ -104,14 +100,12 @@ pre {
   font-size: 0.9em;
 }
 
-/* 数式を強調 */
 .math {
   color: #212529;
   font-size: 1.05em;
   font-style: italic;
 }
 
-/* タブスタイル */
 .panel-tabset {
   margin-top: 2em;
   margin-bottom: 2em;
@@ -128,94 +122,221 @@ pre {
 </style>
 ```
 
-# はじめに
+# はじめに：なぜ一般化可能性理論が必要か
 
-スピーキング評価では、同じ受験者でも点がぶれることがあります。  
-原因は実力だけではなく、課題の違い・評価者の厳しさ・偶然要因が混ざるためです。
+## 古典的テスト理論（CTT）の限界を体感する
 
-ここで役に立つのが一般化可能性理論です。一般化可能性理論は、誤差を1つにまとめず、**どの誤差がどれだけ大きいか**を分けて示します。具体的には、`Person`（受験者）、`Task`（課題）、`Rater`（評価者）、`Person:Task`（受験者と課題の相性）を分解します。これにより、「課題数を増やすべきか」「評価者数を増やすべきか」「評価者訓練を先に行うべきか」を根拠つきで判断できます。
+テスト理論を学ぶ院生であれば、Cronbach の $\alpha$ 係数は馴染みのある指標であろう。$\alpha$ はテストの内的整合性を1つの数値で要約する [@Cronbach1951]。しかし、スピーキング評価のようなパフォーマンステストでは、この単一の数値が根本的な問題を隠してしまう。
 
-本章の主軸は、**英語スピーキング評価（人×課題×評価者）**です。目的も2種類に分けます。クラス内順位づけのような相対判断は `G`（G係数）、合否判定のような絶対判断は `Φ`（Phi係数）で評価します。つまり本章は、理論紹介だけでなく、最終的に「目的に対して最小コストで成立する設計」を選ぶところまでを扱います。
+具体的な場面を想像してほしい。10人の英語学習者が3つのスピーキング課題（Interview, Role-play, Picture Description）に取り組み、各課題を4名の評価者が採点する。この場面では、得点のばらつきに少なくとも以下の要因が絡んでいる。
 
-## 最初にここだけ（はじめに）
+1. **受験者の実力差**（本来測りたい個人差）
+2. **課題の難易度差**（Picture Description は Interview より難しいかもしれない）
+3. **評価者の厳しさの差**（甘い評価者と厳しい評価者がいる）
+4. **受験者と課題の相性**（流暢だが即興課題だけ弱い受験者）
+5. **その他の偶然誤差**（体調、話題への慣れなど）
 
-### Step 1: 問題を1文で捉える
-「スピーキング得点のばらつきは、受験者の実力差だけでなく、課題差・評価者差・偶然誤差が混ざっている。」
+CTT はこれらすべてを「誤差」として1つにまとめてしまう。$\alpha = 0.75$ と報告されても、「課題数を増やすべきか」「評価者を訓練すべきか」「そもそも評価者数を増やすべきか」の判断には使えない。
 
-### Step 2: 覚える式は2つだけ
-- 順位づけの精度: $G = \sigma^2_p / (\sigma^2_p + \sigma^2_\delta)$
-- 合否判定の精度: $\Phi = \sigma^2_p / (\sigma^2_p + \sigma^2_\Delta)$
-
-### Step 3: この章でやること
-1. G研究: まず現状設計で分散成分を推定し、どの誤差源が大きいか確認する。  
-2. D研究: 次に課題数・評価者数を変えたときの `G` と `Φ` を予測する。  
-3. 設計判断: 最後に用途（順位づけか合否判定か）に合わせて最小要件を決める。
-
-### Step 4: どこまで読めば実務に使えるか
-- 最低限: 「G研究」「D研究」「英語スピーキング評価への具体例」を読めば、設計判断まで到達できます。  
-- 余裕があれば: 「多変量一般化可能性理論」まで進むと、複数下位技能（発音・流暢さ・語彙など）の統合評価にも対応できます。
-
-::: {.callout-note}
-### 読む順序（迷ったとき）
-- 最短ルート（20〜30分）: はじめに → G研究の読み方 → D研究ショートリスト → 実践的推奨事項  
-- 標準ルート（45〜60分）: 上記 + 先行研究マップ + ケース別テンプレート  
-- 拡張ルート（90分〜）: 上記 + 多変量一般化可能性理論 + 予算制約つき設計選定
-:::
-
-::: {.callout-tip}
-### 学習の道筋（3ステップ）
-1. 設計の明確化（G研究）: ファセットの特定（例: 人p × タスクt × 評価者r）、交差/ネストの確認。  
-2. 分散成分の推定（G研究）: LMMで分散成分を推定し、どの誤差が支配的かを把握。  
-3. 設計の最適化（D研究）: 項目数や評価者数を変えたときの係数（G係数/Φ係数）を予測し、目標値を満たす設計を選ぶ。
-:::
-
-::: {.callout-note}
-### 用語ミニ辞典
-- ファセット（facet）: 人（p）、項目（i/t）、評価者（r）など測定に関わる要因。  
-- G研究: 現状の設計で分散成分を推定し、誤差の内訳を知る分析。  
-- D研究: 設計（項目数・評価者数など）を変えたときの信頼性を予測し、最適設計を検討する分析。  
-- 相対的決定（G係数）: 個人差の順位づけが目的。相対誤差分散 $\sigma^2_\delta$ を用いる。  
-- 絶対的決定（Φ係数）: しきい値判定など水準の正確さが目的。絶対誤差分散 $\sigma^2_\Delta$ を用いる。
-:::
-
-本章では、一般化可能性理論の分散成分分析を線形混合効果モデル（LMM; `lme4::lmer`）で実装します。一般化可能性理論は本質的にランダム効果ANOVAであり、`lmer()` によって再現できます。加えて、`gtheory` で同じ考え方をどう表現するかも並行して確認します。
-
-## 必要なパッケージとデータの準備
+以下のコードで、この限界を実際に確認する。
 
 ```{r}
 #| label: setup
 #| message: false
 #| warning: false
 
-# パッケージの読み込み
 pacman::p_load(
   tidyverse, lmerTest, gt, performance, sjPlot,
-  effectsize, broom.mixed, gridExtra, glue, plotly)
+  effectsize, broom.mixed, gridExtra, glue, plotly, psych)
 
-# テーマと乱数種の設定
 theme_set(theme_bw())
 set.seed(123)
 options(digits = 4)
 knitr::opts_chunk$set(fig.align = "center")
 
-# gtheory がインストール済みかどうか（未導入でも本章は実行可能）
 has_gtheory <- requireNamespace("gtheory", quietly = TRUE)
 ```
 
-::: {.callout-note}
-### lme4 と gtheory の関係（PDFと一貫）
-- 一般化可能性理論の分散成分は、LMMのランダム効果分散に一致します（数学的同値）。
-- `gtheory` パッケージは内部で `lme4` の推定器を用いており、PDFの gtheory で示される分散成分・G/Φ係数は、ここでの `lmer()` による推定と整合します。
-- 直観的には、一般化可能性理論における「潜在因子（人・項目・評価者・交互作用）」は、LMMにおける「ランダム切片/ランダム効果」に相当します。
-:::
+```{r}
+#| label: ctt-limitation-demo
+#| message: false
+#| warning: false
+
+# 小規模なスピーキング評価データ（CTTの限界を示すため）
+ctt_demo <- tibble(
+  Person = rep(paste0("S", sprintf("%02d", 1:8)), each = 3),
+  Task   = rep(c("Interview", "RolePlay", "PicDesc"), times = 8),
+  Score  = c(
+    7, 6, 5,   # S01: 安定して中〜高
+    8, 7, 6,   # S02: 安定して高
+    4, 3, 5,   # S03: 低、ただしPicDescは得意
+    6, 8, 4,   # S04: RolePlayが極端に得意
+    5, 5, 5,   # S05: 完全に安定
+    3, 6, 3,   # S06: RolePlayだけ高い
+    7, 4, 7,   # S07: RolePlayだけ低い
+    6, 5, 7    # S08: PicDescが得意
+  )
+)
+
+# CTT: Cronbach alpha（課題をワイドに展開）
+ctt_wide <- ctt_demo |>
+  pivot_wider(names_from = Task, values_from = Score)
+
+alpha_result <- psych::alpha(ctt_wide[, -1], check.keys = FALSE)
+
+cat("Cronbach's alpha =", round(alpha_result$total$raw_alpha, 3), "\n")
+cat("→ CTTでは「信頼性がやや低い」と分かるだけで、原因も改善策も見えない。\n")
+```
+
+```{r}
+#| label: ctt-vs-gtheory-decomposition
+#| message: false
+#| warning: false
+
+# 同じデータをlme4で分解
+ctt_lmer <- lmer(Score ~ 1 + (1|Person) + (1|Task), data = ctt_demo, REML = TRUE)
+ctt_vc <- VarCorr(ctt_lmer)
+
+ctt_var_person   <- as.numeric(ctt_vc$Person)
+ctt_var_task     <- as.numeric(ctt_vc$Task)
+ctt_var_residual <- attr(ctt_vc, "sc")^2
+ctt_var_total    <- ctt_var_person + ctt_var_task + ctt_var_residual
+
+tibble(
+  Source  = c("Person（実力差）", "Task（課題差）", "Residual（偶然誤差）"),
+  Variance = c(ctt_var_person, ctt_var_task, ctt_var_residual),
+  Percent  = round(100 * c(ctt_var_person, ctt_var_task, ctt_var_residual) / ctt_var_total, 1)
+) |>
+  gt() |>
+  tab_header(
+    title = "一般化可能性理論的な分散分解：CTTが隠す情報",
+    subtitle = "同じデータでも、誤差の内訳が見える"
+  ) |>
+  fmt_number(columns = Variance, decimals = 3)
+```
+
+この例では、CTT の $\alpha$ が1つの数値しか返さないのに対し、混合効果モデル（一般化可能性理論の計算基盤）は誤差を要因ごとに分解する。これが一般化可能性理論の出発点である。
+
+```{r}
+#| label: ctt-vs-gtheory-visual
+#| fig-cap: "CTT vs 一般化可能性理論：誤差の扱いの違い"
+#| fig-width: 9
+#| fig-height: 4
+
+# CTT: 1つの誤差バケツ
+ctt_plot_data <- tibble(
+  Framework = c("CTT", "CTT"),
+  Component = c("True Score\n(個人差)", "Error\n(すべての誤差)"),
+  Percent   = c(ctt_var_person / ctt_var_total * 100,
+                (ctt_var_task + ctt_var_residual) / ctt_var_total * 100),
+  fill_col  = c("#4e79a7", "#e15759")
+)
+
+# 一般化可能性理論: 分解された誤差
+gt_plot_data <- tibble(
+  Framework = rep("G-theory", 3),
+  Component = c("Person\n(個人差)", "Task\n(課題差)", "Residual\n(偶然誤差)"),
+  Percent   = c(ctt_var_person, ctt_var_task, ctt_var_residual) / ctt_var_total * 100,
+  fill_col  = c("#4e79a7", "#f28e2b", "#e15759")
+)
+
+bind_rows(ctt_plot_data, gt_plot_data) |>
+  mutate(Framework = factor(Framework, levels = c("CTT", "G-theory"))) |>
+  ggplot(aes(x = Component, y = Percent, fill = fill_col)) +
+  geom_col(width = 0.7, show.legend = FALSE) +
+  geom_text(aes(label = paste0(round(Percent, 1), "%")), vjust = -0.5, size = 3.5) +
+  scale_fill_identity() +
+  facet_wrap(~ Framework, scales = "free_x") +
+  labs(
+    title = "CTT = 1つの誤差バケツ  vs  一般化可能性理論 = 複数の誤差バケツ",
+    x = NULL, y = "分散の割合 (%)"
+  ) +
+  scale_y_continuous(limits = c(0, 100)) +
+  theme_bw(base_size = 12)
+```
+
+```{r}
+#| label: ctt-vs-gtheory-visual-plotly
+#| fig-cap: "CTT vs 一般化可能性理論：誤差の扱いの違い（インタラクティブ）"
+
+ctt_gt_combined <- bind_rows(ctt_plot_data, gt_plot_data) |>
+  mutate(Framework = factor(Framework, levels = c("CTT", "G-theory")))
+
+plotly::plot_ly(
+  data = ctt_gt_combined, x = ~Component, y = ~Percent,
+  color = ~Framework,
+  colors = c("CTT" = "#4e79a7", "G-theory" = "#59a14f"),
+  type = "bar",
+  text = ~paste0(round(Percent, 1), "%"),
+  textposition = "outside",
+  hovertext = ~paste0("Framework: ", Framework, "<br>Component: ", Component,
+                       "<br>Percent: ", round(Percent, 1), "%"),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "CTT = 1つの誤差バケツ  vs  一般化可能性理論 = 複数の誤差バケツ",
+    xaxis = list(title = ""),
+    yaxis = list(title = "分散の割合 (%)", range = c(0, 105)),
+    barmode = "group"
+  )
+```
+
+## CTTから一般化可能性理論へ：概念の橋渡し
+
+一般化可能性理論（Generalizability Theory, 一般化可能性理論）は、@Cronbach1972 によって体系化され、@Brennan2001 や @ShavelsonWebb1991 によってさらに発展してきた。その核心は、CTT の「真値 + 誤差」モデルを「宇宙得点 + 複数の誤差成分」モデルに拡張することにある。
+
+```{r}
+#| label: ctt-gtheory-comparison-table
+
+tibble::tribble(
+  ~Aspect, ~CTT, ~G_theory,
+  "基本モデル", "X = T + E（真値 + 1つの誤差）", "X = μ + p + facet₁ + facet₂ + ... + e（複数の誤差成分）",
+  "誤差の扱い", "すべてを1つにまとめる", "要因ごとに分解する",
+  "信頼性係数", "1種類（α や test-retest r）", "2種類（G: 順位づけ、Φ: 合否判定）",
+  "設計改善への示唆", "「信頼性が低い」としか言えない", "「評価者差が大きい → 評価者を増やすか訓練する」と具体化できる",
+  "数学的基盤", "相関・共分散", "ANOVA / 線形混合効果モデル",
+  "Rでの実装", "psych::alpha()", "lme4::lmer() + VarCorr()"
+) |>
+  gt() |>
+  tab_header(
+    title = "古典的テスト理論（CTT）と一般化可能性理論の比較"
+  ) |>
+  cols_label(
+    Aspect = "観点",
+    CTT = "CTT",
+    G_theory = "一般化可能性理論"
+  )
+```
+
+CTT では、観測得点 $X$ を真値 $T$ と誤差 $E$ に分解する。
+
+$$
+X = T + E
+$$
+
+一般化可能性理論では、これを複数の誤差成分に拡張する。最も単純な場合（受験者 $p$ × 項目 $i$ の交差設計）は以下のようになる。
+
+$$
+X_{pi} = \mu + \pi_p + \iota_i + (\pi\iota)_{pi,e}
+$$
+
+ここで、$\mu$ は全体平均、$\pi_p$ は受験者 $p$ の効果（実力差）、$\iota_i$ は項目 $i$ の効果（難易度差）、$(\pi\iota)_{pi,e}$ は受験者×項目の交互作用と残差の混合である。CTT における「真値」$T$ は、一般化可能性理論では「宇宙得点」（universe score）$\mu_p = \mu + \pi_p$ として定義される。これは、想定可能なすべての測定条件にわたって平均した受験者の期待得点である。
+
+## この章の到達目標と読み方
+
+本章では、一般化可能性理論を以下の3段階で学ぶ。
+
+1. **G研究**（Generalizability Study）: 現状の設計で分散成分を推定し、どの誤差源が大きいかを確認する。
+2. **D研究**（Decision Study）: 課題数・評価者数を変えたときの信頼性係数（$G$ と $\Phi$）を予測する。
+3. **設計判断**: 用途（順位づけか合否判定か）とコスト制約に合わせて最小要件を決める。
+
+本章の主軸は**英語スピーキング評価（人 × 課題 × 評価者）**であり、最終的には多変量一般化可能性理論（下位技能の統合配点）まで扱う。
 
 ::: {.callout-note}
-### スピーキング評価に置き換えると
-- `Person`（受験者）: 話す力そのものの個人差。
-- `Task`（課題）: 例として Interview / Role-play / Picture description。
-- `Rater`（評価者）: 課題ごとに異なる採点者チーム（ネスト）。
-- `Person:Task`: 受験者ごとの課題相性（得意・不得意）。
-- `Residual`: そのほかの偶然誤差（その日の体調、トピック適合など）。
+### 読む順序の目安
+- **最短ルート（30分）**: はじめに → 一要因交差設計の手計算 → D研究シミュレーション → 実践的推奨事項
+- **標準ルート（60分）**: 上記 + 二要因ネスト設計のG研究・D研究 + 先行研究
+- **拡張ルート（90分〜）**: 上記 + 多変量一般化可能性理論 + コスト制約つき設計選定
 :::
 
 ::: {.callout-tip}
@@ -223,124 +344,513 @@ has_gtheory <- requireNamespace("gtheory", quietly = TRUE)
 Figures use English labels. All code chunks are R.
 :::
 
-## 先行研究での活用（英語スピーキング評価中心）
+# 基本用語と測定設計の枠組み
 
-一般化可能性理論は、英語スピーキング評価で「何をどれだけ増やせば信頼性が上がるか」を決めるために広く使われています。特に、`Person`（受験者）だけでなく `Task`（課題）と `Rater`（評価者）を同時に扱える点が実務で重要です。
+## 測定設計の基本要素
 
-::: {.callout-tip}
-### 最初にここだけ（先行研究の読み方）
-1. 研究の細部より先に、**何を意思決定した研究か**を見る。  
-2. 次に、その意思決定が本章のどの分析（G研究/D研究）に対応するかを確認する。  
-3. 最後に、同じ手順を自分のデータで再実行する（課題数・評価者数の閾値を更新）。
+一般化可能性理論を理解するには、まず5つの基本概念を押さえる必要がある [@ShavelsonWebb1991; @Brennan2001]。
+
+```{r}
+#| label: terminology-table
+
+tibble::tribble(
+  ~Term_JP, ~Term_EN, ~Definition, ~Speaking_example, ~CTT_equivalent,
+  "測定対象", "Object of measurement", "測定したい対象。通常は受験者（p）", "スピーキング受験者", "（暗黙の前提）",
+  "ファセット", "Facet", "測定に関わる条件の要因。項目・評価者・課題など", "課題（t）、評価者（r）", "（明示されない）",
+  "許容される観測の宇宙", "Universe of admissible observations", "一般化の対象となる条件の全体集合", "想定可能なすべての課題 × すべての評価者", "（概念なし）",
+  "宇宙得点", "Universe score", "宇宙全体で平均した受験者の期待得点 μ_p", "すべての課題・評価者で平均した「本来の実力」", "真値 T",
+  "変量 vs 固定ファセット", "Random vs fixed facet", "変量: 宇宙から抽出された標本。固定: それ自体が宇宙全体", "評価者は通常「変量」、特定3課題だけなら「固定」", "（区別なし）"
+) |>
+  gt() |>
+  tab_header(
+    title = "一般化可能性理論の基本用語"
+  ) |>
+  cols_label(
+    Term_JP = "用語",
+    Term_EN = "英語",
+    Definition = "定義",
+    Speaking_example = "スピーキング評価での例",
+    CTT_equivalent = "CTTでの対応概念"
+  )
+```
+
+「宇宙得点」（universe score）は、CTT の「真値」に対応するが、定義がより明示的である。真値が「誤差をすべて除いた理想的な値」というやや曖昧な概念であるのに対し、宇宙得点は「**この宇宙（想定するファセットの全体集合）にわたって平均した期待値**」と操作的に定義される。したがって、宇宙の範囲を変えれば宇宙得点も変わる。たとえば、評価者だけを宇宙に含めた場合と、評価者と課題の両方を宇宙に含めた場合では、宇宙得点の意味が異なる。
+
+## 交差設計とネスト設計
+
+一般化可能性理論において、ファセット間の関係は**交差**（crossed）と**ネスト**（nested）の2種類に大別される。これはモデル式と分散成分の解釈に直接影響するため、分析を始める前に設計を正しく把握することが不可欠である。
+
+```{r}
+#| label: design-types-table
+
+tibble::tribble(
+  ~Design, ~Notation, ~Description, ~lme4_formula, ~Example,
+  "一要因交差", "p × i", "全受験者が全項目に回答", "Score ~ 1 + (1|Person) + (1|Item)", "語彙テスト（全員が同じ20問を解く）",
+  "二要因交差", "p × t × r", "全受験者が全課題を受け、全評価者が全回答を採点", "Score ~ 1 + (1|Person) + (1|Task) + (1|Rater) + (1|Person:Task) + (1|Person:Rater) + (1|Task:Rater)", "1名の評価者が全スピーキングを採点する場合",
+  "二要因ネスト", "p × t × r:t", "全受験者が全課題を受けるが、評価者は課題ごとに異なる", "Score ~ 1 + (1|Person) + (1|Task) + (1|Rater) + (1|Person:Task)", "課題ごとに別の採点チームが担当する場合"
+) |>
+  gt() |>
+  tab_header(
+    title = "代表的な測定設計とlme4の対応"
+  ) |>
+  cols_label(
+    Design = "設計名",
+    Notation = "記号",
+    Description = "説明",
+    lme4_formula = "lme4のモデル式",
+    Example = "英語教育での例"
+  )
+```
+
+**交差**（crossed）とは、ファセットのすべての水準が互いにすべて組み合わされている状態を指す。たとえば、同じ3人の評価者が10人の受験者全員を採点すれば、Person と Rater は交差している。
+
+**ネスト**（nested）とは、あるファセットの水準が別のファセットの水準内に閉じ込められている状態を指す。たとえば、Interview は評価者 A, B が、Role-play は評価者 C, D が採点するなら、Rater は Task にネストされている（r:t と表記）。ネスト構造では、Rater 効果と Task×Rater 交互作用が分離できないため、1つにまとまった成分として推定される。
+
+```{r}
+#| label: design-types-visual
+#| fig-cap: "交差設計とネスト設計の構造"
+#| fig-width: 10
+#| fig-height: 4
+
+library(ggplot2)
+
+# 交差設計の図
+crossed_data <- expand.grid(
+  Task = c("Task 1", "Task 2", "Task 3"),
+  Rater = c("Rater A", "Rater B")
+) |>
+  mutate(label = "●")
+
+p_crossed <- ggplot(crossed_data, aes(x = Task, y = Rater)) +
+  geom_tile(fill = "#4e79a7", alpha = 0.3, color = "white", linewidth = 1) +
+  geom_text(aes(label = label), size = 6, color = "#4e79a7") +
+  labs(title = "交差設計（p × t × r）",
+       subtitle = "全評価者が全課題を採点",
+       x = NULL, y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid = element_blank())
+
+# ネスト設計の図
+nested_data <- tibble(
+  Task = c("Task 1", "Task 1", "Task 2", "Task 2", "Task 3", "Task 3"),
+  Rater = c("Rater A", "Rater B", "Rater C", "Rater D", "Rater E", "Rater F"),
+  label = "●"
+)
+
+p_nested <- ggplot(nested_data, aes(x = Task, y = Rater)) +
+  geom_tile(fill = "#e15759", alpha = 0.3, color = "white", linewidth = 1) +
+  geom_text(aes(label = label), size = 6, color = "#e15759") +
+  labs(title = "ネスト設計（p × t × r:t）",
+       subtitle = "課題ごとに異なる評価者チーム",
+       x = NULL, y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid = element_blank())
+
+grid.arrange(p_crossed, p_nested, ncol = 2)
+```
+
+```{r}
+#| label: design-types-visual-plotly
+#| fig-cap: "交差設計とネスト設計の構造（インタラクティブ）"
+
+# 交差設計: 全セルが埋まる
+crossed_plotly <- expand.grid(
+  Task = c("Task 1", "Task 2", "Task 3"),
+  Rater = c("Rater A", "Rater B")
+) |>
+  mutate(Value = 1, Design = "交差設計（p × t × r）")
+
+# ネスト設計: 課題ごとに異なる評価者
+nested_plotly <- tibble(
+  Task = c("Task 1", "Task 1", "Task 2", "Task 2", "Task 3", "Task 3"),
+  Rater = c("Rater A", "Rater B", "Rater C", "Rater D", "Rater E", "Rater F"),
+  Value = 1,
+  Design = "ネスト設計（p × t × r:t）"
+)
+
+plot_crossed <- plotly::plot_ly(
+  data = crossed_plotly, x = ~Task, y = ~Rater, z = ~Value,
+  type = "heatmap", colors = c("#4e79a7"),
+  showscale = FALSE,
+  hovertext = ~paste0("Task: ", Task, "<br>Rater: ", Rater, "<br>（同一評価者が全課題を採点）"),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "交差設計（全評価者が全課題を採点）",
+    xaxis = list(title = ""), yaxis = list(title = "")
+  )
+
+plot_nested <- plotly::plot_ly(
+  data = nested_plotly, x = ~Task, y = ~Rater, z = ~Value,
+  type = "heatmap", colors = c("#e15759"),
+  showscale = FALSE,
+  hovertext = ~paste0("Task: ", Task, "<br>Rater: ", Rater, "<br>（課題ごとに異なる評価者チーム）"),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "ネスト設計（課題ごとに異なる評価者）",
+    xaxis = list(title = ""), yaxis = list(title = "")
+  )
+
+plotly::subplot(plot_crossed, plot_nested, nrows = 1, titleX = TRUE, titleY = TRUE, margin = 0.08) |>
+  plotly::layout(title = "交差設計 vs ネスト設計")
+```
+
+## 観測得点の分解モデル
+
+一般化可能性理論の核心は、観測得点をANOVAの枠組みで分解し、各成分の分散を推定することにある。設計が変わると、分解モデルも変わる。
+
+**一要因交差設計**（p × i）:
+
+$$
+X_{pi} = \mu + \pi_p + \iota_i + (\pi\iota)_{pi,e}
+$$
+
+ここで 4つの成分は、全体平均（$\mu$）、受験者効果（$\pi_p$）、項目効果（$\iota_i$）、交互作用+残差（$(\pi\iota)_{pi,e}$）である。
+
+**二要因交差設計**（p × t × r）:
+
+$$
+X_{ptr} = \mu + \pi_p + \tau_t + \rho_r + (\pi\tau)_{pt} + (\pi\rho)_{pr} + (\tau\rho)_{tr} + (\pi\tau\rho)_{ptr,e}
+$$
+
+7つの分散成分が推定可能であり、各交互作用の意味も明確である（例: $(\pi\tau)_{pt}$ = 受験者と課題の相性）。
+
+**二要因ネスト設計**（p × t × r:t）: 本章のメインデータで用いる設計である。
+
+$$
+X_{ptr} = \mu + \pi_p + \tau_t + \rho_{r:t} + (\pi\tau)_{pt} + (\pi\rho)_{pr:t,e}
+$$
+
+ネスト構造のため、$\rho_{r:t}$ は「タスク内の評価者差」を意味し、$\rho_r$ と $(\tau\rho)_{tr}$ を分離できない。同様に残差 $(\pi\rho)_{pr:t,e}$ にも $(\pi\tau\rho)_{ptr}$ が交絡している。
+
+::: {.callout-note}
+### 数学的等価性：一般化可能性理論 = ランダム効果ANOVA = LMM
+一般化可能性理論の分散成分は、線形混合効果モデル（LMM）のランダム効果分散と数学的に等価である [@Jiang2018]。したがって `lme4::lmer()` で推定した `VarCorr()` の出力を、一般化可能性理論の分散成分としてそのまま解釈できる。本章では `lme4` を主軸とし、`gtheory` パッケージも並行して確認する。
 :::
 
-```{r}
-#| label: literature-map-speaking
+# 一要因交差設計（p × i）の手計算例
 
-literature_map <- tibble::tribble(
-  ~Study, ~Context, ~MainUse, ~PracticalImplication,
-  "Bachman et al. (1995)", "SLA performance assessment", "Generalizability approach for design decisions", "誤差源を分解し、評価設計を明示的に最適化する必要性を提示",
-  "Lee (2005, ETS)", "TOEFL speaking prototype (tasks/raters)", "Univariate + multivariate G-study/D-study", "課題増加と評価者増加の効果を分けて検討し、課題設計の重要性を示す",
-  "Kim (2009)", "ESL speaking assessment (NS/NNS raters)", "Rater facet and interactions", "評価者背景だけでなく、受験者×評価者の相互作用も点検対象にする",
-  "Schmidgall (2017, ETS)", "TOEIC Speaking score consistency", "Argument-based validation with G-theory evidence", "スコア解釈主張を、課題・評価者・次元の一貫性で裏づける",
-  "Fan & Yan (2020)", "Narrative review of speaking assessment studies", "How generalization inference is operationalized", "一般化推論では課題条件・評価者要因の扱いが中核になる",
-  "Taylor et al. (2022)", "Practical guide to G-theory", "Beginner-friendly misconceptions and practice", "CTTとの違い（誤差の多元分解）を明確化して設計判断に接続"
+一般化可能性理論の計算の仕組みを理解するために、まず最も単純な設計で手順を一通り追う。ここでは5人の受験者が4つの項目に回答した場面（p × i の完全交差設計）を扱う。数値は読者が電卓で検算できるよう簡潔に設定した。
+
+## 小規模データの作成
+
+```{r}
+#| label: create-one-facet-data
+
+one_facet <- tibble(
+  Person = rep(paste0("P", 1:5), each = 4),
+  Item   = rep(paste0("I", 1:4), times = 5),
+  Score  = c(
+    6, 5, 4, 5,   # P1: 平均5.0
+    8, 7, 7, 6,   # P2: 平均7.0
+    4, 3, 5, 4,   # P3: 平均4.0
+    7, 6, 6, 5,   # P4: 平均6.0
+    5, 4, 3, 4    # P5: 平均4.0
+  )
 )
 
-literature_map |>
+# データのワイド形式表示
+one_facet |>
+  pivot_wider(names_from = Item, values_from = Score) |>
+  mutate(Mean = rowMeans(across(starts_with("I")))) |>
+  gt() |>
+  tab_header(title = "手計算用データ: 5人 × 4項目（p × i 交差設計）") |>
+  fmt_number(columns = Mean, decimals = 1) |>
+  tab_source_note("全体平均 = 5.2")
+```
+
+## ANOVAによる平均平方の計算
+
+一般化可能性理論の分散成分推定は、ANOVA の平均平方（MS）から出発する。p × i 交差設計では、以下の3つの平方和を計算する。
+
+```{r}
+#| label: anova-by-hand
+
+n_p <- 5  # 受験者数
+n_i <- 4  # 項目数
+grand_mean <- mean(one_facet$Score)
+
+# 受験者平均と項目平均
+person_means <- one_facet |> group_by(Person) |> summarise(M = mean(Score)) |> pull(M)
+item_means   <- one_facet |> group_by(Item) |> summarise(M = mean(Score)) |> pull(M)
+
+# 平方和の計算
+SS_p <- n_i * sum((person_means - grand_mean)^2)
+SS_i <- n_p * sum((item_means - grand_mean)^2)
+SS_pi <- sum((one_facet$Score - rep(person_means, each = n_i) -
+              rep(item_means, times = n_p) + grand_mean)^2)
+SS_total <- sum((one_facet$Score - grand_mean)^2)
+
+# 自由度
+df_p  <- n_p - 1
+df_i  <- n_i - 1
+df_pi <- df_p * df_i
+
+# 平均平方
+MS_p  <- SS_p / df_p
+MS_i  <- SS_i / df_i
+MS_pi <- SS_pi / df_pi
+
+anova_table <- tibble(
+  Source = c("Person (p)", "Item (i)", "Person × Item (pi, e)", "Total"),
+  SS     = c(SS_p, SS_i, SS_pi, SS_total),
+  df     = c(df_p, df_i, df_pi, n_p * n_i - 1),
+  MS     = c(MS_p, MS_i, MS_pi, NA)
+)
+
+anova_table |>
   gt() |>
   tab_header(
-    title = "Research map: G-theory in speaking assessment",
-    subtitle = "How prior studies inform design choices"
+    title = "ANOVA表（p × i 交差設計）",
+    subtitle = "手計算の結果"
   ) |>
-  cols_label(
-    Study = "Study",
-    Context = "Context",
-    MainUse = "How G-theory was used",
-    PracticalImplication = "Implication for your design"
-  )
+  fmt_number(columns = c(SS, MS), decimals = 3) |>
+  fmt_number(columns = df, decimals = 0) |>
+  sub_missing(missing_text = "—")
 ```
 
 ```{r}
-#| label: literature-to-chapter-bridge
+#| label: anova-aov-check
 
-literature_bridge <- tibble::tribble(
-  ~Study, ~DecisionFocus, ~ReproduceInThisChapter, ~CoreOutput,
-  "Bachman et al. (1995)", "誤差源の分解（Task/Rater/Interaction）", "fit-g-model + narrative-interpretation", "どの誤差が支配的か",
-  "Lee (2005, ETS)", "Task × Rater の設計最適化", "d-study-simulation + d-study-plotly-heatmap", "目標係数を満たす最小設計",
-  "Kim (2009)", "評価者要因の点検", "visualize-variance-components + mapping-table", "評価者由来分散の相対的大きさ",
-  "Schmidgall (2017, ETS)", "スコア一貫性の妥当化", "summary-table + optimization-recommendations", "用途別の係数根拠",
-  "Fan & Yan (2020)", "一般化推論の構築", "最初にここだけ（G研究/D研究）", "分析の流れを妥当化",
-  "Taylor et al. (2022)", "はじめにの実装手順", "最初にここだけ（はじめに）", "段階的な学習導線"
-)
-
-literature_bridge |>
-  gt() |>
-  tab_header(
-    title = "Bridge: prior studies to this chapter workflow",
-    subtitle = "From published decisions to reproducible steps"
-  ) |>
-  cols_label(
-    Study = "Study",
-    DecisionFocus = "What was decided",
-    ReproduceInThisChapter = "Where to reproduce here",
-    CoreOutput = "What you obtain"
-  )
+# aov() で検算
+aov_check <- aov(Score ~ Person + Item, data = one_facet |>
+                   mutate(Person = factor(Person), Item = factor(Item)))
+cat("aov() による検算:\n")
+summary(aov_check)
 ```
+
+## 期待平均平方から分散成分へ
+
+ANOVA の平均平方は、分散成分の線形結合で表される。これを**期待平均平方**（Expected Mean Squares, EMS）と呼ぶ。p × i 交差設計の EMS は以下の通りである [@ShavelsonWebb1991; @Brennan2001]。
+
+| Source | Expected Mean Square |
+|--------|---------------------|
+| Person (p) | $E(MS_p) = \sigma^2_{pi,e} + n_i \cdot \sigma^2_p$ |
+| Item (i)   | $E(MS_i) = \sigma^2_{pi,e} + n_p \cdot \sigma^2_i$ |
+| pi, e      | $E(MS_{pi,e}) = \sigma^2_{pi,e}$ |
+
+この連立方程式を解くと、各分散成分が得られる。
 
 ```{r}
-#| label: literature-action-router
+#| label: variance-components-by-hand
 
-literature_router <- tibble::tribble(
-  ~Your_question, ~Start_here, ~Then_run, ~Decision_output,
-  "Which error source is largest now?", "fit-g-model", "g-study-component-table + g-study-action-priority", "First intervention target",
-  "How many tasks/raters are minimally needed?", "d-study-simulation", "d-study-shortlist + one-step-design-recommendation", "Minimum feasible design",
-  "Can we justify pass/fail decisions?", "d-study-simulation", "speaking-design-recommendation + speaking-phi-feasible-plotly", "Phi-based justification",
-  "What if budget is limited?", "optimization-recommendations", "budget-constrained-selection + budget-constrained-plotly", "Best design under cost cap"
-)
+# EMS から分散成分を求める
+var_pi_e <- MS_pi                    # σ²(pi,e) = MS_pi
+var_p    <- (MS_p - MS_pi) / n_i    # σ²(p) = (MS_p - MS_pi) / n_i
+var_i    <- (MS_i - MS_pi) / n_p    # σ²(i) = (MS_i - MS_pi) / n_p
 
-literature_router |>
+var_total <- var_p + var_i + var_pi_e
+
+tibble(
+  Source    = c("σ²(p): 受験者", "σ²(i): 項目", "σ²(pi,e): 交互作用+残差", "合計"),
+  Formula   = c("(MS_p - MS_pi) / n_i", "(MS_i - MS_pi) / n_p", "MS_pi", "—"),
+  Variance  = c(var_p, var_i, var_pi_e, var_total),
+  Percent   = c(var_p, var_i, var_pi_e, var_total) / var_total * 100
+) |>
   gt() |>
   tab_header(
-    title = "Action router: from prior studies to your own decisions",
-    subtitle = "Start from your practical question"
+    title = "分散成分の推定結果",
+    subtitle = "期待平均平方（EMS）から算出"
   ) |>
+  fmt_number(columns = c(Variance, Percent), decimals = 3) |>
   cols_label(
-    Your_question = "Your practical question",
-    Start_here = "First chunk",
-    Then_run = "Follow-up chunks",
-    Decision_output = "What you decide"
+    Source = "成分", Formula = "計算式",
+    Variance = "推定値", Percent = "割合 (%)"
   )
 ```
 
-### 研究知見を自分の分析に移すテンプレート（15分）
-1. 目的を固定する（順位づけなら `G`、合否判定なら `Φ`）。  
-2. G研究で最大誤差源を1つ特定する（改善の優先順位を決める）。  
-3. D研究で目標係数を満たす最小設計を選ぶ（`Task × Rater`）。  
-4. 最後にコスト制約を入れて、運用可能な案に落とし込む。
+## G係数とPhi係数の手計算
+
+分散成分が得られたら、信頼性係数を計算できる。一般化可能性理論では目的に応じて2種類の係数を区別する。
+
+**G係数**（Generalizability coefficient, $E\rho^2$）: 受験者の**順位づけ**（相対的決定）の安定性を示す。
+
+$$
+G = E\rho^2 = \frac{\sigma^2_p}{\sigma^2_p + \sigma^2_\delta}
+\quad \text{where} \quad
+\sigma^2_\delta = \frac{\sigma^2_{pi,e}}{n_i}
+$$
+
+**Phi係数**（index of dependability, $\Phi$）: **合否判定**（絶対的決定）の安定性を示す。
+
+$$
+\Phi = \frac{\sigma^2_p}{\sigma^2_p + \sigma^2_\Delta}
+\quad \text{where} \quad
+\sigma^2_\Delta = \frac{\sigma^2_i}{n_i} + \frac{\sigma^2_{pi,e}}{n_i}
+$$
+
+$\sigma^2_\delta$（相対誤差分散）は、順位づけを乱す成分のみを含む。$\sigma^2_\Delta$（絶対誤差分散）は、それに加えて項目主効果も含むため、通常 $\Phi \leq G$ となる。
+
+```{r}
+#| label: g-phi-by-hand
+
+# 相対誤差分散と絶対誤差分散
+var_delta   <- var_pi_e / n_i                    # 相対誤差
+var_Delta   <- var_i / n_i + var_pi_e / n_i      # 絶対誤差
+
+# G係数とPhi係数
+G_coef   <- var_p / (var_p + var_delta)
+Phi_coef <- var_p / (var_p + var_Delta)
+
+tibble(
+  Coefficient = c("G (相対的決定)", "Φ (絶対的決定)"),
+  Error_variance = c(var_delta, var_Delta),
+  Value = c(G_coef, Phi_coef),
+  Use_case = c("クラス内順位づけ、プレースメント", "合否判定、到達度判定")
+) |>
+  gt() |>
+  tab_header(
+    title = "G係数とPhi係数の手計算結果",
+    subtitle = glue("4項目での推定値（n_i = {n_i}）")
+  ) |>
+  fmt_number(columns = c(Error_variance, Value), decimals = 3) |>
+  cols_label(
+    Coefficient = "係数", Error_variance = "誤差分散",
+    Value = "値", Use_case = "用途"
+  )
+```
+
+## Cronbach αとの一致の確認
+
+一要因交差設計において相対的決定を考える場合、G係数は Cronbach の $\alpha$ 係数と数学的に等価である [@Cronbach1972; @ShavelsonWebb1991]。これは、$\alpha$ が 一般化可能性理論の特殊ケースであることを意味する。
+
+```{r}
+#| label: alpha-g-equivalence
+
+# Cronbach alpha
+one_facet_wide <- one_facet |>
+  pivot_wider(names_from = Item, values_from = Score)
+
+alpha_val <- psych::alpha(one_facet_wide[, -1], check.keys = FALSE)$total$raw_alpha
+
+cat("Cronbach's alpha  =", round(alpha_val, 4), "\n")
+cat("G coefficient     =", round(G_coef, 4), "\n")
+cat("差（alpha - G）   =", round(alpha_val - G_coef, 6), "\n\n")
+cat("→ 一要因交差設計では G = alpha が成立。\n")
+cat("  一般化可能性理論はCTTの一般化であり、αはその最も単純なケースに相当する。\n")
+```
+
+## lme4で同じ結果を再現する
+
+手計算で得た分散成分が `lme4::lmer()` で再現されることを確認する。
+
+```{r}
+#| label: lmer-one-facet-verification
+#| message: false
+#| warning: false
+
+# lme4 による推定
+one_facet_lmer <- lmer(
+  Score ~ 1 + (1|Person) + (1|Item),
+  data = one_facet |> mutate(Person = factor(Person), Item = factor(Item)),
+  REML = TRUE
+)
+
+vc_lmer <- VarCorr(one_facet_lmer)
+
+comparison <- tibble(
+  Source = c("σ²(p)", "σ²(i)", "σ²(pi,e)"),
+  Hand_calculation = c(var_p, var_i, var_pi_e),
+  lme4_estimate = c(
+    as.numeric(vc_lmer$Person),
+    as.numeric(vc_lmer$Item),
+    attr(vc_lmer, "sc")^2
+  )
+) |>
+  mutate(Difference = Hand_calculation - lme4_estimate)
+
+comparison |>
+  gt() |>
+  tab_header(
+    title = "手計算と lme4 の分散成分の比較",
+    subtitle = "REML推定で完全一致を確認"
+  ) |>
+  fmt_number(columns = c(Hand_calculation, lme4_estimate, Difference), decimals = 4) |>
+  cols_label(
+    Source = "成分",
+    Hand_calculation = "手計算",
+    lme4_estimate = "lme4",
+    Difference = "差"
+  )
+```
+
+手計算と `lme4` の結果が一致することが確認できた。以降の分析では `lme4` を使い、より複雑な設計にも対応する。
 
 ::: {.callout-tip}
-### 先行研究から見える共通パターン
-1. **誤差源を1つにまとめない**: 課題差・評価者差・交互作用を分けると、改善対象が明確になる。  
-2. **D研究で設計を決める**: 「何人の評価者か」だけでなく「何課題か」を同時に検討する。  
-3. **目的で係数を分ける**: 順位づけは `G`、合否判定は `Φ`。  
-4. **評価者訓練は必要条件**: ただし、訓練だけでなく課題数設計とセットで最適化する。
+### ここまでのまとめ
+1. 一般化可能性理論の分散成分は、ANOVA の期待平均平方（EMS）から代数的に求められる。
+2. G係数は相対的決定（順位づけ）、Phi係数は絶対的決定（合否判定）に対応する。
+3. 一要因交差設計では G = Cronbach's alpha が成立する。
+4. `lme4::lmer()` は 一般化可能性理論の分散成分推定を数学的に等価な形で実行する。
+5. これ以降は `lmer()` を主軸とし、手計算は不要になる。
 :::
 
-### 参考文献（本節で触れた主要文献）
-以下は、先行研究セクションで意思決定例として参照した文献です。初読では全てを精読せず、まず自分の目的に近い研究から読むと効率的です。
+# 相対的決定と絶対的決定
 
-- Bachman, L. F., Lynch, B. K., & Mason, M. (1995). *Investigating Variability in Tasks and Rater Judgements in a Performance Test of Foreign Language Speaking*. [https://doi.org/10.2307/329352](https://doi.org/10.2307/329352)
-- Lee, Y.-W. (2005). *Dependability of scores for a new ESL speaking assessment consisting of integrated and independent tasks* (ETS Research Report). [https://www.ets.org/research/policy_research_reports/publications/report/2005/ibam.html](https://www.ets.org/research/policy_research_reports/publications/report/2005/ibam.html)
-- Kim, Y.-H. (2009). *An Investigation into Native and Nonnative Teachers' Judgments of Oral English Performance*. [https://doi.org/10.1093/applin/amp035](https://doi.org/10.1093/applin/amp035)
-- Schmidgall, J. E. (2017). *An argument-based validity inquiry of score consistency of TOEIC speaking scores* (ETS Research Report). [https://doi.org/10.1002/ets2.12166](https://doi.org/10.1002/ets2.12166)
-- Fan, J., & Yan, X. (2020). *Assessing Speaking Proficiency: A Narrative Review of Speaking Assessment Research Within the Argument-Based Validation Framework*. [https://doi.org/10.3389/fpsyg.2020.00330](https://doi.org/10.3389/fpsyg.2020.00330)
-- Taylor, M. A., Gausden, N. T., & Rohrer, D. (2022). *Generalizability Theory: A Practical Guide to Study Design, Implementation, and Interpretation*. [https://doi.org/10.1177/00131644211030298](https://doi.org/10.1177/00131644211030298)
-- Huebner, A., Sun, M., & Chalmers, R. P. (2019). *Generalizability Theory in R*. [https://doi.org/10.7275/p86f-gn14](https://doi.org/10.7275/p86f-gn14)
+一般化可能性理論が CTT と最も大きく異なる点の1つは、「何のために測定するか」によって信頼性の評価基準を分けることにある。
 
-## サンプルデータの作成
+## 2つの決定タイプ
 
-ここでは「10人の受験者（p）、3つのスピーキング課題（t）、各課題ごとに別の評価者群（rがtにネスト）」という設計を用います。これは p × t × r:t のネスト設計で、パフォーマンス評価の典型例です。
+```{r}
+#| label: decision-types-table
+
+tibble::tribble(
+  ~Decision_type, ~Description, ~Coefficient, ~Error_variance, ~Language_testing_example,
+  "相対的決定", "受験者を互いに比較して順位をつける", "G (E ρ²)", "σ²_δ（順位を乱す成分のみ）", "クラス内順位づけ、プレースメント",
+  "絶対的決定", "受験者の得点を絶対的な基準と比較する", "Φ (Phi)", "σ²_Δ（すべての誤差成分）", "合否判定、CEFR レベル判定、到達基準"
+) |>
+  gt() |>
+  tab_header(
+    title = "相対的決定と絶対的決定"
+  ) |>
+  cols_label(
+    Decision_type = "決定タイプ",
+    Description = "説明",
+    Coefficient = "信頼性係数",
+    Error_variance = "誤差分散の定義",
+    Language_testing_example = "英語教育での例"
+  )
+```
+
+**相対誤差分散** $\sigma^2_\delta$ は、受験者の順位を乱す成分だけを含む。ファセットの主効果（課題の難易度差、評価者の厳しさの差）は全受験者に等しく作用するため、順位には影響せず、相対誤差には含まれない。
+
+**絶対誤差分散** $\sigma^2_\Delta$ は、すべての誤差成分を含む。合否判定では「受験者の得点がどれだけ正確か」が問題になるため、ファセットの主効果も誤差として扱う。その結果、常に $\sigma^2_\Delta \geq \sigma^2_\delta$ であり、$\Phi \leq G$ となる。
+
+## 数値例で確認する
+
+```{r}
+#| label: mini-formula-example
+
+tibble::tibble(
+  Scenario = c("相対的決定 (G)", "絶対的決定 (Φ)"),
+  Universe_variance = c(0.30, 0.30),
+  Error_variance = c(0.10, 0.20)
+) |>
+  mutate(
+    Coefficient = Universe_variance / (Universe_variance + Error_variance)
+  ) |>
+  gt() |>
+  tab_header(
+    title = "G と Φ の数値例",
+    subtitle = "同じ宇宙分散でも誤差の範囲が異なれば係数が変わる"
+  ) |>
+  fmt_number(columns = c(Universe_variance, Error_variance, Coefficient), decimals = 3) |>
+  cols_label(
+    Scenario = "決定タイプ",
+    Universe_variance = "宇宙分散 σ²_p",
+    Error_variance = "誤差分散",
+    Coefficient = "信頼性係数"
+  )
+```
+
+この例のポイントは、分子（宇宙分散 = 個人差）が同じでも、分母に入る誤差の範囲が広いほど係数が下がることである。スピーキング評価で合否判定を行う場合は、まず $\Phi$ で設計を評価し、$G$ だけで安心しないことが重要である。
+
+# 二要因ネスト設計のG研究
+
+ここからは、英語スピーキング評価の実践的な場面を想定して、二要因ネスト設計（p × t × r:t）での分析を行う。10人の受験者が3つのスピーキング課題（Interview, Role-play, Picture Description）に取り組み、各課題ごとに4名の評価者が採点する。この設計では、評価者は課題にネストされている（課題ごとに異なる採点チーム）。
+
+## スピーキング評価データの作成
 
 ```{r}
 #| label: create-brennan-data
@@ -350,260 +860,75 @@ create_brennan_data <- function() {
   n_tasks <- 3
   n_raters_per_task <- 4
   task_labels <- c("Interview", "RolePlay", "PictureDescription")
-  
+
   var_person <- 0.37
   var_task <- 0.05
   var_rater_in_task <- 0.10
   var_person_task <- 0.15
   var_residual <- 0.40
-  
+
   data <- expand.grid(
     Person = factor(sprintf("S%02d", 1:n_persons)),
     Task = factor(task_labels, levels = task_labels),
     Rater = factor(1:n_raters_per_task))
-  
-  # ランダム効果の生成
+
   person_effects <- rnorm(n_persons, 0, sqrt(var_person))
   task_effects <- rnorm(n_tasks, 0, sqrt(var_task))
-  
-  # ネストされた評価者効果（タスクごとに異なる）
+
   rater_effects <- matrix(
     rnorm(n_tasks * n_raters_per_task, 0, sqrt(var_rater_in_task)),
     nrow = n_tasks, ncol = n_raters_per_task)
-  
-  # Person×Task交互作用
+
   person_task_effects <- matrix(
     rnorm(n_persons * n_tasks, 0, sqrt(var_person_task)),
     nrow = n_persons, ncol = n_tasks)
-  
-  # スコアの計算
+
   data$Score <- NA
   for(i in 1:nrow(data)) {
     p <- as.numeric(data$Person[i])
     t <- as.numeric(data$Task[i])
     r <- as.numeric(data$Rater[i])
-    
-    data$Score[i] <- 5 +  # 全体平均
+
+    data$Score[i] <- 5 +
       person_effects[p] +
       task_effects[t] +
       rater_effects[t, r] +
       person_task_effects[p, t] +
       rnorm(1, 0, sqrt(var_residual))
   }
-  
-  # 評価者IDをタスクにネストされた形式に変更（例: Interview_R1）
+
   data$Rater <- factor(paste0(data$Task, "_", data$Rater))
-  
+
   return(data)
 }
 
-# データ生成
 Brennan.3.2 <- create_brennan_data()
 
-# データ構造の確認
 Brennan.3.2 |>
   head(12) |>
   gt() |>
   tab_header(
-    title = "Brennan.3.2 dataset (for lme4)",
-    subtitle = "First 12 rows") |>
+    title = "スピーキング評価データ（最初の12行）",
+    subtitle = "設計: p × t × r:t（評価者はタスクにネスト）") |>
   cols_label(
-    Task = "Task",
-    Person = "Person",
-    Rater = "Rater",
-    Score = "Score")
+    Task = "Task", Person = "Person",
+    Rater = "Rater", Score = "Score")
 ```
 
 ::: {.callout-note}
-### 設計と記号（PDFと対応）
+### 設計と記号の対応
 - 設計: p × t × r:t（人 p、タスク t、評価者 r は t にネスト）
-- 観測単位: 「受験者 p が、タスク t で、評価者 r に採点される」1セル
-- 観測得点: $X_{ptr} = \mu + p + t + (r{:}t) + (p\times t) + e$
-- 目的: 個人差 $\sigma^2_p$ を保ちながら、誤差分散（t, r:t, p×t, e 由来）を小さくする設計を選ぶ
-- 日本語で読むと: 「観測得点 = 全体平均 + 受験者の実力差 + 課題差 + 評価者差 + 受験者×課題の相性 + 偶然誤差」
+- 観測得点: $X_{ptr} = \mu + p + t + r{:}t + (p \times t) + e$
+- 各成分の意味:
+
+| 記号 | モデル上の意味 | スピーキング評価での例 |
+|------|---------------|---------------------|
+| p | 受験者の個人差 | S01は一貫して高得点、S08は中位 |
+| t | 課題の難易度差 | PictureDescription は Interview より難しい |
+| r:t | 課題内の評価者差 | 同じ課題でも厳しい評価者がいる |
+| p × t | 受験者と課題の相性 | 流暢だが即興課題だけ弱い受験者 |
+| e | その他の偶然誤差 | 当日の体調、話題への慣れ |
 :::
-
-```{r}
-#| label: notation-guide-table
-
-notation_guide <- tibble::tribble(
-  ~Symbol, ~MeaningInModel, ~SpeakingExample,
-  "p", "受験者の個人差", "S01は一貫して高得点、S08は中位",
-  "t", "課題の難易度差", "PictureDescriptionはInterviewより難しい",
-  "r:t", "課題内の評価者差", "同じ課題でも厳しい評価者がいる",
-  "p×t", "受験者と課題の相性", "流暢だが即興課題だけ弱い受験者",
-  "e", "その他の偶然誤差", "当日の体調、話題への慣れ"
-)
-
-notation_guide |>
-  gt() |>
-  tab_header(
-    title = "Notation guide for speaking assessment",
-    subtitle = "How symbols map to practical interpretation"
-  ) |>
-  cols_label(
-    Symbol = "Symbol",
-    MeaningInModel = "Model meaning",
-    SpeakingExample = "Practical example"
-  )
-```
-
-```{r}
-#| label: design-readiness-checklist
-
-design_readiness <- tibble::tribble(
-  ~Checkpoint, ~Why_it_matters, ~Quick_check,
-  "Have you written the design in one line? (e.g., p × t × r:t)",
-  "Without design notation, interpretation drifts.",
-  "Write it explicitly before fitting the model.",
-  "Does random-effects formula match the design?",
-  "Mismatch causes wrong variance interpretation.",
-  "Compare notation vs `(1|...)` terms side by side.",
-  "Is the decision purpose fixed (ranking vs pass/fail)?",
-  "Purpose determines whether G or Phi is primary.",
-  "Decide purpose before reading coefficients.",
-  "Have you identified likely dominant error sources in advance?",
-  "Pre-specification prevents post-hoc storytelling.",
-  "Predict top 1-2 error sources, then verify in G-study."
-)
-
-design_readiness |>
-  gt() |>
-  tab_header(
-    title = "Design readiness checklist",
-    subtitle = "Run this before interpreting G-theory outputs"
-  ) |>
-  cols_label(
-    Checkpoint = "Checkpoint",
-    Why_it_matters = "Why it matters",
-    Quick_check = "Quick check"
-  )
-```
-
-::: {.callout-note}
-### 真値（Universe score）とは
-- 「宇宙」は、**本来測りたい条件の全体集合**（想定可能な課題と評価者の集合）を指します。
-- Universe score（真値）$\tau_p$ は、受験者 p がその集合で平均的に示すと期待される得点です。
-- 1回の観測得点 $X_{ptr}$ は、真値にタスク差・評価者差・偶然誤差が乗った値です。
-- したがって、真値は「運の影響をならした実力に近い中心値」と考えると理解しやすくなります。
-:::
-
-```{r}
-#| label: universe-score-demo
-
-universe_score_demo <- Brennan.3.2 |>
-  group_by(Person) |>
-  summarise(
-    One_observed_score = Score[Task == "Interview" & Rater == "Interview_1"][1],
-    Universe_score_hat = mean(Score),
-    Difference = One_observed_score - Universe_score_hat,
-    .groups = "drop"
-  ) |>
-  mutate(
-    Abs_difference = abs(Difference)
-  ) |>
-  arrange(desc(Abs_difference))
-
-universe_score_demo |>
-  select(-Abs_difference) |>
-  slice_head(n = 8) |>
-  gt() |>
-  tab_header(
-    title = "One observed score vs estimated universe score",
-    subtitle = "Difference shrinks when we average across tasks and raters"
-  ) |>
-  fmt_number(columns = c(One_observed_score, Universe_score_hat, Difference), decimals = 3)
-```
-
-::: {.callout-tip}
-### 最小数式でつかむ（はじめに）
-- 本章で覚える式は2つだけで十分です。  
-- $G = \sigma^2_p / (\sigma^2_p + \sigma^2_\delta)$（順位づけの精度）  
-- $\Phi = \sigma^2_p / (\sigma^2_p + \sigma^2_\Delta)$（合否判定の精度）  
-- どちらも「信号 /（信号 + 誤差）」という同じ形です。
-- 違いは誤差の定義です。  
-  - $\sigma^2_\delta$（相対誤差）: 順位づけを乱す誤差  
-  - $\sigma^2_\Delta$（絶対誤差）: 水準判断を乱す誤差（通常こちらの方が広い）
-- スピーキング評価では、クラス内比較なら `G`、到達基準の判定なら `Φ` を優先します。
-:::
-
-```{r}
-#| label: mini-formula-example
-
-mini_formula_demo <- tibble::tibble(
-  Scenario = c("Relative decision (G)", "Absolute decision (Phi)"),
-  Universe_variance = c(0.30, 0.30),
-  Error_variance = c(0.10, 0.20)
-) |>
-  mutate(
-    Coefficient = Universe_variance / (Universe_variance + Error_variance)
-  )
-
-mini_formula_demo |>
-  gt() |>
-  tab_header(
-    title = "Mini numeric example of G and Phi",
-    subtitle = "Same universe variance, different error definitions"
-  ) |>
-  fmt_number(columns = c(Universe_variance, Error_variance, Coefficient), decimals = 3) |>
-  cols_label(
-    Scenario = "Scenario",
-    Universe_variance = "Universe variance",
-    Error_variance = "Error variance",
-    Coefficient = "Resulting coefficient"
-  )
-```
-
-この表のポイントは、分子（宇宙分散）が同じでも、分母に入る誤差の範囲が広いほど係数が下がることです。絶対判断の `Φ` は、課題主効果や評価者主効果も誤差側に入るため、実務では `G` より小さくなりやすい、という感覚をここでつかんでください。
-
-::: {.callout-tip}
-### 超入門クイックスタート（5ステップ）
-1. 設計を書く: 交差/ネストを確認（例: p × t × r:t）。
-2. lmerを当てる: `(1|Person) + (1|Task) + (1|Rater) + (1|Person:Task)` を式に含める。
-3. 分散成分を見る: `extract_variance_components()` の `Percent` 列で、どの誤差が大きいか把握。
-4. 係数を試算: `calculate_g_coefficient/phi` にタスク数・評価者数を入れて `G/Φ` を計算。
-5. 図で最適化: ヒートマップや等高線を見て、目標（例: G≥.8）を満たす最小コスト案を選ぶ。
-ヒント: `Task`が大きければタスク数を増やす、`Rater`が大きければ評価者数を増やすと `Φ` が上がりやすい。
-:::
-
-```{r}
-#| label: define-extract-vc
-#| message: false
-#| warning: false
-
-# lme4::lmer の VarCorr から G theoryで使う分散成分テーブルを作る
-extract_variance_components <- function(model) {
-  vc <- VarCorr(model)
-
-  # 各分散成分（存在しない場合は0で安全に処理）
-  get_v <- function(name) {
-    if (name %in% names(vc)) as.numeric(vc[[name]]) else 0
-  }
-
-  var_person <- get_v("Person")
-  var_task <- get_v("Task")
-  var_rater <- get_v("Rater")
-  var_person_task <- get_v("Person:Task")
-  var_residual <- attr(vc, "sc")^2
-
-  total <- var_person + var_task + var_rater + var_person_task + var_residual
-
-  # グルーピング因子の水準数（n）も併記
-  fl <- lme4::getME(model, "flist")
-  n_person <- if ("Person" %in% names(fl)) nlevels(fl[["Person"]]) else NA_integer_
-  n_task <- if ("Task" %in% names(fl)) nlevels(fl[["Task"]]) else NA_integer_
-  n_rater <- if ("Rater" %in% names(fl)) nlevels(fl[["Rater"]]) else NA_integer_
-  n_person_task <- if ("Person:Task" %in% names(fl)) nlevels(fl[["Person:Task"]]) else NA_integer_
-
-  tibble::tibble(
-    source  = factor(
-      c("Person", "Task", "Rater", "Person:Task", "Residual"),
-      levels = c("Person", "Task", "Rater", "Person:Task", "Residual")),
-    var     = c(var_person, var_task, var_rater, var_person_task, var_residual),
-    percent = 100 * var / total,
-    n       = c(n_person, n_task, n_rater, n_person_task, NA_integer_))
-}
-```
 
 ## データの可視化
 
@@ -613,7 +938,6 @@ extract_variance_components <- function(model) {
 #| fig-width: 10
 #| fig-height: 6
 
-# タスク別・評価者別のスコア分布
 p1 <- ggplot(Brennan.3.2, aes(x = Person, y = Score, color = Rater)) +
   geom_point(size = 2, alpha = 0.7) +
   facet_wrap(~ Task, labeller = label_both) +
@@ -624,7 +948,6 @@ p1 <- ggplot(Brennan.3.2, aes(x = Person, y = Score, color = Rater)) +
   theme_bw() +
   theme(legend.position = "none")
 
-# 受験者ごとの平均スコア
 p2 <- Brennan.3.2 |>
   group_by(Person) |>
   summarise(
@@ -657,30 +980,72 @@ plotly::subplot(
 )
 ```
 
-::: {.callout-tip}
-### 図の読み方（D研究）
-- 曲線が高いほど信頼性が高い。赤（0.8）/オレンジ（0.7）の線を目標値として設計を選ぶ。
-- `G` は相対判断（順位づけ）向け、`Φ` は絶対判断（合否）向け。文脈に応じて重視する側を選ぶ。
-:::
+## 宇宙得点の推定と観測得点の乖離
 
+宇宙得点（universe score）は、すべての課題と評価者にわたって平均した受験者の期待得点である。1回の観測得点は、宇宙得点にタスク差・評価者差・偶然誤差が上乗せされた値であり、両者の差が「測定誤差」に相当する。
 
-# G研究（Generalizability Study）with lme4
+```{r}
+#| label: universe-score-demo
 
-::: {.callout-tip}
-### 最初にここだけ（G研究）
-1. `fit-g-model` のコードを実行し、分散成分を推定する。  
-2. 分散成分表で `Percent` が大きい誤差源を特定する。  
-3. `narrative-interpretation` の出力で、結果を自然言語に言い換える。
-:::
+universe_score_demo <- Brennan.3.2 |>
+  group_by(Person) |>
+  summarise(
+    One_observed_score = Score[Task == "Interview" & Rater == "Interview_1"][1],
+    Universe_score_hat = mean(Score),
+    Difference = One_observed_score - Universe_score_hat,
+    .groups = "drop"
+  ) |>
+  mutate(Abs_difference = abs(Difference)) |>
+  arrange(desc(Abs_difference))
 
-## 線形混合効果モデルによる分散成分推定
+universe_score_demo |>
+  select(-Abs_difference) |>
+  slice_head(n = 8) |>
+  gt() |>
+  tab_header(
+    title = "観測得点 vs 推定宇宙得点",
+    subtitle = "複数条件で平均するほど差は縮小する"
+  ) |>
+  fmt_number(columns = c(One_observed_score, Universe_score_hat, Difference), decimals = 3)
+```
 
-::: {.callout-note}
-### この節で答える3つの問い
-1. いまの設計で、最も大きい誤差源はどれか。  
-2. その誤差源は、課題数・評価者数・採点運用のどれで改善できるか。  
-3. 次のD研究で、どの設計候補を優先して試すべきか。
-:::
+## lme4による分散成分推定
+
+```{r}
+#| label: define-extract-vc
+#| message: false
+#| warning: false
+
+extract_variance_components <- function(model) {
+  vc <- VarCorr(model)
+
+  get_v <- function(name) {
+    if (name %in% names(vc)) as.numeric(vc[[name]]) else 0
+  }
+
+  var_person <- get_v("Person")
+  var_task <- get_v("Task")
+  var_rater <- get_v("Rater")
+  var_person_task <- get_v("Person:Task")
+  var_residual <- attr(vc, "sc")^2
+
+  total <- var_person + var_task + var_rater + var_person_task + var_residual
+
+  fl <- lme4::getME(model, "flist")
+  n_person <- if ("Person" %in% names(fl)) nlevels(fl[["Person"]]) else NA_integer_
+  n_task <- if ("Task" %in% names(fl)) nlevels(fl[["Task"]]) else NA_integer_
+  n_rater <- if ("Rater" %in% names(fl)) nlevels(fl[["Rater"]]) else NA_integer_
+  n_person_task <- if ("Person:Task" %in% names(fl)) nlevels(fl[["Person:Task"]]) else NA_integer_
+
+  tibble::tibble(
+    source  = factor(
+      c("Person", "Task", "Rater", "Person:Task", "Residual"),
+      levels = c("Person", "Task", "Rater", "Person:Task", "Residual")),
+    var     = c(var_person, var_task, var_rater, var_person_task, var_residual),
+    percent = 100 * var / total,
+    n       = c(n_person, n_task, n_rater, n_person_task, NA_integer_))
+}
+```
 
 ```{r}
 #| label: fit-g-model
@@ -688,9 +1053,9 @@ plotly::subplot(
 #| warning: false
 
 g_model <- lmer(
-  Score ~ 1 + 
-    (1 | Person) + 
-    (1 | Task) + 
+  Score ~ 1 +
+    (1 | Person) +
+    (1 | Task) +
     (1 | Rater) +
     (1 | Person:Task),
   data = Brennan.3.2,
@@ -699,127 +1064,146 @@ g_model <- lmer(
 tab_model(g_model)
 ```
 
-::: {.callout-note}
-### lme4 と gtheory の並列書き（実務メモ）
-- 設計の考え方は同じです。違いは「書き方の入口」です。
-- `lme4`: ランダム効果モデルを直接書いて柔軟に拡張。
-- `gtheory`: G研究・D研究の流れを測定設計の文脈で整理しやすい。
-:::
-
-```{r}
-#| label: gtheory-template
-#| eval: false
-# 参考: gtheory で同じ設計を書くイメージ（環境により引数名は要確認）
-g_fit <- gtheory::gstudy(
-  data = Brennan.3.2,
-  formula = Score ~ (1 | Person) + (1 | Task) + (1 | Rater) + (1 | Person:Task)
-)
-
-d_fit <- gtheory::dstudy(
-  x = g_fit,
-  colname.objects = "Person",
-  data = expand.grid(Task = 1:5, Rater = 1:10)
-)
-```
-
-```{r}
-#| label: gtheory-availability
-tibble::tibble(
-  Package = "gtheory",
-  Installed = has_gtheory
-) |>
-  gt() |>
-  tab_header(
-    title = "gtheory availability",
-    subtitle = "If FALSE, lme4 workflow in this chapter remains fully reproducible"
-  )
-```
-
-::: {.callout-tip}
-### 交差とネスト（はじめに）
-- 同じ評価者がすべてのタスクを採点 → 交差（r は t と交差）
-- タスクごとに別の評価者チーム → ネスト（r は t にネスト）
-式の違いは「IDの作り方」に現れます。ネストは `paste0(Task, "_", RaterID)` のようにタスク別ラベルにして `(1|Rater)` を1本立てにします。
-:::
-
-::: {.callout-tip}
-### 数学的同値性（LMM と一般化可能性理論）
-- 要点は1つです。**「一般化可能性理論の分散成分」と「LMMのランダム効果分散」は同じ量**です。  
-- したがって、`lmer()` で推定した `VarCorr` を、一般化可能性理論の分散成分としてそのまま解釈できます。  
-- 本章の設計は r が t にネスト（p × t × r:t）なので、式にもその構造を反映しています。
-:::
+G研究の核心は、このモデルから得られる分散成分の比率を読み解くことである。セクション3の手計算例で示したように、`VarCorr()` の出力がそのまま 一般化可能性理論の分散成分に対応する。
 
 ```{r}
 #| label: g-study-component-table
-# 分散成分の抽出と表示
 g_study_results <- extract_variance_components(g_model)
 
-# まずgtテーブルを作成
 g_study_table <- g_study_results |>
   gt() |>
   tab_header(
-    title = "G-study: variance component estimates (lme4)",
-    subtitle = "Estimated via linear mixed-effects model") |>
-  fmt_number(
-    columns = var,
-    decimals = 4) |>
-  fmt_number(
-    columns = percent,
-    decimals = 1) |>
-  fmt_number(
-    columns = n,
-    decimals = 0) |>
+    title = "G研究: 分散成分の推定結果（lme4）",
+    subtitle = "p × t × r:t ネスト設計") |>
+  fmt_number(columns = var, decimals = 4) |>
+  fmt_number(columns = percent, decimals = 1) |>
+  fmt_number(columns = n, decimals = 0) |>
   cols_label(
     source = "Source",
     var = "Variance",
     percent = "Percent (%)",
     n = "n") |>
   tab_footnote(
-    footnote = "Higher Person variance indicates higher reliability.",
+    footnote = "Person分散が大きいほど信頼性が高くなりやすい。",
     locations = cells_column_labels(columns = percent)) |>
   tab_source_note(
-    source_note = "Note: Large residual variance suggests room for measurement improvement.")
+    source_note = "Note: 大きいResidual分散は測定改善の余地を示唆する。")
 
 person_row <- which(g_study_results$source == "Person")
 if (length(person_row) > 0) {
   g_study_table <- g_study_table |>
     tab_style(
-      style = list(
-        cell_fill(color = "#e6f3ff"),
-        cell_text(weight = "bold")),
-      locations = cells_body(
-        columns = percent,
-        rows = person_row))
-  }
+      style = list(cell_fill(color = "#e6f3ff"), cell_text(weight = "bold")),
+      locations = cells_body(columns = percent, rows = person_row))
+}
 
-# Residual行をハイライト
 residual_row <- which(g_study_results$source == "Residual")
 if (length(residual_row) > 0) {
   g_study_table <- g_study_table |>
     tab_style(
       style = cell_fill(color = "#ffe6e6"),
-      locations = cells_body(
-        columns = percent,
-        rows = residual_row))
+      locations = cells_body(columns = percent, rows = residual_row))
 }
 
 g_study_table
 ```
 
-::: {.callout-tip}
-### 表と図の読み方（G研究）
-- `Percent` が大きい誤差源ほど“効いている”要因。そこを減らす設計が効きます。
-- 例: `Person:Task` が大→タスク数を増やすと誤差（相対）が下がり `G` が上がる。
-- 例: `Rater`/`Residual` が大→評価者数を増やしたり、採点基準の明確化で `Φ` が上がりやすい。
-- `Person` が大→個人差が明確。設計的に有利（高い信頼性に届きやすい）。
-:::
+## gtheoryパッケージとの並列確認
 
-::: {.callout-tip}
-### G研究の読み方（30秒→3分→10分）
-- 30秒: `Person` の割合と、最大の誤差源（`Task` / `Rater` / `Person:Task` / `Residual`）を確認する。  
-- 3分: 最大誤差源に対応する最初の設計アクションを1つ決める。  
-- 10分: D研究に進み、候補設計が目標係数（`G` か `Φ`）を満たすか検証する。
-:::
+`gtheory` パッケージ [@HuebnerLucht2019] は内部で `lme4` を使用しており、G研究とD研究を測定設計の文脈に沿った形で実行できる。以下は `gtheory` がインストールされている場合のみ実行される。
+
+```{r}
+#| label: gtheory-gstudy
+#| eval: !expr has_gtheory
+#| message: false
+#| warning: false
+
+g_fit <- gtheory::gstudy(
+  data = Brennan.3.2,
+  formula = Score ~ (1 | Person) + (1 | Task) + (1 | Rater) + (1 | Person:Task)
+)
+
+cat("gtheory::gstudy() の分散成分:\n")
+print(g_fit)
+```
+
+```{r}
+#| label: gtheory-availability
+
+tibble::tibble(
+  Package = "gtheory",
+  Installed = has_gtheory
+) |>
+  gt() |>
+  tab_header(
+    title = "gtheory パッケージの利用可否",
+    subtitle = "FALSE でも本章の lme4 ワークフローは完全に実行可能"
+  )
+```
+
+## 分散成分の可視化と解釈
+
+```{r}
+#| label: visualize-variance-components
+#| fig-cap: "分散成分の割合（G研究）"
+#| fig-width: 8
+#| fig-height: 6
+
+ggplot(g_study_results, aes(x = reorder(source, -percent), y = percent, fill = source)) +
+  geom_col(alpha = 0.8) +
+  geom_text(aes(label = paste0(round(percent, 1), "%")),
+            vjust = -0.5, size = 4) +
+  scale_fill_viridis_d() +
+  labs(
+    title = "G研究: 分散成分の分解",
+    subtitle = "lme4 による推定（p × t × r:t 設計）",
+    x = "Source",
+    y = "Percent of total variance (%)"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+```{r}
+#| label: visualize-variance-components-plotly
+#| fig-cap: "分散成分の割合（G研究, インタラクティブ）"
+
+plotly::plot_ly(
+  data = g_study_results |> arrange(desc(percent)),
+  x = ~reorder(source, -percent), y = ~percent,
+  type = "bar",
+  color = ~source, colors = viridisLite::viridis(5),
+  text = ~paste0(round(percent, 1), "%"),
+  textposition = "outside",
+  hovertext = ~paste0("Source: ", source,
+                       "<br>Variance: ", round(var, 4),
+                       "<br>Percent: ", round(percent, 1), "%"),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "G研究: 分散成分の分解（p × t × r:t 設計）",
+    xaxis = list(title = "Source"),
+    yaxis = list(title = "Percent of total variance (%)", range = c(0, max(g_study_results$percent) * 1.15)),
+    showlegend = FALSE
+  )
+```
+
+```{r}
+#| label: narrative-interpretation
+
+msgs <- g_study_results |>
+  mutate(msg = dplyr::case_when(
+    source == "Person" ~ glue::glue("受験者（Person）の分散は {round(percent,1)}%：個人差がこの割合を占める。"),
+    source == "Task" ~ glue::glue("タスク（Task）の分散は {round(percent,1)}%：課題間の難易度差である。"),
+    source == "Rater" ~ glue::glue("評価者（Rater）の分散は {round(percent,1)}%：厳しさ/甘さの違いである。"),
+    source == "Person:Task" ~ glue::glue("交互作用（Person×Task）は {round(percent,1)}%：人による得手不得手（相対誤差の主要因）である。"),
+    source == "Residual" ~ glue::glue("残差（Residual）は {round(percent,1)}%：未観測要因・偶然誤差である。"),
+    TRUE ~ NA_character_
+  )) |>
+  dplyr::pull(msg)
+
+cat(paste0("- ", msgs, collapse = "\n"))
+```
 
 ```{r}
 #| label: g-study-action-priority
@@ -851,153 +1235,22 @@ g_action_priority <- g_study_results |>
 g_action_priority |>
   gt() |>
   tab_header(
-    title = "G-study action priority",
-    subtitle = "From variance decomposition to first design action"
+    title = "G研究のアクション優先度",
+    subtitle = "分散分解から最初の設計改善アクションへ"
   ) |>
   fmt_number(columns = percent, decimals = 1) |>
   cols_label(
-    Priority = "Priority",
-    Source = "Source",
-    percent = "Percent (%)",
-    Interpretation = "Interpretation",
-    First_action = "Recommended first action"
+    Priority = "優先度",
+    Source = "成分",
+    percent = "割合 (%)",
+    Interpretation = "解釈",
+    First_action = "推奨される最初のアクション"
   )
-```
-
-```{r}
-#| label: g-study-misread-guard
-
-g_top_error <- g_study_results |>
-  filter(source != "Person") |>
-  slice_max(order_by = percent, n = 1, with_ties = FALSE) |>
-  pull(source)
-
-g_misread_guard <- tibble::tribble(
-  ~Common_misread, ~Why_it_is_risky, ~Safe_interpretation,
-  "High Person% means the test is automatically perfect.",
-  "Large signal does not guarantee fit for pass/fail use.",
-  "Check Phi-based design feasibility in D-study.",
-  "Task% is small, so task design can be ignored.",
-  "Small now can become large when prompt pool changes.",
-  "Re-estimate each administration cycle.",
-  "Rater% is nonzero, so add raters only.",
-  "Rater differences may partly reflect rubric ambiguity.",
-  "Combine rater increase with calibration/rubric refinement.",
-  "Residual% is unavoidable noise.",
-  "Part of residual is operationally reducible.",
-  "Audit administration conditions and scoring process."
-)
-
-g_misread_guard |>
-  gt() |>
-  tab_header(
-    title = "Interpretation safeguards for G-study",
-    subtitle = paste0("Largest non-person component in this run: ", g_top_error)
-  ) |>
-  cols_label(
-    Common_misread = "Common pitfall",
-    Why_it_is_risky = "Risk",
-    Safe_interpretation = "Safer interpretation"
-  )
-```
-
-```{r}
-#| label: narrative-interpretation
-# G研究の結果を自然言語で簡潔にサマリー
-msgs <- g_study_results |>
-  mutate(msg = dplyr::case_when(
-    source == "Person" ~ glue::glue("受験者（Person）の分散は {round(percent,1)}%：個人差がこの割合を占めます。"),
-    source == "Task" ~ glue::glue("タスク（Task）の分散は {round(percent,1)}%：課題間の難易度差・条件差です。"),
-    source == "Rater" ~ glue::glue("評価者（Rater）の分散は {round(percent,1)}%：厳しさ/甘さの違いです。"),
-    source == "Person:Task" ~ glue::glue("交互作用（Person×Task）は {round(percent,1)}%：人による得手不得手（相対誤差）です。"),
-    source == "Residual" ~ glue::glue("残差（Residual）は {round(percent,1)}%：未観測要因・偶然誤差です。"),
-    TRUE ~ NA_character_
-  )) |>
-  dplyr::pull(msg)
-
-cat(paste0("- ", msgs, collapse = "\n"))
-```
-
-### ケース別テンプレート（G研究の結果から何をするか）
-
-```{r}
-#| label: g-study-case-playbook
-
-g_case_playbook <- tibble::tribble(
-  ~Dominant_error_source, ~What_it_means, ~First_action, ~What_to_check_next,
-  "Task", "課題難易度の差が大きい", "課題仕様をそろえる・課題数を増やす", "課題追加でPhiが十分上がるか",
-  "Rater", "評価者の厳しさ差が大きい", "評価者訓練・評価者数の見直し", "評価者追加でPhiが安定するか",
-  "Person:Task", "受験者ごとの課題相性が強い", "課題数を増やして相性誤差を平均化", "Gの改善幅が十分か",
-  "Residual", "未観測誤差が大きい", "ルーブリック明確化・実施条件統制", "再測定時にResidualが減るか"
-)
-
-g_case_playbook |>
-  gt() |>
-  tab_header(
-    title = "G-study case playbook",
-    subtitle = "Template from dominant error source to first action"
-  ) |>
-  cols_label(
-    Dominant_error_source = "Dominant source",
-    What_it_means = "Interpretation",
-    First_action = "First action",
-    What_to_check_next = "Next check in D-study"
-  )
-```
-
-```{r}
-#| label: g-study-case-for-this-data
-
-dominant_error <- g_study_results |>
-  mutate(source = as.character(source)) |>
-  filter(source != "Person") |>
-  slice_max(percent, n = 1, with_ties = FALSE)
-
-case_for_this_data <- dominant_error |>
-  transmute(
-    Dominant_source = source,
-    Percent = percent
-  ) |>
-  left_join(
-    g_case_playbook,
-    by = c("Dominant_source" = "Dominant_error_source")
-  )
-
-case_for_this_data |>
-  gt() |>
-  tab_header(
-    title = "Case diagnosis for this dataset",
-    subtitle = "Dominant error source and recommended first move"
-  ) |>
-  fmt_number(columns = Percent, decimals = 1) |>
-  cols_label(
-    Dominant_source = "Dominant source",
-    Percent = "Percent (%)",
-    What_it_means = "Interpretation",
-    First_action = "First action",
-    What_to_check_next = "Next check"
-  )
-```
-
-この出力を見れば、次に `D研究` でどの設計パラメータ（タスク数か評価者数か）を優先して検証するかを迷わず決められます。
-
-::: {.callout-warning}
-### 推定と信頼区間（実務メモ）
-- 推定法: 分散成分は REML を用いるのが一般的（バイアスが小さい）。
-- 信頼区間: `confint()` のプロファイル尤度、もしくはパラメトリック・ブートストラップ（`performance::check_model()` 等と併用）。
-- 負の分散（境界推定）: 小標本・弱い成分で発生し得る。0にトリミングされる実装も多く、解釈は控えめに。
-- アンバランス: 欠測や不均等は LMM で自然に扱えるが、式の交差/ネストは実データ構造に厳密に合わせること。
-:::
-
-```{r}
-#| label: g-study-confint-profile
-# 参考: 分散成分の信頼区間（プロファイル）
-confint(g_model, method = "profile")
 ```
 
 ```{r}
 #| label: mapping-table
-# 一般化可能性理論（PDF記法）と lmer の対応表（本章の設計）
+
 mapping_tbl <- tibble::tibble(
   PDF_notation = c("p (Person)", "t (Task)", "r:t (Rater nested in Task)", "p×t (interaction)", "e (Residual)"),
   lmer_term    = c("(1|Person)", "(1|Task)", "(1|Rater)", "(1|Person:Task)", "Residual"),
@@ -1007,182 +1260,104 @@ mapping_tbl <- tibble::tibble(
 
 mapping_tbl |>
   gt() |>
-  tab_header(title = "Mapping: G-theory vs lmer/gtheory", subtitle = "Variance-component equivalence") |>
+  tab_header(title = "一般化可能性理論 vs lme4 vs gtheory の記法対応", subtitle = "分散成分の等価性") |>
   fmt_number(columns = variance, decimals = 4) |>
   cols_label(
-    PDF_notation = "G-theory (PDF)",
-    lmer_term = "lmer term",
-    gtheory_term = "gtheory notation",
-    variance = "Estimated variance"
+    PDF_notation = "一般化可能性理論の記法",
+    lmer_term = "lme4の項",
+    gtheory_term = "gtheory の記法",
+    variance = "推定分散"
   )
 ```
 
-## 分散成分の可視化
+::: {.callout-note}
+### 推定と信頼区間に関する実務的注意
+- **推定法**: 分散成分は REML（制限付き最尤法）で推定するのが標準的であり、バイアスが小さい。
+- **信頼区間**: `confint()` のプロファイル尤度法やパラメトリック・ブートストラップで算出可能。
+- **負の分散推定値**: 小標本や弱い成分で発生しうる。多くの実装では0にトリミングされる。
+- **アンバランスデータ**: 欠測や不均等な配分は LMM で自然に扱えるが、交差/ネストの指定は実データの構造に厳密に合わせること。
+:::
 
 ```{r}
-#| label: visualize-variance-components
-#| fig-cap: "Variance components (lme4)"
-#| fig-width: 8
-#| fig-height: 6
+#| label: g-study-confint-profile
 
-ggplot(g_study_results, aes(x = reorder(source, -percent), y = percent, fill = source)) +
-  geom_col(alpha = 0.8) +
-  geom_text(aes(label = paste0(round(percent, 1), "%")), 
-            vjust = -0.5, size = 4) +
-  scale_fill_viridis_d() +
-  labs(
-    title = "G-study: variance decomposition (lme4)",
-    subtitle = "Estimated via linear mixed-effects model",
-    x = "Source",
-    y = "Percent of total variance (%)"
-  ) +
-  theme_bw() +
-  theme(legend.position = "none")
+confint(g_model, method = "profile")
 ```
 
-# D研究（Decision Study）with lme4
+# 二要因ネスト設計のD研究
 
-::: {.callout-tip}
-### 最初にここだけ（D研究）
-1. `reliability-functions` で `G` と `Φ` の計算式を確認する。  
-2. `d-study-simulation` で `Task × Rater` の設計グリッドを作る。  
-3. ヒートマップ（plotly）で目標値を満たす最小設計を選ぶ。
-:::
+D研究（Decision Study）は、G研究で得た分散成分を使って「課題数や評価者数を変えたら信頼性がどう変わるか」を予測する分析である。G研究が「現状の診断」だとすれば、D研究は「将来の設計の処方」に相当する [@ShavelsonWebb1991; @Briesch2014]。
 
-::: {.callout-note}
-### 係数の定義（PDFと整合）
-- `G` は順位づけの精度、`Φ` は合否判定の精度です。  
-- どちらも「個人差 /（個人差 + 誤差）」の形ですが、`Φ` は誤差に含める範囲が広いため、通常 `G` より低くなります。  
-- 本章の関数 `calculate_g_coefficient` / `calculate_phi_coefficient` は、PDFの一般式を本章のネスト設計（p × t × r:t）に合わせて実装しています。  
-- 詳細式はこの後の「式の導出（ネスト設計 p × t × r:t）」に集約しています。
-:::
+## G係数・Phi係数の計算関数
 
-::: {.callout-tip}
-### なぜ Φ は G より低くなりやすいのか（直感）
-- `G` は「順位づけが安定しているか」を見るので、主に相対誤差（受験者の並びを崩す誤差）を重視します。
-- `Φ` は「到達基準を正確に判定できるか」を見るので、課題の難易度差や評価者の厳しさ差も誤差として含めます。
-- その結果、同じデータでも `Φ` の分母は大きくなりやすく、値は `G` より低く出ることが一般的です。
-- したがって合否判断を運用する場面では、`G` だけで安心せず、`Φ` を主指標に設計を決める必要があります。
-:::
-
-## 信頼性係数の計算関数
+セクション3で手計算した G/Phi の式を、二要因ネスト設計（p × t × r:t）に一般化する。
 
 ::: {.callout-note}
-### この節で答える3つの問い
-1. 目標係数（例: `Φ >= .80`）を満たす最小設計は何か。  
-2. `+1 task` と `+1 rater` のどちらが効率的か。  
-3. 予算と運用負荷を入れても成立する設計は何か。
+### 式の導出（ネスト設計 p × t × r:t）
+一要因交差設計（セクション3）との比較:
+
+| | 一要因交差（p × i） | 二要因ネスト（p × t × r:t） |
+|---|---|---|
+| 相対誤差 $\sigma^2_\delta$ | $\sigma^2_{pi,e} / n_i$ | $\sigma^2_{pt} / n_t + \sigma^2_e / (n_t n_{r:t})$ |
+| 絶対誤差 $\sigma^2_\Delta$ | $\sigma^2_i / n_i + \sigma^2_{pi,e} / n_i$ | $\sigma^2_t / n_t + \sigma^2_{r:t} / (n_t n_{r:t}) + \sigma^2_{pt} / n_t + \sigma^2_e / (n_t n_{r:t})$ |
+
+二要因ネスト設計では、相対誤差に Person×Task 交互作用が含まれるため、タスク数を増やすと G が改善しやすい。一方、絶対誤差にはさらに Task と Rater の主効果も含まれるため、Phi の改善にはタスクと評価者の両方を増やす必要がある場合が多い。
 :::
 
 ```{r}
 #| label: reliability-functions
 
-# G係数（相対的決定）の計算
 calculate_g_coefficient <- function(var_components, n_tasks, n_raters) {
   var_p <- var_components$var[var_components$source == "Person"]
   var_t <- var_components$var[var_components$source == "Task"]
   var_r <- var_components$var[var_components$source == "Rater"]
   var_pt <- var_components$var[var_components$source == "Person:Task"]
   var_e <- var_components$var[var_components$source == "Residual"]
-  
-  # 相対的誤差分散（交互作用のみ）
+
   var_rel <- var_pt / n_tasks + var_e / (n_tasks * n_raters)
-  
-  # G係数
   g_coef <- var_p / (var_p + var_rel)
-  
   return(g_coef)
 }
 
-# φ係数（絶対的決定）の計算
 calculate_phi_coefficient <- function(var_components, n_tasks, n_raters) {
   var_p <- var_components$var[var_components$source == "Person"]
   var_t <- var_components$var[var_components$source == "Task"]
   var_r <- var_components$var[var_components$source == "Rater"]
   var_pt <- var_components$var[var_components$source == "Person:Task"]
   var_e <- var_components$var[var_components$source == "Residual"]
-  
-  # 絶対的誤差分散（すべての誤差源）
-  var_abs <- var_t / n_tasks + var_r / (n_tasks * n_raters) + 
+
+  var_abs <- var_t / n_tasks + var_r / (n_tasks * n_raters) +
              var_pt / n_tasks + var_e / (n_tasks * n_raters)
-  
-  # φ係数
   phi_coef <- var_p / (var_p + var_abs)
-  
   return(phi_coef)
 }
 ```
 
-::: {.callout-note}
-### 式の導出（ネスト設計 p × t × r:t）
-- 相対誤差分散（順位づけ）: $\sigma^2_\delta = \sigma^2_{p\times t}/n_t + \sigma^2_e/(n_t n_{r{:}t})$
-- 絶対誤差分散（水準）: $\sigma^2_\Delta = \sigma^2_t/n_t + \sigma^2_{r{:}t}/(n_t n_{r{:}t}) + \sigma^2_{p\times t}/n_t + \sigma^2_e/(n_t n_{r{:}t})$
-- 係数: $G = \sigma^2_p/(\sigma^2_p+\sigma^2_\delta)$, $\Phi = \sigma^2_p/(\sigma^2_p+\sigma^2_\Delta)$
-ここで $n_t$ はタスク数、$n_{r{:}t}$ は各タスク内の評価者数。上式は PDF の一般式を、本章のネスト設計に特殊化したものです。
-:::
-
-```{r}
-#| label: lme4-gtheory-parallel-d-study
-parallel_terms <- tibble::tribble(
-  ~Step, ~lme4_workflow, ~gtheory_workflow,
-  "Variance estimation (G-study)", "lmer(...) + VarCorr()", "gstudy(...)",
-  "Relative coefficient", "calculate_g_coefficient(...)", "dstudy(...) -> g coefficient",
-  "Absolute coefficient", "calculate_phi_coefficient(...)", "dstudy(...) -> phi/dependability",
-  "Design optimization", "Grid simulation + filtering", "D-study table + filtering"
-)
-
-parallel_terms |>
-  gt() |>
-  tab_header(
-    title = "Parallel workflow: lme4 and gtheory",
-    subtitle = "Same logic with different interfaces"
-  ) |>
-  cols_label(
-    Step = "Analysis step",
-    lme4_workflow = "lme4 in this chapter",
-    gtheory_workflow = "gtheory equivalent"
-  )
-```
-
 ## D研究シミュレーション
+
+Task数を1〜5、Rater数を1〜10まで変動させ、各組み合わせでの G と Phi を算出する。
 
 ```{r}
 #| label: d-study-simulation
 
-# シミュレーション実行
 d_study_simulation <- function(var_components, max_tasks = 5, max_raters = 10) {
   results <- tibble()
-  
   for (n_tasks in 1:max_tasks) {
     for (n_raters in 1:max_raters) {
       g_coef <- calculate_g_coefficient(var_components, n_tasks, n_raters)
       phi_coef <- calculate_phi_coefficient(var_components, n_tasks, n_raters)
-      
-      results <- bind_rows(
-        results,
-        tibble(
-          TaskCount = n_tasks,
-          RaterCount = n_raters,
-          Generalizability = g_coef,
-          Dependability = phi_coef
-        )
-      )
+      results <- bind_rows(results, tibble(
+        TaskCount = n_tasks, RaterCount = n_raters,
+        Generalizability = g_coef, Dependability = phi_coef))
     }
   }
-  
   results <- results |>
-    mutate(
-      TaskCount = factor(TaskCount),
-      RaterCount = factor(RaterCount)
-    )
-  
+    mutate(TaskCount = factor(TaskCount), RaterCount = factor(RaterCount))
   return(results)
 }
 
-# シミュレーション実行
 d_results <- d_study_simulation(g_study_results, max_tasks = 5, max_raters = 10)
 
-# 後続で扱いやすいよう数値型も作成
 d_results_numeric <- d_results |>
   mutate(
     TaskCount = as.integer(as.character(TaskCount)),
@@ -1192,7 +1367,7 @@ d_results_numeric <- d_results |>
 
 ```{r}
 #| label: min-tasks-threshold
-# 目標値（例: 0.8）を満たす最小タスク数を、評価者数ごとに算出
+
 target <- 0.8
 
 safe_min_or_na <- function(x) {
@@ -1204,62 +1379,21 @@ minG <- d_results |>
   group_by(RaterCount) |>
   summarise(
     Min_Tasks_for_G = safe_min_or_na(as.numeric(as.character(TaskCount))[Generalizability >= target]),
-    .groups = "drop"
-  )
+    .groups = "drop")
 minPhi <- d_results |>
   group_by(RaterCount) |>
   summarise(
     Min_Tasks_for_Phi = safe_min_or_na(as.numeric(as.character(TaskCount))[Dependability >= target]),
-    .groups = "drop"
-  )
+    .groups = "drop")
 
-threshold_tbl <- left_join(minG, minPhi, by = "RaterCount") |>
+left_join(minG, minPhi, by = "RaterCount") |>
   gt() |>
-  tab_header(title = glue::glue("最小タスク数（目標値 {target} を達成)"), subtitle = "評価者数ごとの閾値") |>
-  sub_missing(missing_text = "Not reached") |>
-  cols_label(RaterCount = "Raters", Min_Tasks_for_G = "Tasks for G≥target", Min_Tasks_for_Phi = "Tasks for Φ≥target")
-
-threshold_tbl
+  tab_header(title = glue::glue("目標値 {target} を達成する最小タスク数"), subtitle = "評価者数ごと") |>
+  sub_missing(missing_text = "達成不可") |>
+  cols_label(RaterCount = "評価者数", Min_Tasks_for_G = "G ≥ 目標", Min_Tasks_for_Phi = "Φ ≥ 目標")
 ```
 
-::: {.callout-tip}
-### D研究の読み方（30秒→3分→10分）
-- 30秒: 目標値（例: `Φ >= .80`）を先に固定する。  
-- 3分: 目標を満たす `Task × Rater` の候補を列挙し、最小コスト案を選ぶ。  
-- 10分: 代替案（+1タスク or +1評価者）を比較し、運用可能性で最終決定する。
-:::
-
-```{r}
-#| label: d-study-decision-checklist
-
-d_decision_checklist <- tibble::tribble(
-  ~Checkpoint, ~Why_it_matters, ~Quick_check,
-  "Is the decision purpose fixed? (ranking vs pass/fail)",
-  "Primary metric changes (G vs Phi).",
-  "Write purpose at top of the section.",
-  "Is a minimum threshold fixed? (e.g., Phi >= .80)",
-  "Without threshold, design choice drifts.",
-  "Set one numeric target before filtering.",
-  "Are infeasible designs removed first?",
-  "Low-cost but under-threshold designs are misleading.",
-  "Filter by threshold, then sort by cost.",
-  "Will you re-estimate with next cycle data?",
-  "Design optimality is data-dependent.",
-  "Schedule periodic G/D re-estimation."
-)
-
-d_decision_checklist |>
-  gt() |>
-  tab_header(
-    title = "D-study decision checklist",
-    subtitle = "Check before selecting a final design"
-  ) |>
-  cols_label(
-    Checkpoint = "Checkpoint",
-    Why_it_matters = "Why it matters",
-    Quick_check = "Quick check"
-  )
-```
+## 設計候補の絞り込み
 
 ```{r}
 #| label: d-study-shortlist
@@ -1273,9 +1407,9 @@ d_shortlist <- d_results_numeric |>
     Meets_Phi = Dependability >= target_phi,
     CostIndex = TaskCount * RaterCount,
     UseCase = dplyr::case_when(
-      Meets_Phi ~ "Pass/Fail and certification",
-      Meets_G ~ "Ranking and placement",
-      TRUE ~ "Not sufficient"
+      Meets_Phi ~ "合否判定・資格認定に使用可能",
+      Meets_G ~ "順位づけ・プレースメントに使用可能",
+      TRUE ~ "不十分"
     )
   ) |>
   filter(Meets_G | Meets_Phi) |>
@@ -1285,51 +1419,20 @@ d_shortlist <- d_results_numeric |>
 d_shortlist |>
   gt() |>
   tab_header(
-    title = "D-study design shortlist",
-    subtitle = "Feasible designs under target G/Phi"
+    title = "D研究: 設計候補ショートリスト",
+    subtitle = glue("G ≥ {target_g} または Φ ≥ {target_phi} を満たす設計")
   ) |>
   fmt_number(columns = c(Generalizability, Dependability), decimals = 3) |>
   cols_label(
-    TaskCount = "Tasks",
-    RaterCount = "Raters",
-    Generalizability = "G",
-    Dependability = "Phi",
-    CostIndex = "Cost index (Tasks×Raters)",
-    UseCase = "Primary use case"
+    TaskCount = "タスク数", RaterCount = "評価者数",
+    Generalizability = "G", Dependability = "Φ",
+    CostIndex = "コスト指数", UseCase = "主な用途"
   )
 ```
 
-```{r}
-#| label: d-study-misread-guard
+## +1タスク vs +1評価者の比較
 
-d_misread_guard <- tibble::tribble(
-  ~Common_misread, ~Why_it_is_risky, ~Safe_interpretation,
-  "Higher G always means better for all purposes.",
-  "Pass/fail decisions depend on Phi, not G alone.",
-  "Use Phi as primary for cut-score decisions.",
-  "Minimum tasks can be read without raters context.",
-  "Task and rater effects are coupled in error reduction.",
-  "Read Task × Rater combinations jointly.",
-  "One-step gain (+1 task or +1 rater) generalizes everywhere.",
-  "Marginal gains change by current design point.",
-  "Re-check gains at your actual operating point.",
-  "Design selected once can be reused indefinitely.",
-  "Population/prompt pool shifts can change variance structure.",
-  "Treat D-study output as cycle-specific guidance."
-)
-
-d_misread_guard |>
-  gt() |>
-  tab_header(
-    title = "Interpretation safeguards for D-study",
-    subtitle = "Protect decision quality under operational constraints"
-  ) |>
-  cols_label(
-    Common_misread = "Common pitfall",
-    Why_it_is_risky = "Risk",
-    Safe_interpretation = "Safer interpretation"
-  )
-```
+限られた予算でどちらを優先すべきかを定量的に判断する。
 
 ```{r}
 #| label: one-step-design-comparison
@@ -1343,40 +1446,64 @@ current_raters_per_task <- Brennan.3.2 |>
 
 one_step_design <- tibble::tribble(
   ~Scenario, ~Tasks, ~Raters,
-  "Current design", current_tasks, current_raters_per_task,
-  "+1 task", current_tasks + 1L, current_raters_per_task,
-  "+1 rater", current_tasks, current_raters_per_task + 1L,
-  "+1 task and +1 rater", current_tasks + 1L, current_raters_per_task + 1L
+  "現行設計", current_tasks, current_raters_per_task,
+  "+1 タスク", current_tasks + 1L, current_raters_per_task,
+  "+1 評価者", current_tasks, current_raters_per_task + 1L,
+  "+1 タスク & +1 評価者", current_tasks + 1L, current_raters_per_task + 1L
 ) |>
   mutate(
     G = purrr::map2_dbl(Tasks, Raters, ~calculate_g_coefficient(g_study_results, .x, .y)),
     Phi = purrr::map2_dbl(Tasks, Raters, ~calculate_phi_coefficient(g_study_results, .x, .y))
   )
 
-base_g <- one_step_design$G[one_step_design$Scenario == "Current design"]
-base_phi <- one_step_design$Phi[one_step_design$Scenario == "Current design"]
+base_g <- one_step_design$G[one_step_design$Scenario == "現行設計"]
+base_phi <- one_step_design$Phi[one_step_design$Scenario == "現行設計"]
 
 one_step_design <- one_step_design |>
-  mutate(
-    Delta_G = G - base_g,
-    Delta_Phi = Phi - base_phi
-  )
+  mutate(Delta_G = G - base_g, Delta_Phi = Phi - base_phi)
 
 one_step_design |>
   gt() |>
   tab_header(
-    title = "One-step design comparison",
-    subtitle = "Which single change gives larger reliability gain?"
+    title = "+1ステップの設計比較",
+    subtitle = "どの1手が最も信頼性を改善するか？"
   ) |>
   fmt_number(columns = c(G, Phi, Delta_G, Delta_Phi), decimals = 3) |>
   cols_label(
-    Scenario = "Scenario",
-    Tasks = "Tasks",
-    Raters = "Raters per task",
-    G = "G",
-    Phi = "Phi",
-    Delta_G = "ΔG vs current",
-    Delta_Phi = "ΔPhi vs current"
+    Scenario = "シナリオ", Tasks = "タスク数", Raters = "評価者数/課題",
+    G = "G", Phi = "Φ", Delta_G = "ΔG", Delta_Phi = "ΔΦ"
+  )
+```
+
+```{r}
+#| label: one-step-design-comparison-plotly
+#| fig-cap: "+1ステップの設計比較（インタラクティブ）"
+
+one_step_long <- one_step_design |>
+  pivot_longer(cols = c(G, Phi), names_to = "Coefficient", values_to = "Value") |>
+  mutate(Coefficient = ifelse(Coefficient == "G", "G coefficient", "Phi coefficient"))
+
+plotly::plot_ly(
+  data = one_step_long,
+  x = ~Scenario, y = ~Value, color = ~Coefficient,
+  type = "bar",
+  colors = c("G coefficient" = "#1f77b4", "Phi coefficient" = "#d62728"),
+  text = ~round(Value, 3),
+  textposition = "outside",
+  hovertext = ~paste0("Scenario: ", Scenario, "<br>", Coefficient, ": ", round(Value, 3),
+                       "<br>Tasks: ", Tasks, ", Raters: ", Raters),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "+1ステップの設計比較: どの1手が最も効率的か？",
+    xaxis = list(title = "", categoryorder = "array",
+                 categoryarray = c("現行設計", "+1 タスク", "+1 評価者", "+1 タスク & +1 評価者")),
+    yaxis = list(title = "Reliability coefficient", range = c(0, 1.05)),
+    barmode = "group",
+    shapes = list(
+      list(type = "line", x0 = -0.5, x1 = 3.5, y0 = 0.8, y1 = 0.8,
+           line = list(color = "red", dash = "dash", width = 1))
+    )
   )
 ```
 
@@ -1384,208 +1511,234 @@ one_step_design |>
 #| label: one-step-design-recommendation
 
 best_for_g <- one_step_design |>
-  filter(Scenario != "Current design") |>
+  filter(Scenario != "現行設計") |>
   slice_max(Delta_G, n = 1, with_ties = FALSE)
 
 best_for_phi <- one_step_design |>
-  filter(Scenario != "Current design") |>
+  filter(Scenario != "現行設計") |>
   slice_max(Delta_Phi, n = 1, with_ties = FALSE)
 
-cat(
-  paste0(
-    "- Relative decision（G）を優先するなら、最も効率的な1手は **", best_for_g$Scenario, "** です（ΔG = ",
-    round(best_for_g$Delta_G, 3), "）。\n",
-    "- Absolute decision（Phi）を優先するなら、最も効率的な1手は **", best_for_phi$Scenario, "** です（ΔPhi = ",
-    round(best_for_phi$Delta_Phi, 3), "）。"
-  )
-)
-```
-
-```{r}
-#| label: d-study-table
-# 代表的な組み合わせの結果を表示用データ作成
-d_table_data <- d_results |>
-  filter(
-    TaskCount %in% c(1, 3, 5),
-    RaterCount %in% c(2, 5, 10)) |>
-  pivot_wider(
-    names_from = RaterCount,
-    values_from = c(Generalizability, Dependability),
-    names_sep = "_")
-
-# gtテーブルの作成
-d_table <- d_table_data |>
-  gt() |>
-  tab_header(
-    title = "D-study: reliability simulation (lme4)",
-    subtitle = "Effect of number of tasks × raters") |>
-  fmt_number(
-    columns = -TaskCount,
-    decimals = 3) |>
-  cols_label(
-    TaskCount = "Number of tasks",
-    Generalizability_2 = "2 raters",
-    Generalizability_5 = "5 raters",
-    Generalizability_10 = "10 raters",
-    Dependability_2 = "2 raters",
-    Dependability_5 = "5 raters",
-    Dependability_10 = "10 raters") |>
-  tab_spanner(
-    label = "G-coefficient (relative)",
-    columns = starts_with("Generalizability")
-  ) |>
-  tab_spanner(
-    label = "Phi-coefficient (absolute)",
-    columns = starts_with("Dependability")
-  ) |>
-  tab_footnote(
-    footnote = "Green: ≥0.8 (recommended), Yellow: 0.7–0.8 (acceptable)",
-    locations = cells_column_labels(columns = 2)
-  )
-
-# 条件付きスタイリングを各列に個別に適用
-reliability_cols <- names(d_table_data)[-1]  # TaskCount以外の全列
-
-for (col in reliability_cols) {
-  # 0.8以上の値に緑色を適用
-  rows_high <- which(d_table_data[[col]] >= 0.8)
-  if (length(rows_high) > 0) {
-    d_table <- d_table |>
-      tab_style(
-        style = cell_fill(color = "#e6ffe6"),
-        locations = cells_body(
-          columns = !!col,
-          rows = rows_high
-        )
-      )
-  }
-  
-  # 0.7-0.8の値に黄色を適用
-  rows_mid <- which(d_table_data[[col]] >= 0.7 & d_table_data[[col]] < 0.8)
-  if (length(rows_mid) > 0) {
-    d_table <- d_table |>
-      tab_style(
-        style = cell_fill(color = "#fff3cd"),
-        locations = cells_body(
-          columns = !!col,
-          rows = rows_mid
-        )
-      )
-  }
-}
-
-# テーブルを表示
-d_table
+cat(paste0(
+  "- 相対的決定（G）を優先するなら、最も効率的な1手は **", best_for_g$Scenario, "** です（ΔG = ",
+  round(best_for_g$Delta_G, 3), "）。\n",
+  "- 絶対的決定（Phi）を優先するなら、最も効率的な1手は **", best_for_phi$Scenario, "** です（ΔPhi = ",
+  round(best_for_phi$Delta_Phi, 3), "）。"
+))
 ```
 
 ## 信頼性係数の可視化
 
 ```{r}
+#| label: d-study-table
+
+d_table_data <- d_results |>
+  filter(TaskCount %in% c(1, 3, 5), RaterCount %in% c(2, 5, 10)) |>
+  pivot_wider(names_from = RaterCount, values_from = c(Generalizability, Dependability), names_sep = "_")
+
+d_table <- d_table_data |>
+  gt() |>
+  tab_header(
+    title = "D研究: Task × Rater の組み合わせと信頼性",
+    subtitle = "代表的な設計の G/Φ 値") |>
+  fmt_number(columns = -TaskCount, decimals = 3) |>
+  cols_label(
+    TaskCount = "タスク数",
+    Generalizability_2 = "2名", Generalizability_5 = "5名", Generalizability_10 = "10名",
+    Dependability_2 = "2名", Dependability_5 = "5名", Dependability_10 = "10名") |>
+  tab_spanner(label = "G係数（相対）", columns = starts_with("Generalizability")) |>
+  tab_spanner(label = "Φ係数（絶対）", columns = starts_with("Dependability"))
+
+reliability_cols <- names(d_table_data)[-1]
+for (col in reliability_cols) {
+  rows_high <- which(d_table_data[[col]] >= 0.8)
+  if (length(rows_high) > 0) {
+    d_table <- d_table |>
+      tab_style(style = cell_fill(color = "#e6ffe6"),
+                locations = cells_body(columns = !!col, rows = rows_high))
+  }
+  rows_mid <- which(d_table_data[[col]] >= 0.7 & d_table_data[[col]] < 0.8)
+  if (length(rows_mid) > 0) {
+    d_table <- d_table |>
+      tab_style(style = cell_fill(color = "#fff3cd"),
+                locations = cells_body(columns = !!col, rows = rows_mid))
+  }
+}
+
+d_table
+```
+
+```{r}
 #| label: plot-reliability-coefficients
-#| fig-cap: "Change in reliability coefficients"
+#| fig-cap: "信頼性係数の変化（D研究）"
 #| fig-width: 10
 #| fig-height: 6
 
 p1 <- ggplot(d_results,
-       aes(x = TaskCount, y = Generalizability,
-           group = RaterCount, color = RaterCount)) +
+       aes(x = TaskCount, y = Generalizability, group = RaterCount, color = RaterCount)) +
   geom_line(size = 1.2) +
   geom_point(size = 3) +
   geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", alpha = 0.5) +
   geom_hline(yintercept = 0.7, linetype = "dotted", color = "orange", alpha = 0.5) +
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
-  scale_color_viridis_d(name = "Number of raters") +
-  labs(
-    title = "G-coefficient (relative)",
-    x = "Number of tasks",
-    y = "G coefficient"
-  ) +
+  scale_color_viridis_d(name = "評価者数") +
+  labs(title = "G coefficient (relative)", x = "Number of tasks", y = "G coefficient") +
   theme_bw()
 
 p2 <- ggplot(d_results,
-       aes(x = TaskCount, y = Dependability,
-           group = RaterCount, color = RaterCount)) +
+       aes(x = TaskCount, y = Dependability, group = RaterCount, color = RaterCount)) +
   geom_line(size = 1.2) +
   geom_point(size = 3) +
   geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", alpha = 0.5) +
   geom_hline(yintercept = 0.7, linetype = "dotted", color = "orange", alpha = 0.5) +
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
-  scale_color_viridis_d(name = "Number of raters") +
-  labs(
-    title = "Phi-coefficient (absolute)",
-    x = "Number of tasks",
-    y = "Phi coefficient"
-  ) +
+  scale_color_viridis_d(name = "評価者数") +
+  labs(title = "Phi coefficient (absolute)", x = "Number of tasks", y = "Phi coefficient") +
   theme_bw()
 
 grid.arrange(p1, p2, ncol = 2)
 ```
 
-## D研究のインタラクティブ可視化（plotly）
+```{r}
+#| label: plot-reliability-coefficients-plotly
+#| fig-cap: "信頼性係数の変化（D研究, インタラクティブ）"
+
+d_results_long <- d_results_numeric |>
+  pivot_longer(cols = c(Generalizability, Dependability),
+               names_to = "Coefficient", values_to = "Value") |>
+  mutate(Coefficient = ifelse(Coefficient == "Generalizability", "G coefficient", "Phi coefficient"))
+
+plotly::plot_ly(
+  data = d_results_long,
+  x = ~TaskCount, y = ~Value,
+  color = ~factor(RaterCount),
+  linetype = ~Coefficient,
+  type = "scatter", mode = "lines+markers",
+  colors = viridisLite::viridis(10),
+  hovertext = ~paste0("Tasks: ", TaskCount, "<br>Raters: ", RaterCount,
+                       "<br>", Coefficient, ": ", round(Value, 3)),
+  hoverinfo = "text",
+  marker = list(size = 6)
+) |>
+  plotly::layout(
+    title = "D研究: タスク数 × 評価者数による信頼性の変化",
+    xaxis = list(title = "Number of tasks", dtick = 1),
+    yaxis = list(title = "Reliability coefficient", range = c(0, 1)),
+    legend = list(title = list(text = "Raters / Coefficient")),
+    shapes = list(
+      list(type = "line", x0 = 0.5, x1 = 5.5, y0 = 0.8, y1 = 0.8,
+           line = list(color = "red", dash = "dash", width = 1)),
+      list(type = "line", x0 = 0.5, x1 = 5.5, y0 = 0.7, y1 = 0.7,
+           line = list(color = "orange", dash = "dot", width = 1))
+    )
+  )
+```
 
 ```{r}
 #| label: d-study-plotly-heatmap
 #| fig-cap: "Interactive D-study heatmaps"
 
 plot_g <- plotly::plot_ly(
-  data = d_results_numeric,
-  x = ~TaskCount,
-  y = ~RaterCount,
-  z = ~Generalizability,
-  type = "heatmap",
-  colors = viridisLite::viridis(100),
-  hovertemplate = paste(
-    "Tasks: %{x}",
-    "<br>Raters: %{y}",
-    "<br>G: %{z:.3f}<extra></extra>"
-  )
+  data = d_results_numeric, x = ~TaskCount, y = ~RaterCount, z = ~Generalizability,
+  type = "heatmap", colors = viridisLite::viridis(100),
+  hovertemplate = paste("Tasks: %{x}<br>Raters: %{y}<br>G: %{z:.3f}<extra></extra>")
 ) |>
-  plotly::layout(
-    title = "G coefficient",
+  plotly::layout(title = "G coefficient",
     xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Number of raters", dtick = 1)
-  )
+    yaxis = list(title = "Number of raters", dtick = 1))
 
 plot_phi <- plotly::plot_ly(
-  data = d_results_numeric,
-  x = ~TaskCount,
-  y = ~RaterCount,
-  z = ~Dependability,
-  type = "heatmap",
-  colors = viridisLite::cividis(100),
-  hovertemplate = paste(
-    "Tasks: %{x}",
-    "<br>Raters: %{y}",
-    "<br>Phi: %{z:.3f}<extra></extra>"
-  )
+  data = d_results_numeric, x = ~TaskCount, y = ~RaterCount, z = ~Dependability,
+  type = "heatmap", colors = viridisLite::cividis(100),
+  hovertemplate = paste("Tasks: %{x}<br>Raters: %{y}<br>Phi: %{z:.3f}<extra></extra>")
 ) |>
-  plotly::layout(
-    title = "Phi coefficient",
+  plotly::layout(title = "Phi coefficient",
     xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Number of raters", dtick = 1)
-  )
+    yaxis = list(title = "Number of raters", dtick = 1))
 
 plotly::subplot(plot_g, plot_phi, nrows = 1, shareY = TRUE, titleX = TRUE, titleY = TRUE)
 ```
 
-::: {.callout-tip}
-### インタラクティブ図の使い方
-- 各セルにカーソルを当てると、`Tasks × Raters` ごとの `G/Φ` を直接確認できます。
-- `G` はクラス内順位づけ、`Φ` は到達基準判定（Pass/Fail）を想定して読みます。
-- スピーキング評価で合否判定を行う場合は、まず `Φ` ヒートマップで目標値（例: 0.75/0.80）を満たす最小設計を探します。
-:::
+## 英語スピーキング評価への適用
 
+英語スピーキング評価では、目的に応じて必要な係数が変わる。ここでは同じ D研究結果を使い、用途別の最小設計を機械的に抽出する [@Lee2005; @Schmidgall2017]。
 
+```{r}
+#| label: speaking-design-recommendation
+
+find_minimum_design <- function(results_tbl, metric, target) {
+  out <- results_tbl |>
+    mutate(TaskCount = as.integer(as.character(TaskCount)),
+           RaterCount = as.integer(as.character(RaterCount))) |>
+    filter(.data[[metric]] >= target) |>
+    arrange(TaskCount, RaterCount)
+  if (nrow(out) == 0) {
+    return(tibble(RecommendedTasks = NA_integer_, RecommendedRaters = NA_integer_, Achieved = NA_real_))
+  }
+  out |> slice(1) |> transmute(
+    RecommendedTasks = TaskCount, RecommendedRaters = RaterCount, Achieved = .data[[metric]])
+}
+
+speaking_scenarios <- tibble::tribble(
+  ~UseCase, ~Metric, ~Target,
+  "Classroom ranking (相対的決定)", "Generalizability", 0.75,
+  "Placement banding (相対的決定)", "Generalizability", 0.80,
+  "Course pass/fail (絶対的決定)", "Dependability", 0.75,
+  "Program certification (絶対的決定)", "Dependability", 0.80
+)
+
+speaking_design_tbl <- speaking_scenarios |>
+  rowwise() |>
+  mutate(rec = list(find_minimum_design(d_results, Metric, Target))) |>
+  tidyr::unnest(rec) |>
+  ungroup()
+
+speaking_design_tbl |>
+  gt() |>
+  tab_header(
+    title = "スピーキング評価: 用途別の推奨最小設計",
+    subtitle = "D研究結果に基づく設計選定"
+  ) |>
+  fmt_number(columns = c(Target, Achieved), decimals = 3) |>
+  cols_label(
+    UseCase = "用途", Metric = "主指標", Target = "目標値",
+    RecommendedTasks = "最小タスク数", RecommendedRaters = "最小評価者数",
+    Achieved = "達成値"
+  )
+```
+
+```{r}
+#| label: speaking-phi-feasible-plotly
+#| fig-cap: "合否判定用の設計空間（Φ ≥ 0.80）"
+
+phi_target <- 0.80
+phi_feasible <- d_results_numeric |>
+  filter(Dependability >= phi_target) |>
+  mutate(Design = paste0("T", TaskCount, " × R", RaterCount))
+
+plotly::plot_ly(
+  data = phi_feasible, x = ~TaskCount, y = ~RaterCount,
+  type = "scatter", mode = "markers+text",
+  text = ~Design, textposition = "top center",
+  color = ~Dependability, colors = viridisLite::viridis(100),
+  marker = list(size = 11),
+  hovertext = ~paste0("Design: ", Design, "<br>Phi: ", round(Dependability, 3),
+                       "<br>G: ", round(Generalizability, 3)),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = paste0("Φ ≥ ", phi_target, " を満たす設計（合否判定用）"),
+    xaxis = list(title = "Number of tasks", dtick = 1),
+    yaxis = list(title = "Number of raters", dtick = 1))
+```
 
 ## コスト効率分析
 
 ```{r}
 #| label: cost-efficiency-analysis
-#| fig-cap: "Optimal design from a cost-efficiency perspective"
+#| fig-cap: "評価者4名固定時の信頼性推移"
 #| fig-width: 10
 #| fig-height: 6
 
-# 評価者4名固定時の信頼性向上
 d_results |>
   filter(RaterCount == "4") |>
   mutate(TaskCount = as.numeric(as.character(TaskCount))) |>
@@ -1598,401 +1751,266 @@ d_results |>
   scale_y_continuous(limits = c(0.4, 1), breaks = seq(0.4, 1, 0.1)) +
   scale_x_continuous(breaks = 1:5) +
   scale_color_manual(values = c("G coefficient" = "blue", "Phi coefficient" = "red")) +
-  labs(
-    title = "Reliability with 4 raters (lme4)",
-    subtitle = "Diminishing returns as tasks increase",
-    x = "Number of tasks",
-    y = "Reliability coefficient",
-    color = "Coefficient"
-  ) +
+  labs(title = "評価者4名固定時の信頼性推移",
+       subtitle = "タスク数の増加に伴う収穫逓減",
+       x = "Number of tasks", y = "Reliability coefficient", color = "Coefficient") +
   theme_bw() +
-  annotate("text", x = 4.5, y = 0.82, label = "Target threshold", color = "red", size = 3.5)
+  annotate("text", x = 4.5, y = 0.82, label = "目標値", color = "red", size = 3.5)
 ```
 
-## 英語スピーキング評価への具体例
+```{r}
+#| label: cost-efficiency-analysis-plotly
+#| fig-cap: "評価者4名固定時の信頼性推移（インタラクティブ）"
 
-英語スピーキング評価では、目的に応じて必要な係数が変わります。ここでは、同じ `d_results` を使って「どの設計なら目的を満たせるか」を機械的に抽出します。
+cost_data <- d_results |>
+  filter(RaterCount == "4") |>
+  mutate(TaskCount = as.numeric(as.character(TaskCount)))
 
-::: {.callout-note}
-### 先行研究との接続
-- ETSのスピーキング研究では、D研究を使って「課題数と評価者数の組合せ」が検討されています。
-- 実務では、まず `Φ` の目標値（合否用途）を満たす最小設計を決め、そのうえで運用コストを最適化する流れが一般的です。
-:::
+plotly::plot_ly(data = cost_data, x = ~TaskCount) |>
+  plotly::add_trace(
+    y = ~Generalizability, name = "G coefficient",
+    type = "scatter", mode = "lines+markers",
+    line = list(color = "#1f77b4", width = 2.5),
+    marker = list(color = "#1f77b4", size = 8),
+    hovertext = ~paste0("Tasks: ", TaskCount, "<br>G: ", round(Generalizability, 3)),
+    hoverinfo = "text"
+  ) |>
+  plotly::add_trace(
+    y = ~Dependability, name = "Phi coefficient",
+    type = "scatter", mode = "lines+markers",
+    line = list(color = "#d62728", width = 2.5),
+    marker = list(color = "#d62728", size = 8),
+    hovertext = ~paste0("Tasks: ", TaskCount, "<br>Phi: ", round(Dependability, 3)),
+    hoverinfo = "text"
+  ) |>
+  plotly::layout(
+    title = "評価者4名固定時: タスク数の増加に伴う収穫逓減",
+    xaxis = list(title = "Number of tasks", dtick = 1),
+    yaxis = list(title = "Reliability coefficient", range = c(0.3, 1.0)),
+    shapes = list(
+      list(type = "line", x0 = 0.5, x1 = 5.5, y0 = 0.8, y1 = 0.8,
+           line = list(color = "red", dash = "dash", width = 1))
+    ),
+    annotations = list(
+      list(x = 4.8, y = 0.82, text = "目標値", showarrow = FALSE,
+           font = list(size = 12, color = "red"))
+    )
+  )
+```
+
+## コスト制約つき設計選定
+
+実際の運用では、「理想的な設計」ではなく「予算内で最善の設計」を選ぶ必要がある。ここでは、タスク1つの追加コストと評価者1名の追加コストを分けて設定し、予算制約下で最適な設計を選定する。
 
 ```{r}
-#| label: speaking-design-recommendation
+#| label: budget-constrained-selection
 
-find_minimum_design <- function(results_tbl, metric, target) {
-  out <- results_tbl |>
+select_design_under_budget <- function(d_data, budget_cap, cost_per_task = 3, cost_per_rater = 2,
+                                       purpose = c("pass_fail", "ranking")) {
+  purpose <- match.arg(purpose)
+  objective_col <- if (purpose == "pass_fail") "Dependability" else "Generalizability"
+  purpose_label <- if (purpose == "pass_fail") "合否判定 (Phi)" else "順位づけ (G)"
+
+  d_eval <- d_data |>
     mutate(
-      TaskCount = as.integer(as.character(TaskCount)),
-      RaterCount = as.integer(as.character(RaterCount))
+      TotalCost = TaskCount * cost_per_task + RaterCount * cost_per_rater,
+      Objective = .data[[objective_col]],
+      Purpose = purpose_label
     ) |>
-    filter(.data[[metric]] >= target) |>
-    arrange(TaskCount, RaterCount)
-  
-  if (nrow(out) == 0) {
-    return(tibble(
-      RecommendedTasks = NA_integer_,
-      RecommendedRaters = NA_integer_,
-      Achieved = NA_real_
-    ))
-  }
-  
-  out |>
-    slice(1) |>
-    transmute(
-      RecommendedTasks = TaskCount,
-      RecommendedRaters = RaterCount,
-      Achieved = .data[[metric]]
-    )
+    filter(TotalCost <= budget_cap) |>
+    arrange(desc(Objective), TotalCost, desc(Dependability), desc(Generalizability))
+
+  d_eval
 }
 
-speaking_scenarios <- tibble::tribble(
-  ~UseCase, ~Metric, ~Target,
-  "Classroom ranking (relative decision)", "Generalizability", 0.75,
-  "Placement banding (relative decision)", "Generalizability", 0.80,
-  "Course pass/fail (absolute decision)", "Dependability", 0.75,
-  "Program certification (absolute decision)", "Dependability", 0.80
-)
+budget_cap <- 20
+budget_choice <- select_design_under_budget(
+  d_results_numeric, budget_cap = budget_cap,
+  cost_per_task = 3, cost_per_rater = 2, purpose = "pass_fail")
 
-speaking_design_tbl <- speaking_scenarios |>
-  rowwise() |>
-  mutate(
-    rec = list(find_minimum_design(d_results, Metric, Target))
-  ) |>
-  tidyr::unnest(rec) |>
-  ungroup()
+budget_top <- budget_choice |>
+  slice_head(n = 10) |>
+  mutate(Design = paste0(TaskCount, "T × ", RaterCount, "R"))
 
-speaking_design_tbl |>
+budget_top |>
+  select(Design, TotalCost, Generalizability, Dependability) |>
   gt() |>
   tab_header(
-    title = "Speaking assessment: recommended minimum designs",
-    subtitle = "Designs selected from D-study results"
+    title = paste0("予算 ≤ ", budget_cap, " でのトップ設計"),
+    subtitle = "目的: Phi の最大化（合否判定）"
   ) |>
-  fmt_number(columns = c(Target, Achieved), decimals = 3) |>
-  cols_label(
-    UseCase = "Use case",
-    Metric = "Priority metric",
-    Target = "Target",
-    RecommendedTasks = "Min tasks",
-    RecommendedRaters = "Min raters",
-    Achieved = "Achieved coefficient"
-  )
+  fmt_number(columns = c(Generalizability, Dependability), decimals = 3) |>
+  cols_label(Design = "設計", TotalCost = "コスト合計", Generalizability = "G", Dependability = "Φ")
 ```
 
 ```{r}
-#| label: speaking-phi-feasible-plotly
-#| fig-cap: "Feasible designs for pass/fail speaking decisions"
+#| label: budget-constrained-plotly
 
-phi_target <- 0.80
-phi_feasible <- d_results_numeric |>
-  filter(Dependability >= phi_target) |>
-  mutate(
-    Design = paste0("T", TaskCount, " × R", RaterCount)
-  )
+budget_plot_data <- select_design_under_budget(
+  d_results_numeric, budget_cap = 20,
+  cost_per_task = 3, cost_per_rater = 2, purpose = "pass_fail"
+) |>
+  mutate(Design = paste0(TaskCount, "T × ", RaterCount, "R"), IsTop = row_number() <= 10)
 
 plotly::plot_ly(
-  data = phi_feasible,
-  x = ~TaskCount,
-  y = ~RaterCount,
-  type = "scatter",
-  mode = "markers+text",
+  data = budget_plot_data, x = ~TotalCost, y = ~Dependability,
+  type = "scatter", mode = "markers",
+  color = ~Generalizability, colors = viridisLite::viridis(100),
   text = ~Design,
-  textposition = "top center",
-  color = ~Dependability,
-  colors = viridisLite::viridis(100),
-  marker = list(size = 11),
-  hovertext = ~paste0(
-    "Design: ", Design,
-    "<br>Phi: ", round(Dependability, 3),
-    "<br>G: ", round(Generalizability, 3)
-  ),
-  hoverinfo = "text"
+  hovertext = ~paste0("Design: ", Design, "<br>Cost: ", TotalCost,
+                       "<br>Phi: ", round(Dependability, 3), "<br>G: ", round(Generalizability, 3)),
+  hoverinfo = "text", marker = list(size = 11)
 ) |>
   plotly::layout(
-    title = paste0("Designs meeting Phi >= ", phi_target, " (speaking pass/fail)"),
-    xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Number of raters", dtick = 1)
-  )
+    title = "予算制約下の設計空間（目的: Phi最大化）",
+    xaxis = list(title = "Total cost"),
+    yaxis = list(title = "Phi coefficient"))
 ```
 
-::: {.callout-note}
-### gtheory で同じ意思決定をする場合
-- 上の `speaking_design_tbl` は、`gtheory::dstudy()` の出力表を使っても同じ手順で作れます。
-- 実務では `dstudy()` の結果をCSV化し、必要係数（`G` か `Φ`）に応じて閾値フィルタをかけるだけで運用可能です。
-:::
+# 多変量一般化可能性理論
 
-# 多変量一般化可能性理論 with lme4
+## なぜ多変量が必要か
 
-単一スコアだけを見ると、どの下位技能（例: 内容・流暢さ・発音）が信頼性を押し上げているか、あるいは押し下げているかが分かりません。多変量一般化可能性理論では、サブテストごとの分散成分と、サブテスト間の共分散を同時に扱えるため、**「どの技能をどう配点すると運用目的に合うか」**を定量的に決められます。
+ここまでの分析は、スピーキング得点を1つの合計点として扱ってきた（単変量一般化可能性理論）。しかし実際のスピーキング評価では、内容構成（Content）、流暢さ（Fluency）、発音（Pronunciation）など複数の下位技能を個別に採点することが多い。
 
-::: {.callout-tip}
-### 最初にここだけ（多変量）
-1. 各サブテストで Person 分散が十分あるか確認する（測りたい信号があるか）。  
-2. サブテスト間相関を確認し、似た技能を重複測定していないかを見る。  
-3. 重み（weights）を変えて `G/Phi` と `SEM` の変化を比較し、用途別に最適化する。
-:::
+この場面で生じる問いは以下の通りである。
 
-```{r}
-#| label: multivariate-blueprint
+1. **どの下位技能が最も信頼性が高いか**（信号が強いか）？
+2. **下位技能間にどの程度の重複があるか**（相関が高すぎれば冗長）？
+3. **下位技能の重み配分を変えると合成得点の信頼性はどう変わるか**？
 
-mv_blueprint <- tibble::tribble(
-  ~Subtest, ~Example_skill_focus, ~Typical_prompt_type, ~Operational_question,
-  "Subtest 1", "Content/organization", "Structured monologue", "内容構成の再現性は高いか？",
-  "Subtest 2", "Fluency/processing speed", "Time-pressured response", "時間制約下でも安定するか？",
-  "Subtest 3", "Pronunciation/clarity", "Read-aloud or short interaction", "音声面の判定は一貫するか？"
-)
-
-mv_blueprint |>
-  gt() |>
-  tab_header(
-    title = "Multivariate blueprint (illustrative)",
-    subtitle = "How to interpret subtests in practice"
-  ) |>
-  cols_label(
-    Subtest = "Subtest",
-    Example_skill_focus = "Skill focus",
-    Typical_prompt_type = "Prompt type",
-    Operational_question = "Key question"
-  )
-```
+単変量一般化可能性理論ではこれらに答えられない。多変量一般化可能性理論 [@Cronbach1972; @Brennan2001] は、サブテストごとの分散成分とサブテスト間の共分散を同時に扱うことで、配点最適化を定量的に導く。
 
 ## 多変量データの生成
+
+ここでは、3つのサブテスト（内容・流暢さ・発音を想定）を持つスピーキング評価データを生成する。
 
 ```{r}
 #| label: create-multivariate-data
 
-# Rajaratnam.2相当のデータを生成
 create_rajaratnam_data <- function() {
   n_persons <- 20
-  n_items_per_subtest <- c(5, 4, 6)  # サブテストごとの項目数
+  n_items_per_subtest <- c(5, 4, 6)
   n_subtests <- 3
-  
-  # 分散成分の設定（サブテストごと）
+
   var_person <- c(0.35, 0.40, 0.38)
   var_item <- c(0.08, 0.10, 0.09)
   var_residual <- c(0.30, 0.35, 0.32)
-  
-  # 相関行列（Person間の相関）
+
   person_cor <- matrix(c(
     1.00, 0.65, 0.60,
     0.65, 1.00, 0.70,
     0.60, 0.70, 1.00
   ), nrow = 3)
 
-  # 指定した分散と相関を同時に満たす Person 効果（サブテスト間で相関あり）
   sigma_person <- diag(sqrt(var_person)) %*% person_cor %*% diag(sqrt(var_person))
   person_effects_mat <- MASS::mvrnorm(
-    n = n_persons,
-    mu = rep(0, n_subtests),
-    Sigma = sigma_person
-  )
-  
+    n = n_persons, mu = rep(0, n_subtests), Sigma = sigma_person)
+
   data_list <- list()
-  
   for (s in 1:n_subtests) {
-    # データグリッド
     subtest_data <- expand.grid(
       Person = factor(1:n_persons),
       Item = factor(1:n_items_per_subtest[s]),
-      Subtest = factor(s)
-    )
-    
-    # ランダム効果の生成
+      Subtest = factor(s))
+
     person_effects <- person_effects_mat[, s]
     item_effects <- rnorm(n_items_per_subtest[s], 0, sqrt(var_item[s]))
-    
-    # スコアの計算
+
     subtest_data$Score <- NA
     for(i in 1:nrow(subtest_data)) {
       p <- as.numeric(subtest_data$Person[i])
       it <- as.numeric(subtest_data$Item[i])
-      
       subtest_data$Score[i] <- 5 +
-        person_effects[p] +
-        item_effects[it] +
+        person_effects[p] + item_effects[it] +
         rnorm(1, 0, sqrt(var_residual[s]))
     }
-    
     data_list[[s]] <- subtest_data
   }
-  
-  # データの結合
-  Rajaratnam.2 <- bind_rows(data_list)
-  
-  return(Rajaratnam.2)
+  bind_rows(data_list)
 }
 
-# データ生成
 Rajaratnam.2 <- create_rajaratnam_data()
 
-# データ構造の確認
-rajaratnam_structure <- Rajaratnam.2 |>
+Rajaratnam.2 |>
   group_by(Subtest, Item) |>
   summarise(n = n(), .groups = "drop") |>
-  pivot_wider(names_from = Item, values_from = n, values_fill = 0)
-
-rajaratnam_table <- rajaratnam_structure |>
+  pivot_wider(names_from = Item, values_from = n, values_fill = 0) |>
   gt() |>
-  tab_header(
-    title = "Rajaratnam.2 data structure",
-    subtitle = "Counts by subtest × item"
-  ) |>
-  cols_label(
-    Subtest = "Subtest"
-  )
-
-# 0の値がある場所を特定して脚注を追加
-has_zero <- FALSE
-for (col in names(rajaratnam_structure)[-1]) {  # Subtest列を除く
-  zero_rows <- which(rajaratnam_structure[[col]] == 0)
-  if (length(zero_rows) > 0) {
-    has_zero <- TRUE
-    # 0の値のセルをハイライト
-    rajaratnam_table <- rajaratnam_table |>
-      tab_style(
-        style = cell_fill(color = "#f0f0f0"),
-        locations = cells_body(
-          columns = !!col,
-          rows = zero_rows
-        )
-      )
-  }
-}
-
-if (has_zero) {
-  rajaratnam_table <- rajaratnam_table |>
-    tab_footnote(
-      footnote = "Gray: no data (different number of items per subtest)",
-      locations = cells_column_labels(columns = 2)  # 最初のItem列に脚注
-    )
-}
-
-rajaratnam_table
+  tab_header(title = "多変量データの構造", subtitle = "サブテスト × 項目の度数")
 ```
 
 ## 多変量G研究
 
-多変量G研究の最初の目的は、**各サブテストに「測るべき個人差」が十分にあるか**を確認することです。ここで Person 成分が小さすぎるサブテストは、配点を高くしても合成得点の信頼性に寄与しにくくなります。逆に Person 成分が大きいサブテストは、重み付けの候補になります。
-
-::: {.callout-tip}
-### 多変量G研究の読み方（30秒→3分→10分）
-- 30秒: サブテスト別に Person (%) を見て、信号の強い順を把握する。  
-- 3分: Item と Residual のどちらが大きいかを見て、改良対象（課題設計か採点運用か）を切り分ける。  
-- 10分: 次のD研究で重みシナリオを作り、強いサブテストをどう生かすか検証する。
-:::
-
-```{r}
-#| label: multivariate-g-decision-checklist
-
-mv_g_checklist <- tibble::tribble(
-  ~Checkpoint, ~Why_it_matters, ~Quick_check,
-  "Do all subtests show enough Person signal?",
-  "Low-signal subtests add noise when over-weighted.",
-  "Check Person (%) by subtest first.",
-  "Did you inspect between-subtest correlations?",
-  "High overlap can duplicate information.",
-  "Check correlation table before weight design.",
-  "Is each subtest tied to a clear operational purpose?",
-  "Weights should reflect program goals, not only variance size.",
-  "Write one sentence purpose for each subtest."
-)
-
-mv_g_checklist |>
-  gt() |>
-  tab_header(
-    title = "Multivariate G-study checklist",
-    subtitle = "Use before creating weighting scenarios"
-  ) |>
-  cols_label(
-    Checkpoint = "Checkpoint",
-    Why_it_matters = "Why it matters",
-    Quick_check = "Quick check"
-  )
-```
-
 ```{r}
 #| label: multivariate-g-study
 
-# サブテストごとにlme4モデルを適用
 multivariate_g_study <- function(data) {
   subtests <- unique(data$Subtest)
   results <- list()
-  
   for (s in subtests) {
     subtest_data <- data |> filter(Subtest == s)
-    
-    # lme4モデル
-    model <- lmer(
-      Score ~ 1 + (1|Person) + (1|Item),
-      data = subtest_data,
-      REML = TRUE
-    )
-    
-    # 分散成分の抽出
+    model <- lmer(Score ~ 1 + (1|Person) + (1|Item), data = subtest_data, REML = TRUE)
     vc <- VarCorr(model)
     var_person <- as.numeric(vc$Person)
     var_item <- as.numeric(vc$Item)
     var_residual <- attr(vc, "sc")^2
     var_total <- var_person + var_item + var_residual
-    
     results[[paste0("Subtest", s)]] <- data.frame(
       Subtest = s,
       source = c("Person", "Item", "Residual"),
       var = c(var_person, var_item, var_residual),
-      percent = 100 * c(var_person, var_item, var_residual) / var_total
-    )
+      percent = 100 * c(var_person, var_item, var_residual) / var_total)
   }
-  
   return(results)
 }
 
-# 多変量G研究の実行
 mv_g_results <- multivariate_g_study(Rajaratnam.2)
-
-# 結果の整理と表示
 mv_g_combined <- bind_rows(mv_g_results)
 
 mv_g_table <- mv_g_combined |>
   select(Subtest, source, var, percent) |>
   gt() |>
-  tab_header(
-    title = "Multivariate G-study: within components (lme4)",
-    subtitle = "Variance decomposition by subtest"
-  ) |>
-  fmt_number(
-    columns = var,
-    decimals = 4
-  ) |>
-  fmt_number(
-    columns = percent,
-    decimals = 1
-  ) |>
-  cols_label(
-    Subtest = "Subtest",
-    source = "Source",
-    var = "Variance",
-    percent = "Percent (%)"
-  )
+  tab_header(title = "多変量G研究: サブテスト別分散成分", subtitle = "lme4 による推定") |>
+  fmt_number(columns = var, decimals = 4) |>
+  fmt_number(columns = percent, decimals = 1) |>
+  cols_label(Subtest = "Subtest", source = "Source", var = "Variance", percent = "Percent (%)")
 
-# Person行をハイライト
 person_rows <- which(mv_g_combined$source == "Person")
 if (length(person_rows) > 0) {
   mv_g_table <- mv_g_table |>
     tab_style(
-      style = list(
-        cell_fill(color = "#e6f3ff"),
-        cell_text(weight = "bold")
-      ),
-      locations = cells_body(
-        columns = percent,
-        rows = person_rows
-      )
-    )
+      style = list(cell_fill(color = "#e6f3ff"), cell_text(weight = "bold")),
+      locations = cells_body(columns = percent, rows = person_rows))
 }
 
 mv_g_table
+```
+
+```{r}
+#| label: multivariate-g-study-plotly
+#| fig-cap: "多変量G研究: サブテスト別分散成分（インタラクティブ）"
+
+plotly::plot_ly(
+  data = mv_g_combined,
+  x = ~paste0("Subtest ", Subtest), y = ~percent,
+  color = ~source,
+  type = "bar",
+  colors = c("Person" = "#4e79a7", "Item" = "#f28e2b", "Residual" = "#e15759"),
+  text = ~paste0(round(percent, 1), "%"),
+  textposition = "inside",
+  hovertext = ~paste0("Subtest: ", Subtest, "<br>Source: ", source,
+                       "<br>Variance: ", round(var, 4),
+                       "<br>Percent: ", round(percent, 1), "%"),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "多変量G研究: サブテスト別の分散成分",
+    xaxis = list(title = ""),
+    yaxis = list(title = "Percent of total variance (%)", range = c(0, 105)),
+    barmode = "stack",
+    legend = list(title = list(text = "Source"))
+  )
 ```
 
 ```{r}
@@ -2010,64 +2028,25 @@ mv_g_summary <- mv_g_combined |>
   ) |>
   mutate(
     Signal_strength = case_when(
-      Person_pct >= 50 ~ "Strong signal",
-      Person_pct >= 35 ~ "Moderate signal",
-      TRUE ~ "Weak signal"
+      Person_pct >= 50 ~ "強い信号",
+      Person_pct >= 35 ~ "中程度の信号",
+      TRUE ~ "弱い信号"
     ),
     Priority_action = case_when(
-      Main_error == "Item" ~ "Revise/add prompts before changing weights",
-      TRUE ~ "Tighten scoring rubric/training first"
+      Main_error == "Item" ~ "プロンプト改訂・項目追加を優先",
+      TRUE ~ "ルーブリック・採点訓練を優先"
     )
   )
 
 mv_g_summary |>
   gt() |>
-  tab_header(
-    title = "How to read multivariate G-study by subtest",
-    subtitle = "Signal strength and first operational action"
-  ) |>
+  tab_header(title = "サブテスト別の診断サマリー", subtitle = "信号の強さと優先アクション") |>
   fmt_number(columns = c(Person_pct, Item_pct, Residual_pct, Main_error_pct), decimals = 1) |>
   cols_label(
-    Subtest = "Subtest",
-    Person_pct = "Person (%)",
-    Item_pct = "Item (%)",
-    Residual_pct = "Residual (%)",
-    Main_error = "Main error source",
-    Main_error_pct = "Main error (%)",
-    Signal_strength = "Signal status",
-    Priority_action = "Recommended next step"
-  )
-```
-
-この表は、単に「どのサブテストが高信頼か」を示すだけでなく、**次に何を直すべきか**を1行で示すためのものです。以降の多変量D研究では、この結果を踏まえて重み付けの候補を作ります。
-
-```{r}
-#| label: multivariate-g-misread-guard
-
-mv_g_misread_guard <- tibble::tribble(
-  ~Common_misread, ~Why_it_is_risky, ~Safer_interpretation,
-  "Highest Person% subtest should always dominate weighting.",
-  "It may overweight overlapping skills.",
-  "Balance Person% with between-subtest correlation.",
-  "Item% is small, so prompt design is already fine.",
-  "Small now may increase with new prompt pools.",
-  "Re-check Item% each administration cycle.",
-  "Residual% means unavoidable noise only.",
-  "Part of residual can be reduced operationally.",
-  "Audit rubric clarity and administration consistency."
-)
-
-mv_g_misread_guard |>
-  gt() |>
-  tab_header(
-    title = "Interpretation safeguards for multivariate G-study",
-    subtitle = "Interpret subtest components with purpose and overlap in mind"
-  ) |>
-  cols_label(
-    Common_misread = "Common pitfall",
-    Why_it_is_risky = "Risk",
-    Safer_interpretation = "Safer interpretation"
-  )
+    Subtest = "Subtest", Person_pct = "Person (%)", Item_pct = "Item (%)",
+    Residual_pct = "Residual (%)", Main_error = "主要誤差源",
+    Main_error_pct = "主要誤差 (%)", Signal_strength = "信号の強さ",
+    Priority_action = "推奨アクション")
 ```
 
 ## サブテスト間共分散の推定
@@ -2075,74 +2054,39 @@ mv_g_misread_guard |>
 ```{r}
 #| label: estimate-covariance
 
-# サブテスト間の共分散行列を推定
 estimate_subtest_covariance <- function(data, mv_results) {
   subtests <- unique(data$Subtest)
   n_subtests <- length(subtests)
-  
-  # 各サブテストのPerson分散を取得
+
   person_vars <- numeric(n_subtests)
   for (i in 1:n_subtests) {
     subtest_result <- mv_results[[paste0("Subtest", i)]]
     person_vars[i] <- subtest_result$var[subtest_result$source == "Person"]
   }
-  
-  # Person効果の推定値を取得
+
   person_effects <- matrix(NA, nrow = length(unique(data$Person)), ncol = n_subtests)
-  
   for (s in 1:n_subtests) {
     subtest_data <- data |> filter(Subtest == s)
     model <- lmer(Score ~ 1 + (1|Person) + (1|Item), data = subtest_data, REML = TRUE)
     person_effects[, s] <- ranef(model)$Person[[1]]
   }
-  
-  # 共分散行列の計算
+
   cov_matrix <- cov(person_effects)
   colnames(cov_matrix) <- paste0("Subtest", 1:n_subtests)
   rownames(cov_matrix) <- paste0("Subtest", 1:n_subtests)
-  
-  return(list(
-    covariance = cov_matrix,
-    correlation = cov2cor(cov_matrix),
-    person_variances = person_vars
-  ))
+
+  return(list(covariance = cov_matrix, correlation = cov2cor(cov_matrix), person_variances = person_vars))
 }
 
-# 共分散の推定
 subtest_cov <- estimate_subtest_covariance(Rajaratnam.2, mv_g_results)
 
-# 共分散行列の表示
-subtest_cov$covariance |>
-  as.data.frame() |>
-  mutate(Subtest = rownames(subtest_cov$covariance)) |>
-  select(Subtest, everything()) |>
-  gt() |>
-  tab_header(
-    title = "Between-subtest covariance matrix (lme4)",
-    subtitle = "Multivariate G-theory") |>
-  fmt_number(
-    columns = -Subtest,
-    decimals = 3) |>
-  tab_style(
-    style = list(
-      cell_fill(color = "#f0f0f0"),
-      cell_text(weight = "bold")),
-    locations = cells_body(
-      columns = c(Subtest1, Subtest2, Subtest3),
-      rows = c(1, 2, 3)))
-
-# 相関行列の表示
 subtest_cov$correlation |>
   as.data.frame() |>
   mutate(Subtest = rownames(subtest_cov$correlation)) |>
   select(Subtest, everything()) |>
   gt() |>
-  tab_header(
-    title = "Between-subtest correlation matrix (lme4)",
-    subtitle = "Correlation of person effects") |>
-  fmt_number(
-    columns = -Subtest,
-    decimals = 3)
+  tab_header(title = "サブテスト間の相関行列", subtitle = "Person効果の相関") |>
+  fmt_number(columns = -Subtest, decimals = 3)
 ```
 
 ```{r}
@@ -2153,100 +2097,46 @@ mv_corr_pairs <- as.data.frame(as.table(subtest_cov$correlation)) |>
   filter(Subtest_A < Subtest_B) |>
   mutate(
     Relation = case_when(
-      abs(Correlation) >= 0.80 ~ "Highly overlapping",
-      abs(Correlation) >= 0.50 ~ "Related but distinct",
-      TRUE ~ "Mostly distinct"
+      abs(Correlation) >= 0.80 ~ "高い重複（冗長の可能性）",
+      abs(Correlation) >= 0.50 ~ "関連あり（独立ではない）",
+      TRUE ~ "ほぼ独立"
     ),
     Weighting_hint = case_when(
-      abs(Correlation) >= 0.80 ~ "Avoid over-weighting both at the same time",
-      abs(Correlation) >= 0.50 ~ "Balanced weights are usually stable",
-      TRUE ~ "Weight by program goals (broad coverage)"
+      abs(Correlation) >= 0.80 ~ "両方を高重みにすると情報が重複する",
+      abs(Correlation) >= 0.50 ~ "バランスの取れた重み配分が安定しやすい",
+      TRUE ~ "プログラム目標に応じて重み配分を決める"
     )
   )
 
 mv_corr_pairs |>
   gt() |>
-  tab_header(
-    title = "Interpretation of between-subtest correlations",
-    subtitle = "Use this to decide weighting strategy"
-  ) |>
+  tab_header(title = "サブテスト間相関の解釈と重み付けへの示唆") |>
   fmt_number(columns = Correlation, decimals = 3) |>
   cols_label(
-    Subtest_A = "Subtest A",
-    Subtest_B = "Subtest B",
-    Correlation = "Correlation",
-    Relation = "Interpretation",
-    Weighting_hint = "Weighting hint"
-  )
+    Subtest_A = "Subtest A", Subtest_B = "Subtest B",
+    Correlation = "相関", Relation = "解釈", Weighting_hint = "重み付けの示唆")
 ```
-
-::: {.callout-note}
-### 共分散・相関を設計判断に使うコツ
-- 相関が高すぎる2サブテストは、同時に重みを上げても情報の重複が増えやすい。  
-- 相関が中程度なら、合成得点の安定性と技能カバレッジの両立がしやすい。  
-- 相関が低いなら、重み付けは「教育目的（例: 発音重視か流暢さ重視か）」で決めるのが実務的です。
-:::
 
 ## 多変量D研究
 
-多変量D研究では、**課題数を固定したまま重みだけを変える場合でも、係数がどれだけ動くか**を確認できます。スピーキング評価では、同じ総試験時間でも「どの技能に重点を置くか」で結果の安定性が変わるため、ここで目的別に比較しておくことが重要です。
-
-::: {.callout-tip}
-### 多変量D研究の読み方（30秒→3分→10分）
-- 30秒: `G` と `Φ` の最大シナリオがどれか確認する。  
-- 3分: `SEM`（特に `SEM_Abs`）を見て、判定誤差の許容範囲に入るかを確認する。  
-- 10分: 目的（順位づけ / 合否判定 / 授業内フィードバック）ごとにシナリオを分けて採用する。
-:::
-
-```{r}
-#| label: multivariate-d-decision-checklist
-
-mv_d_checklist <- tibble::tribble(
-  ~Checkpoint, ~Why_it_matters, ~Quick_check,
-  "Is the primary use fixed? (ranking / pass-fail / feedback)",
-  "Different uses require different optimization targets.",
-  "Choose target metric before comparing scenarios.",
-  "Did you check SEM_Abs for high-stakes decisions?",
-  "Low Phi with high SEM_Abs increases decision error risk.",
-  "Inspect Phi and SEM_Abs together.",
-  "Did you test more than one plausible weighting profile?",
-  "Single-profile optimization can be brittle.",
-  "Compare at least 3 scenarios before finalizing."
-)
-
-mv_d_checklist |>
-  gt() |>
-  tab_header(
-    title = "Multivariate D-study checklist",
-    subtitle = "Use before selecting operational weights"
-  ) |>
-  cols_label(
-    Checkpoint = "Checkpoint",
-    Why_it_matters = "Why it matters",
-    Quick_check = "Quick check"
-  )
-```
+重み付けを変えた複数のシナリオで、合成得点の信頼性を比較する。
 
 ```{r}
 #| label: multivariate-d-study
 
-# 多変量信頼性係数の計算
 calculate_composite_reliability <- function(mv_results, cov_matrix, weights, n_items) {
   n_subtests <- length(weights)
-  
-  # 各サブテストの分散成分を取得
   person_vars <- numeric(n_subtests)
   item_vars <- numeric(n_subtests)
   residual_vars <- numeric(n_subtests)
-  
+
   for (i in 1:n_subtests) {
     subtest_result <- mv_results[[paste0("Subtest", i)]]
     person_vars[i] <- subtest_result$var[subtest_result$source == "Person"]
     item_vars[i] <- subtest_result$var[subtest_result$source == "Item"]
     residual_vars[i] <- subtest_result$var[subtest_result$source == "Residual"]
   }
-  
-  # 合成スコアの信号分散（universe variance）
+
   var_universe <- 0
   for (i in 1:n_subtests) {
     for (j in 1:n_subtests) {
@@ -2257,102 +2147,51 @@ calculate_composite_reliability <- function(mv_results, cov_matrix, weights, n_i
       }
     }
   }
-  
-  # 相対的誤差分散
-  var_rel <- 0
-  for (i in 1:n_subtests) {
-    var_rel <- var_rel + weights[i]^2 * residual_vars[i] / n_items[i]
-  }
-  
-  # 絶対的誤差分散
-  var_abs <- var_rel
-  for (i in 1:n_subtests) {
-    var_abs <- var_abs + weights[i]^2 * item_vars[i] / n_items[i]
-  }
-  
-  # 信頼性係数
+
+  var_rel <- sum(weights^2 * residual_vars / n_items)
+  var_abs <- var_rel + sum(weights^2 * item_vars / n_items)
+
   generalizability <- var_universe / (var_universe + var_rel)
   dependability <- var_universe / (var_universe + var_abs)
-  
-  # SEM
-  sem_rel <- sqrt(var_rel)
-  sem_abs <- sqrt(var_abs)
-  
-  return(list(
-    var_universe = var_universe,
-    generalizability = generalizability,
-    dependability = dependability,
-    sem_rel = sem_rel,
-    sem_abs = sem_abs
-  ))
+
+  return(list(var_universe = var_universe, generalizability = generalizability,
+              dependability = dependability, sem_rel = sqrt(var_rel), sem_abs = sqrt(var_abs)))
 }
 
-# 重み付けを変えた複数のシナリオ
 weight_scenarios <- list(
   "Equal weights" = c(1/3, 1/3, 1/3),
-  "Emphasize subtest 2" = c(0.25, 0.50, 0.25),
-  "Emphasize subtest 1" = c(0.50, 0.25, 0.25))
+  "Emphasize subtest 2 (Fluency)" = c(0.25, 0.50, 0.25),
+  "Emphasize subtest 1 (Content)" = c(0.50, 0.25, 0.25))
 
-# 各シナリオでの信頼性計算
 mv_d_results <- list()
-n_items <- c(5, 4, 6)  # 現在の項目数
+n_items <- c(5, 4, 6)
 
 for (scenario_name in names(weight_scenarios)) {
   weights <- weight_scenarios[[scenario_name]]
-  result <- calculate_composite_reliability(
-    mv_g_results, 
-    subtest_cov$covariance, 
-    weights, 
-    n_items)
+  result <- calculate_composite_reliability(mv_g_results, subtest_cov$covariance, weights, n_items)
   result$scenario <- scenario_name
   result$weights <- paste(weights, collapse = ", ")
   mv_d_results[[scenario_name]] <- result
 }
 
-# 結果の表示
 mv_d_table_data <- bind_rows(lapply(mv_d_results, function(x) {
-  data.frame(
-    Scenario = x$scenario,
-    Weights = x$weights,
-    Universe_Var = x$var_universe,
-    G_coefficient = x$generalizability,
-    Phi_coefficient = x$dependability,
-    SEM_Rel = x$sem_rel,
-    SEM_Abs = x$sem_abs
-  )
+  data.frame(Scenario = x$scenario, Weights = x$weights,
+    Universe_Var = x$var_universe, G_coefficient = x$generalizability,
+    Phi_coefficient = x$dependability, SEM_Rel = x$sem_rel, SEM_Abs = x$sem_abs)
 }))
 
 mv_d_table <- mv_d_table_data |>
   gt() |>
-  tab_header(
-    title = "Multivariate D-study results (lme4)",
-    subtitle = "Composite-score reliability under different weightings") |>
-  fmt_number(
-    columns = c(Universe_Var, G_coefficient, Phi_coefficient, SEM_Rel, SEM_Abs),
-    decimals = 3) |>
-  cols_label(
-    Scenario = "Scenario",
-    Weights = "Weights",
-    Universe_Var = "Signal variance (universe)",
-    G_coefficient = "G coefficient",
-    Phi_coefficient = "Phi coefficient",
-    SEM_Rel = "SEM (relative)",
-    SEM_Abs = "SEM (absolute)")
+  tab_header(title = "多変量D研究: 重み付け別の合成得点信頼性", subtitle = "lme4 による推定") |>
+  fmt_number(columns = c(Universe_Var, G_coefficient, Phi_coefficient, SEM_Rel, SEM_Abs), decimals = 3) |>
+  cols_label(Scenario = "シナリオ", Weights = "重み", Universe_Var = "宇宙分散",
+    G_coefficient = "G", Phi_coefficient = "Φ", SEM_Rel = "SEM (相対)", SEM_Abs = "SEM (絶対)")
 
-# 条件付きスタイリング
 for (i in 1:nrow(mv_d_table_data)) {
   if (mv_d_table_data$G_coefficient[i] >= 0.8 || mv_d_table_data$Phi_coefficient[i] >= 0.8) {
     mv_d_table <- mv_d_table |>
-      tab_style(
-        style = list(
-          cell_fill(color = "#e6ffe6"),
-          cell_text(weight = "bold")
-        ),
-        locations = cells_body(
-          columns = c(G_coefficient, Phi_coefficient),
-          rows = i
-        )
-      )
+      tab_style(style = list(cell_fill(color = "#e6ffe6"), cell_text(weight = "bold")),
+        locations = cells_body(columns = c(G_coefficient, Phi_coefficient), rows = i))
   }
 }
 
@@ -2360,267 +2199,243 @@ mv_d_table
 ```
 
 ```{r}
+#| label: multivariate-d-study-plotly
+#| fig-cap: "多変量D研究: 重み付けシナリオ別の信頼性比較（インタラクティブ）"
+
+mv_d_long <- mv_d_table_data |>
+  pivot_longer(cols = c(G_coefficient, Phi_coefficient),
+               names_to = "Coefficient", values_to = "Value") |>
+  mutate(Coefficient = ifelse(Coefficient == "G_coefficient", "G", "Φ"))
+
+plotly::plot_ly(
+  data = mv_d_long,
+  x = ~Scenario, y = ~Value, color = ~Coefficient,
+  type = "bar",
+  colors = c("G" = "#1f77b4", "Φ" = "#d62728"),
+  text = ~round(Value, 3),
+  textposition = "outside",
+  hovertext = ~paste0("Scenario: ", Scenario, "<br>Weights: ", Weights,
+                       "<br>", Coefficient, ": ", round(Value, 3)),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "多変量D研究: 重み付けと信頼性",
+    xaxis = list(title = ""),
+    yaxis = list(title = "Reliability coefficient", range = c(0, 1.1)),
+    barmode = "group",
+    shapes = list(
+      list(type = "line", x0 = -0.5, x1 = 2.5, y0 = 0.8, y1 = 0.8,
+           line = list(color = "red", dash = "dash", width = 1))
+    )
+  )
+```
+
+```{r}
 #| label: multivariate-d-shortlist
 
-best_g <- mv_d_table_data |>
-  slice_max(order_by = G_coefficient, n = 1, with_ties = FALSE)
+best_g <- mv_d_table_data |> slice_max(order_by = G_coefficient, n = 1, with_ties = FALSE)
+best_phi <- mv_d_table_data |> slice_max(order_by = Phi_coefficient, n = 1, with_ties = FALSE)
+best_sem <- mv_d_table_data |> slice_min(order_by = SEM_Abs, n = 1, with_ties = FALSE)
 
-best_phi <- mv_d_table_data |>
-  slice_max(order_by = Phi_coefficient, n = 1, with_ties = FALSE)
-
-best_sem <- mv_d_table_data |>
-  slice_min(order_by = SEM_Abs, n = 1, with_ties = FALSE)
-
-mv_shortlist <- tibble::tribble(
+tibble::tribble(
   ~Purpose, ~Priority_metric, ~Recommended_scenario, ~Why,
-  "Relative ranking", "Max G", best_g$Scenario, "Best for stable ordering across learners",
-  "Pass/fail decision", "Max Phi", best_phi$Scenario, "Best for absolute cut-score decisions",
-  "Progress feedback", "Min SEM_Abs", best_sem$Scenario, "Best for reducing score uncertainty"
-)
-
-mv_shortlist |>
+  "順位づけ", "Max G", best_g$Scenario, "学習者間の安定した順序づけ",
+  "合否判定", "Max Φ", best_phi$Scenario, "カットスコアの正確な判定",
+  "進捗フィードバック", "Min SEM_Abs", best_sem$Scenario, "得点の不確実性の最小化"
+) |>
   gt() |>
-  tab_header(
-    title = "Multivariate D-study: purpose-based shortlist",
-    subtitle = "Choose scenarios by decision use"
-  ) |>
-  cols_label(
-    Purpose = "Decision purpose",
-    Priority_metric = "Primary metric",
-    Recommended_scenario = "Recommended scenario",
-    Why = "Rationale"
-  )
-```
-
-```{r}
-#| label: multivariate-d-misread-guard
-
-mv_d_misread_guard <- tibble::tribble(
-  ~Common_misread, ~Why_it_is_risky, ~Safer_interpretation,
-  "Max G scenario is always best overall.",
-  "Pass/fail and feedback uses may need different scenarios.",
-  "Select scenario by purpose-specific metric.",
-  "Small SEM_Rel implies safe pass/fail decisions.",
-  "Absolute decisions depend more on SEM_Abs and Phi.",
-  "Use SEM_Abs + Phi for high-stakes thresholds.",
-  "Equal weights are neutral and always fair.",
-  "Equal weights may underrepresent priority skills.",
-  "Align weights with curriculum and decision goals."
-)
-
-mv_d_misread_guard |>
-  gt() |>
-  tab_header(
-    title = "Interpretation safeguards for multivariate D-study",
-    subtitle = "Avoid metric-purpose mismatch in weighting decisions"
-  ) |>
-  cols_label(
-    Common_misread = "Common pitfall",
-    Why_it_is_risky = "Risk",
-    Safer_interpretation = "Safer interpretation"
-  )
-```
-
-::: {.callout-note}
-### gtheory で並行実装する場合（多変量）
-- 実務では、まず `gstudy()` で設計別の分散成分を推定し、次に `dstudy()` で候補設計の係数を比較します。  
-- 多変量の重み比較は、`dstudy()` の設計出力を「目的別に集計する表」を作ることで、ここでの `mv_shortlist` と同等の意思決定が可能です。
-:::
-
-```{r}
-#| label: gtheory-multivariate-parallel
-#| eval: false
-
-# Pseudocode: parallel notation with gtheory
-# g_obj <- gtheory::gstudy(data = your_data, formula = score ~ (1|Person) + (1|Task) + (1|Rater:Task))
-# d_obj <- gtheory::dstudy(g_obj, colname.objects = "Person", data = your_data,
-#                          nRaters = c(2, 3, 4), nTasks = c(2, 3, 4))
-# d_table <- as.data.frame(d_obj)
-# # Then summarize by purpose: max G / max Phi / min SEM
+  tab_header(title = "多変量D研究: 目的別の推奨シナリオ") |>
+  cols_label(Purpose = "決定の目的", Priority_metric = "主指標",
+    Recommended_scenario = "推奨シナリオ", Why = "理由")
 ```
 
 ## 項目数を変えたシミュレーション
 
 ```{r}
 #| label: multivariate-simulation
-#| fig-cap: "Multivariate D-study: effect of number of items"
+#| fig-cap: "多変量D研究: 項目数の増加と信頼性"
 #| fig-width: 10
 #| fig-height: 6
 
-# 項目数を変えたシミュレーション
 simulate_mv_reliability <- function(mv_results, cov_matrix, weights, max_items = 10) {
   n_subtests <- length(weights)
   results <- tibble()
-  
-  # 基本の分散成分を取得
+
   person_vars <- numeric(n_subtests)
   item_vars <- numeric(n_subtests)
   residual_vars <- numeric(n_subtests)
-  
   for (i in 1:n_subtests) {
     subtest_result <- mv_results[[paste0("Subtest", i)]]
     person_vars[i] <- subtest_result$var[subtest_result$source == "Person"]
     item_vars[i] <- subtest_result$var[subtest_result$source == "Item"]
     residual_vars[i] <- subtest_result$var[subtest_result$source == "Residual"]
   }
-  
-  # 項目数を変えてシミュレーション
+
   for (n_items_base in 1:max_items) {
-    # 各サブテストの項目数（比率を保つ）
-    n_items <- c(n_items_base, 
-                 round(n_items_base * 0.8), 
-                 round(n_items_base * 1.2))
-    n_items[n_items == 0] <- 1  # 最低1項目
-    
-    # 信号分散（universe variance）
+    n_items <- c(n_items_base, max(1, round(n_items_base * 0.8)), max(1, round(n_items_base * 1.2)))
+
     var_universe <- 0
     for (i in 1:n_subtests) {
       for (j in 1:n_subtests) {
-        if (i == j) {
-          var_universe <- var_universe + weights[i]^2 * person_vars[i]
-        } else {
-          var_universe <- var_universe + weights[i] * weights[j] * cov_matrix[i, j]
-        }
+        if (i == j) { var_universe <- var_universe + weights[i]^2 * person_vars[i]
+        } else { var_universe <- var_universe + weights[i] * weights[j] * cov_matrix[i, j] }
       }
     }
-    
-    # 誤差分散
-    var_rel <- 0
-    var_abs <- 0
-    for (i in 1:n_subtests) {
-      var_rel <- var_rel + weights[i]^2 * residual_vars[i] / n_items[i]
-      var_abs <- var_abs + weights[i]^2 * (item_vars[i] + residual_vars[i]) / n_items[i]
-    }
-    
-    # 信頼性係数
-    g_coef <- var_universe / (var_universe + var_rel)
-    phi_coef <- var_universe / (var_universe + var_abs)
-    
-    results <- bind_rows(
-      results,
-      tibble(
-        ItemCount = n_items_base,
-        Items_S1 = n_items[1],
-        Items_S2 = n_items[2],
-        Items_S3 = n_items[3],
-        Generalizability = g_coef,
-        Dependability = phi_coef
-      )
-    )
+
+    var_rel <- sum(weights^2 * residual_vars / n_items)
+    var_abs <- var_rel + sum(weights^2 * item_vars / n_items)
+
+    results <- bind_rows(results, tibble(
+      ItemCount = n_items_base,
+      Generalizability = var_universe / (var_universe + var_rel),
+      Dependability = var_universe / (var_universe + var_abs)))
   }
-  
   return(results)
 }
 
-# シミュレーション実行（均等重みの場合）
-mv_sim_results <- simulate_mv_reliability(
-  mv_g_results,
-  subtest_cov$covariance,
-  c(1/3, 1/3, 1/3),
-  max_items = 10)
+mv_sim_results <- simulate_mv_reliability(mv_g_results, subtest_cov$covariance, c(1/3, 1/3, 1/3), max_items = 10)
 
-# 可視化
 mv_sim_long <- mv_sim_results |>
-  select(ItemCount, Generalizability, Dependability) |>
-  pivot_longer(cols = c(Generalizability, Dependability),
-               names_to = "Coefficient",
-               values_to = "Value")
+  pivot_longer(cols = c(Generalizability, Dependability), names_to = "Coefficient", values_to = "Value")
 
 ggplot(mv_sim_long, aes(x = ItemCount, y = Value, color = Coefficient)) +
-  geom_line(size = 1.5) +
-  geom_point(size = 3) +
+  geom_line(size = 1.5) + geom_point(size = 3) +
   geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", alpha = 0.5) +
   geom_hline(yintercept = 0.7, linetype = "dotted", color = "orange", alpha = 0.5) +
   scale_y_continuous(limits = c(0.4, 1), breaks = seq(0.4, 1, 0.1)) +
   scale_x_continuous(breaks = 1:10) +
-  scale_color_manual(
-    values = c("Generalizability" = "blue", "Dependability" = "red"),
-    labels = c("Generalizability" = "G coefficient", "Dependability" = "Phi coefficient")) +
-  labs(
-    title = "Change in multivariate reliability (lme4 simulation)",
-    subtitle = "Equal weights (1/3, 1/3, 1/3): effect of increasing items",
-    x = "Baseline number of items",
-    y = "Reliability coefficient",
-    color = "Coefficient") +
-  theme_bw() +
-  annotate("text", x = 9, y = 0.82, label = "Target", color = "red", size = 3.5) +
-  annotate("text", x = 9, y = 0.72, label = "Minimum", color = "orange", size = 3.5)
+  scale_color_manual(values = c("Generalizability" = "blue", "Dependability" = "red"),
+    labels = c("G coefficient", "Phi coefficient")) +
+  labs(title = "多変量D研究: 項目数の増加と合成得点の信頼性",
+    subtitle = "Equal weights (1/3, 1/3, 1/3)",
+    x = "Baseline number of items", y = "Reliability coefficient", color = "Coefficient") +
+  theme_bw()
 ```
 
 ```{r}
 #| label: multivariate-simulation-plotly
 
 plotly::plot_ly(
-  data = mv_sim_long,
-  x = ~ItemCount,
-  y = ~Value,
-  color = ~Coefficient,
-  type = "scatter",
-  mode = "lines+markers",
+  data = mv_sim_long, x = ~ItemCount, y = ~Value, color = ~Coefficient,
+  type = "scatter", mode = "lines+markers",
   colors = c("Generalizability" = "#1f77b4", "Dependability" = "#d62728"),
-  hovertext = ~paste0(
-    "Items (baseline): ", ItemCount,
-    "<br>Coefficient: ", ifelse(Coefficient == "Generalizability", "G", "Phi"),
-    "<br>Value: ", round(Value, 3)
-  ),
+  hovertext = ~paste0("Items: ", ItemCount, "<br>", ifelse(Coefficient == "Generalizability", "G", "Phi"),
+    ": ", round(Value, 3)),
   hoverinfo = "text"
 ) |>
   plotly::layout(
-    title = "Interactive multivariate D-study (items vs reliability)",
+    title = "多変量D研究（インタラクティブ）",
     xaxis = list(title = "Baseline number of items", dtick = 1),
     yaxis = list(title = "Reliability coefficient", range = c(0.4, 1.0)),
     shapes = list(
-      list(type = "line", x0 = 1, x1 = 10, y0 = 0.8, y1 = 0.8,
-           line = list(color = "red", dash = "dash")),
-      list(type = "line", x0 = 1, x1 = 10, y0 = 0.7, y1 = 0.7,
-           line = list(color = "orange", dash = "dot"))
-    )
-  )
+      list(type = "line", x0 = 1, x1 = 10, y0 = 0.8, y1 = 0.8, line = list(color = "red", dash = "dash")),
+      list(type = "line", x0 = 1, x1 = 10, y0 = 0.7, y1 = 0.7, line = list(color = "orange", dash = "dot"))))
 ```
 
-# 診断と評価
+# モデル診断
 
-## モデル診断
+モデル診断の目的は、係数を高く見せることではなく、**係数の解釈を安心して使える状態かを確認すること**である。特に「残差の偏り」と「一部受験者だけ極端に当てはまりが悪い状況」を先に点検しておくと、G研究・D研究の設計判断を誤りにくい。
 
-モデル診断の目的は、**係数を高く見せることではなく、係数の解釈を安心して使える状態かを確認すること**です。スピーキング評価では、特に「残差の偏り」と「一部受験者だけ極端に当てはまりが悪い状況」を先に点検しておくと、G研究・D研究の設計判断を誤りにくくなります。
-
-::: {.callout-tip}
-### 最初にここだけ（診断）
-1. Q-Q plot が大きく崩れていないかを見る（厳密一致は不要）。  
-2. 残差 vs fitted に明確な扇形がないかを確認する。  
-3. 問題が強い場合は、係数解釈より先に設計・採点手順を見直す。
-:::
+## 残差診断
 
 ```{r}
 #| label: model-diagnostics
-#| fig-cap: "Diagnostics for linear mixed-effects model"
+#| fig-cap: "線形混合効果モデルの診断プロット"
 #| fig-width: 10
 #| fig-height: 8
 
-# 残差診断プロット
 par(mfrow = c(2, 2))
 
-# 1. Q-Qプロット
 qqnorm(resid(g_model), main = "Normal Q-Q Plot")
 qqline(resid(g_model))
 
-# 2. 残差 vs 適合値
 plot(fitted(g_model), resid(g_model),
      xlab = "Fitted values", ylab = "Residuals",
      main = "Residuals vs Fitted")
 abline(h = 0, col = "red", lty = 2)
 
-# 3. スケール-位置プロット
 plot(fitted(g_model), sqrt(abs(resid(g_model))),
      xlab = "Fitted values", ylab = "√|Residuals|",
      main = "Scale-Location Plot")
 
-# 4. ランダム効果のQ-Qプロット
 ranef_person <- ranef(g_model)$Person[[1]]
 qqnorm(ranef_person, main = "Random Effects Q-Q Plot (Person)")
 qqline(ranef_person)
 
 par(mfrow = c(1, 1))
+```
+
+```{r}
+#| label: model-diagnostics-plotly
+#| fig-cap: "モデル診断（インタラクティブ）"
+
+diag_data <- tibble(
+  Fitted = fitted(g_model),
+  Residuals = resid(g_model),
+  Std_Residuals = as.numeric(scale(resid(g_model))),
+  Person = Brennan.3.2$Person,
+  Task = Brennan.3.2$Task,
+  Rater = Brennan.3.2$Rater
+)
+
+# Residuals vs Fitted (interactive)
+p_resid_fit <- plotly::plot_ly(
+  data = diag_data, x = ~Fitted, y = ~Residuals,
+  type = "scatter", mode = "markers",
+  color = ~Task,
+  marker = list(size = 7, opacity = 0.7),
+  hovertext = ~paste0("Person: ", Person, "<br>Task: ", Task, "<br>Rater: ", Rater,
+                       "<br>Fitted: ", round(Fitted, 2), "<br>Residual: ", round(Residuals, 2)),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "Residuals vs Fitted",
+    xaxis = list(title = "Fitted values"),
+    yaxis = list(title = "Residuals"),
+    shapes = list(
+      list(type = "line", x0 = min(diag_data$Fitted), x1 = max(diag_data$Fitted),
+           y0 = 0, y1 = 0, line = list(color = "red", dash = "dash"))
+    )
+  )
+
+# Q-Q Plot (interactive)
+n_obs <- nrow(diag_data)
+qq_data <- diag_data |>
+  arrange(Std_Residuals) |>
+  mutate(
+    Theoretical = qnorm(ppoints(n_obs)),
+    Person_label = Person, Task_label = Task
+  )
+
+qq_line_data <- tibble(
+  Theoretical = c(min(qq_data$Theoretical), max(qq_data$Theoretical)),
+  Std_Residuals = c(min(qq_data$Theoretical), max(qq_data$Theoretical))
+)
+
+p_qq <- plotly::plot_ly() |>
+  plotly::add_trace(
+    data = qq_data, x = ~Theoretical, y = ~Std_Residuals,
+    type = "scatter", mode = "markers",
+    marker = list(size = 6, color = "#4e79a7", opacity = 0.7),
+    hovertext = ~paste0("Person: ", Person_label, "<br>Task: ", Task_label,
+                         "<br>Std Residual: ", round(Std_Residuals, 2)),
+    hoverinfo = "text", showlegend = FALSE
+  ) |>
+  plotly::add_trace(
+    data = qq_line_data, x = ~Theoretical, y = ~Std_Residuals,
+    type = "scatter", mode = "lines",
+    line = list(color = "red", dash = "dash"),
+    showlegend = FALSE, hoverinfo = "none"
+  ) |>
+  plotly::layout(
+    title = "Normal Q-Q Plot",
+    xaxis = list(title = "Theoretical quantiles"),
+    yaxis = list(title = "Standardized residuals"),
+    showlegend = FALSE
+  )
+
+plotly::subplot(p_resid_fit, p_qq, nrows = 1, titleX = TRUE, titleY = TRUE, margin = 0.06) |>
+  plotly::layout(title = "モデル診断プロット（インタラクティブ）")
 ```
 
 ```{r}
@@ -2633,186 +2448,146 @@ prop_abs2 <- mean(abs(std_resid) > 2)
 prop_abs3 <- mean(abs(std_resid) > 3)
 het_cor <- suppressWarnings(cor(abs(std_resid), fitted_vals))
 
-diagnostic_summary <- tibble::tribble(
-  ~Metric, ~Value, ~Rule_of_thumb,
-  "Q-Q correlation", qq_cor, ">= 0.95 is usually acceptable",
-  "P(|z residual| > 2)", prop_abs2, "<= 0.10 is usually acceptable",
-  "P(|z residual| > 3)", prop_abs3, "<= 0.03 is usually acceptable",
-  "cor(|z residual|, fitted)", het_cor, "|r| < 0.20 suggests weak heteroscedasticity"
+tibble::tribble(
+  ~Metric, ~Value, ~Rule_of_thumb, ~Status, ~First_action,
+  "Q-Q correlation", qq_cor, "≥ 0.95", ifelse(qq_cor >= 0.95, "OK", "要確認"), "外れ値とルーブリックの一貫性を点検",
+  "P(|z| > 2)", prop_abs2, "≤ 0.10", ifelse(prop_abs2 <= 0.10, "OK", "要確認"), "極端な回答とプロンプトの適合度を確認",
+  "P(|z| > 3)", prop_abs3, "≤ 0.03", ifelse(prop_abs3 <= 0.03, "OK", "要確認"), "データ入力・採点の異常を確認",
+  "cor(|z|, fitted)", het_cor, "|r| < 0.20", ifelse(abs(het_cor) < 0.20, "OK", "要確認"), "課題難易度の偏りと尺度圧縮を確認"
 ) |>
-  mutate(
-    Status = case_when(
-      Metric == "Q-Q correlation" & Value >= 0.95 ~ "OK",
-      Metric == "Q-Q correlation" & Value < 0.95 ~ "Check",
-      Metric == "P(|z residual| > 2)" & Value <= 0.10 ~ "OK",
-      Metric == "P(|z residual| > 2)" & Value > 0.10 ~ "Check",
-      Metric == "P(|z residual| > 3)" & Value <= 0.03 ~ "OK",
-      Metric == "P(|z residual| > 3)" & Value > 0.03 ~ "Check",
-      Metric == "cor(|z residual|, fitted)" & abs(Value) < 0.20 ~ "OK",
-      TRUE ~ "Check"
-    ),
-    First_action = case_when(
-      Status == "OK" ~ "Proceed to G/D interpretation",
-      Metric == "Q-Q correlation" ~ "Inspect outliers and scoring rubric consistency",
-      Metric == "P(|z residual| > 2)" ~ "Review extreme responses and prompt fit",
-      Metric == "P(|z residual| > 3)" ~ "Check data entry / scoring anomalies",
-      TRUE ~ "Check task difficulty spread and possible scale compression"
-    )
-  )
-
-diagnostic_summary |>
   gt() |>
-  tab_header(
-    title = "Model diagnostic checklist (quick numeric read)",
-    subtitle = "Use as a support for the diagnostic plots"
-  ) |>
+  tab_header(title = "モデル診断チェックリスト", subtitle = "診断プロットの数値的補助") |>
   fmt_number(columns = Value, decimals = 3) |>
-  cols_label(
-    Metric = "Metric",
-    Value = "Value",
-    Rule_of_thumb = "Rule of thumb",
-    Status = "Status",
-    First_action = "If check, do this first"
-  ) |>
+  cols_label(Metric = "指標", Value = "値", Rule_of_thumb = "目安",
+    Status = "状態", First_action = "要確認の場合のアクション") |>
   tab_style(
     style = list(cell_fill(color = "#fff3cd"), cell_text(weight = "bold")),
-    locations = cells_body(columns = Status, rows = Status == "Check")
-  )
+    locations = cells_body(columns = Status, rows = Status == "要確認"))
 ```
 
 ## ICC計算
 
-ICCは「どの階層の分散が全体のどれだけを占めるか」を示す補助指標です。一般化可能性理論の主指標は `G` と `Φ` ですが、ICCを見ると「何を優先して改善すべきか」を直感的に整理しやすくなります。
-
-::: {.callout-tip}
-### ICCの読み方（30秒→3分→10分）
-- 30秒: 最も大きいICC成分を特定する。  
-- 3分: その成分が Task / Rater / Person:Task なら、改善対象を運用レベルで決める。  
-- 10分: D研究の候補設計（課題数・評価者数）を、その成分に合わせて絞る。
-:::
+ICCは「どの階層の分散が全体のどれだけを占めるか」を示す補助指標である。一般化可能性理論の主指標は G と Φ だが、ICCを見ると改善の優先順位を直感的に整理しやすい。
 
 ```{r}
 #| label: icc-calculation
 
-# ICC (Intraclass Correlation Coefficient) の計算
 calculate_icc <- function(model) {
   vc <- VarCorr(model)
-
-  get_v <- function(name) {
-    if (name %in% names(vc)) as.numeric(vc[[name]]) else 0
-  }
-  
-  # 各レベルのICC
+  get_v <- function(name) { if (name %in% names(vc)) as.numeric(vc[[name]]) else 0 }
   var_person <- get_v("Person")
   var_task <- get_v("Task")
   var_rater <- get_v("Rater")
   var_person_task <- get_v("Person:Task")
   var_residual <- attr(vc, "sc")^2
   var_total <- var_person + var_task + var_rater + var_person_task + var_residual
-  
-  icc_results <- data.frame(
+
+  data.frame(
     Level = c("Person", "Task", "Rater", "Person:Task"),
-    ICC = c(
-      var_person / var_total,
-      var_task / var_total,
-      var_rater / var_total,
-      var_person_task / var_total
-    )
-  )
-  
-  return(icc_results)
+    ICC = c(var_person, var_task, var_rater, var_person_task) / var_total)
 }
 
-# ICC計算と表示
 icc_results <- calculate_icc(g_model)
 
-icc_table <- icc_results |>
-  gt() |>
-  tab_header(
-    title = "Intraclass correlation coefficients (ICC)",
-    subtitle = "Proportion of total variance at each level") |>
-  fmt_number(
-    columns = ICC,
-    decimals = 3) |>
-  cols_label(
-    Level = "Level",
-    ICC = "ICC") |>
-  tab_footnote(
-    footnote = "ICC is the proportion of total variance at that level.",
-    locations = cells_column_labels(columns = ICC))
-
-# Person行をハイライト
-person_icc_row <- which(icc_results$Level == "Person")
-if (length(person_icc_row) > 0) {
-  icc_table <- icc_table |>
-    tab_style(
-      style = cell_fill(color = "#e6f3ff"),
-      locations = cells_body(
-        columns = ICC,
-        rows = person_icc_row
-      )
+icc_results |>
+  mutate(
+    Interpretation = case_when(
+      Level == "Person" ~ "学習者の信号が明確に存在する",
+      Level == "Task" ~ "課題の難易度差・設計差が寄与している",
+      Level == "Rater" ~ "評価者の厳しさ/甘さの差が見られる",
+      TRUE ~ "受験者と課題の相性が学習者間で異なる"
+    ),
+    Priority_action = case_when(
+      Level == "Person" ~ "現行構造を維持; D研究で効率を最適化",
+      Level == "Task" ~ "課題バンクの改訂とタスク数の増加",
+      Level == "Rater" ~ "評価者の追加と訓練・キャリブレーションの強化",
+      TRUE ~ "タスクの多様性を増やしてから評価者を増やす"
     )
-}
-
-icc_table
+  ) |>
+  arrange(desc(ICC)) |>
+  gt() |>
+  tab_header(title = "ICC: 成分別のアクションマップ",
+    subtitle = paste0("最大成分: ", icc_results$Level[which.max(icc_results$ICC)])) |>
+  fmt_number(columns = ICC, decimals = 3) |>
+  cols_label(Level = "成分", ICC = "ICC", Interpretation = "解釈", Priority_action = "推奨アクション")
 ```
 
 ```{r}
-#| label: icc-action-map
+#| label: icc-calculation-plotly
+#| fig-cap: "ICC: 成分別の寄与度（インタラクティブ）"
 
-icc_action_map <- icc_results |>
-  mutate(
-    Interpretation = case_when(
-      Level == "Person" ~ "Learner signal is clearly present",
-      Level == "Task" ~ "Prompt difficulty/design contributes strongly",
-      Level == "Rater" ~ "Rater severity/leniency differences are visible",
-      TRUE ~ "Person × task fit varies across learners"
-    ),
-    Priority_action = case_when(
-      Level == "Person" ~ "Keep current structure; optimize efficiency in D-study",
-      Level == "Task" ~ "Revise task bank and increase task sampling",
-      Level == "Rater" ~ "Add raters and strengthen calibration/training",
-      TRUE ~ "Increase task variety before increasing raters"
-    )
-  ) |>
-  arrange(desc(ICC))
-
-dominant_component <- icc_action_map$Level[1]
-
-icc_action_map |>
-  gt() |>
-  tab_header(
-    title = "ICC to action map",
-    subtitle = paste0("Largest component in this run: ", dominant_component)
-  ) |>
-  fmt_number(columns = ICC, decimals = 3) |>
-  cols_label(
-    Level = "Component",
-    ICC = "ICC",
-    Interpretation = "Interpretation",
-    Priority_action = "Recommended action"
+plotly::plot_ly(
+  data = icc_results |> arrange(desc(ICC)),
+  x = ~reorder(Level, -ICC), y = ~ICC,
+  type = "bar",
+  color = ~Level,
+  colors = c("Person" = "#4e79a7", "Task" = "#f28e2b", "Rater" = "#e15759", "Person:Task" = "#76b7b2"),
+  text = ~round(ICC, 3),
+  textposition = "outside",
+  hovertext = ~paste0("Level: ", Level, "<br>ICC: ", round(ICC, 3)),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "ICC: 各成分の寄与度",
+    xaxis = list(title = ""),
+    yaxis = list(title = "ICC", range = c(0, max(icc_results$ICC) * 1.2)),
+    showlegend = FALSE
   )
 ```
 
-# まとめと実践的示唆
+# 先行研究との接続
+
+## 英語教育における主要一般化可能性理論研究
+
+一般化可能性理論は、英語スピーキング評価で「何をどれだけ増やせば信頼性が上がるか」を決めるために広く使われている [@Bachman1995; @Lee2005; @Kim2009; @Schmidgall2017; @FanYan2020]。以下の表は、主要研究が一般化可能性理論をどのように活用し、本章のどの分析に対応するかを整理したものである。
+
+```{r}
+#| label: literature-map
+
+tibble::tribble(
+  ~Study, ~Context, ~G_theory_usage, ~Design, ~Key_finding, ~Chapter_link,
+  "Bachman et al. (1995)", "SLAパフォーマンス評価", "誤差源の分解と設計最適化", "p × t × r", "誤差源を分解し評価設計を明示的に最適化する必要性を提示", "G研究 → D研究",
+  "Lee (2005, ETS)", "TOEFL speaking prototype", "単変量+多変量G/D研究", "p × t × r", "課題増加と評価者増加の効果を分けて検討", "D研究シミュレーション",
+  "Kim (2009)", "ESLスピーキング (NS/NNS raters)", "評価者ファセットの分析", "p × r", "評価者背景だけでなくp×r交互作用も点検対象", "分散成分の可視化",
+  "Schmidgall (2017, ETS)", "TOEICスピーキング", "妥当性論証の一般化可能性理論的根拠", "p × t × r", "スコア一貫性を課題・評価者・次元で裏づけ", "用途別推奨設計",
+  "Fan & Yan (2020)", "スピーキング評価のレビュー", "一般化推論の操作化", "—", "一般化推論では課題・評価者要因の扱いが中核", "先行研究の統合",
+  "Taylor et al. (2022)", "一般化可能性理論の実践ガイド", "CTTとの違いの明確化", "—", "誤差の多元分解をCTTとの対比で解説", "はじめに（CTTからの橋渡し）"
+) |>
+  gt() |>
+  tab_header(
+    title = "英語教育における一般化可能性理論研究マップ",
+    subtitle = "先行研究と本章の対応"
+  ) |>
+  cols_label(
+    Study = "研究", Context = "文脈", G_theory_usage = "一般化可能性理論の使い方",
+    Design = "設計", Key_finding = "主要知見", Chapter_link = "本章との対応"
+  )
+```
+
+## 妥当性論証と一般化可能性理論の位置づけ
+
+現代の言語テスティングでは、テスト得点の解釈と使用を正当化するための**妥当性論証**（argument-based validity; @Kane2006; @BachmanPalmer2010）が重視される。この枠組みにおいて、一般化可能性理論は「一般化推論」（generalization inference）の根拠を提供する中核的な手法である。
+
+一般化推論とは、「特定の条件（このタスク、この評価者）で得られた観測得点が、より広い条件にわたっても安定しているか」を主張することである。G研究で分散成分を推定し、D研究で設計を最適化する一連の手続きは、まさにこの主張を実証的に裏づける作業にほかならない [@FanYan2020; @Schmidgall2017]。
+
+したがって、一般化可能性理論の結果を論文に報告する際は、単に G や Φ の値を示すだけでなく、「この結果は、得点の一般化推論を支持する根拠である」という文脈で位置づけることが望ましい。
+
+## 参考文献（本章で引用した主要文献）
+
+初読ではすべてを精読する必要はない。まず自分の研究設計に近い文献から読むと効率的である。本章の `references_gtheory.bib` に全文献が収録されている。
+
+# まとめと実践ガイドライン
 
 ## 主要な結果
-
-::: {.callout-tip}
-### 最初にここだけ（まとめ）
-1. `G` は順位づけ、`Φ` は合否判定の精度として分けて読む。  
-2. 指標が目標を満たさない場合は、まず大きい誤差源に対応する設計変更を行う。  
-3. 「係数が高い」だけでなく、目的に対して最小コストかどうかで最終案を決める。
-:::
 
 ```{r}
 #| label: summary-table
 
 summary_data <- data.frame(
-  Analysis = c("Speaking G-study (univariate)",
-               "Speaking D-study (3 tasks, 5 raters)",
-               "Multivariate G-study (mean)",
-               "Multivariate D-study (equal weights)"),
+  Analysis = c("Speaking G-study（単変量）",
+               "Speaking D-study（3 tasks, 5 raters）",
+               "Multivariate G-study（平均）",
+               "Multivariate D-study（等重み）"),
   G_coefficient = c(
     NA,
     d_results_numeric |> filter(TaskCount == 3, RaterCount == 5) |> pull(Generalizability),
@@ -2824,382 +2599,160 @@ summary_data <- data.frame(
     NA,
     mv_d_results[["Equal weights"]]$dependability),
   Key_Finding = c(
-    "Person variance is substantial in speaking scores",
-    "Reliable for classroom/intermediate decisions",
-    paste0(
-      "Between-subtest correlation mean ≈ ",
-      round(
-        mean(subtest_cov$correlation[upper.tri(subtest_cov$correlation)]),
-        2
-      )
-    ),
-    "High reliability for composite score"))
+    "Person分散がスピーキング得点の中で十分な割合を占める",
+    "教室内・中間的な判断には十分な信頼性",
+    paste0("サブテスト間相関の平均 ≈ ",
+      round(mean(subtest_cov$correlation[upper.tri(subtest_cov$correlation)]), 2)),
+    "合成得点の信頼性は高い"))
 
-summary_table <- summary_data |>
+summary_data |>
   gt() |>
-  tab_header(
-    title = "Summary of results",
-    subtitle = "G-theory implementation with lme4") |>
-  fmt_number(
-    columns = c(G_coefficient, Phi_coefficient),
-    decimals = 3) |>
-  cols_label(
-    Analysis = "Analysis",
-    G_coefficient = "G coefficient",
-    Phi_coefficient = "Phi coefficient",
-    Key_Finding = "Key finding")
-
-# 条件付きスタイリング
-for (i in 1:nrow(summary_data)) {
-  if (!is.na(summary_data$G_coefficient[i]) && summary_data$G_coefficient[i] >= 0.7) {
-    summary_table <- summary_table |>
-      tab_style(
-        style = cell_fill(color = "#e6ffe6"),
-        locations = cells_body(
-          columns = G_coefficient,
-          rows = i
-        )
-      )
-  }
-  if (!is.na(summary_data$Phi_coefficient[i]) && summary_data$Phi_coefficient[i] >= 0.7) {
-    summary_table <- summary_table |>
-      tab_style(
-        style = cell_fill(color = "#e6ffe6"),
-        locations = cells_body(
-          columns = Phi_coefficient,
-          rows = i
-        )
-      )
-  }
-}
-
-summary_table
+  tab_header(title = "分析結果のサマリー", subtitle = "lme4 による一般化可能性理論の実装") |>
+  fmt_number(columns = c(G_coefficient, Phi_coefficient), decimals = 3) |>
+  sub_missing(missing_text = "—") |>
+  cols_label(Analysis = "分析", G_coefficient = "G", Phi_coefficient = "Φ", Key_Finding = "主要知見")
 ```
 
-## lme4実装の利点
-
-1. **柔軟性**: 複雑なネスト構造や交差構造に対応可能
-2. **診断ツール**: 豊富なモデル診断機能
-3. **拡張性**: 固定効果の追加、非線形モデルへの拡張が容易
-4. **統合性**: 他のRパッケージとの親和性が高い
-
 ## 実践的推奨事項
-
-### 測定設計の最適化
-
-ここでは、分析結果を運用ルールに落とし込むため、目的別に最小設計を提示します。実際の導入では、まずこの表を暫定基準として使い、次年度データで再推定して更新する運用が安定的です。
 
 ```{r}
 #| label: optimization-recommendations
 
-# 最適設計の推奨
 recommendations <- data.frame(
-  Purpose = c("Certification pass/fail", "Course pass/fail", "Classroom ranking", "Quick screening"),
+  Purpose = c("資格認定（合否判定）", "コースの合否判定", "教室内順位づけ", "簡易スクリーニング"),
   Min_Tasks = c(5, 4, 3, 2),
   Min_Raters = c(3, 2, 2, 2),
   Target_G = c(0.90, 0.80, 0.80, 0.70),
   Target_Phi = c(0.85, 0.80, 0.70, 0.65))
 
-rec_table <- recommendations |>
+recommendations |>
   gt() |>
-  tab_header(
-    title = "Recommended designs by purpose",
-    subtitle = "Minimum requirements and target reliability") |>
-  cols_label(
-    Purpose = "Purpose",
-    Min_Tasks = "Min tasks",
-    Min_Raters = "Min raters",
-    Target_G = "Target G",
-    Target_Phi = "Target Phi")
-
-# Certification pass/failの行をハイライト
-cert_row <- which(recommendations$Purpose == "Certification pass/fail")
-if (length(cert_row) > 0) {
-  rec_table <- rec_table |>
-    tab_style(
-      style = cell_fill(color = "#f0f8ff"),
-      locations = cells_body(
-        rows = cert_row
-      )
-    )
-}
-
-rec_table
+  tab_header(title = "目的別の推奨設計", subtitle = "最小要件と目標信頼性") |>
+  cols_label(Purpose = "目的", Min_Tasks = "最小タスク数", Min_Raters = "最小評価者数",
+    Target_G = "目標 G", Target_Phi = "目標 Φ")
 ```
 
 ```{r}
 #| label: optimization-recommendations-plotly
 
 plotly::plot_ly(
-  data = recommendations,
-  x = ~Min_Tasks,
-  y = ~Min_Raters,
-  type = "scatter",
-  mode = "markers+text",
-  text = ~Purpose,
-  textposition = "top center",
-  color = ~Target_Phi,
-  colors = viridisLite::viridis(100),
+  data = recommendations, x = ~Min_Tasks, y = ~Min_Raters,
+  type = "scatter", mode = "markers+text",
+  text = ~Purpose, textposition = "top center",
+  color = ~Target_Phi, colors = viridisLite::viridis(100),
   marker = list(size = 12),
-  hovertext = ~paste0(
-    "Purpose: ", Purpose,
-    "<br>Min tasks: ", Min_Tasks,
-    "<br>Min raters: ", Min_Raters,
-    "<br>Target G: ", round(Target_G, 2),
-    "<br>Target Phi: ", round(Target_Phi, 2)
-  ),
+  hovertext = ~paste0("Purpose: ", Purpose, "<br>Min tasks: ", Min_Tasks,
+    "<br>Min raters: ", Min_Raters, "<br>Target G: ", round(Target_G, 2),
+    "<br>Target Phi: ", round(Target_Phi, 2)),
   hoverinfo = "text"
 ) |>
-  plotly::layout(
-    title = "Recommended minimum design by decision purpose",
+  plotly::layout(title = "目的別の推奨設計（最小要件）",
     xaxis = list(title = "Minimum tasks", dtick = 1),
-    yaxis = list(title = "Minimum raters", dtick = 1)
-  )
+    yaxis = list(title = "Minimum raters", dtick = 1))
 ```
 
 ::: {.callout-tip}
-### 運用導入プロトコル（簡易版）
-1. 目的を先に固定する（順位づけ / 合否判定 / 形成的フィードバック）。  
-2. 目的に対応する主指標（G or Φ）と閾値を決める。  
-3. D研究で最小設計を選び、コスト（課題作成・採点工数）と照合する。  
-4. 実施後データで分散成分を再推定し、次期設計を更新する。
+### 運用導入プロトコル
+1. **目的を先に固定する**: 順位づけ / 合否判定 / 形成的フィードバック
+2. **主指標と閾値を決める**: G or Φ、目標値（例: Φ ≥ 0.80）
+3. **D研究で最小設計を選ぶ**: コスト（課題作成・採点工数）と照合
+4. **実施後データで再推定する**: 分散成分は母集団や課題プールの変化に依存するため、定期的に G/D研究を再実行して設計を更新する
 :::
 
-::: {.callout-note}
-### gtheory との整合性（概念）
-- gtheory の `gstudy`/`dstudy` は、内部で本章と同型の LMM を構築し、`lme4` ベースで分散成分を推定します。
-- したがって、PDF（gtheory で記述）で示された推定値・係数は、本章の `lmer()` による実装と数値的に一致します（サンプル・推定器・設計が同一であれば）。
-- 実務では、設計の表現に長けた gtheory と、柔軟な拡張に強い lme4 を相補的に使うのが有効です。
-- スピーキング評価では、`gstudy` で誤差源を把握し、`dstudy` で「課題数と評価者数の最小要件」を決める運用がしやすいです。
-:::
+## よくある誤りと対処法
+
+以下は、一般化可能性理論の各段階で頻出する解釈の誤りとその対処法を統合的にまとめたものである。
 
 ```{r}
-#| label: gtheory-final-workflow
-#| eval: false
+#| label: consolidated-interpretation-safeguards
 
-# Pseudocode: final workflow in gtheory notation
-# g_obj <- gtheory::gstudy(
-#   data = your_speaking_data,
-#   formula = score ~ (1|Person) + (1|Task) + (1|Rater:Task) + (1|Person:Task)
-# )
-# d_obj <- gtheory::dstudy(
-#   g_obj,
-#   colname.objects = "Person",
-#   data = your_speaking_data,
-#   nTasks = 2:6,
-#   nRaters = 2:5
-# )
-# d_table <- as.data.frame(d_obj)
-# # Filter by purpose:
-# # ranking -> maximize G
-# # pass/fail -> maximize Phi
-```
-
-## 典型ミスと修正手順
-
-一般化可能性理論は、モデル自体よりも「設計の書き方」でつまずくことが多いです。以下は、スピーキング評価で頻出するミスと修正手順をそのまま使える形でまとめたものです。
-
-```{r}
-#| label: common-mistakes-table
-
-common_mistakes <- tibble::tribble(
-  ~Common_issue, ~What_happens, ~First_fix,
-  "Task と Rater のネストを式に反映していない",
-  "Rater分散の解釈が歪み、D研究の推奨がずれる",
-  "設計を再確認し、`(1|Rater:Task)` を明示する",
-  "G と Phi を同じ目的で解釈している",
-  "順位づけと合否判定の結論が混同される",
-  "目的を先に固定し、G(相対) / Phi(絶対) を分けて報告する",
-  "係数だけを見て誤差源を見ない",
-  "改善アクションが不明確になる",
-  "分散成分表で最大の誤差源を先に特定する",
-  "診断を飛ばして最適設計に進む",
-  "外れ値や不適合が係数判断を誤らせる",
-  "診断チェック表で `Check` 項目を先に処理する",
-  "1回のデータで設計を固定してしまう",
-  "次年度運用で再現しない",
-  "毎期データで G研究→D研究を再実行して更新する"
-)
-
-common_mistakes |>
+tibble::tribble(
+  ~Stage, ~Common_mistake, ~Risk, ~Safe_interpretation,
+  "G研究", "Person%が高い → テストは自動的に完璧", "合否判定の設計不備を見落とす", "D研究で Φ ベースの設計実現可能性を必ず確認する",
+  "G研究", "Task%が小さい → 課題設計は問題なし", "プロンプトプール変更で大きくなりうる", "実施サイクルごとに再推定する",
+  "G研究", "Rater%がゼロでない → 評価者を増やすだけで解決", "評価者差の一部はルーブリックの曖昧さに起因", "評価者増加とキャリブレーション・ルーブリック改訂を併用する",
+  "G研究", "Residual%は不可避のノイズ", "残差の一部は運用上削減可能", "実施条件と採点プロセスを監査する",
+  "D研究", "G が高い → すべての目的に十分", "合否判定は Φ に依存する", "目的に応じて G（相対）か Φ（絶対）を使い分ける",
+  "D研究", "+1タスクの効果はどの設計点でも同じ", "限界利益は現在の設計点に依存する", "自身の運用設計点で利益を再確認する",
+  "D研究", "1回のデータで設計を恒久的に固定", "母集団やプロンプトプールの変化で分散構造が変わる", "毎期データで G/D研究を再実行して更新する",
+  "多変量", "Person%が最大のサブテスト → 常に高重みにすべき", "重複する技能を過剰に重み付けしうる", "Person%とサブテスト間相関の両方を考慮して重みを決める",
+  "多変量", "SEM_Rel が小さい → 合否判定も安全", "絶対的決定は SEM_Abs と Φ に依存", "高利害な判断では SEM_Abs + Φ を主指標にする",
+  "多変量", "等重みは中立で常に公平", "優先すべき技能を過小評価しうる", "カリキュラム目標と決定目的に合わせて重みを調整する"
+) |>
   gt() |>
   tab_header(
-    title = "Common mistakes and first fixes",
-    subtitle = "Speaking assessment: practical troubleshooting map"
+    title = "一般化可能性理論の解釈における主要な落とし穴と対処法",
+    subtitle = "分析段階別の統合ガイド"
   ) |>
   cols_label(
-    Common_issue = "Common issue",
-    What_happens = "What happens if ignored",
-    First_fix = "First fix"
+    Stage = "段階", Common_mistake = "よくある誤り",
+    Risk = "リスク", Safe_interpretation = "安全な解釈"
   )
 ```
 
-## レポート文の自動生成テンプレート
+## レポート文テンプレート
 
-章末で毎回ゼロから文章を書くと、結果の解釈がぶれやすくなります。ここでは、推定結果から最低限の報告文を自動生成して、記述の一貫性を保つためのテンプレートを示します。
+章末で毎回ゼロから文章を書くと、結果の解釈がぶれやすい。以下は、推定結果から最低限の報告文を自動生成するテンプレートである。
 
 ```{r}
 #| label: reporting-template-snippets
 
-dominant_component <- g_study_results |>
-  arrange(desc(percent)) |>
-  slice(1)
+dominant_component <- g_study_results |> arrange(desc(percent)) |> slice(1)
 
-phi_target <- 0.80
+phi_target_report <- 0.80
 min_phi_design <- d_results_numeric |>
-  filter(Dependability >= phi_target) |>
+  filter(Dependability >= phi_target_report) |>
   mutate(CostIndex = TaskCount * RaterCount) |>
   arrange(CostIndex, TaskCount, RaterCount) |>
   slice_head(n = 1)
 
 min_phi_sentence <- if (nrow(min_phi_design) == 0) {
-  "No design in the simulated grid reached the target Phi threshold."
+  "シミュレーショングリッド内で目標 Φ に到達する設計は見つからなかった。"
 } else {
-  glue::glue(
-    "The minimum design meeting Phi >= {phi_target} was {min_phi_design$TaskCount} tasks × {min_phi_design$RaterCount} raters (Phi = {round(min_phi_design$Dependability, 3)})."
-  )
+  glue::glue("Φ ≥ {phi_target_report} を満たす最小設計は {min_phi_design$TaskCount} タスク × {min_phi_design$RaterCount} 評価者（Φ = {round(min_phi_design$Dependability, 3)}）であった。")
 }
 
-report_snippets <- tibble::tribble(
+tibble::tribble(
   ~Section, ~Suggested_text,
-  "Design statement",
-  "This study modeled speaking scores under a p × t × r:t design and decomposed variance using lme4.",
-  "G-study headline",
-  glue::glue("The largest variance component was {dominant_component$source} ({round(dominant_component$percent, 1)}%), indicating the primary target for design improvement."),
-  "D-study headline",
+  "設計の記述",
+  "本研究では、スピーキング得点を p × t × r:t 設計のもとで lme4 を用いて分散成分を推定した。",
+  "G研究の要約",
+  glue::glue("最大の分散成分は {dominant_component$source}（{round(dominant_component$percent, 1)}%）であり、設計改善の主要ターゲットを示した。"),
+  "D研究の要約",
   min_phi_sentence,
-  "Decision rule",
-  "Use G for relative ranking decisions and Phi for absolute pass/fail decisions."
-)
-
-report_snippets |>
-  gt() |>
-  tab_header(
-    title = "Auto-generated reporting snippets",
-    subtitle = "Copy-ready text skeleton for consistent write-up"
-  ) |>
-  cols_label(
-    Section = "Report section",
-    Suggested_text = "Suggested sentence"
-  )
-```
-
-## コスト制約つき設計選定（運用版）
-
-最後に、理想係数だけでなくコスト制約を同時に考慮した選定を行います。ここでは、課題1つ追加するコストと評価者1名追加するコストを分けて設定し、予算内で最適な設計を選びます。
-
-```{r}
-#| label: budget-constrained-selection
-
-select_design_under_budget <- function(d_data, budget_cap, cost_per_task = 3, cost_per_rater = 2,
-                                       purpose = c("pass_fail", "ranking")) {
-  purpose <- match.arg(purpose)
-  objective_col <- if (purpose == "pass_fail") "Dependability" else "Generalizability"
-  purpose_label <- if (purpose == "pass_fail") "Pass/fail (Phi)" else "Ranking (G)"
-
-  d_eval <- d_data |>
-    mutate(
-      TotalCost = TaskCount * cost_per_task + RaterCount * cost_per_rater,
-      Objective = .data[[objective_col]],
-      Purpose = purpose_label
-    ) |>
-    filter(TotalCost <= budget_cap) |>
-    arrange(desc(Objective), TotalCost, desc(Dependability), desc(Generalizability))
-
-  d_eval
-}
-
-budget_cap <- 20
-budget_choice <- select_design_under_budget(
-  d_results_numeric,
-  budget_cap = budget_cap,
-  cost_per_task = 3,
-  cost_per_rater = 2,
-  purpose = "pass_fail"
-)
-
-budget_top <- budget_choice |>
-  slice_head(n = 10) |>
-  mutate(Design = paste0(TaskCount, "T × ", RaterCount, "R"))
-
-budget_top |>
-  select(Design, TotalCost, Generalizability, Dependability) |>
-  gt() |>
-  tab_header(
-    title = paste0("Top designs under budget <= ", budget_cap),
-    subtitle = "Objective: maximize Phi for pass/fail decisions"
-  ) |>
-  fmt_number(columns = c(Generalizability, Dependability), decimals = 3) |>
-  cols_label(
-    Design = "Design",
-    TotalCost = "Total cost",
-    Generalizability = "G",
-    Dependability = "Phi"
-  )
-```
-
-```{r}
-#| label: budget-constrained-plotly
-
-budget_plot_data <- select_design_under_budget(
-  d_results_numeric,
-  budget_cap = 20,
-  cost_per_task = 3,
-  cost_per_rater = 2,
-  purpose = "pass_fail"
+  "決定ルール",
+  "相対的な順位づけには G を、絶対的な合否判定には Φ を主指標として用いた。"
 ) |>
-  mutate(
-    Design = paste0(TaskCount, "T × ", RaterCount, "R"),
-    IsTop = row_number() <= 10
-  )
-
-plotly::plot_ly(
-  data = budget_plot_data,
-  x = ~TotalCost,
-  y = ~Dependability,
-  type = "scatter",
-  mode = "markers",
-  color = ~Generalizability,
-  colors = viridisLite::viridis(100),
-  text = ~Design,
-  hovertext = ~paste0(
-    "Design: ", Design,
-    "<br>Total cost: ", TotalCost,
-    "<br>Phi: ", round(Dependability, 3),
-    "<br>G: ", round(Generalizability, 3)
-  ),
-  hoverinfo = "text",
-  marker = list(size = 11)
-) |>
-  plotly::layout(
-    title = "Budget-constrained design space (objective: maximize Phi)",
-    xaxis = list(title = "Total cost"),
-    yaxis = list(title = "Phi coefficient")
-  )
+  gt() |>
+  tab_header(title = "自動生成レポートスニペット", subtitle = "一貫した報告のためのテンプレート") |>
+  cols_label(Section = "セクション", Suggested_text = "推奨文")
 ```
 
-```{r}
-#| label: gtheory-budget-parallel
-#| eval: false
-
-# Pseudocode: budget-constrained screening with gtheory output
-# d_obj <- gtheory::dstudy(...)
-# d_table <- as.data.frame(d_obj)
-# d_table$TotalCost <- d_table$nTasks * cost_task + d_table$nRaters * cost_rater
-# subset(d_table, TotalCost <= budget_cap) |>
-#   dplyr::arrange(dplyr::desc(Phi), TotalCost)
-```
+## FAQ
 
 ::: {.callout-tip}
-### FAQ（簡潔）
-- Q: ランダム効果＝一般化可能性理論の潜在因子？
-  - A: はい。分散成分は数学的に同じ量を指します。
-- Q: まず何を増やせば G/Φ は上がる？
-  - A: `Person:Task`が大→タスク数、`Rater`/`Residual`が大→評価者数（＋採点基準の統一）。
-- Q: G と Φ のどちらを見る？
-  - A: 順位づけ（相対判断）なら G、合否など絶対的判断なら Φ を重視。
-- Q: 欠測や不均衡がある場合は？
-  - A: LMM は対応可能。設計を正しく式に反映（交差/ネスト）し、REMLで推定。
+### よくある質問
+
+**Q: ランダム効果 = 一般化可能性理論の潜在因子？**
+A: はい。LMMのランダム効果分散と一般化可能性理論の分散成分は数学的に同じ量である [@Jiang2018]。
+
+**Q: まず何を増やせば G/Φ は上がるか？**
+A: G研究の分散成分表を見る。Person:Task が大きければタスク数を、Rater/Residual が大きければ評価者数（+採点基準の統一）を優先する。
+
+**Q: G と Φ のどちらを見るべきか？**
+A: 順位づけ（相対判断）なら G、合否など絶対的判断なら Φ を重視する。
+
+**Q: 欠測や不均衡がある場合は？**
+A: LMM は欠測や不均衡データに自然に対応できる。設計を正しく式に反映（交差/ネスト）し、REML で推定する。
+
+**Q: 一般化可能性理論とIRTの関係は？**
+A: 一般化可能性理論は分散の分解（信頼性の多元的評価）に特化し、IRTは項目パラメータの推定（能力と困難度の分離）に特化する。両者は補完的であり、一般化可能性理論でテスト全体の設計を評価し、IRTで個別項目の質を評価するという使い分けが有効である。
+
+**Q: サンプルサイズはどの程度必要か？**
+A: @Brennan2001 は50〜300人程度で安定した推定が得られるとしている。ただし分散成分の数が増える（ファセットが多い、交互作用が多い）ほど、より大きなサンプルが必要になる。
+
+**Q: APA論文で一般化可能性理論をどう報告するか？**
+A: (1) 設計の記述（p × t × r:t 等）、(2) 各分散成分とその割合、(3) G/Φ係数と用途の明示、(4) D研究に基づく設計推奨、を含めるのが標準的である。本章の「レポートスニペット」を参考にされたい。
 :::
 
 # セッション情報

@@ -75,6 +75,7 @@ format:
     fig-align: center
     fig-responsive: true
     tbl-cap-location: top
+    html-table-processing: none
     crossref:
       fig-title: "図"
       tbl-title: "表"

@@ -1,5 +1,5 @@
 ---
-title: "ANOVA・カテゴリカル変数のコーディング"
+title: "ANOVAとカテゴリカル変数コーディング"
 author: "小室竜也"
 date: today
 format:
@@ -11,7 +11,7 @@ format:
     number-sections: true
     code-fold: show
     theme: journal
-    fontsize: 1.1em
+    fontsize: 1.05em
     linestretch: 1.8
     mainfont: "Noto Serif JP"
 lang: ja
@@ -19,73 +19,57 @@ lang: ja
 
 ```{=html}
 <style>
-/* journalテーマ用のアカデミックなカスタムスタイル */
 body {
   font-family: 'Noto Serif JP', 'Times New Roman', serif;
-  color: #2c3e50;
+  color: #263238;
   line-height: 1.8;
 }
 
-/* タイトルブロックをジャーナル風に */
 .quarto-title-banner {
   background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  border-bottom: 4px double #495057;
-  padding: 2.5em 2em;
+  border-bottom: 3px double #495057;
+  padding: 2.2em 1.8em;
   text-align: center;
 }
 
 .quarto-title-banner .title {
-  color: #212529 !important;
-  font-size: 2.2em !important;
+  color: #1f2933 !important;
   font-weight: 700;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
   font-family: 'Noto Sans JP', sans-serif;
 }
 
-/* 見出しのアカデミックスタイル */
 h1 {
-  font-size: 1.8em;
+  font-size: 1.7em;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #1c1c1c;
   border-bottom: 2px solid #212529;
-  padding-bottom: 0.5em;
+  padding-bottom: 0.45em;
   margin-top: 2em;
   margin-bottom: 1em;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 h2 {
-  font-size: 1.4em;
-  font-weight: 600;
-  color: #343a40;
-  margin-top: 1.5em;
+  font-size: 1.35em;
+  font-weight: 650;
+  color: #2f3b45;
+  margin-top: 1.6em;
   margin-bottom: 0.8em;
 }
 
-h2:before {
-  content: "§";
-  margin-right: 0.5em;
-  color: #6c757d;
-  font-weight: 400;
-}
-
 h3 {
-  font-size: 1.2em;
+  font-size: 1.15em;
   font-weight: 600;
-  color: #495057;
-  font-style: italic;
+  color: #455a64;
   margin-top: 1.2em;
-  margin-bottom: 0.6em;
+  margin-bottom: 0.5em;
 }
 
-/* テーブルを学術論文風に */
 table {
-  margin: 2em auto;
+  margin: 1.5em auto;
   border-collapse: collapse;
   font-size: 0.95em;
-  width: 90%;
+  width: 92%;
   border-top: 2px solid #212529;
   border-bottom: 2px solid #212529;
 }
@@ -95,1103 +79,488 @@ thead {
   border-bottom: 1px solid #212529;
 }
 
-/* コードブロックをシンプルに */
 pre {
-  background: #f8f9fa !important;
-  border: 1px solid #dee2e6;
+  background: #f8fafc !important;
+  border: 1px solid #d9e2ec;
   border-radius: 0;
   padding: 1em;
   font-size: 0.9em;
 }
 
-/* 数式を強調 */
 .math {
-  color: #212529;
-  font-size: 1.05em;
-  font-style: italic;
+  color: #1f2933;
 }
 </style>
 ```
-
-```{=html}
-<style>
-/* journalテーマ用のアカデミックなカスタムスタイル */
-body {
-  font-family: 'Noto Serif JP', 'Times New Roman', serif;
-  color: #2c3e50;
-  line-height: 1.8;
-}
-
-/* タイトルブロックをジャーナル風に */
-.quarto-title-banner {
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  border-bottom: 4px double #495057;
-  padding: 2.5em 2em;
-  text-align: center;
-}
-
-.quarto-title-banner .title {
-  color: #212529 !important;
-  font-size: 2.2em !important;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-family: 'Noto Sans JP', sans-serif;
-}
-
-/* 見出しのアカデミックスタイル */
-h1 {
-  font-size: 1.8em;
-  font-weight: 700;
-  color: #1a1a1a;
-  border-bottom: 2px solid #212529;
-  padding-bottom: 0.5em;
-  margin-top: 2em;
-  margin-bottom: 1em;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-h2 {
-  font-size: 1.4em;
-  font-weight: 600;
-  color: #343a40;
-  margin-top: 1.5em;
-  margin-bottom: 0.8em;
-}
-
-h2:before {
-  content: "§";
-  margin-right: 0.5em;
-  color: #6c757d;
-  font-weight: 400;
-}
-
-h3 {
-  font-size: 1.2em;
-  font-weight: 600;
-  color: #495057;
-  font-style: italic;
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
-}
-
-/* テーブルを学術論文風に */
-table {
-  margin: 2em auto;
-  border-collapse: collapse;
-  font-size: 0.95em;
-  width: 90%;
-  border-top: 2px solid #212529;
-  border-bottom: 2px solid #212529;
-}
-
-thead {
-  background: #f8f9fa;
-  border-bottom: 1px solid #212529;
-}
-
-/* コードブロックをシンプルに */
-pre {
-  background: #f8f9fa !important;
-  border: 1px solid #dee2e6;
-  border-radius: 0;
-  padding: 1em;
-  font-size: 0.9em;
-}
-
-/* 数式を強調 */
-.math {
-  color: #212529;
-  font-size: 1.05em;
-  font-style: italic;
-}
-</style>
-```
-
-# はじめに
 
 ::: {.callout-tip}
 ## Conventions
-Figures use English labels. All code chunks are R.
+本チュートリアルの図表ラベルは英語、本文は日本語で統一します。コードはすべてRです。
 :::
 
-中学校や高校の数学の授業では、x軸の値が増えればy軸の値も増えるような関係は一次関数と習いました。この一次関数は単回帰分析と似ています。しかし、現実では数学の授業で扱うようなデータは手に入りません。なぜなら、測定における誤差（例：受験者の当日の体調、問題の難易度）が影響するためです。この誤差は真の値からプラスになる場合もあれば、マイナスになる場合もあります。そのため、誤差は一般的に平均が0、標準偏差が1の正規分布に従うとされます。
+# はじめに
 
-得られたデータと誤差を合わせ、誤差が最も小さくなるように一次関数の直線を引く分析方法が単回帰分析です。単回帰分析は例えば、家庭学習の時間から中間試験の点数を予測する際などに用いることができます。つまり、x軸に家庭学習の時間、y軸に中間試験の点数をプロットすることとなります。予測する側は独立変数や説明変数、予測変数などと呼ばれます。一方、予測される側は従属変数や目的変数、応答変数などと呼ばれます。単回帰分析では独立変数と従属変数の両方が量的データとなります。
+本章の目的は、英語教育研究で頻出する要因計画データを、**ANOVAを「回帰モデルの一形態」として一貫的に理解すること**です。多くの教科書ではANOVAと回帰を別章で学びますが、実際には両者は同じ一般線形モデル（General Linear Model; GLM）に属します。この観点を押さえると、カテゴリカル変数のコーディング（contrast coding）と結果解釈が大幅に明瞭になります。
 
-クラス1とクラス2の中間試験の平均点に差があるのかを検討する場合を考えてみましょう。x軸に2つのクラス、y軸に中間試験の点数をプロットします。単回帰分析と似ていますが、x軸が量的データではなく、2値のカテゴリカルデータとなります。つまり、独立変数が2値となります。このような分析はt検定と呼ばれていました。それでは、1組・2組・3組・4組の場合はどうなるでしょうか？x軸に4つの値がプロットされることとなります。t検定を使って、1組と2組、1組と3組、1組と4組、2組と3組、2組と4組、3組と4組を比較することは統計学ではタイプ1エラー（実際には差がないのに差があると判断してしまう）の確率を高めてしまうため不適切とされます。そこで利用できるのが分散分析（analysis of variance; ANOVA）です。
+本章では以下を到達目標とします。
 
-# F分布
+1. ANOVAを線形モデルとして数式レベルで説明できる。
+2. 反復測定を含むデザインで、仮定（特に球面性）を正しく説明できる。
+3. `afex`と`emmeans`を使って、主効果・交互作用・事後比較を再現可能に報告できる。
+4. Treatment / Sum / Helmert / Polynomial codingの違いを、設計行列と係数解釈の観点から説明できる。
 
-分散分析における検定統計量はFと呼ばれます。Fは、群間（上記の例では1〜4組の間）の平均値の分散がどれほど大きいかを標準化したものです。すべての群間で平均値に差がないのであれば、群間の分散も0となります。t検定と同様に、プールされた不偏分散$U_p^2$を用いると、Fは以下のように計算されます。
+# 1. ANOVAを回帰モデルとして捉える
+
+## 1.1 共通の枠組み
+
+ANOVAも回帰も、基本式は同じです。
 
 $$
-F=\frac{1}{k-1}\sum_{j=1}^k\left(\frac{\bar{Y}_j-\bar{Y}}{U_p\sqrt{n_j}}\right)^2
+\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}, \quad \boldsymbol{\varepsilon} \sim N(0, \sigma^2\mathbf{I})
 $$
 
-基本的にはt検定と同じ式の形ですが、2乗である点と、群ごとの平均値の不偏分散を計算することからk-1で割っている点が異なります。$\bar{Y}_j$は各群の平均値となります。
+- $\mathbf{y}$: 従属変数（例: テスト得点）
+- $\mathbf{X}$: 設計行列（カテゴリカル変数はコーディングされる）
+- $\boldsymbol{\beta}$: 係数
+- $\boldsymbol{\varepsilon}$: 誤差
 
-F値は群間と群内の2つの自由度を持ちます。群間の自由度は比較する群の数から1を引いたもので、群内の自由度は全サンプルサイズから比較する群の数を引いたものとなります。例えば、1組から4組まで、1クラスに30人の生徒がいるとすると、全サンプルサイズは120名、比較する群の数は4となります。群間の自由度は4-1 = 3、群内の自由度は120-4 = 116となります。帰無仮説が正しいとき、F値はこれらの2つの自由度を持つF分布に従います。F分布は2つの独立したカイ二乗分布の比率として定義されます。分子のカイ二乗分布は群間の自由度に従い、分母のカイ二乗分布は群内の自由度に従います。
+カテゴリカル予測子が$k$水準なら、通常$k-1$本のコントラスト列が必要です。**どのコーディングを選ぶかで係数の意味は変わるが、同じモデル空間なら適合値や全体検定は本質的に同じ**、という点が実務上重要です（Schad et al., 2020）。
 
-# 球面性の仮定
+## 1.2 F検定の意味
 
-ANOVAを行うにあたり、いくつか前提があります。1つは正規性です。これは従属変数が正規分布に従っているデータであるかどうかを指します。シャピロ・ウィルク検定やQQプロットによって確認することができます。
+ANOVAのF統計量は、
 
-等分散性の仮定は、比較する群の母集団の分散が等しいことを意味します。つまり、各群のデータのばらつきが同程度であることを前提としています。等分散性の仮定が満たされていない場合、ANOVAの結果は信頼できないものになる可能性があります。この仮定が満たされていない状況を「分散の異質性」または「不等分散」と呼びます。等分散性の検定方法にはLeveneの検定（各群の中央値からの偏差の絶対値を用いて分散の同質性を検定）、Bartlett検定（各群の分散を直接比較）、Brown-Forsythe検定（各群の中央値からの偏差の絶対値を用いて分散の同質性を検定）などがあります。
+$$
+F = \frac{\text{MS}_{\text{effect}}}{\text{MS}_{\text{error}}}
+$$
 
-正規性と等分散性の仮定はt検定と同じですが、反復測定（同じ参加者に対して複数の条件や時点で測定を行うデザイン）の場合には球面性の仮定が新たに加わります。球面性の仮定では、以下の2つの条件を満たすことを意味します：
+であり、直感的には「効果で説明される変動」が「誤差変動」に比べて十分大きいかを見ます。2群比較では$t^2 = F$が成り立つため、t検定とANOVAは対立概念ではなく、同一枠組みの特殊ケースです。
 
-1.  各条件の分散が等しい（等分散性）
-2.  条件間の相関が等しい
+# 2. 研究計画と仮定
 
-つまり、共分散行列が「複合対称行列」の形を取ることを前提としています。複合対称行列とは、対角要素が全て等しく、対角要素以外の要素も全て等しい行列のことです。球面性の検定方法にはMauchlyの球面性検定（共分散行列が複合対称行列であるかどうかを検定）があります。なお、球面性の仮定が満たされない場合はGreenhouse-Geisser法やHuynh-Feldt法などのイプシロン修正によって自由度を調整することで、球面性の違反に対処します。
+## 2.1 英語教育研究での典型デザイン
 
-# Rのコード
+英語教育研究では、次の3タイプがよく使われます。
 
-## パッケージと初期化
+1. 被験者間計画（例: 指導法A群 vs B群）
+2. 被験者内計画（例: 同一学習者の直後テスト・遅延テスト）
+3. 混合計画（例: 指導法は被験者間、時点は被験者内）
+
+本章の実装例は、最も実務的な**混合計画**を中心に扱います。
+
+## 2.2 仮定の整理
+
+| 仮定 | 何を要求するか | 主な確認方法 | 注意点 |
+|---|---|---|---|
+| 独立性 | 観測単位間の誤差が独立 | 研究デザインで担保 | 統計手法だけでは救済不能 |
+| 正規性 | 残差が概ね正規 | QQプロット, 残差診断 | 大標本では頑健なことが多い |
+| 等分散性 | 群間で残差分散が類似 | Levene検定, 残差プロット | 破れが大きければロバスト法検討 |
+| 球面性 | 反復測定要因（3水準以上）の差得点分散が等しい | Mauchly検定 + GG/HF補正 | 2水準要因では自動的に満たされる |
+
+球面性違反時の自由度補正としては、Greenhouse-Geisser補正とHuynh-Feldt補正が古典的に用いられます。なお、**複合対称性（compound symmetry）は球面性より強い仮定**であり、両者を同一視しないことが重要です。
+
+# 3. データ生成（英語教育の想定）
+
+ここでは、次の研究設定を模したシミュレーションデータを作成します。
+
+- 被験者間要因: `Instruction`（`Glossing`, `Writing`）
+- 被験者内要因: `Time`（`Immediate`, `Delayed`）
+- 共変量: `Proficiency`
+- 従属変数: 語彙テスト得点 `Score`
 
 ```{r}
 #| label: setup
 #| message: false
 #| warning: false
 
-# パッケージの読み込み
-pacman::p_load(
-  tidyverse, afex, emmeans, effectsize, performance,
-  DHARMa, car, broom, sjPlot, gt, broom.mixed, MASS, faux)
+library(tidyverse)
+library(afex)
+library(emmeans)
+library(effectsize)
+library(performance)
+library(car)
+library(broom)
+library(gt)
+library(MASS)
 
-# afexの設定：sum codingをデフォルトに
-set_sum_contrasts()
-
-# 乱数種とテーマの設定
-set.seed(123)
+set.seed(2026)
+afex::set_sum_contrasts()
 theme_set(theme_bw())
 ```
 
-## サンプルデータの作成
-
 ```{r}
-#| label: create-data
+#| label: make-data
 
-# パラメータの設定
-n_participants <- 50
-n_items <- 30
-treatments <- c("Glossing", "Writing")
-tests <- c("Recall", "Recognition")
-times <- c("Immediate", "Delayed")
+n_participants <- 120
 
-# データフレームの作成
-dat <- expand.grid(
-  Participant = 1:n_participants,
-  Item = 1:n_items,
-  Treatment = treatments,
-  Test = tests,
-  Time = times,
-  KEEP.OUT.ATTRS = FALSE)
-
-# アイテムの割り当てをTreatmentに基づいて修正
-dat <- dat[(dat$Treatment == "Glossing" & dat$Item <= 15) |
-           (dat$Treatment == "Writing" & dat$Item > 15), ]
-
-# スコアの割り当て
-dat$Resp <- ifelse(
-  dat$Treatment == "Glossing",
-  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.5, 0.2)),
-  rbinom(nrow(dat), 1, ifelse(dat$Test == "Recognition", 0.9, 0.5)))
-
-# Timeによるスコアの調整
-dat$Resp <- ifelse(
-  dat$Time == "Immediate",
-  pmin(dat$Resp + sample(0:1, nrow(dat), replace = TRUE), 1),
-  dat$Resp)
-
-# 参加者情報の追加
-pid_tbl <- tibble(
+id_tbl <- tibble(
   Participant = factor(1:n_participants),
-  Proficiency = round(rnorm(n_participants, 2500, 60), 1),
-  Aptitude = round(rnorm(n_participants, 8, 2), 2))
+  Instruction = factor(rep(c("Glossing", "Writing"), each = n_participants / 2),
+                       levels = c("Writing", "Glossing")),
+  Proficiency = as.numeric(scale(rnorm(n_participants, mean = 2500, sd = 120))),
+  u0 = rnorm(n_participants, mean = 0, sd = 4)
+)
 
-# 参加者ごとにスコアを集計
-dat_summarized <- dat |>
-  mutate(across(c(Participant, Item, Treatment, Test, Time), as.factor)) |>
-  group_by(Participant, Treatment, Test, Time) |>
-  summarise(Score = sum(Resp), .groups = "drop") |>
-  left_join(pid_tbl, by = "Participant") |>
-  relocate(Proficiency, Aptitude, .after = Time)
+dat <- tidyr::crossing(
+  Participant = id_tbl$Participant,
+  Time = factor(c("Immediate", "Delayed"), levels = c("Immediate", "Delayed"))
+) |>
+  left_join(id_tbl, by = "Participant") |>
+  mutate(
+    mu = 58 +
+      if_else(Instruction == "Glossing", 4, 0) +
+      if_else(Time == "Delayed", -6, 0) +
+      if_else(Instruction == "Glossing" & Time == "Delayed", 2, 0) +
+      3 * Proficiency + u0,
+    Score = round(rnorm(n(), mean = mu, sd = 5), 1)
+  ) |>
+  dplyr::select(-u0, -mu)
 
-# ワイド形式への変換
-wide_scores <- dat_summarized |>
-  pivot_wider(names_from = Test, values_from = Score, names_prefix = "Score_")
-
-# データの確認
-head(wide_scores) |> 
-  gt()
-
-# 被験者間デザインのデータも作成
-# 各参加者を1つのTreatmentにランダム割り当て
-set.seed(123)
-participants_glossing <- sample(1:n_participants, n_participants/2)
-participants_writing <- setdiff(1:n_participants, participants_glossing)
-
-dat_between <- dat |>
-  filter((Participant %in% participants_glossing & Treatment == "Glossing") |
-         (Participant %in% participants_writing & Treatment == "Writing"))
-
-dat_between_summarized <- dat_between |>
-  mutate(across(c(Participant, Item, Treatment, Test, Time), as.factor)) |>
-  group_by(Participant, Treatment, Test, Time) |>
-  summarise(Score = sum(Resp), .groups = "drop") |>
-  left_join(pid_tbl, by = "Participant")
-
-wide_scores_between <- dat_between_summarized |>
-  pivot_wider(names_from = Test, values_from = Score, names_prefix = "Score_")
+dat |>
+  group_by(Instruction, Time) |>
+  summarise(
+    N = n(),
+    Mean = mean(Score),
+    SD = sd(Score),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "Descriptive Statistics by Instruction and Time")
 ```
 
-## 探索的可視化
-
 ```{r}
-#| label: explore-data
-#| fig-width: 10
-#| fig-height: 5
+#| label: quick-plot
+#| fig-width: 8
+#| fig-height: 4.8
 
-# 箱ひげ図
-ggplot(wide_scores, aes(x = Treatment, y = Score_Recall, fill = Time)) +
-  geom_boxplot(outlier.colour = "red", outlier.shape = 8) +
-  facet_wrap(~ Time) +
-  labs(title = "Distribution of Recall Score by Treatment and Time",
-       x = "Treatment", y = "Recall Score") +
-  theme_bw()
+summary_dat <- dat |>
+  group_by(Instruction, Time) |>
+  summarise(
+    Mean = mean(Score),
+    SE = sd(Score) / sqrt(n()),
+    .groups = "drop"
+  )
 
-# バイオリンプロット
-ggplot(wide_scores, aes(x = Treatment, y = Score_Recall, fill = Time)) +
-  geom_violin(trim = FALSE) +
-  facet_wrap(~ Time) +
-  labs(title = "Recall Score Density by Treatment and Time",
-       x = "Treatment", y = "Recall Score") +
-  theme_bw()
+ggplot(summary_dat, aes(x = Time, y = Mean, color = Instruction, group = Instruction)) +
+  geom_point(size = 3) +
+  geom_line(linewidth = 0.9) +
+  geom_errorbar(aes(ymin = Mean - SE, ymax = Mean + SE), width = 0.08) +
+  labs(
+    title = "Estimated Means Across Time by Instruction",
+    x = "Time",
+    y = "Score"
+  )
 ```
 
-## ANOVAの実行（afexによる統一的アプローチ）
+# 4. 混合要因ANOVAの実行
+
+## 4.1 主効果・交互作用
 
 ```{r}
-#| label: anova-afex
+#| label: mixed-anova
 
-# データの準備
-long_recall <- wide_scores |>
-  dplyr::select(Participant, Treatment, Time, Proficiency, Aptitude, Score_Recall) |>
-  mutate(across(c(Participant, Treatment, Time), as.factor))
-
-# afexによるANOVA（Type III）- 両要因とも被験者内要因
-fit_afex <- aov_ez(
+fit_aov <- aov_ez(
   id = "Participant",
-  dv = "Score_Recall",
-  within = c("Treatment", "Time"),  # 両方とも被験者内要因
-  data = long_recall,
+  dv = "Score",
+  between = "Instruction",
+  within = "Time",
+  covariate = "Proficiency",
+  factorize = FALSE,
+  data = dat,
   type = 3,
-  anova_table = list(correction = "GG", es = "pes"))
+  anova_table = list(es = "pes")
+)
 
-fit_afex |> 
-  nice() |> 
-  gt() |> 
+nice(fit_aov) |>
+  gt() |>
   tab_header(
-    title = "Two-Way Mixed Design ANOVA Results",
-    subtitle = md("**Dependent Variable**: Recall Score")) |>
-  cols_label(
-    Effect = "Effect",
-    df = "df",
-    MSE = "MSE",
-    F = "F-value",
-    pes = "Effect Size (η²p)",
-    p.value = "p-value") |>
-  fmt_number(
-    columns = c(MSE, F, pes),
-    decimals = 2) |>
-  fmt_number(
-    columns = p.value,
-    decimals = 3) |>
-  tab_style(
-    style = cell_fill(color = "#FFE5B4"),
-    locations = cells_body(
-      columns = everything(),
-      rows = p.value < 0.05)) |>
-  tab_source_note(
-    source_note = md("**Interpretation of Results**:")) |>
-  tab_source_note(
-    source_note = "• Treatment: Significant main effect (p < .001, large effect size)") |>
-  tab_source_note(
-    source_note = "• Time: Significant main effect (p < .001, large effect size)") |>
-  tab_source_note(
-    source_note = "• Treatment × Time: Significant interaction (p = .001, medium effect size)") |>
-  tab_source_note(
-    source_note = md("**Effect Size Guidelines**: η²p < .01 = negligible, .01-.06 = small, .06-.14 = medium, > .14 = large"))
+    title = "Mixed ANOVA (Type III)",
+    subtitle = md("Dependent variable: **Score**")
+  )
 ```
 
-### 事後比較
+`afex`を使う利点は、Type III平方和・効果量・必要に応じた球面性補正を統一的に扱える点です。本章では効果量を**偏η²（η²p）中心**で報告します。教育研究の報告では、主効果だけでなく交互作用を先に確認し、交互作用が有意なら単純主効果の検討へ進む流れが実務上自然です。
+
+## 4.2 事後比較（推定周辺平均）
 
 ```{r}
 #| label: posthoc
 
-# 推定周辺平均の計算
-emm <- emmeans(fit_afex, ~ Treatment * Time)
+emm <- emmeans(fit_aov, ~ Instruction * Time)
 
-# 時点ごとの比較
-time_comp <- pairs(emm, by = "Time", adjust = "tukey")
-time_comp_df <- as.data.frame(time_comp) |>
-  mutate(across(where(is.numeric), ~round(., 3)))
-
-time_comp_df |>
+# 時点ごとに指導法を比較
+pairs(emm, by = "Time", adjust = "holm") |>
+  as.data.frame() |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
   gt() |>
-  tab_header(title = "Pairwise Comparisons by Time") |>
-  cols_label(
-    contrast = "Contrast",
-    estimate = "Estimate",
-    SE = "Std. Error",
-    df = "df",
-    t.ratio = "t-ratio",
-    p.value = "p-value")
+  tab_header(title = "Pairwise Comparisons: Instruction within Time (Holm-adjusted)")
 
-# 処理ごとの比較
-treat_comp <- pairs(emm, by = "Treatment", adjust = "tukey")
-treat_comp_df <- as.data.frame(treat_comp) |>
-  mutate(across(where(is.numeric), ~round(., 3)))
-
-treat_comp_df |>
+# 指導法ごとに時点を比較
+pairs(emm, by = "Instruction", adjust = "holm") |>
+  as.data.frame() |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
   gt() |>
-  tab_header(title = "Pairwise Comparisons by Treatment") |>
-  cols_label(
-    contrast = "Contrast",
-    estimate = "Estimate",
-    SE = "Std. Error",
-    df = "df",
-    t.ratio = "t-ratio",
-    p.value = "p-value")
-
-# 効果量の計算
-eff <- eff_size(emm, sigma = sigma(lm(Score_Recall ~ Treatment*Time, long_recall)),
-                edf = df.residual(lm(Score_Recall ~ Treatment*Time, long_recall)))
-eff_df <- as.data.frame(eff) |>
-  mutate(across(where(is.numeric), ~round(., 3)))
-
-eff_df |>
-  gt() |>
-  tab_header(title = "Effect Sizes for Pairwise Comparisons") |>
-  cols_label(
-    contrast = "Contrast",
-    effect.size = "Effect Size",
-    SE = "Std. Error",
-    df = "df",
-    lower.CL = "Lower CI",
-    upper.CL = "Upper CI")
+  tab_header(title = "Pairwise Comparisons: Time within Instruction (Holm-adjusted)")
 ```
 
-## 補足：lmによるType-III ANOVA
+`emmeans`では、モデルに整合的な推定周辺平均を基盤に比較を行えるため、係数表の直接比較より解釈が一貫します。多群比較では`adjust = "tukey"`や`"holm"`の選択理由を明記すると、査読での透明性が高まります。
+
+## 4.3 効果量
 
 ```{r}
-#| label: lm-anova
+#| label: effect-size
 
-# 参照水準の設定
-long_recall <- long_recall |> 
-  mutate(
-    Treatment = relevel(Treatment, "Glossing"),
-    Time = relevel(Time, "Immediate"))
+# 全体モデルのR^2
+performance::r2(lm(Score ~ Instruction * Time + Proficiency, data = dat))
 
-# 線形モデル
-fit_lm <- lm(Score_Recall ~ Treatment * Time, data = long_recall)
-tab_model(fit_lm)
-
-# Type III ANOVA results
-anova_results <- car::Anova(fit_lm, type = 3)
-
-# Extract effect sizes
-eta_partial <- eta_squared(fit_lm, partial = TRUE, ci = 0.90)
-eta_regular <- eta_squared(fit_lm, partial = FALSE, ci = 0.90)
-omega_partial <- omega_squared(fit_lm, partial = TRUE, ci = 0.90)
-
-# Type III ANOVA results
-anova_results <- car::Anova(fit_lm, type = 3)
-
-# Extract effect sizes (Interceptを除く)
-eta_partial <- eta_squared(fit_lm, partial = TRUE, ci = 0.90)
-eta_regular <- eta_squared(fit_lm, partial = FALSE, ci = 0.90)
-omega_partial <- omega_squared(fit_lm, partial = TRUE, ci = 0.90)
-
-# Create table WITHOUT Intercept
-data.frame(
-  Effect = rownames(anova_results)[2:4],  # Treatment, Time, Treatment:Time のみ
-  SS = anova_results$`Sum Sq`[2:4],
-  df = anova_results$Df[2:4],
-  F = anova_results$`F value`[2:4],
-  p.value = anova_results$`Pr(>F)`[2:4]) |>
-  mutate(
-    eta2 = eta_regular$Eta2,
-    eta2_partial = eta_partial$Eta2_partial,
-    omega2_partial = omega_partial$Omega2_partial,
-    eta2p_CI = paste0("[", 
-                     sprintf("%.2f", eta_partial$CI_low),
-                     ", ",
-                     sprintf("%.2f", eta_partial$CI_high),
-                     "]")) |>
-  gt() |>
-  tab_header(
-    title = "Type III ANOVA with Comprehensive Effect Sizes",
-    subtitle = md("**Model**: Score_Recall ~ Treatment × Time<br>
-                   **Analysis**: Type III Sum of Squares")) |>
-  cols_label(
-    Effect = "Source",
-    SS = "SS",
-    df = "df",
-    F = "F",
-    p.value = "p",
-    eta2 = "η²",
-    eta2_partial = "η²p",
-    omega2_partial = "ω²p",
-    eta2p_CI = "90% CI (η²p)") |>
-  fmt_number(
-    columns = c(SS, F),
-    decimals = 2) |>
-  fmt_number(
-    columns = c(eta2, eta2_partial, omega2_partial),
-    decimals = 3) |>
-  fmt(
-    columns = p.value,
-    fns = function(x) {
-      case_when(
-        x < 0.001 ~ "< .001***",
-        x < 0.01 ~ paste0(sprintf("%.4f", x), "**"),
-        x < 0.05 ~ paste0(sprintf("%.4f", x), "*"),
-        TRUE ~ sprintf("%.4f", x)
-      )
-    }
-  ) |>
-  tab_style(
-    style = list(
-      cell_fill(color = "#E1F5FE"),
-      cell_text(weight = "bold")),
-    locations = cells_body(
-      columns = everything(),
-      rows = p.value < 0.05)) |>
-  tab_spanner(
-    label = "ANOVA Statistics",
-    columns = c(SS, df, F, p.value)) |>
-  tab_spanner(
-    label = "Effect Sizes",
-    columns = c(eta2, eta2_partial, omega2_partial, eta2p_CI)) |>
-  tab_source_note(
-    source_note = md("**Model Information**:")) |>
-  tab_source_note(
-    source_note = sprintf("• Intercept: SS = %.1f, F(%d, %d) = %.1f, p < .001",
-                         anova_results$`Sum Sq`[1],
-                         anova_results$Df[1],
-                         anova_results$Df[5],
-                         anova_results$`F value`[1])) |>
-  tab_source_note(
-    source_note = sprintf("• Residual SS = %.1f (df = %d)",
-                         anova_results$`Sum Sq`[5],
-                         anova_results$Df[5])) |>
-  tab_source_note(
-    source_note = sprintf("• Total SS = %.1f",
-                         sum(anova_results$`Sum Sq`[2:4]))) |>
-  tab_source_note(
-    source_note = md("**Effect Size Interpretation**:")) |>
-  tab_source_note(
-    source_note = "• η² = proportion of total variance explained") |>
-  tab_source_note(
-    source_note = "• η²p = proportion of variance explained (excluding other effects)") |>
-  tab_source_note(
-    source_note = "• ω²p = adjusted partial eta squared (less biased estimate)") |>
-  tab_source_note(
-    source_note = md("**Cohen's (1988) Benchmarks**: Small (.01), Medium (.06), Large (.14)"))
+# ANOVA系効果量
+eta_squared(fit_aov, partial = TRUE, ci = 0.95)
+omega_squared(fit_aov, partial = TRUE, ci = 0.95)
 ```
 
-## 仮定の確認
+本章では偏η²（η²p）を第一報告指標とし、必要に応じてω²を補助的に併記します。教育・心理系では、効果量と信頼区間の併記が推奨されます。
+
+# 5. 仮定診断と実務判断
 
 ```{r}
-#| label: check-assumptions
-#| fig-width: 12
-#| fig-height: 10
+#| label: assumptions
+#| fig-width: 10
+#| fig-height: 8
 
-# 正規性の検定
-check_normality(fit_lm)
+fit_lm <- lm(Score ~ Instruction * Time + Proficiency, data = dat)
 
-# 等分散性の検定
-check_homogeneity(fit_lm)
+# 正規性（残差）
+shapiro.test(residuals(fit_lm))
 
-# 異分散性の検定
-check_heteroscedasticity(fit_lm)
+# 等分散性
+car::leveneTest(Score ~ Instruction * Time, data = dat)
 
-# モデル診断
+# 総合診断
 check_model(fit_lm)
-
-# DHARMaによる残差診断
-DHARMa::simulateResiduals(fittedModel = fit_lm, n = 500) |> 
-plot()
 ```
 
-## 効果量
+### 5.1 球面性に関する実務上の注意
+
+- 本章の`Time`は2水準なので、球面性は自動的に満たされます。
+- 反復測定要因が3水準以上なら、Mauchly検定とGG/HF補正を確認してください。
 
 ```{r}
-#| label: effect-sizes
+#| label: optional-sphericity-example
+#| eval: false
 
-# 決定係数
-r2_results <- performance::r2(fit_lm)
-
-# 各種効果量の計算
-effects_data <- data.frame(
-  Measure = c("R-squared", "Adjusted R-squared"),
-  Value = c(r2_results$R2, r2_results$R2_adjusted))
-
-effects_data |>
-  gt() |>
-  tab_header(title = "Model Fit Statistics") |>
-  fmt_number(columns = Value, decimals = 4)
-
-# イータ二乗
-eta_partial <- eta_squared(fit_lm, partial = TRUE)
-eta_total <- eta_squared(fit_lm, partial = FALSE)
-eta_gen <- eta_squared(fit_lm, generalized = TRUE)
-
-# 効果量の統合表（イータ二乗）
-bind_rows(
-  eta_total |> mutate(Type = "Eta-squared", Value = Eta2),
-  eta_partial |> mutate(Type = "Partial Eta-squared", Value = Eta2_partial),
-  eta_gen |> mutate(Type = "Generalized Eta-squared", Value = Eta2_generalized)) |>
-  dplyr::select(Type, Parameter, Value, CI, CI_low, CI_high) |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
-  gt() |>
-  tab_header(title = "Effect Sizes (Eta-squared Family)") |>
-  cols_label(
-    Type = "Type",
-    Parameter = "Parameter",
-    Value = "Value",
-    CI = "CI",
-    CI_low = "CI Lower",
-    CI_high = "CI Upper")
-
-# オメガ二乗とイプシロン二乗
-omega_partial <- omega_squared(fit_lm, partial = TRUE)
-epsilon_partial <- epsilon_squared(fit_lm, partial = TRUE)
-
-# 列名を統一して結合
-omega_df <- omega_partial |> 
-  mutate(Type = "Omega-squared", Value = Omega2_partial) |>
-  dplyr::select(Type, Parameter, Value, CI, CI_low, CI_high)
-
-epsilon_df <- epsilon_partial |> 
-  mutate(Type = "Epsilon-squared", Value = Epsilon2_partial) |>
-  dplyr::select(Type, Parameter, Value, CI, CI_low, CI_high)
-
-bind_rows(omega_df, epsilon_df) |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
-  gt() |>
-  tab_header(title = "Alternative Effect Size Measures") |>
-  cols_label(
-    Type = "Type",
-    Parameter = "Parameter",
-    Value = "Value",
-    CI = "CI",
-    CI_low = "CI Lower",
-    CI_high = "CI Upper")
-
-# Cohen's d と Hedges g
-cohen_results <- cohens_d(Score_Recall ~ Treatment, data = long_recall)
-hedges_results <- hedges_g(Score_Recall ~ Treatment, data = long_recall)
-
-data.frame(
-  Measure = c("Cohen's d", "Hedges g"),
-  Value = c(cohen_results$Cohens_d, hedges_results$Hedges_g),
-  CI_lower = c(cohen_results$CI_low, hedges_results$CI_low),
-  CI_upper = c(cohen_results$CI_high, hedges_results$CI_high)) |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
-  gt() |>
-  tab_header(title = "Standardized Mean Differences") |>
-  cols_label(
-    Measure = "Measure",
-    Value = "Value",
-    CI_lower = "95% CI Lower",
-    CI_upper = "95% CI Upper")
-
-# 標準化係数
-std_coef <- effectsize(fit_lm)
-std_coef_df <- as.data.frame(std_coef)
-
-# 列名を確認して適切に選択
-if("Std_Coefficient" %in% names(std_coef_df)) {
-  std_coef_df |>
-    mutate(across(where(is.numeric), ~round(., 3))) |>
-    gt() |>
-    tab_header(title = "Standardized Coefficients")
-} else {
-  # 列名が異なる場合の処理
-  std_coef_df |>
-    mutate(across(where(is.numeric), ~round(., 3))) |>
-    gt() |>
-    tab_header(title = "Standardized Coefficients")
-}
+# 例: 3時点データなら球面性を確認する
+# fit_rm3 <- aov_ez(
+#   id = "Participant",
+#   dv = "Score",
+#   between = "Instruction",
+#   within = "Session",  # 3水準以上
+#   data = dat3,
+#   type = 3,
+#   anova_table = list(correction = "GG", es = "pes")
+# )
+# nice(fit_rm3)
 ```
 
-# Rにおけるカテゴリカル変数の扱い（Contrast）
+# 6. カテゴリカル変数のコーディング
 
-Rでは変数にいくつかの型があります。カテゴリカル変数を扱う型はfactor型と呼ばれます。factor型には大きく順序のないものと順序のあるものに分けられます。順序のないカテゴリカル変数は、例えば、指導法A・B・Cのようなものです。一方、順序のあるカテゴリカル変数は上・中・下のようなものが挙げられます。
+ここからは、ANOVAの解釈を左右するコーディングを整理します。ポイントは次の1点です。
 
-## カテゴリカル変数のコーディング比較用データ
+::: {.callout-important}
+**コーディングは「係数の意味」を変える。**
+ただし同じモデル空間なら、適合値・残差・全体的なモデル適合は本質的に変わらない。
+:::
+
+## 6.1 比較用データ（3群）
 
 ```{r}
-#| label: create-contrast-data
+#| label: contrast-data
 
-# シミュレーションデータの作成
-set.seed(123)
-data <- data.frame(
-  Participant = factor(rep(1:300, each = 6)),
-  FactorA = factor(rep(c("A1", "A2"), each = 3, times = 300)),
-  FactorB = factor(rep(c("B1", "B2", "B3"), times = 600)),
-  Outcome = rnorm(1800, mean = 50, sd = 10))
+set.seed(2026)
 
-# 交互作用効果をシミュレーションで導入
-data <- data |>
-  mutate(Outcome = Outcome + ifelse(FactorA == "A2" & FactorB == "B2", 7, 0))
+dat_c <- tibble(
+  Group = factor(rep(c("Control", "Glossing", "Keyword"), each = 100),
+                 levels = c("Control", "Glossing", "Keyword")),
+  Score = c(
+    rnorm(100, mean = 50, sd = 8),
+    rnorm(100, mean = 58, sd = 8),
+    rnorm(100, mean = 62, sd = 8)
+  )
+)
+
+dat_c |>
+  group_by(Group) |>
+  summarise(Mean = mean(Score), SD = sd(Score), .groups = "drop") |>
+  gt() |>
+  tab_header(title = "Descriptive Statistics for Contrast Coding")
 ```
 
-## Treatment Coding (Dummy Coding)
-
-Treatment codingは最初に読み込まれた水準を参照レベル（baseline）として、他の水準と比較します。明確な統制条件がある場合に特に有効です。
+## 6.2 Treatment coding（ダミーコーディング）
 
 ```{r}
 #| label: treatment-coding
 
-# デフォルトのtreatment codingを確認
-contrasts(data$FactorA) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-contrasts(data$FactorB) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
+dat_treat <- dat_c
+contrasts(dat_treat$Group) <- contr.treatment(3)
 
-# 明示的にtreatment codingを設定
-contrasts(data$FactorA) <- contr.treatment(2)
-contrasts(data$FactorB) <- contr.treatment(3)
-
-# コーディングの確認
-contrasts(data$FactorA) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-contrasts(data$FactorB) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-
-# モデルの実行
-model_treatment <- lm(Outcome ~ FactorA * FactorB, data = data)
-model_treatment_main <- lm(Outcome ~ FactorA + FactorB, data = data)
-
-# 結果の表示（gt形式）
-tidy(model_treatment) |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
+contrasts(dat_treat$Group) |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Level") |>
   gt() |>
-  tab_header(title = "Treatment Coding Results") |>
-  cols_label(
-    term = "Term",
-    estimate = "Estimate",
-    std.error = "Std. Error",
-    statistic = "t-value",
-    p.value = "p-value"
-  )
+  tab_header(title = "Design Matrix: Treatment Coding")
 
-# ANOVA表
-anova(model_treatment) |>
-  tidy() |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
+fit_treat <- lm(Score ~ Group, data = dat_treat)
+
+tidy(fit_treat) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
   gt() |>
-  tab_header(title = "ANOVA Table (Treatment Coding)") |>
-  cols_label(
-    term = "Term",
-    df = "df",
-    sumsq = "Sum Sq",
-    meansq = "Mean Sq",
-    statistic = "F-value",
-    p.value = "p-value"
-  )
-
-# 推定周辺平均と下位検定
-emm_treatment <- emmeans(model_treatment, ~ FactorB | FactorA)
-
-pairs(emm_treatment, adjust = "tukey") |> 
-  data.frame() |> 
-  gt() |> 
-  tab_header(
-    title = "Pairwise Comparisons of Estimated Marginal Means",
-    subtitle = "Tukey HSD Post-hoc Test") |> 
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Mean Difference",
-    SE = "SE",
-    df = "df",
-    t.ratio = "t-value",
-    p.value = "p-value") |> 
-  fmt_number(
-    columns = c(estimate, SE, t.ratio),
-    decimals = 3) |> 
-  fmt_number(
-    columns = p.value,
-    decimals = 4)
-
-# 可視化
-plot_model(model_treatment, type = "pred", terms = c("FactorB", "FactorA"), 
-           title = "Treatment Coding: Predicted Values") +
-  labs(x = "Factor B", y = "Predicted Outcome", color = "Factor A") +
-  theme_bw()
+  tab_header(title = "Coefficient Table: Treatment Coding")
 ```
 
-## Sum Coding
+- 切片: 参照群（ここでは`Control`）の平均
+- 係数: 各群と参照群との差
+- 統制群が明確な介入研究で特に有用
 
-Sum codingは全群の平均（Grand Mean）を基準として各水準を比較します。カテゴリカル変数を中心化していると言えます。
+## 6.3 Sum coding（偏差コーディング）
 
 ```{r}
 #| label: sum-coding
 
-# Sum codingの設定
-contrasts(data$FactorA) <- contr.sum(2)
-contrasts(data$FactorB) <- contr.sum(3)
+dat_sum <- dat_c
+contrasts(dat_sum$Group) <- contr.sum(3)
 
-# コーディングの確認
-contrasts(data$FactorA) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-contrasts(data$FactorB) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-
-# モデルの実行
-model_sum <- lm(Outcome ~ FactorA * FactorB, data = data)
-model_sum_main <- lm(Outcome ~ FactorA + FactorB, data = data)
-
-# 結果の表示（gt形式）
-tidy(model_sum) |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
+contrasts(dat_sum$Group) |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Level") |>
   gt() |>
-  tab_header(title = "Sum Coding Results") |>
-  cols_label(
-    term = "Term",
-    estimate = "Estimate",
-    std.error = "Std. Error",
-    statistic = "t-value",
-    p.value = "p-value")
+  tab_header(title = "Design Matrix: Sum Coding")
 
-# 推定周辺平均と下位検定
-emm_sum <- emmeans(model_sum, ~ FactorB | FactorA)
-pairs(emm_sum, adjust = "tukey") |> 
-  data.frame() |> 
-  gt() |> 
-  tab_header(
-    title = "Pairwise Comparisons of Estimated Marginal Means",
-    subtitle = "Tukey HSD Post-hoc Test") |> 
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Mean Difference",
-    SE = "SE",
-    df = "df",
-    t.ratio = "t-value",
-    p.value = "p-value") |> 
-  fmt_number(
-    columns = c(estimate, SE, t.ratio),
-    decimals = 3) |> 
-  fmt_number(
-    columns = p.value,
-    decimals = 4)
+fit_sum <- lm(Score ~ Group, data = dat_sum)
 
-# 可視化
-plot_model(model_sum, type = "pred", terms = c("FactorB", "FactorA"), 
-           title = "Sum Coding: Predicted Values") +
-  labs(x = "Factor B", y = "Predicted Outcome", color = "Factor A") +
-  theme_bw()
-```
-
-## Deviation Coding (ANOVA Coding)
-
-Deviation CodingはSum Codingと同様に全体平均との比較を行いますが、参照レベルが最初に読み込んだ水準となります。
-
-```{r}
-#| label: deviation-coding
-
-# Deviation codingの設定（方法1：手動）
-contrasts(data$FactorA) <- contr.treatment(2) - 1/2
-contrasts(data$FactorB) <- contr.treatment(3) - 1/3
-
-# または fauxパッケージを使用（方法2）
-data$FactorA <- contr_code_anova(data$FactorA)
-data$FactorB <- contr_code_anova(data$FactorB)
-
-# コーディングの確認
-contrasts(data$FactorA) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-contrasts(data$FactorB) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-
-# モデルの実行
-model_deviation <- lm(Outcome ~ FactorA * FactorB, data = data)
-model_deviation_main <- lm(Outcome ~ FactorA + FactorB, data = data)
-
-# 結果の表示
-tab_model(model_deviation)
-
-# 推定周辺平均と下位検定
-emm_deviation <- emmeans(model_deviation, ~ FactorB | FactorA)
-pairs(emm_deviation, adjust = "tukey") |> 
-  data.frame() |> 
-  gt() |> 
-  tab_header(
-    title = "Pairwise Comparisons of Estimated Marginal Means",
-    subtitle = "Tukey HSD Post-hoc Test") |> 
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Mean Difference",
-    SE = "SE",
-    df = "df",
-    t.ratio = "t-value",
-    p.value = "p-value") |> 
-  fmt_number(
-    columns = c(estimate, SE, t.ratio),
-    decimals = 3) |> 
-  fmt_number(
-    columns = p.value,
-    decimals = 4)
-
-# 可視化
-plot_model(model_deviation, type = "pred", terms = c("FactorB", "FactorA"), 
-           title = "Deviation Coding")
-```
-
-## Repeated Coding (Difference Coding)
-
-Repeated Codingは隣接する水準を順次比較します。順序がある場合に有用です。
-
-```{r}
-#| label: repeated-coding
-
-# Repeated codingの設定
-contrasts(data$FactorA) <- MASS::contr.sdif(2)
-contrasts(data$FactorB) <- MASS::contr.sdif(3)
-
-# コーディングの確認
-contrasts(data$FactorA) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-contrasts(data$FactorB) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-
-# モデルの実行
-model_difference <- lm(Outcome ~ FactorA * FactorB, data = data)
-model_difference_main <- lm(Outcome ~ FactorA + FactorB, data = data)
-
-# 結果の表示
-tab_model(model_difference)
-
-# 推定周辺平均と下位検定
-emm_difference <- emmeans(model_difference, ~ FactorB | FactorA)
-pairs(emm_difference, adjust = "tukey") |> 
-  data.frame() |> 
-  gt() |> 
-  tab_header(
-    title = "Pairwise Comparisons of Estimated Marginal Means",
-    subtitle = "Tukey HSD Post-hoc Test") |> 
-  cols_label(
-    contrast = "Comparison",
-    estimate = "Mean Difference",
-    SE = "SE",
-    df = "df",
-    t.ratio = "t-value",
-    p.value = "p-value") |> 
-  fmt_number(
-    columns = c(estimate, SE, t.ratio),
-    decimals = 3) |> 
-  fmt_number(
-    columns = p.value,
-    decimals = 4)
-```
-
-## コーディング方法の比較
-
-```{r}
-#| label: compare-codings
-
-# 結果の抽出と整形
-extract_coef <- function(model, name) {
-  tidy(model, effects = "fixed") |>
-    mutate(Model = name)
-}
-
-# 各モデルの係数を抽出
-comparison_table <- bind_rows(
-  extract_coef(model_treatment, "Treatment"),
-  extract_coef(model_sum, "Sum"),
-  extract_coef(model_deviation, "Deviation"),
-  extract_coef(model_difference, "Difference"))
-
-# フォーマット関数
-format_p_value <- function(p) {
-  case_when(
-    p < 0.001 ~ "< .001***",
-    p < 0.01 ~ paste0(round(p, 3), "**"),
-    p < 0.05 ~ paste0(round(p, 3), "*"),
-    TRUE ~ as.character(round(p, 3))
-  )
-}
-
-# 表の作成
-comparison_table |>
-  mutate(
-    estimate = round(estimate, 3),
-    std.error = round(std.error, 3),
-    statistic = round(statistic, 3),
-    p.value = format_p_value(p.value)) |>
-  dplyr::select(Model, term, estimate, std.error, statistic, p.value) |>
+tidy(fit_sum) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
   gt() |>
-  tab_header(
-    title = "Fixed Effects Comparison: Different Coding Methods") |>
-  cols_label(
-    term = "Fixed Effect",
-    estimate = "Estimate",
-    std.error = "Std. Error",
-    statistic = "t value",
-    p.value = "Pr(>|t|)",
-    Model = "Model") |>
-  cols_align(align = "center")
-
-# フォレストプロット
-plot_models(model_treatment, model_sum, model_deviation, model_difference,
-            show.values = TRUE,
-            m.labels = c("Treatment", "Sum", "Deviation", "Difference"),
-            title = "Coefficient Comparison Across Coding Methods") +
-  labs(x = "Coefficient Estimate", y = "Terms") +
-  theme_bw() +
-  theme(legend.position = "bottom")
+  tab_header(title = "Coefficient Table: Sum Coding")
 ```
 
-## 順序尺度の場合のコーディング
+- 切片: 総平均（grand mean）
+- 係数: 各水準が総平均からどれだけずれるか
+- ANOVAの主効果解釈と整合的
 
-順序カテゴリカル変数（例：CEFRレベルA1・A2・B1）の場合は、以下のコーディングが適切です。
-
-### Polynomial Coding
-
-非線形的な増加を仮定する場合に使用します。
-
-```{r}
-#| label: polynomial-coding
-
-# サンプルデータの作成（4水準）
-data_ord <- data.frame(
-  Participant = factor(rep(1:100, each = 4)),
-  Level = factor(rep(c("A1", "A2", "B1", "B2"), times = 100), 
-                 ordered = TRUE),
-  Score = rnorm(400, mean = rep(c(50, 60, 75, 85), times = 100), sd = 10))
-
-# Polynomial codingの設定
-contrasts(data_ord$Level) <- contr.poly(4)
-contrasts(data_ord$Level) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
-
-# モデルの実行と結果
-model_poly <- lm(Score ~ Level, data = data_ord)
-
-# 結果の表示（gt形式）
-tidy(model_poly) |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
-  gt() |>
-  tab_header(title = "Polynomial Coding Results") |>
-  cols_label(
-    term = "Term",
-    estimate = "Estimate",
-    std.error = "Std. Error",
-    statistic = "t-value",
-    p.value = "p-value")
-
-# 可視化
-ggplot(data_ord, aes(x = Level, y = Score)) +
-  geom_boxplot(fill = "lightblue") +
-  geom_smooth(aes(group = 1), method = "lm", formula = y ~ poly(x, 3), se = TRUE) +
-  labs(title = "Polynomial Contrast: Score by CEFR Level",
-       x = "CEFR Level", y = "Score") +
-  theme_bw()
-```
-
-### Helmert Coding
-
-各水準を後続のすべての水準の平均と比較します。
+## 6.4 Helmert coding
 
 ```{r}
 #| label: helmert-coding
 
-# Helmert codingの設定
-contrasts(data_ord$Level) <- contr.helmert(4)
-contrasts(data_ord$Level) |> 
-  data.frame() |> 
-  tibble::rownames_to_column("Level") |> 
-  gt()
+dat_helm <- dat_c
+contrasts(dat_helm$Group) <- contr.helmert(3)
 
-# モデルの実行と結果
-model_helmert <- lm(Score ~ Level, data = data_ord)
-
-# 結果の表示（gt形式）
-tidy(model_helmert) |>
-  mutate(across(where(is.numeric), ~round(., 3))) |>
+contrasts(dat_helm$Group) |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Level") |>
   gt() |>
-  tab_header(title = "Helmert Coding Results") |>
-  cols_label(
-    term = "Term",
-    estimate = "Estimate",
-    std.error = "Std. Error",
-    statistic = "t-value",
-    p.value = "p-value")
+  tab_header(title = "Design Matrix: Helmert Coding")
 
-# 可視化
-ggplot(data_ord, aes(x = Level, y = Score)) +
-  geom_boxplot(fill = "lightgreen") +
-  stat_summary(fun = mean, geom = "point", color = "red", size = 3) +
-  stat_summary(fun = mean, geom = "line", aes(group = 1), color = "red") +
-  labs(title = "Helmert Contrast: Score by CEFR Level",
-       x = "CEFR Level", y = "Score") +
-  theme_bw()
+fit_helm <- lm(Score ~ Group, data = dat_helm)
+
+tidy(fit_helm) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(title = "Coefficient Table: Helmert Coding")
 ```
 
-## まとめ：コーディング方法の選択指針
+- ある水準を、後続水準の平均と順次比較
+- 段階的カリキュラムやレベル制指導など、順序を意識した比較に有効
 
-| コーディング方法 | 使用場面 | 解釈 | Rでの実装 |
-|--------------------------|----------------|----------------|----------------|
-| Treatment Coding | 明確な統制群がある場合 | 参照レベルとの比較 | `contr.treatment(n)` |
-| Sum Coding | 全体平均との比較が必要な場合 | Grand Meanからの偏差 | `contr.sum(n)` |
-| Deviation Coding | ANOVAの主効果を検討する場合 | 全体平均との比較（参照レベルあり） | `contr.treatment(n) - 1/n` |
-| Repeated Coding | 隣接する水準の比較 | 順次比較 | `MASS::contr.sdif(n)` |
-| Polynomial Coding | 順序尺度で非線形性を検討 | 線形・二次・三次成分 | `contr.poly(n)` |
-| Helmert Coding | 段階的な比較が必要な場合 | 各水準と後続水準の平均を比較 | `contr.helmert(n)` |
+## 6.5 順序尺度にはPolynomial coding
 
-::: callout-important
-## 重要な注意点
+```{r}
+#| label: polynomial-coding
 
-1.  **コーディング方法によってsummary()の出力は変わるが、emmeans()の結果は変わらない**
-2.  **交互作用を含むモデルでは解釈が複雑になるため、必ず可視化と下位検定を行う**
-3.  **多重比較の問題に対処するため、p値の調整（Tukey、Bonferroni等）を適切に行う**
-4.  **研究目的に応じて適切なコーディング方法を選択することが重要**
-:::
+set.seed(2026)
 
-# 参考文献・リンク
+dat_ord <- tibble(
+  CEFR = factor(rep(c("A1", "A2", "B1", "B2"), each = 80),
+                levels = c("A1", "A2", "B1", "B2"),
+                ordered = TRUE),
+  Score = c(
+    rnorm(80, 48, 7),
+    rnorm(80, 56, 7),
+    rnorm(80, 66, 7),
+    rnorm(80, 74, 7)
+  )
+)
 
--   Cohen, J. (1988). *Statistical power analysis for the behavioral sciences* (2nd ed.). Hillsdale, NJ: Erlbaum.
--   Field, A. (2013). *Discovering statistics using IBM SPSS statistics* (4th ed.). London: Sage.
--   Schad, D. J., Vasishth, S., Hohenstein, S., & Kliegl, R. (2020). How to capitalize on a priori contrasts in linear (mixed) models: A tutorial. *Journal of Memory and Language*, 110, 104038.
--   UCLA: [Coding for Categorical Variables in Regression Models](https://stats.oarc.ucla.edu/r/library/r-library-contrast-coding-systems-for-categorical-variables/)
--   [Contrast Coding in R](https://debruine.github.io/faux/articles/contrasts.html)
--   Rパッケージ：afex, emmeans, effectsize, performance, DHARMa, car, MASS, faux, gt, sjPlot
+contrasts(dat_ord$CEFR) <- contr.poly(4)
+
+fit_poly <- lm(Score ~ CEFR, data = dat_ord)
+
+tidy(fit_poly) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(title = "Polynomial Contrasts for Ordered CEFR Levels")
+```
+
+`CEFR.L`（線形成分）だけでなく、`CEFR.Q`（二次成分）などが有意かどうかを確認することで、伸び方の形状（線形か曲線的か）を検討できます。
+
+## 6.6 コーディング間の不変性チェック
+
+```{r}
+#| label: invariance-check
+
+anova(fit_treat)
+anova(fit_sum)
+anova(fit_helm)
+
+all.equal(unname(fitted(fit_treat)), unname(fitted(fit_sum)))
+all.equal(unname(fitted(fit_treat)), unname(fitted(fit_helm)))
+```
+
+係数は変わりますが、**同じモデル空間なら予測値は一致**します。したがって、研究質問に合わせて「解釈しやすいコーディング」を選ぶことが合理的です。
+
+# 7. 研究質問に基づくコーディング選択
+
+| 研究質問 | 推奨コーディング | 解釈の中心 |
+|---|---|---|
+| 介入群を統制群と比較したい | Treatment | 参照群との差 |
+| 全体平均からの偏差を見たい | Sum | grand meanとの差 |
+| 段階的比較をしたい | Helmert | 逐次的な群比較 |
+| 順序因子のトレンドを見たい | Polynomial | 線形・二次・三次成分 |
+
+# 8. 報告テンプレート（英語教育論文向け）
+
+## 8.1 ANOVA結果（例）
+
+> A 2 (Instruction: Glossing vs. Writing) × 2 (Time: Immediate vs. Delayed) mixed ANOVA with Proficiency as a covariate showed a significant main effect of Instruction, *F*(1, 117) = xx.xx, *p* = .xxx, partial $\eta^2$ = .xxx, and a significant Instruction × Time interaction, *F*(1, 117) = xx.xx, *p* = .xxx, partial $\eta^2$ = .xxx.
+
+## 8.2 事後比較（例）
+
+> Holm-adjusted pairwise comparisons of estimated marginal means indicated that the Glossing group outperformed the Writing group at the delayed posttest, mean difference = x.xx, SE = x.xx, *p* = .xxx, 95% CI [x.xx, x.xx].
+
+## 8.3 再現性記述（最低限）
+
+1. 使用Rバージョン・主要パッケージバージョン
+2. コーディング方式（例: sum coding）
+3. 多重比較補正法（Holm/Tukey等）
+4. 効果量指標（本章では偏η²を主指標とし、必要に応じてω²を補助的に併記）
+
+# 9. 実務上の落とし穴
+
+1. **球面性と複合対称性を混同しない。**
+2. **交互作用が有意なのに主効果だけで結論を出さない。**
+3. **係数表だけで議論せず、`emmeans`で比較を統一する。**
+4. **効果量をp値の代替ではなく補完情報として扱う。**
+5. **コーディングの選択理由を本文で明示する。**
+
+# 10. 参考文献・リンク
+
+- Bakeman, R. (2005). Recommended effect size statistics for repeated measures designs. *Behavior Research Methods, 37*(3), 379-384. [https://doi.org/10.3758/BF03192707](https://doi.org/10.3758/BF03192707)
+- Ben-Shachar, M. S., Lüdecke, D., & Makowski, D. (2020). effectsize: Estimation of effect size indices and standardized parameters. *Journal of Open Source Software, 5*(56), 2815. [https://doi.org/10.21105/joss.02815](https://doi.org/10.21105/joss.02815)
+- Greenhouse, S. W., & Geisser, S. (1959). On methods in the analysis of profile data. *Psychometrika, 24*(2), 95-112. [https://doi.org/10.1007/BF02289823](https://doi.org/10.1007/BF02289823)
+- Huynh, H., & Feldt, L. S. (1976). Estimation of the Box correction for degrees of freedom from sample data in randomized block and split-plot designs. *Journal of Educational Statistics, 1*(1), 69-82. [https://doi.org/10.3102/10769986001001069](https://doi.org/10.3102/10769986001001069)
+- Lakens, D. (2013). Calculating and reporting effect sizes to facilitate cumulative science: A practical primer for t-tests and ANOVAs. *Frontiers in Psychology, 4*, 863. [https://doi.org/10.3389/fpsyg.2013.00863](https://doi.org/10.3389/fpsyg.2013.00863)
+- Lenth, R. V. (2023). *emmeans: Estimated Marginal Means, aka Least-Squares Means*. [https://cran.r-project.org/package=emmeans](https://cran.r-project.org/package=emmeans)
+- Olejnik, S., & Algina, J. (2003). Generalized eta and omega squared statistics: Measures of effect size for some common research designs. *Psychological Methods, 8*(4), 434-447. [https://doi.org/10.1037/1082-989X.8.4.434](https://doi.org/10.1037/1082-989X.8.4.434)
+- R Core Team. (2025). Contrast coding systems in R (`stats::contrasts`). [https://stat.ethz.ch/R-manual/R-devel/library/stats/html/contrast.html](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/contrast.html)
+- Schad, D. J., Vasishth, S., Hohenstein, S., & Kliegl, R. (2020). How to capitalize on a priori contrasts in linear (mixed) models: A tutorial. *Journal of Memory and Language, 110*, 104038. [https://doi.org/10.1016/j.jml.2019.104038](https://doi.org/10.1016/j.jml.2019.104038)
+- Singmann, H., Bolker, B., Westfall, J., Aust, F., & Ben-Shachar, M. S. (2025). *afex: Analysis of Factorial Experiments*. [https://cran.r-project.org/package=afex](https://cran.r-project.org/package=afex)
+- UCLA Statistical Consulting Group. (n.d.). Coding systems for categorical variables in regression analysis. [https://stats.oarc.ucla.edu/r/library/r-library-contrast-coding-systems-for-categorical-variables/](https://stats.oarc.ucla.edu/r/library/r-library-contrast-coding-systems-for-categorical-variables/)
