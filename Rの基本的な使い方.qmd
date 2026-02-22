@@ -3219,24 +3219,7 @@ cat("Adjusted R² =", summary(model)$adj.r.squared |> round(3))
 詳細は各章で扱います。Welchのt検定は等分散を仮定しないため、`t.test()` のデフォルト（`var.equal = FALSE`）をそのまま使用することを推奨します。
 :::
 
-```{mermaid}
-%%| label: analysis-flowchart
-%%| fig-cap: "Statistical Method Selection Flowchart"
-flowchart TD
-    A["研究仮説の設定"] --> B{"データの種類"}
-    B -->|"2群比較"| C["t検定 → 第1章"]
-    B -->|"3群以上"| D["ANOVA → 第2章"]
-    B -->|"相関・予測"| E["回帰分析 → 第4章"]
-    B -->|"2値データ"| F["GLM → 第5章"]
-    B -->|"階層構造"| G["混合効果モデル → 第6章"]
-    style A fill:#e3f2fd,stroke:#1976d2
-    style B fill:#fff9c4,stroke:#fbc02d
-    style C fill:#f3e5f5,stroke:#7b1fa2
-    style D fill:#f3e5f5,stroke:#7b1fa2
-    style E fill:#f3e5f5,stroke:#7b1fa2
-    style F fill:#f3e5f5,stroke:#7b1fa2
-    style G fill:#f3e5f5,stroke:#7b1fa2
-```
+統計手法の選択は、まず研究仮説を明確化し、次にデータ構造で分岐すると整理できます。2群比較なら第1章の t 検定、3群以上の比較なら第2章の ANOVA、相関や予測が主目的なら第4章の回帰分析を参照してください。アウトカムが 2 値なら第5章の GLM、階層構造を持つデータなら第6章の混合効果モデルが基本ルートです。
 
 ## パッケージ管理
 

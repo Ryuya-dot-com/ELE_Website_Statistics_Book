@@ -214,45 +214,13 @@ MANOVAと判別分析は、同じ数学的構造の「表と裏」です [@finch
 - **Hahs-Vaughn [-@hahs2017]**: MANOVA の前提条件を段階的に解説。初学者向けの判断フローチャートを提供。
 :::
 
-### 分析の全体像（フローチャート）
+### 分析の全体像
 
 本章の分析パイプラインは以下の順で進みます。
 
-```{mermaid}
-flowchart LR
-    A["1. 前提確認<br/>MVN・Box's M"] --> B["2. MANOVA<br/>Pillai主報告"]
-    B --> C["3. HEプロット<br/>H/E行列の可視化"]
-    C --> D["4. DDA<br/>（主要追跡）"]
-    D --> E["5. 単変量ANOVA<br/>（補助的追跡）"]
-    E --> F["6. 効果量・分類精度<br/>検定力分析"]
-    F --> G["7. 報告<br/>APA準拠"]
+まず前提条件（多変量正規性・Box's M など）を確認し、次に MANOVA を実行して主報告は Pillai 統計量で行います。続いて HE プロットで H/E 行列を可視化し、追跡分析として DDA を主軸に、必要に応じて単変量 ANOVA を補助的に実施します。最後に効果量・分類精度・検定力を整理して APA 形式で報告します。
 
-    style A fill:#e8f4fd
-    style B fill:#fff3cd
-    style C fill:#fff3cd
-    style D fill:#fff3cd
-    style G fill:#d4edda
-```
-
-また、MANOVAを使うべきかどうかの判断は以下のフローで行います。
-
-```{mermaid}
-flowchart TD
-    A["研究の問い:<br/>複数DVに群差があるか?"] --> B{"DVは2つ以上か?"}
-    B -->|"No"| C["ANOVA / t検定<br/>（1つのDVで十分）"]
-    B -->|"Yes"| D{"DV間に中程度の<br/>相関 (.30-.70)<br/>があるか?"}
-    D -->|"No (.00-.30)"| E["個別ANOVAで十分<br/>MANOVAの付加価値は小さい"]
-    D -->|"Yes"| F["MANOVAを実施"]
-    D -->|"高すぎる (>.70)"| G["多重共線性の問題<br/>DVの再検討が必要"]
-    F --> H{"Pillai有意?"}
-    H -->|"Yes"| I["追跡分析へ<br/>（DDA優先、ANOVA補助）"]
-    H -->|"No"| J["検定力を確認<br/>N不足の可能性"]
-
-    style A fill:#e8f4fd
-    style F fill:#fff3cd
-    style I fill:#d4edda
-    style J fill:#fff3cd
-```
+また、MANOVA の適用可否は次の判断基準で決めます。まず従属変数（DV）が2つ以上あるかを確認し、1つだけなら ANOVA/t 検定で十分です。DV が複数ある場合は DV 間相関を確認し、`.30-.70` 程度の中程度相関なら MANOVA の利点が出ます。一方、相関が低すぎる場合は個別 ANOVA で十分、高すぎる場合は多重共線性を疑って DV の再設計を検討します。MANOVA を実施した後に Pillai が有意なら追跡分析へ進み、非有意なら検定力不足の可能性を確認します。
 
 ## 分析課題とフロー
 

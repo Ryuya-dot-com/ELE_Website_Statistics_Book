@@ -39,36 +39,9 @@ bibliography:
 - 章内コードをそのままテンプレートとして使える。
 :::
 
-## 分析の流れ（フローチャート）
+## 分析の流れ
 
-GLM/GAM の分析では、**従属変数の型（2値・カウント・連続正値）に応じて分布族とリンク関数を選ぶ**ことが出発点になります。分布の選択を誤ると、推定値の解釈がデータの生成過程と乖離し、予測精度だけでなく実質的な結論にも影響を及ぼします。本章では、従属変数の確認から GAM への拡張判断、最終的な報告までを一貫した手順として示します。以下のフローチャートで全体像を把握してください。
-
-```{mermaid}
-%%| fig-width: 8
-flowchart TD
-    A["従属変数の型と分布を確認"] --> B{"従属変数は？"}
-    B -->|"2値（正誤・合否）"| C["Binomial GLM<br/>（logit リンク）"]
-    B -->|"カウント（回数・頻度）"| D["Poisson GLM<br/>（log リンク）"]
-    B -->|"連続正値（時間・強度）"| E["Gamma GLM<br/>（log リンク）"]
-    D --> F{"過分散あり？"}
-    F -->|"Yes"| G["Negative Binomial GLM"]
-    F -->|"No"| H["Poisson GLM で続行"]
-    C --> I{"非線形性あり？"}
-    G --> I
-    H --> I
-    E --> I
-    I -->|"Yes"| J["GAM（スプライン項追加）"]
-    I -->|"No"| K["GLM で報告"]
-    J --> L["AIC 比較 + 残差診断"]
-    K --> L
-    L --> M["結果報告<br/>（OR / IRR / 倍率 + 予測値）"]
-
-    style A fill:#e8f4fd
-    style B fill:#fff3cd
-    style F fill:#fff3cd
-    style I fill:#fff3cd
-    style M fill:#d4edda
-```
+GLM/GAM の分析では、**従属変数の型（2値・カウント・連続正値）に応じて分布族とリンク関数を選ぶ**ことが出発点になります。分布の選択を誤ると、推定値の解釈がデータの生成過程と乖離し、予測精度だけでなく実質的な結論にも影響を及ぼします。本章では、まず従属変数の型を確認し、2値なら Binomial GLM、カウントなら Poisson GLM（過分散があれば Negative Binomial GLM）、連続正値なら Gamma GLM を選択します。次に非線形性を診断し、必要なら GAM に拡張、不要なら GLM を維持します。最後に AIC 比較と残差診断でモデルを確定し、OR / IRR / 倍率と予測値を中心に報告します。
 
 ::: {.callout-note}
 英語教育研究では、テスト項目の正誤データ（2値）や発話中のエラー回数（カウント）を扱うことが多いため、**Binomial GLM** または **Poisson GLM** のパスを辿るケースが最も一般的です。まずは GLM を適合し、残差プロットや `gam.check()` で非線形パターンが見られた場合に GAM への拡張を検討してください。
@@ -221,15 +194,15 @@ GLM/GAM の前提は「正規性」だけではありません。実務では次
 `stats::binomial()` では `logit`, `probit`, `cloglog`, `cauchit`, `log`, `identity`
 が指定できます[@rstatsfamily; @rmakelink]。
 
-| Link | $g(p)$ | $g^{-1}(\\eta)$ | 係数の主な解釈 | 注意点 |
+| Link | $g(p)$ | $g^{-1}(\eta)$ | 係数の主な解釈 | 注意点 |
 |---|---|---|---|---|
-| logit | $\\log\\{p/(1-p)\\}$ | $\\mathrm{logit}^{-1}(\\eta)$ | $\\exp(\\beta)$ はオッズ比（OR） | 最も標準的。解釈がしやすい |
-| probit | $\\Phi^{-1}(p)$ | $\\Phi(\\eta)$ | 潜在正規尺度での変化量 | logit と予測は近いが係数尺度は異なる |
-| cloglog | $\\log\\{-\\log(1-p)\\}$ | $1-\\exp\\{-\\exp(\\eta)\\}$ | 非対称リンク | 稀少イベント/離散時間ハザードで有用[@prentice1978] |
-| log-log | $-\\log\\{-\\log(p)\\}$ | $\\exp\\{-\\exp(-\\eta)\\}$ | cloglog の鏡像 | 事象定義を反転したい場合に有用[@vgamcloglog] |
-| cauchit | $\\tan\\{\\pi(p-1/2)\\}$ | $\\arctan(\\eta)/\\pi + 1/2$ | 重尾リンク | 外れ値的な線形予測子に比較的頑健 |
-| log | $\\log(p)$ | $\\exp(\\eta)$ | $\\exp(\\beta)$ はリスク比に近い解釈 | 確率>1の制約に注意 |
-| identity | $p$ | $\\eta$ | リスク差に近い | [0,1] 制約を満たしにくく通常は非推奨 |
+| logit | $\log\{p/(1-p)\}$ | $\mathrm{logit}^{-1}(\eta)$ | $\exp(\beta)$ はオッズ比（OR） | 最も標準的。解釈がしやすい |
+| probit | $\Phi^{-1}(p)$ | $\Phi(\eta)$ | 潜在正規尺度での変化量 | logit と予測は近いが係数尺度は異なる |
+| cloglog | $\log\{-\log(1-p)\}$ | $1-\exp\{-\exp(\eta)\}$ | 非対称リンク | 稀少イベント/離散時間ハザードで有用[@prentice1978] |
+| log-log | $-\log\{-\log(p)\}$ | $\exp\{-\exp(-\eta)\}$ | cloglog の鏡像 | 事象定義を反転したい場合に有用[@vgamcloglog] |
+| cauchit | $\tan\{\pi(p-1/2)\}$ | $\arctan(\eta)/\pi + 1/2$ | 重尾リンク | 外れ値的な線形予測子に比較的頑健 |
+| log | $\log(p)$ | $\exp(\eta)$ | $\exp(\beta)$ はリスク比に近い解釈 | 確率>1の制約に注意 |
+| identity | $p$ | $\eta$ | リスク差に近い | [0,1] 制約を満たしにくく通常は非推奨 |
 
 ::: {.callout-note}
 #### logit と probit の違い（誤解しやすい点）

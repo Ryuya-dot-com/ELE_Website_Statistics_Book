@@ -104,33 +104,7 @@ $$
 
 ## 実行前ガイド（実務フロー）
 
-以下のフローチャートが本章全体の分析手順です。
-
-```{mermaid}
-%%| fig-width: 8
-flowchart TD
-    A[GLM で基準線を作成] --> B[ICC / DEFF で依存性を確認]
-    B --> C{ICC が無視できる?}
-    C -->|Yes| D[GLM で報告]
-    C -->|No| E[GLMM ランダム切片を追加]
-    E --> F{isSingular = FALSE?}
-    F -->|Yes| G[ランダム傾きを試行]
-    F -->|No| H[ランダム構造を簡素化]
-    G --> I{isSingular = FALSE?}
-    I -->|Yes| J[ランダム傾きモデルを候補に]
-    I -->|No| K[ランダム切片モデルに戻す]
-    J --> L[AIC / LRT でモデル比較]
-    K --> L
-    H --> L
-    L --> M[OR 表 + 応答スケール予測]
-    M --> N[DHARMa + 過分散テストで最終診断]
-    N --> O[結果報告]
-
-    style A fill:#e8f4fd
-    style O fill:#d4edda
-    style C fill:#fff3cd
-    style I fill:#fff3cd
-```
+本章の分析手順は、まず GLM を基準線として適合し、ICC / DEFF で依存性を確認するところから始めます。ICC が無視できる場合は GLM を報告し、無視できない場合は GLMM のランダム切片モデルへ進みます。そこで `isSingular()` を確認し、問題なければランダム傾きモデルを試行、特異適合が出るなら構造を簡素化してランダム切片モデルに戻します。最終的には AIC / LRT で候補モデルを比較し、OR 表と応答スケール予測、DHARMa と過分散テストによる最終診断を経て結果を報告します。
 
 ### モデル前提チェックリスト（GLMM）
 
@@ -643,17 +617,7 @@ isSingular(m_glmm_rs)  # ランダム傾き追加モデル
 
 ステップ 1–3 でモデルの候補がそろいました。ここからはモデル比較に入ります。GLMM のモデル比較は **3 段階**で進めるのが定石です[@bolker2009; @barr2013; @bates2015parsimonious; @matuschek2017; @meteyard2020; @glmmfaq]。
 
-```{mermaid}
-%%| fig-cap: "GLMM Model Comparison Workflow"
-flowchart TD
-    A["① ランダム効果構造の比較\n（固定効果は固定のまま）"] --> B["② リンク関数の選択\n（logit / probit / cloglog）"]
-    B --> C["③ 固定効果の比較\n（ランダム構造は固定のまま）"]
-    C --> D["最終モデル確定 → 解釈・診断へ"]
-    style A fill:#4682b4,color:#fff
-    style B fill:#5f9ea0,color:#fff
-    style C fill:#6b8e23,color:#fff
-    style D fill:#cd853f,color:#fff
-```
+モデル比較は 3 段階で進めます。第1段階では固定効果を据え置いたままランダム効果構造を比較し、第2段階では採用したランダム構造を固定してリンク関数（logit / probit / cloglog）を比較します。第3段階でランダム構造とリンク関数を固定したまま固定効果を比較し、最終モデルを確定して解釈と診断に進みます。
 
 **ΔAIC の目安**（全ステップ共通）：
 

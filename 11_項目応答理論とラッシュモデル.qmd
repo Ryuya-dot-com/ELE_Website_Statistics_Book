@@ -353,13 +353,13 @@ r_i=\sum_{j=1}^{J}x_{ij},\quad
 s_j=\sum_{i=1}^{N}x_{ij}
 $$
 
-です。\(r_i\) は受験者の素点、\(s_j\) は項目得点（通過者数）です。
+です。$r_i$ は受験者の素点、$s_j$ は項目得点（通過者数）です。
 
 この形は、Rasch が「合計点に基づく推定」と整合的である理由を明示します[@rasch1980; @andersen1973]。
 
 ### 識別可能性（identifiability）の確認
 
-Rasch 確率は \((\theta_i-b_j)\) の差だけで決まるため、任意の定数 \(c\) に対して
+Rasch 確率は $(\theta_i-b_j)$ の差だけで決まるため、任意の定数 $c$ に対して
 
 $$
 (\theta_i, b_j)\mapsto (\theta_i+c, b_j+c)
@@ -368,8 +368,8 @@ $$
 としても予測確率は不変です。したがって、そのままでは母数が一意に定まりません。
 このため実務では次のような制約を置きます。
 
-- \(\sum_{j=1}^{J}b_j=0\)（項目困難度の平均を0に固定）
-- あるいは \(\sum_{i=1}^{N}\theta_i=0\)
+- $\sum_{j=1}^{J}b_j=0$（項目困難度の平均を0に固定）
+- あるいは $\sum_{i=1}^{N}\theta_i=0$
 
 `eRm::RM()` はこの識別制約のもとで推定を行います[@mair2007]。
 
@@ -397,8 +397,8 @@ tibble(max_abs_difference = max_abs_diff) |>
 
 ### 条件付き尤度（CML）の導出スケッチ
 
-Rasch 推定の理論的核は、\(\theta_i\) を「邪魔母数（nuisance parameters）」として消去できる点です。
-受験者 \(i\) の反応ベクトルを \(\mathbf{x}_i\)、素点を \(R_i=r_i\) とすると、
+Rasch 推定の理論的核は、$\theta_i$ を「邪魔母数（nuisance parameters）」として消去できる点です。
+受験者 $i$ の反応ベクトルを $\mathbf{x}_i$、素点を $R_i=r_i$ とすると、
 
 $$
 P(\mathbf{X}_i=\mathbf{x}_i \mid R_i=r_i, \mathbf{b})
@@ -408,11 +408,11 @@ P(\mathbf{X}_i=\mathbf{x}_i \mid R_i=r_i, \mathbf{b})
 \exp\left(-\sum_{j=1}^{J} b_j z_j\right)},
 $$
 
-ここで \(\mathcal{A}(r_i)\) は「合計が \(r_i\) になる 0/1 ベクトル全体」です。
+ここで $\mathcal{A}(r_i)$ は「合計が $r_i$ になる 0/1 ベクトル全体」です。
 
-重要なのは、右辺に \(\theta_i\) が現れないことです。  
-つまり \(R_i\) で条件付けると、能力母数を積分せずに消去でき、
-項目母数 \(\mathbf{b}\) だけの尤度最大化（CML）が可能になります[@andersen1973; @mair2007]。
+重要なのは、右辺に $\theta_i$ が現れないことです。  
+つまり $R_i$ で条件付けると、能力母数を積分せずに消去でき、
+項目母数 $\mathbf{b}$ だけの尤度最大化（CML）が可能になります[@andersen1973; @mair2007]。
 
 ```{r}
 #| label: cml-cancellation-demo
@@ -1039,9 +1039,6 @@ package_tbl |>
 ```
 
 
-::: {.callout-note collapse="true"}
-
-
 ```{r}
 #| label: tam-workflow
 
@@ -1115,9 +1112,6 @@ tam_wle_summary |>
 ```
 
 TAM の WLE（Warm 推定量）信頼性は、Rasch 文脈での人物推定の信頼性係数です。0.80 を超えていれば実用上十分とされます。
-:::
-
-::: {.callout-note collapse="true"}
 
 sirt は補助的な IRT 手法やグローバル適合検定に強みがあります。`rasch.mml2()` → `modelfit.sirt()` で残差適合診断まで一貫して実行できます。
 
@@ -1169,7 +1163,6 @@ sirt_stat_tbl |>
 ```
 
 SRMSR（Standardized Root Mean Square Residual）が 0.05 未満であれば、モデルの残差適合が良好と判断できます。
-:::
 
 ### パッケージ間の Rasch 項目母数比較
 
