@@ -14,10 +14,13 @@ import sys
 import tempfile
 import unicodedata
 
+EXCLUDE_EXTENSIONS = {".epub"}
+
 
 def copy_with_nfc(src, dst):
     """Copy src directory to dst with all filenames normalized to NFC."""
-    count = 0
+    normalized_count = 0
+    excluded_count = 0
     for root, dirs, files in os.walk(src):
         rel = os.path.relpath(root, src)
         nfc_rel = unicodedata.normalize('NFC', rel)
@@ -25,11 +28,14 @@ def copy_with_nfc(src, dst):
         os.makedirs(dst_dir, exist_ok=True)
 
         for f in files:
+            if os.path.splitext(f)[1].lower() in EXCLUDE_EXTENSIONS:
+                excluded_count += 1
+                continue
             nfc_name = unicodedata.normalize('NFC', f)
             shutil.copy2(os.path.join(root, f), os.path.join(dst_dir, nfc_name))
             if f != nfc_name:
-                count += 1
-    return count
+                normalized_count += 1
+    return normalized_count, excluded_count
 
 
 def main():
@@ -45,8 +51,12 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmpdir:
         nfc_dir = os.path.join(tmpdir, '_book_nfc')
-        count = copy_with_nfc(book_dir, nfc_dir)
-        print(f"[deploy] Copied _book/ with {count} filenames normalized to NFC")
+        normalized_count, excluded_count = copy_with_nfc(book_dir, nfc_dir)
+        print(
+            "[deploy] Copied _book/ "
+            f"(normalized NFC filenames: {normalized_count}, "
+            f"excluded files: {excluded_count})"
+        )
 
         result = subprocess.run(
             [sys.executable, '-m', 'ghp_import', '-n', '-p', '-f', '-m', msg, nfc_dir],
