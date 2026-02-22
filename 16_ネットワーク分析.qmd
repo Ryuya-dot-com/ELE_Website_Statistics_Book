@@ -1302,10 +1302,14 @@ ERGM の推定には `statnet` / `ergm` パッケージを使用する[@hunter20
 # igraph → network 変換（ERGM用にクリーンなコピーを使用）
 g_for_ergm <- g
 # intergraph変換で問題になりうる属性を削除
-g_for_ergm <- delete_vertex_attr(g_for_ergm, "strength")
-g_for_ergm <- delete_vertex_attr(g_for_ergm, "community_louvain")
+keep_attrs <- c("name", "class", "baseline_score")
+for (a in vertex_attr_names(g_for_ergm)) {
+  if (!(a %in% keep_attrs)) g_for_ergm <- delete_vertex_attr(g_for_ergm, a)
+}
 # baseline_scoreを数値型に明示変換
 V(g_for_ergm)$baseline_score <- as.numeric(V(g_for_ergm)$baseline_score)
+# class を文字型に明示変換
+V(g_for_ergm)$class <- as.character(V(g_for_ergm)$class)
 g_net <- intergraph::asNetwork(g_for_ergm)
 
 # ノード属性が正しく変換されたか確認
