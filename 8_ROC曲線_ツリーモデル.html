@@ -764,7 +764,7 @@ window.Quarto = {
 </section>
 <section id="バイアスとバリアンスのトレードオフ" class="level4">
 <h4 class="anchored" data-anchor-id="バイアスとバリアンスのトレードオフ">バイアスとバリアンスのトレードオフ</h4>
-<p>モデル選択を理解するうえで最も重要な概念が、<strong>バイアス・バリアンスのトレードオフ</strong>です<span class="citation" data-cites="hastie2009 james2021">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hastie2009" role="doc-biblioref">Hastie ほか, 2009</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-james2021" role="doc-biblioref">James ほか, 2021</a>)</span>。</p>
+<p>モデル選択を理解するうえで最も重要な概念が、<strong>バイアス・バリアンスのトレードオフ</strong>です<span class="citation" data-cites="hastie2009 james2021">(<a href="Rの基本的な使い方.html#ref-hastie2009" role="doc-biblioref">Hastie et al., 2009</a>; <a href="Rの基本的な使い方.html#ref-james2021" role="doc-biblioref">James et al., 2021</a>)</span>。</p>
 <ul>
 <li><strong>バイアス（bias）</strong>: モデルが現実を単純化しすぎることによる系統的な誤差。ロジスティック回帰が非線形な関係を直線的に近似するとき、これが生じる。</li>
 <li><strong>バリアンス（variance）</strong>: データが変わるとモデルの予測が大きく変わる不安定さ。深い決定木はデータの細部まで追いかけるため、別のサンプルでは異なる構造になりやすい。</li>
@@ -1929,7 +1929,7 @@ G = 1 - \sum_{k=1}^{K} p_k^2
 </div>
 </div>
 <p>分割前のGiniは 0.500（2クラスが半々）。<code>proficiency = 0.25</code> で分けると、左は全員 incorrect（<span class="math inline">\(G = 0\)</span>）、右は全員 correct（<span class="math inline">\(G = 0\)</span>）となり、加重Giniは 0.000 です。これが<strong>最も純粋な分割</strong>です。</p>
-<p>実際の決定木アルゴリズム（CART）は、すべての変数×すべての分割点でこのGini改善量を計算し、最大の改善をもたらす分割を選びます。これを再帰的に繰り返し、停止条件（最小サンプル数、最大深さなど）に達するまで分岐を続けます<span class="citation" data-cites="breiman1984">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-breiman1984" role="doc-biblioref">Breiman ほか, 1984</a>)</span>。</p>
+<p>実際の決定木アルゴリズム（CART）は、すべての変数×すべての分割点でこのGini改善量を計算し、最大の改善をもたらす分割を選びます。これを再帰的に繰り返し、停止条件（最小サンプル数、最大深さなど）に達するまで分岐を続けます<span class="citation" data-cites="breiman1984">(<a href="Rの基本的な使い方.html#ref-breiman1984" role="doc-biblioref">Breiman et al., 1984</a>)</span>。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -2009,7 +2009,7 @@ G = 1 - \sum_{k=1}^{K} p_k^2
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>本章はチュートリアルのため計算時間を短縮する目的で3-foldを採用しています。実際の研究では <strong>5-fold または10-fold</strong> が一般的です<span class="citation" data-cites="james2021">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-james2021" role="doc-biblioref">James ほか, 2021</a>)</span>。</p>
+<p>本章はチュートリアルのため計算時間を短縮する目的で3-foldを採用しています。実際の研究では <strong>5-fold または10-fold</strong> が一般的です<span class="citation" data-cites="james2021">(<a href="Rの基本的な使い方.html#ref-james2021" role="doc-biblioref">James et al., 2021</a>)</span>。</p>
 </div>
 </div>
 <hr>
@@ -2081,7 +2081,7 @@ G = 1 - \sum_{k=1}^{K} p_k^2
 <div class="callout-body-container callout-body">
 <ul>
 <li>ROC-AUCは閾値に依存しない便利な比較指標。</li>
-<li>ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合がある<span class="citation" data-cites="saito2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-saito2015" role="doc-biblioref">Saito &amp; Rehmsmeier, 2015</a>)</span>。</li>
+<li>ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合がある<span class="citation" data-cites="saito2015">(<a href="Rの基本的な使い方.html#ref-saito2015" role="doc-biblioref">Saito &amp; Rehmsmeier, 2015</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -5433,11 +5433,11 @@ G = 1 - \sum_{k=1}^{K} p_k^2
 </div>
 <section id="補助解析dominance-analysisglm" class="level3" data-number="10.6.1">
 <h3 data-number="10.6.1" class="anchored" data-anchor-id="補助解析dominance-analysisglm"><span class="header-section-number">10.6.1</span> 補助解析：Dominance Analysis（GLM）</h3>
-<p>係数表は「方向と有意性」を示すのに有用ですが、変数間でスケールが異なるため「どの変数が最も重要か」の比較は直接できません。標準化係数を使う方法もありますが、変数間の相関が強い場合は不安定です。Dominance analysisは、すべてのサブモデルの組み合わせを比較することでこの問題を解決します<span class="citation" data-cites="budescu1993 azen2003 azen2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-azen2003" role="doc-biblioref">Azen &amp; Budescu, 2003</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-azen2009" role="doc-biblioref">Azen &amp; Traxel, 2009</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-budescu1993" role="doc-biblioref">Budescu, 1993</a>)</span>。</p>
+<p>係数表は「方向と有意性」を示すのに有用ですが、変数間でスケールが異なるため「どの変数が最も重要か」の比較は直接できません。標準化係数を使う方法もありますが、変数間の相関が強い場合は不安定です。Dominance analysisは、すべてのサブモデルの組み合わせを比較することでこの問題を解決します<span class="citation" data-cites="budescu1993 azen2003 azen2009">(<a href="Rの基本的な使い方.html#ref-azen2003" role="doc-biblioref">Azen &amp; Budescu, 2003</a>; <a href="Rの基本的な使い方.html#ref-azen2009" role="doc-biblioref">Azen &amp; Traxel, 2009</a>; <a href="Rの基本的な使い方.html#ref-budescu1993" role="doc-biblioref">Budescu, 1993</a>)</span>。</p>
 <p>文献での活用ポイント（具体）:</p>
 <ul>
-<li><span class="citation" data-cites="azen2009">Azen &amp; Traxel (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-azen2009" role="doc-biblioref">2009</a>)</span> は、ロジスティック回帰で dominance analysis を使うために、 R2類似指標の選定とブートストラップ推論を組み合わせて、重要度の再現性を検討しました。</li>
-<li><span class="citation" data-cites="mizumoto2022">Mizumoto (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mizumoto2022" role="doc-biblioref">2022</a>)</span> は、応用言語学データの再解析で dominance analysis を併用し、 「標準化βだけでは見えにくい相対的重要性」を示しました。<br>
+<li><span class="citation" data-cites="azen2009">Azen &amp; Traxel (<a href="Rの基本的な使い方.html#ref-azen2009" role="doc-biblioref">2009</a>)</span> は、ロジスティック回帰で dominance analysis を使うために、 R2類似指標の選定とブートストラップ推論を組み合わせて、重要度の再現性を検討しました。</li>
+<li><span class="citation" data-cites="mizumoto2022">Mizumoto (<a href="Rの基本的な使い方.html#ref-mizumoto2022" role="doc-biblioref">2022</a>)</span> は、応用言語学データの再解析で dominance analysis を併用し、 「標準化βだけでは見えにくい相対的重要性」を示しました。<br>
 </li>
 <li>本章での具体例としては、<code>proficiency</code> と <code>condition</code> の relative share を比較し、<br>
 「学習者要因と授業デザイン要因のどちらが予測改善に効いているか」を同じ尺度で読む、という使い方になります。</li>
@@ -7239,7 +7239,7 @@ GLMの限界とツリーモデルへの動機
 <p>不安定な単木をたくさん作って多数決する。各木は別々のデータ（ブートストラップ）と別々の変数（ランダム選択）で育てるので、木どうしが似すぎない。結果としてバリアンスが大幅に下がる。</p>
 </div>
 </div>
-<p>この節の目的は、単木の弱点（不安定性）をアンサンブルで補うことです<span class="citation" data-cites="breiman2001">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-breiman2001" role="doc-biblioref">Breiman, 2001</a>)</span>。</p>
+<p>この節の目的は、単木の弱点（不安定性）をアンサンブルで補うことです<span class="citation" data-cites="breiman2001">(<a href="Rの基本的な使い方.html#ref-breiman2001" role="doc-biblioref">Breiman, 2001</a>)</span>。</p>
 <section id="バギングの原理" class="level3" data-number="10.8.1">
 <h3 data-number="10.8.1" class="anchored" data-anchor-id="バギングの原理"><span class="header-section-number">10.8.1</span> バギングの原理</h3>
 <p>ランダムフォレストの土台は<strong>バギング（Bootstrap Aggregating）</strong>です。手順は以下の通りです:</p>
@@ -7250,7 +7250,7 @@ GLMの限界とツリーモデルへの動機
 <li>全B本の木の予測を<strong>多数決</strong>（分類の場合）または<strong>平均</strong>（回帰の場合）で統合する。</li>
 </ol>
 <p>比喩で言えば、「多数の専門家に別々の資料を渡し、独立に判断してもらって多数決をとる」イメージです。1人の判断は偏りやすくても、独立した多数の専門家の多数決は安定します。本章では300本の木（<code>trees = 300</code>）を使用します。</p>
-<p>ランダムフォレストはバギングに加えて、各分岐で<strong>変数のランダム選択</strong>（mtry個だけ候補にする）を行います。これにより、強い変数（例: proficiency）がすべての木で最初に選ばれる状況を防ぎ、木どうしの<strong>相関を下げて</strong>バリアンス削減効果を高めます<span class="citation" data-cites="breiman2001">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-breiman2001" role="doc-biblioref">Breiman, 2001</a>)</span>。</p>
+<p>ランダムフォレストはバギングに加えて、各分岐で<strong>変数のランダム選択</strong>（mtry個だけ候補にする）を行います。これにより、強い変数（例: proficiency）がすべての木で最初に選ばれる状況を防ぎ、木どうしの<strong>相関を下げて</strong>バリアンス削減効果を高めます<span class="citation" data-cites="breiman2001">(<a href="Rの基本的な使い方.html#ref-breiman2001" role="doc-biblioref">Breiman, 2001</a>)</span>。</p>
 </section>
 <section id="ランダムフォレストのハイパーパラメータ" class="level3" data-number="10.8.2">
 <h3 data-number="10.8.2" class="anchored" data-anchor-id="ランダムフォレストのハイパーパラメータ"><span class="header-section-number">10.8.2</span> ランダムフォレストのハイパーパラメータ</h3>
@@ -8309,7 +8309,7 @@ OOB（Out-of-Bag）エラーとは
 <li>ある変数の値をランダムにシャッフルして、予測精度を再計算する。</li>
 <li>精度の<strong>低下幅</strong>がその変数の重要度になる。</li>
 </ol>
-<p>大きく低下する変数は「その変数がないと予測が壊れる」＝重要な変数です。Gini不純度ベースの重要度（impurity importance）とは異なり、permutation importanceはカテゴリカル変数のカーディナリティに対するバイアスが小さいとされています<span class="citation" data-cites="strobl2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-strobl2007" role="doc-biblioref">Strobl ほか, 2007</a>)</span>。</p>
+<p>大きく低下する変数は「その変数がないと予測が壊れる」＝重要な変数です。Gini不純度ベースの重要度（impurity importance）とは異なり、permutation importanceはカテゴリカル変数のカーディナリティに対するバイアスが小さいとされています<span class="citation" data-cites="strobl2007">(<a href="Rの基本的な使い方.html#ref-strobl2007" role="doc-biblioref">Strobl et al., 2007</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -8854,7 +8854,7 @@ OOB（Out-of-Bag）エラーとは
 <p>XGBoostは「前の木が間違えた部分を、次の木が重点的に修正する」逐次学習法。ランダムフォレストが木を並列に育てるのに対し、XGBoostは<strong>直列に</strong>育てて誤差を段階的に減らす。強力だが設定項目が多い。</p>
 </div>
 </div>
-<p>この節の目的は、高精度モデルを構築しつつ、重要特徴を解釈可能な形で確認することです<span class="citation" data-cites="chen2016">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-chen2016" role="doc-biblioref">Chen &amp; Guestrin, 2016</a>)</span>。</p>
+<p>この節の目的は、高精度モデルを構築しつつ、重要特徴を解釈可能な形で確認することです<span class="citation" data-cites="chen2016">(<a href="Rの基本的な使い方.html#ref-chen2016" role="doc-biblioref">Chen &amp; Guestrin, 2016</a>)</span>。</p>
 <section id="ブースティングの原理バギングとの対比" class="level3" data-number="10.9.1">
 <h3 data-number="10.9.1" class="anchored" data-anchor-id="ブースティングの原理バギングとの対比"><span class="header-section-number">10.9.1</span> ブースティングの原理：バギングとの対比</h3>
 <p>ランダムフォレスト（バギング）とXGBoost（ブースティング）は、アンサンブルの組み立て方が根本的に異なります。</p>
@@ -9362,7 +9362,7 @@ OOB（Out-of-Bag）エラーとは
 <p><span class="math display">\[
 \hat{f}_m(x) = \hat{f}_{m-1}(x) + \eta \cdot h_m(x)
 \]</span></p>
-<p>ここで <span class="math inline">\(h_m(x)\)</span> は <span class="math inline">\(m\)</span>回目の木の予測、<span class="math inline">\(\eta\)</span> は学習率（0〜1）です。学習率を小さくすると各木の寄与が控えめになり、より多くの反復が必要になりますが、過学習しにくくなります<span class="citation" data-cites="friedman2001">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friedman2001" role="doc-biblioref">Friedman, 2001</a>)</span>。</p>
+<p>ここで <span class="math inline">\(h_m(x)\)</span> は <span class="math inline">\(m\)</span>回目の木の予測、<span class="math inline">\(\eta\)</span> は学習率（0〜1）です。学習率を小さくすると各木の寄与が控えめになり、より多くの反復が必要になりますが、過学習しにくくなります<span class="citation" data-cites="friedman2001">(<a href="Rの基本的な使い方.html#ref-friedman2001" role="doc-biblioref">Friedman, 2001</a>)</span>。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -10507,7 +10507,7 @@ XGBoostの学習原理
 <h3 data-number="10.9.4" class="anchored" data-anchor-id="shap全体と個別の解釈"><span class="header-section-number">10.9.4</span> SHAP（全体と個別の解釈）</h3>
 <section id="shapとは何か" class="level4">
 <h4 class="anchored" data-anchor-id="shapとは何か">SHAPとは何か</h4>
-<p>ロジスティック回帰では、係数（<span class="math inline">\(\beta\)</span>）が「各変数の寄与」を表していました。たとえば <span class="math inline">\(\beta_\text{proficiency} = 1.2\)</span> なら、「習熟度が1単位上がると対数オッズが1.2増える」と読めます。しかしツリーモデルには係数がありません。<strong>SHAP</strong>はツリーモデルでも「この予測に各変数がいくらずつ貢献したか」を分解する手法です<span class="citation" data-cites="lundberg2017 lundberg2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lundberg2020" role="doc-biblioref">Lundberg ほか, 2020</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-lundberg2017" role="doc-biblioref">Lundberg &amp; Lee, 2017</a>)</span>。</p>
+<p>ロジスティック回帰では、係数（<span class="math inline">\(\beta\)</span>）が「各変数の寄与」を表していました。たとえば <span class="math inline">\(\beta_\text{proficiency} = 1.2\)</span> なら、「習熟度が1単位上がると対数オッズが1.2増える」と読めます。しかしツリーモデルには係数がありません。<strong>SHAP</strong>はツリーモデルでも「この予測に各変数がいくらずつ貢献したか」を分解する手法です<span class="citation" data-cites="lundberg2017 lundberg2020">(<a href="Rの基本的な使い方.html#ref-lundberg2020" role="doc-biblioref">Lundberg et al., 2020</a>; <a href="Rの基本的な使い方.html#ref-lundberg2017" role="doc-biblioref">Lundberg &amp; Lee, 2017</a>)</span>。</p>
 <p>考え方の核は、ゲーム理論のShapley値に基づいています。「チーム（全特徴）の成果（予測）を、各メンバー（特徴）に公平に分配するにはどうすればよいか」を計算します。具体例で説明しましょう:</p>
 <ul>
 <li>テストデータ全体の平均正答確率が 0.55 とする。</li>
@@ -10520,8 +10520,8 @@ XGBoostの学習原理
 <h4 class="anchored" data-anchor-id="論文での活用例">論文での活用例</h4>
 <p>先行研究マップの文献を、本章の実装に対応づけます:</p>
 <ul>
-<li><strong>Dominance</strong>（<span class="citation" data-cites="budescu1993">Budescu (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-budescu1993" role="doc-biblioref">1993</a>)</span>; <span class="citation" data-cites="azen2003">Azen &amp; Budescu (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-azen2003" role="doc-biblioref">2003</a>)</span> 系）: GLMベースラインで使用済み。全サブモデル比較で変数の相対的重要性を算出。本章の <code>glm-dominance-analysis</code> に対応。</li>
-<li><strong>SHAP local → global</strong>（<span class="citation" data-cites="lundberg2017">Lundberg &amp; Lee (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lundberg2017" role="doc-biblioref">2017</a>)</span> 系）: 1件の予測をベースライン＋寄与に分解し、多数集約して全体理解へ進む。<span class="citation" data-cites="lundberg2020">Lundberg ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lundberg2020" role="doc-biblioref">2020</a>)</span> は医療データで希少だが高リスクな要因を抽出。本章の <code>xgb-shap-local</code> → <code>xgb-shap-global</code> に対応。</li>
+<li><strong>Dominance</strong>（<span class="citation" data-cites="budescu1993">Budescu (<a href="Rの基本的な使い方.html#ref-budescu1993" role="doc-biblioref">1993</a>)</span>; <span class="citation" data-cites="azen2003">Azen &amp; Budescu (<a href="Rの基本的な使い方.html#ref-azen2003" role="doc-biblioref">2003</a>)</span> 系）: GLMベースラインで使用済み。全サブモデル比較で変数の相対的重要性を算出。本章の <code>glm-dominance-analysis</code> に対応。</li>
+<li><strong>SHAP local → global</strong>（<span class="citation" data-cites="lundberg2017">Lundberg &amp; Lee (<a href="Rの基本的な使い方.html#ref-lundberg2017" role="doc-biblioref">2017</a>)</span> 系）: 1件の予測をベースライン＋寄与に分解し、多数集約して全体理解へ進む。<span class="citation" data-cites="lundberg2020">Lundberg et al. (<a href="Rの基本的な使い方.html#ref-lundberg2020" role="doc-biblioref">2020</a>)</span> は医療データで希少だが高リスクな要因を抽出。本章の <code>xgb-shap-local</code> → <code>xgb-shap-global</code> に対応。</li>
 <li><strong>教育データでの読み替え</strong>: たとえばある学習者のlocal SHAPで <code>test_time_delayed</code> が負、<code>proficiency</code> が正なら、「遅延テスト条件は不利だが、習熟度がそれを一部補っている」と解釈できます。</li>
 </ul>
 </section>
@@ -12218,7 +12218,7 @@ SHAPの解釈指針
 <p>4手法は「異なる質問に答える異なる道具」です。報告時は次のように使い分けます:</p>
 <ul>
 <li><strong>GLMを主モデルとして使う場合</strong>: Dominance analysisを主報告。係数表と組み合わせて相対的重要性を議論する。</li>
-<li><strong>ツリーモデルを主モデルとして使う場合</strong>: SHAPを主報告（理論的公平性が高い）。Permutation importanceを補助として併記し、Gain importanceは参考に留める<span class="citation" data-cites="strobl2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-strobl2007" role="doc-biblioref">Strobl ほか, 2007</a>)</span>。</li>
+<li><strong>ツリーモデルを主モデルとして使う場合</strong>: SHAPを主報告（理論的公平性が高い）。Permutation importanceを補助として併記し、Gain importanceは参考に留める<span class="citation" data-cites="strobl2007">(<a href="Rの基本的な使い方.html#ref-strobl2007" role="doc-biblioref">Strobl et al., 2007</a>)</span>。</li>
 <li><strong>複数手法の合意</strong>: 全手法で上位に来る変数（例: proficiency, word_freq）は頑健に重要と判断できる。手法間で順位が異なる変数は、「どの手法を信頼するか」の根拠を明記する。</li>
 </ul>
 <hr>
@@ -13888,7 +13888,7 @@ SHAPの解釈指針
 <li>閾値を <strong>0.0</strong>（全員を correct と判定）にする → TPR = 1, FPR = 1（右上の点）。</li>
 <li>各閾値で得られた (FPR, TPR) の点をつないだ曲線がROC曲線です。</li>
 </ol>
-<p><strong>AUCの直感的意味</strong>: ランダムに正答者1人と誤答者1人を選んだとき、モデルが<strong>正答者に高い確率を与える割合</strong>。AUC = 1.0 なら完璧な識別、AUC = 0.5 ならランダムと同等です<span class="citation" data-cites="fawcett2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-fawcett2006" role="doc-biblioref">Fawcett, 2006</a>)</span>。</p>
+<p><strong>AUCの直感的意味</strong>: ランダムに正答者1人と誤答者1人を選んだとき、モデルが<strong>正答者に高い確率を与える割合</strong>。AUC = 1.0 なら完璧な識別、AUC = 0.5 ならランダムと同等です<span class="citation" data-cites="fawcett2006">(<a href="Rの基本的な使い方.html#ref-fawcett2006" role="doc-biblioref">Fawcett, 2006</a>)</span>。</p>
 </section>
 <section id="roc曲線" class="level3" data-number="10.11.6">
 <h3 data-number="10.11.6" class="anchored" data-anchor-id="roc曲線"><span class="header-section-number">10.11.6</span> ROC曲線</h3>
@@ -15148,7 +15148,7 @@ Prediction  incorrect correct
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>本章ではキャリブレーションの<strong>確認</strong>までを行いますが、系統的なずれがある場合の<strong>改善手法</strong>も存在します。代表的なものとしてPlatt scaling（ロジスティック変換による後処理）やisotonic regression（単調回帰による後処理）があり、Rでは <code>probably</code> パッケージで実装可能です。詳細は本章の範囲外としますが、確率値を直接使う運用では検討に値します<span class="citation" data-cites="steyerberg2010">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-steyerberg2010" role="doc-biblioref">Steyerberg ほか, 2010</a>)</span>。</p>
+<p>本章ではキャリブレーションの<strong>確認</strong>までを行いますが、系統的なずれがある場合の<strong>改善手法</strong>も存在します。代表的なものとしてPlatt scaling（ロジスティック変換による後処理）やisotonic regression（単調回帰による後処理）があり、Rでは <code>probably</code> パッケージで実装可能です。詳細は本章の範囲外としますが、確率値を直接使う運用では検討に値します<span class="citation" data-cites="steyerberg2010">(<a href="Rの基本的な使い方.html#ref-steyerberg2010" role="doc-biblioref">Steyerberg et al., 2010</a>)</span>。</p>
 </div>
 </div>
 <hr>
@@ -15288,7 +15288,7 @@ Results Template (English)
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li>対応: 水準数が多いカテゴリカル変数は、Gini/Gainベースの重要度で過大評価されやすい<span class="citation" data-cites="gries2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gries2020" role="doc-biblioref">Gries, 2020</a>)</span>。Permutation importanceやSHAPと併用する。</li>
+<li>対応: 水準数が多いカテゴリカル変数は、Gini/Gainベースの重要度で過大評価されやすい<span class="citation" data-cites="gries2020">(<a href="Rの基本的な使い方.html#ref-gries2020" role="doc-biblioref">Gries, 2020</a>)</span>。Permutation importanceやSHAPと併用する。</li>
 </ul>
 </div>
 </div>
@@ -15303,7 +15303,7 @@ Results Template (English)
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li>対応: XGBoostのGain重要度は分岐回数に依存するため、連続変数を優遇しやすい。SHAPと併記して頑健性を確認する<span class="citation" data-cites="strobl2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-strobl2007" role="doc-biblioref">Strobl ほか, 2007</a>)</span>。</li>
+<li>対応: XGBoostのGain重要度は分岐回数に依存するため、連続変数を優遇しやすい。SHAPと併記して頑健性を確認する<span class="citation" data-cites="strobl2007">(<a href="Rの基本的な使い方.html#ref-strobl2007" role="doc-biblioref">Strobl et al., 2007</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -15898,7 +15898,7 @@ Budescu, D. V. (1993年). Dominance Analysis: A New Approach to the Problem of R
 Chen, T., &amp; Guestrin, C. (2016年). <span>XGBoost</span>: A Scalable Tree Boosting System. <em>Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining</em>, 785–794. <a href="https://doi.org/10.1145/2939672.2939785">https://doi.org/10.1145/2939672.2939785</a>
 </div>
 <div id="ref-delong1988" class="csl-entry" role="listitem">
-DeLong, E. R., DeLong, D. M., &amp; Clarke-Pearson, D. L. (1988年). Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach. <em>Biometrics</em>, <em>44</em>, 837–845.
+DeLong, E. R., DeLong, D. M., &amp; Clarke-Pearson, D. L. (1988年). Comparing the Areas under Two or More Correlated Receiver Operating Characteristic Curves: A Nonparametric Approach. <em>Biometrics</em>, <em>44</em>, 837–845. <a href="https://doi.org/10.2307/2531595">https://doi.org/10.2307/2531595</a>
 </div>
 <div id="ref-fawcett2006" class="csl-entry" role="listitem">
 Fawcett, T. (2006年). An Introduction to <span>ROC</span> Analysis. <em>Pattern Recognition Letters</em>, <em>27</em>(8), 861–874. <a href="https://doi.org/10.1016/j.patrec.2005.10.010">https://doi.org/10.1016/j.patrec.2005.10.010</a>
@@ -15916,7 +15916,7 @@ Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009年). <em>The Elements of St
 James, G., Witten, D., Hastie, T., &amp; Tibshirani, R. (2021年). <em>An Introduction to Statistical Learning with Applications in <span>R</span></em> (2nd 版). Springer. <a href="https://doi.org/10.1007/978-1-0716-1418-1">https://doi.org/10.1007/978-1-0716-1418-1</a>
 </div>
 <div id="ref-kuhn2022" class="csl-entry" role="listitem">
-Kuhn, M., &amp; Silge, J. (2022年). <em>Tidy Modeling with <span>R</span>: A Framework for Modeling in the Tidyverse</em>. O’Reilly Media.
+Kuhn, M., &amp; Silge, J. (2022年). <em>Tidy Modeling with <span>R</span>: A Framework for Modeling in the Tidyverse</em>. O’Reilly Media. <a href="https://www.tmwr.org/">https://www.tmwr.org/</a>
 </div>
 <div id="ref-lundberg2020" class="csl-entry" role="listitem">
 Lundberg, S. M., Erion, G., Chen, H., DeGrave, A., Prutkin, J. M., Nair, B., Katz, R., Himmelfarb, J., Bansal, N., &amp; Lee, S.-I. (2020年). From Local Explanations to Global Understanding with Explainable <span>AI</span> for Trees. <em>Nature Machine Intelligence</em>, <em>2</em>(1), 56–67. <a href="https://doi.org/10.1038/s42256-019-0138-9">https://doi.org/10.1038/s42256-019-0138-9</a>

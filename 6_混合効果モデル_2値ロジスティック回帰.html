@@ -498,8 +498,8 @@ window.Quarto = {
 <section id="はじめに" class="level2" data-number="8.1">
 <h2 data-number="8.1" class="anchored" data-anchor-id="はじめに"><span class="header-section-number">8.1</span> はじめに</h2>
 <p>5章では GLM/GAM の使い分けを扱いました。次の実務課題は、 <strong>データの独立性が崩れる場面</strong>です。</p>
-<p>英語教育データでは「同じ学習者が複数のペアに登場する」「同じテスト項目に複数の学習者が回答する」 といった<strong>繰り返し構造</strong>がほぼ必ず存在します。 このとき GLM を使うと、実際には独立でない観測を独立と見なすことになり、 標準誤差が過小評価され、p 値が楽観的に出てしまいます<span class="citation" data-cites="baayen2008 meteyard2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-baayen2008" role="doc-biblioref">Baayen ほか, 2008</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
-<p>この問題に対する標準解が <strong>一般化線形混合効果モデル（GLMM）</strong>です。 GLMM は、報告したい効果（固定効果）と個人差・項目差（ランダム効果）を 同時にモデル化することで、標準誤差を<strong>正直に</strong>推定します<span class="citation" data-cites="bates2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bates2015" role="doc-biblioref">Bates, Machler, ほか, 2015</a>)</span>。 SLA（第二言語習得）分野でも GLMM は標準ツールとなっており、 <span class="citation" data-cites="cunnings2012">Cunnings (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cunnings2012" role="doc-biblioref">2012</a>)</span> と <span class="citation" data-cites="linck2015">Linck &amp; Cunnings (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-linck2015" role="doc-biblioref">2015</a>)</span> が分野に特化したチュートリアルを提供しています。 2値言語データに対するロジット混合モデルの有効性も、 複数の方法論研究で一貫して示されてきました<span class="citation" data-cites="jaeger2008 quene2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-jaeger2008" role="doc-biblioref">Jaeger, 2008</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-quene2008" role="doc-biblioref">Quené &amp; Bergh, 2008</a>)</span>。</p>
+<p>英語教育データでは「同じ学習者が複数のペアに登場する」「同じテスト項目に複数の学習者が回答する」 といった<strong>繰り返し構造</strong>がほぼ必ず存在します。 このとき GLM を使うと、実際には独立でない観測を独立と見なすことになり、 標準誤差が過小評価され、p 値が楽観的に出てしまいます<span class="citation" data-cites="baayen2008 meteyard2020">(<a href="Rの基本的な使い方.html#ref-baayen2008" role="doc-biblioref">Baayen et al., 2008</a>; <a href="Rの基本的な使い方.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
+<p>この問題に対する標準解が <strong>一般化線形混合効果モデル（GLMM）</strong>です。 GLMM は、報告したい効果（固定効果）と個人差・項目差（ランダム効果）を 同時にモデル化することで、標準誤差を<strong>正直に</strong>推定します<span class="citation" data-cites="bates2015">(<a href="Rの基本的な使い方.html#ref-bates2015" role="doc-biblioref">Bates, Machler, et al., 2015</a>)</span>。 SLA（第二言語習得）分野でも GLMM は標準ツールとなっており、 <span class="citation" data-cites="cunnings2012">Cunnings (<a href="Rの基本的な使い方.html#ref-cunnings2012" role="doc-biblioref">2012</a>)</span> と <span class="citation" data-cites="linck2015">Linck &amp; Cunnings (<a href="Rの基本的な使い方.html#ref-linck2015" role="doc-biblioref">2015</a>)</span> が分野に特化したチュートリアルを提供しています。 2値言語データに対するロジット混合モデルの有効性も、 複数の方法論研究で一貫して示されてきました<span class="citation" data-cites="jaeger2008 quene2008">(<a href="Rの基本的な使い方.html#ref-jaeger2008" role="doc-biblioref">Jaeger, 2008</a>; <a href="Rの基本的な使い方.html#ref-quene2008" role="doc-biblioref">Quené &amp; Bergh, 2008</a>)</span>。</p>
 <p>本章では、実データを用いて 2値ロジスティック GLMM を 「最小モデルから診断・報告まで」一気通貫で実装します。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -543,7 +543,7 @@ GLM と GLMM の核心的な違い
 </div>
 <section id="glmm-の数学的表現" class="level3" data-number="8.2.1">
 <h3 data-number="8.2.1" class="anchored" data-anchor-id="glmm-の数学的表現"><span class="header-section-number">8.2.1</span> GLMM の数学的表現</h3>
-<p>2値 GLMM は次で表されます<span class="citation" data-cites="nelder1972 bates2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bates2015" role="doc-biblioref">Bates, Machler, ほか, 2015</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-nelder1972" role="doc-biblioref">Nelder &amp; Wedderburn, 1972</a>)</span>。</p>
+<p>2値 GLMM は次で表されます<span class="citation" data-cites="nelder1972 bates2015">(<a href="Rの基本的な使い方.html#ref-bates2015" role="doc-biblioref">Bates, Machler, et al., 2015</a>; <a href="Rの基本的な使い方.html#ref-nelder1972" role="doc-biblioref">Nelder &amp; Wedderburn, 1972</a>)</span>。</p>
 <p><span class="math display">\[
 g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
 \quad b \sim \mathcal{N}(0, \Sigma)
@@ -569,9 +569,9 @@ g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
 <div class="callout-body-container callout-body">
 <p>数式よりもコードで理解したいタイプの方には、以下の入門チュートリアルを先に読むことをお勧めします。</p>
 <ol type="1">
-<li><span class="citation" data-cites="winter2013">Winter (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-winter2013" role="doc-biblioref">2013</a>)</span> — 言語学データの例で、線形モデルから混合モデルへの拡張を段階的に解説。</li>
-<li><span class="citation" data-cites="brown2021">Brown (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brown2021" role="doc-biblioref">2021</a>)</span> — 心理学データを使い、<code>lme4</code> での実装を一から追える R チュートリアル。</li>
-<li><span class="citation" data-cites="debruine2021">DeBruine &amp; Barr (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-debruine2021" role="doc-biblioref">2021</a>)</span> — 「自分でデータを生成して、ランダム効果が何をしているか体感する」という独自のアプローチ。数式の意味が腑に落ちます。</li>
+<li><span class="citation" data-cites="winter2013">Winter (<a href="Rの基本的な使い方.html#ref-winter2013" role="doc-biblioref">2013</a>)</span> — 言語学データの例で、線形モデルから混合モデルへの拡張を段階的に解説。</li>
+<li><span class="citation" data-cites="brown2021">Brown (<a href="Rの基本的な使い方.html#ref-brown2021" role="doc-biblioref">2021</a>)</span> — 心理学データを使い、<code>lme4</code> での実装を一から追える R チュートリアル。</li>
+<li><span class="citation" data-cites="debruine2021">DeBruine &amp; Barr (<a href="Rの基本的な使い方.html#ref-debruine2021" role="doc-biblioref">2021</a>)</span> — 「自分でデータを生成して、ランダム効果が何をしているか体感する」という独自のアプローチ。数式の意味が腑に落ちます。</li>
 </ol>
 <p>いずれも本章の前提知識として有用ですが、<strong>本章だけでも完結する設計</strong>になっています。</p>
 </div>
@@ -590,7 +590,7 @@ g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
 <li><strong>入れ子（nested）</strong>: 生徒がクラスにのみ属する形（例：生徒 1-10 はクラス A、11-20 はクラス B）。<code>(1 | class/student)</code> で実装。</li>
 <li><strong>交差分類（crossed）</strong>: 本データでは sender と receiver が同じ 30 人のプールから出ている。sender 1 は receiver 2, 3, … 29 と全員のペアを作る。<code>(1 | sender) + (1 | receiver)</code> で実装。</li>
 </ul>
-<p>英語教育では「学習者差」「項目差」が同時に入る交差分類が多いです<span class="citation" data-cites="baayen2008 barr2013 quene2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-baayen2008" role="doc-biblioref">Baayen ほか, 2008</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-barr2013" role="doc-biblioref">Barr ほか, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-quene2008" role="doc-biblioref">Quené &amp; Bergh, 2008</a>)</span>。</p>
+<p>英語教育では「学習者差」「項目差」が同時に入る交差分類が多いです<span class="citation" data-cites="baayen2008 barr2013 quene2008">(<a href="Rの基本的な使い方.html#ref-baayen2008" role="doc-biblioref">Baayen et al., 2008</a>; <a href="Rの基本的な使い方.html#ref-barr2013" role="doc-biblioref">Barr et al., 2013</a>; <a href="Rの基本的な使い方.html#ref-quene2008" role="doc-biblioref">Quené &amp; Bergh, 2008</a>)</span>。</p>
 </div>
 </div>
 </section>
@@ -600,9 +600,9 @@ g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
 <ul>
 <li><code>logit</code>: OR 解釈が可能（実務上もっとも扱いやすい）</li>
 <li><code>probit</code>: 潜在正規尺度での解釈（確率予測は logit と近いことが多い）</li>
-<li><code>cloglog</code>: 非対称リンク。離散時間ハザードの文脈と整合的<span class="citation" data-cites="prentice1978">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-prentice1978" role="doc-biblioref">Prentice &amp; Gloeckler, 1978</a>)</span></li>
+<li><code>cloglog</code>: 非対称リンク。離散時間ハザードの文脈と整合的<span class="citation" data-cites="prentice1978">(<a href="Rの基本的な使い方.html#ref-prentice1978" role="doc-biblioref">Prentice &amp; Gloeckler, 1978</a>)</span></li>
 </ul>
-<p>リンクの候補は <code>stats::family</code> / <code>stats::make.link</code> を参照してください <span class="citation" data-cites="rstatsfamily rmakelink">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-rstatsfamily" role="doc-biblioref">R Core Team, 2026a</a>, <a href="5_一般化線形モデル_一般化加法モデル.html#ref-rmakelink" role="doc-biblioref">2026b</a>)</span>。また、<code>log-log</code> は <code>cloglog</code> の反転関係として扱えます <span class="citation" data-cites="vgamcloglog">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-vgamcloglog" role="doc-biblioref">Yee, 2026</a>)</span>。</p>
+<p>リンクの候補は <code>stats::family</code> / <code>stats::make.link</code> を参照してください <span class="citation" data-cites="rstatsfamily rmakelink">(<a href="Rの基本的な使い方.html#ref-rstatsfamily" role="doc-biblioref">R Core Team, 2026a</a>, <a href="Rの基本的な使い方.html#ref-rmakelink" role="doc-biblioref">2026b</a>)</span>。また、<code>log-log</code> は <code>cloglog</code> の反転関係として扱えます <span class="citation" data-cites="vgamcloglog">(<a href="Rの基本的な使い方.html#ref-vgamcloglog" role="doc-biblioref">Yee, 2026</a>)</span>。</p>
 </section>
 </section>
 <section id="実行前ガイド実務フロー" class="level2" data-number="8.3">
@@ -668,7 +668,7 @@ g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
 </div>
 <section id="モデル前提チェックリストglmm" class="level3" data-number="8.3.1">
 <h3 data-number="8.3.1" class="anchored" data-anchor-id="モデル前提チェックリストglmm"><span class="header-section-number">8.3.1</span> モデル前提チェックリスト（GLMM）</h3>
-<p>GLMM の前提は「正規残差」ではなく、次の<strong>構造的条件</strong>を確認することです <span class="citation" data-cites="bolker2009 meteyard2020 glmmfaq">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-glmmfaq" role="doc-biblioref">B. Bolker ほか, 2025</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-bolker2009" role="doc-biblioref">B. M. Bolker ほか, 2009</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
+<p>GLMM の前提は「正規残差」ではなく、次の<strong>構造的条件</strong>を確認することです <span class="citation" data-cites="bolker2009 meteyard2020 glmmfaq">(<a href="Rの基本的な使い方.html#ref-glmmfaq" role="doc-biblioref">B. Bolker et al., 2025</a>; <a href="Rの基本的な使い方.html#ref-bolker2009" role="doc-biblioref">B. M. Bolker et al., 2009</a>; <a href="Rの基本的な使い方.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
 <ol type="1">
 <li><code>outcome</code> と <code>family/link</code> が整合しているか（本章は 2値 + logit）。</li>
 <li>群化構造（sender/receiver）が研究設計に一致しているか。</li>
@@ -687,7 +687,7 @@ g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
 </div>
 <div class="callout-body-container callout-body">
 <p>GLM/GLMM では <strong>アウトカムの正規性は仮定していません</strong>。family（本章では <code>binomial</code>）がアウトカムの型と整合していれば、残差の正規性はそもそも問題になりません。上の 5 項目が GLMM の本当のチェックポイントです。</p>
-<p>なお、混合モデルは分布仮定からの軽度な逸脱に対して比較的頑健であることが、大規模シミュレーション研究で確認されています<span class="citation" data-cites="schielzeth2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-schielzeth2020" role="doc-biblioref">Schielzeth ほか, 2020</a>)</span>。</p>
+<p>なお、混合モデルは分布仮定からの軽度な逸脱に対して比較的頑健であることが、大規模シミュレーション研究で確認されています<span class="citation" data-cites="schielzeth2020">(<a href="Rの基本的な使い方.html#ref-schielzeth2020" role="doc-biblioref">Schielzeth et al., 2020</a>)</span>。</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-tip callout-titled">
@@ -1476,7 +1476,7 @@ g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
 </section>
 <section id="階層性の確認-icc-とデザインエフェクト" class="level2" data-number="8.7">
 <h2 data-number="8.7" class="anchored" data-anchor-id="階層性の確認-icc-とデザインエフェクト"><span class="header-section-number">8.7</span> 階層性の確認: ICC とデザインエフェクト</h2>
-<p>このデータは「有向ペア」が観測単位ですが、観測は sender / receiver に跨って 繰り返し出現します。したがって独立性仮定は破れやすく、GLM 単独では 標準誤差が過小になる可能性があります<span class="citation" data-cites="snijders2012 hox2018">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hox2018" role="doc-biblioref">Hox ほか, 2018</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-snijders2012" role="doc-biblioref">Snijders &amp; Bosker, 2012</a>)</span>。</p>
+<p>このデータは「有向ペア」が観測単位ですが、観測は sender / receiver に跨って 繰り返し出現します。したがって独立性仮定は破れやすく、GLM 単独では 標準誤差が過小になる可能性があります<span class="citation" data-cites="snijders2012 hox2018">(<a href="Rの基本的な使い方.html#ref-hox2018" role="doc-biblioref">Hox et al., 2018</a>; <a href="Rの基本的な使い方.html#ref-snijders2012" role="doc-biblioref">Snijders &amp; Bosker, 2012</a>)</span>。</p>
 <section id="交差分類データ構造本章データ" class="level3" data-number="8.7.1">
 <h3 data-number="8.7.1" class="anchored" data-anchor-id="交差分類データ構造本章データ"><span class="header-section-number">8.7.1</span> 交差分類データ構造（本章データ）</h3>
 <ul>
@@ -1520,11 +1520,11 @@ g(p_{ij}) = \mathbf{x}_{ij}^\top\beta + \mathbf{z}_{ij}^\top b,
   Unadjusted ICC: 0.122</code></pre>
 </div>
 </div>
-<p><code>performance::icc()</code> は adjusted ICC（条件付き）と unadjusted ICC（周辺）を返します<span class="citation" data-cites="performance_icc">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performance_icc" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026c</a>)</span>。 null モデルでは固定効果がないため両者は実質同じ値です。</p>
+<p><code>performance::icc()</code> は adjusted ICC（条件付き）と unadjusted ICC（周辺）を返します<span class="citation" data-cites="performance_icc">(<a href="Rの基本的な使い方.html#ref-performance_icc" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026c</a>)</span>。 null モデルでは固定効果がないため両者は実質同じ値です。</p>
 </section>
 <section id="方法-b-手計算で原理を理解する" class="level4">
 <h4 class="anchored" data-anchor-id="方法-b-手計算で原理を理解する">方法 B: 手計算で原理を理解する</h4>
-<p><code>performance::icc()</code> の中身を理解するために、ICC を手計算してみましょう。 ロジスティック GLMM では、Level 1 の残差分散を <span class="math inline">\(\pi^2/3 \approx 3.29\)</span> と近似する 「潜在変数法」が標準的です<span class="citation" data-cites="snijders2012 hox2018">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hox2018" role="doc-biblioref">Hox ほか, 2018</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-snijders2012" role="doc-biblioref">Snijders &amp; Bosker, 2012</a>)</span>。</p>
+<p><code>performance::icc()</code> の中身を理解するために、ICC を手計算してみましょう。 ロジスティック GLMM では、Level 1 の残差分散を <span class="math inline">\(\pi^2/3 \approx 3.29\)</span> と近似する 「潜在変数法」が標準的です<span class="citation" data-cites="snijders2012 hox2018">(<a href="Rの基本的な使い方.html#ref-hox2018" role="doc-biblioref">Hox et al., 2018</a>; <a href="Rの基本的な使い方.html#ref-snijders2012" role="doc-biblioref">Snijders &amp; Bosker, 2012</a>)</span>。</p>
 <p><span class="math display">\[
 \mathrm{ICC}_{\mathrm{sender}}
 = \frac{\sigma^2_{\mathrm{sender}}}
@@ -2616,7 +2616,7 @@ ICC の読み方
 </tr>
 </tbody>
 </table>
-<p>単純階層データでは <span class="math inline">\(\mathrm{DEFF}=1+(m-1)\mathrm{ICC}\)</span> が標準式です<span class="citation" data-cites="kish1965">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kish1965" role="doc-biblioref">Kish, 1965</a>)</span>。 本章は交差分類なので厳密適用ではありませんが、<strong>独立性違反の強さを概観する</strong> 目的には有用です。DEFF が 1 から離れるほど、GLM の独立性仮定は危うくなります。</p>
+<p>単純階層データでは <span class="math inline">\(\mathrm{DEFF}=1+(m-1)\mathrm{ICC}\)</span> が標準式です<span class="citation" data-cites="kish1965">(<a href="Rの基本的な使い方.html#ref-kish1965" role="doc-biblioref">Kish, 1965</a>)</span>。 本章は交差分類なので厳密適用ではありませんが、<strong>独立性違反の強さを概観する</strong> 目的には有用です。DEFF が 1 から離れるほど、GLM の独立性仮定は危うくなります。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -3928,7 +3928,7 @@ GLM と GLMM の SE を比較する
 <ol type="1">
 <li><strong>無視しない</strong>: 特異適合はモデルの過剰パラメータ化の徴候であり、推定結果の信頼性に影響する。</li>
 <li><strong>ランダム構造を簡素化</strong>: ランダム傾きを落とし、ランダム切片モデルに戻す。</li>
-<li><strong>試みたことを報告</strong>: 論文では「ランダム傾きを試みたが特異適合が生じたため、ランダム切片モデルを採用した」と書くことが推奨される<span class="citation" data-cites="bates2015parsimonious matuschek2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bates2015parsimonious" role="doc-biblioref">Bates, Kliegl, ほか, 2015</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-matuschek2017" role="doc-biblioref">Matuschek ほか, 2017</a>)</span>。SLA 分野での具体的な判断例は <span class="citation" data-cites="linck2015">Linck &amp; Cunnings (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-linck2015" role="doc-biblioref">2015</a>)</span> を参照。</li>
+<li><strong>試みたことを報告</strong>: 論文では「ランダム傾きを試みたが特異適合が生じたため、ランダム切片モデルを採用した」と書くことが推奨される<span class="citation" data-cites="bates2015parsimonious matuschek2017">(<a href="Rの基本的な使い方.html#ref-bates2015parsimonious" role="doc-biblioref">Bates, Kliegl, et al., 2015</a>; <a href="Rの基本的な使い方.html#ref-matuschek2017" role="doc-biblioref">Matuschek et al., 2017</a>)</span>。SLA 分野での具体的な判断例は <span class="citation" data-cites="linck2015">Linck &amp; Cunnings (<a href="Rの基本的な使い方.html#ref-linck2015" role="doc-biblioref">2015</a>)</span> を参照。</li>
 </ol>
 <p>本データでは、<code>m_glmm_ri</code>（ランダム切片のみ）が <code>FALSE</code> であれば安全に使用でき、<code>m_glmm_rs</code>（ランダム傾き追加）が <code>TRUE</code> であれば、ランダム切片モデルに留めるのが実務上の正解です。</p>
 </div>
@@ -3936,7 +3936,7 @@ GLM と GLMM の SE を比較する
 </section>
 <section id="モデル比較ワークフロー" class="level2" data-number="8.11">
 <h2 data-number="8.11" class="anchored" data-anchor-id="モデル比較ワークフロー"><span class="header-section-number">8.11</span> モデル比較ワークフロー</h2>
-<p>ステップ 1–3 でモデルの候補がそろいました。ここからはモデル比較に入ります。GLMM のモデル比較は <strong>3 段階</strong>で進めるのが定石です<span class="citation" data-cites="bolker2009 barr2013 bates2015parsimonious matuschek2017 meteyard2020 glmmfaq">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-barr2013" role="doc-biblioref">Barr ほか, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-bates2015parsimonious" role="doc-biblioref">Bates, Kliegl, ほか, 2015</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-glmmfaq" role="doc-biblioref">B. Bolker ほか, 2025</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-bolker2009" role="doc-biblioref">B. M. Bolker ほか, 2009</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-matuschek2017" role="doc-biblioref">Matuschek ほか, 2017</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
+<p>ステップ 1–3 でモデルの候補がそろいました。ここからはモデル比較に入ります。GLMM のモデル比較は <strong>3 段階</strong>で進めるのが定石です<span class="citation" data-cites="bolker2009 barr2013 bates2015parsimonious matuschek2017 meteyard2020 glmmfaq">(<a href="Rの基本的な使い方.html#ref-barr2013" role="doc-biblioref">Barr et al., 2013</a>; <a href="Rの基本的な使い方.html#ref-bates2015parsimonious" role="doc-biblioref">Bates, Kliegl, et al., 2015</a>; <a href="Rの基本的な使い方.html#ref-glmmfaq" role="doc-biblioref">B. Bolker et al., 2025</a>; <a href="Rの基本的な使い方.html#ref-bolker2009" role="doc-biblioref">B. M. Bolker et al., 2009</a>; <a href="Rの基本的な使い方.html#ref-matuschek2017" role="doc-biblioref">Matuschek et al., 2017</a>; <a href="Rの基本的な使い方.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
 <div class="cell" data-layout-align="center">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -4540,7 +4540,7 @@ GLM と GLMM の SE を比較する
 <li><strong>sender のみ vs receiver のみ vs 両方</strong>: 両方入れることで AIC が改善しているかを確認。</li>
 <li><strong>ランダム傾き</strong>: AIC が改善していても特異適合（<code>isSingular = TRUE</code>）ならば採用は避ける。</li>
 </ol>
-<p><code>compare_performance()</code> で AIC/BIC/R² を同時に確認することもできます<span class="citation" data-cites="performance_compare">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performance_compare" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026b</a>)</span>。</p>
+<p><code>compare_performance()</code> で AIC/BIC/R² を同時に確認することもできます<span class="citation" data-cites="performance_compare">(<a href="Rの基本的な使い方.html#ref-performance_compare" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026b</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -5208,7 +5208,7 @@ m_glmm_rs   10 757.62 805.31 -368.81    737.62 0.036  2     0.9821</code></pre>
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>ランダム効果の分散はゼロ以上の制約があるため、帰無仮説（分散 = 0）はパラメータ空間の境界に位置します。このため LRT の p 値は<strong>保守的</strong>（やや大きめ）になる傾向があります<span class="citation" data-cites="self1987 stram1994">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-self1987" role="doc-biblioref">Self &amp; Liang, 1987</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-stram1994" role="doc-biblioref">Stram &amp; Lee, 1994</a>)</span>。実務的には、LRT が有意でなくても AIC/BIC が改善していれば、ランダム効果の追加を検討する余地があります。</p>
+<p>ランダム効果の分散はゼロ以上の制約があるため、帰無仮説（分散 = 0）はパラメータ空間の境界に位置します。このため LRT の p 値は<strong>保守的</strong>（やや大きめ）になる傾向があります<span class="citation" data-cites="self1987 stram1994">(<a href="Rの基本的な使い方.html#ref-self1987" role="doc-biblioref">Self &amp; Liang, 1987</a>; <a href="Rの基本的な使い方.html#ref-stram1994" role="doc-biblioref">Stram &amp; Lee, 1994</a>)</span>。実務的には、LRT が有意でなくても AIC/BIC が改善していれば、ランダム効果の追加を検討する余地があります。</p>
 </div>
 </div>
 <p>次に特異適合の正式チェックと、ランダム効果の主成分分析（<code>rePCA()</code>）を行います。<code>rePCA()</code> はランダム効果の分散共分散行列を主成分分解し、各成分がどれだけ情報を持つかを示します。</p>
@@ -5267,7 +5267,7 @@ attr(,"class")
 [1] "prcomplist"</code></pre>
 </div>
 </div>
-<p><code>isSingular()</code> と <code>rePCA()</code> は、ランダム効果が過剰でないかを点検する定番です<span class="citation" data-cites="lme4issingular lme4repca">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lme4issingular" role="doc-biblioref">Bates, Bolker, ほか, 2025a</a>, <a href="5_一般化線形モデル_一般化加法モデル.html#ref-lme4repca" role="doc-biblioref">2025b</a>)</span>。</p>
+<p><code>isSingular()</code> と <code>rePCA()</code> は、ランダム効果が過剰でないかを点検する定番です<span class="citation" data-cites="lme4issingular lme4repca">(<a href="Rの基本的な使い方.html#ref-lme4issingular" role="doc-biblioref">Bates, Bolker, et al., 2025a</a>, <a href="Rの基本的な使い方.html#ref-lme4repca" role="doc-biblioref">2025b</a>)</span>。</p>
 <p><strong>出力の読み方</strong>：</p>
 <table class="caption-top table">
 <thead>
@@ -6064,7 +6064,7 @@ attr(,"class")
 </section>
 <section id="固定効果の比較ランダム構造は固定" class="level3" data-number="8.11.3">
 <h3 data-number="8.11.3" class="anchored" data-anchor-id="固定効果の比較ランダム構造は固定"><span class="header-section-number">8.11.3</span> ③ 固定効果の比較（ランダム構造は固定）</h3>
-<p>最後に、採用したランダム構造（ここでは <code>m_glmm_ri</code>）を固定したまま、固定効果を比較します<span class="citation" data-cites="lme4pvalues meteyard2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lme4pvalues" role="doc-biblioref">Bates, Machler, ほか, 2025</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
+<p>最後に、採用したランダム構造（ここでは <code>m_glmm_ri</code>）を固定したまま、固定効果を比較します<span class="citation" data-cites="lme4pvalues meteyard2020">(<a href="Rの基本的な使い方.html#ref-lme4pvalues" role="doc-biblioref">Bates, Machler, et al., 2025</a>; <a href="Rの基本的な使い方.html#ref-meteyard2020" role="doc-biblioref">Meteyard &amp; Davies, 2020</a>)</span>。</p>
 <p>以下では <code>update()</code> を使い、<code>m_glmm_ri</code> から各予測子を 1 つずつ落としたモデルを作成します。これにより「その予測子を入れることで適合がどれだけ改善するか」を個別に検証できます。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -8158,7 +8158,7 @@ Tests are performed on the log odds ratio scale </code></pre>
 <h2 data-number="8.14" class="anchored" data-anchor-id="診断必須セット"><span class="header-section-number">8.14</span> 診断（必須セット）</h2>
 <section id="marginal-r²-と-conditional-r²glmmで必須" class="level3" data-number="8.14.1">
 <h3 data-number="8.14.1" class="anchored" data-anchor-id="marginal-r²-と-conditional-r²glmmで必須"><span class="header-section-number">8.14.1</span> marginal R² と conditional R²（GLMMで必須）</h3>
-<p>混合効果モデルの <span class="math inline">\(R^2\)</span> は、単一の値ではなく <strong>marginal / conditional</strong> を分けて報告するのが標準です <span class="citation" data-cites="nakagawa2013 johnson2014 nakagawa2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-johnson2014" role="doc-biblioref">Johnson, 2014</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-nakagawa2017" role="doc-biblioref">Nakagawa ほか, 2017</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-nakagawa2013" role="doc-biblioref">Nakagawa &amp; Schielzeth, 2013</a>)</span>。</p>
+<p>混合効果モデルの <span class="math inline">\(R^2\)</span> は、単一の値ではなく <strong>marginal / conditional</strong> を分けて報告するのが標準です <span class="citation" data-cites="nakagawa2013 johnson2014 nakagawa2017">(<a href="Rの基本的な使い方.html#ref-johnson2014" role="doc-biblioref">Johnson, 2014</a>; <a href="Rの基本的な使い方.html#ref-nakagawa2017" role="doc-biblioref">Nakagawa et al., 2017</a>; <a href="Rの基本的な使い方.html#ref-nakagawa2013" role="doc-biblioref">Nakagawa &amp; Schielzeth, 2013</a>)</span>。</p>
 <p><span class="math display">\[
 R^2_{\mathrm{marginal}}
 =
@@ -8676,7 +8676,7 @@ R^2_{\mathrm{conditional}}
 </div>
 </div>
 </div>
-<p><code>performance::r2_nakagawa()</code> は、GLMM の分散分解に基づく R²（Nakagawa系）を実装した関数です<span class="citation" data-cites="performance_r2 performancepkg">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performance_r2" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026d</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-performancepkg" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, Waggoner, ほか, 2026</a>)</span>。</p>
+<p><code>performance::r2_nakagawa()</code> は、GLMM の分散分解に基づく R²（Nakagawa系）を実装した関数です<span class="citation" data-cites="performance_r2 performancepkg">(<a href="Rの基本的な使い方.html#ref-performance_r2" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026d</a>; <a href="Rの基本的な使い方.html#ref-performancepkg" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, Waggoner, et al., 2026</a>)</span>。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -8897,7 +8897,7 @@ Low Correlation
 <div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a>performance<span class="sc">::</span><span class="fu">check_model</span>(m_glmm_ri)  <span class="co"># GLMM 版</span></span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p><code>check_model()</code> はモデル仮定の可視化を一括で確認できるため、 最終モデルの報告前チェックとして有用です<span class="citation" data-cites="performance_checkmodel">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performance_checkmodel" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026a</a>)</span>。</p>
+<p><code>check_model()</code> はモデル仮定の可視化を一括で確認できるため、 最終モデルの報告前チェックとして有用です<span class="citation" data-cites="performance_checkmodel">(<a href="Rの基本的な使い方.html#ref-performance_checkmodel" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026a</a>)</span>。</p>
 <p><strong>パネルの読み方</strong>：</p>
 <ul>
 <li><strong>Posterior predictive check</strong>: 実データ（黒線）とモデルからのシミュレーション（青線）が近いか</li>
@@ -8931,7 +8931,7 @@ Low Correlation
 <h2 data-number="8.15" class="anchored" data-anchor-id="章からの接続-glmm-と-gamm-の使い分け"><span class="header-section-number">8.15</span> 5章からの接続: GLMM と GAMM の使い分け</h2>
 <ul>
 <li><strong>GLMM</strong>: 非線形よりも、階層・反復構造の扱いが主課題のとき。</li>
-<li><strong>GAMM</strong>: 階層構造に加えて連続予測子の非線形も重要なとき<span class="citation" data-cites="wood2017 wood2020 pedersen2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-pedersen2019" role="doc-biblioref">Pedersen ほか, 2019</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-wood2017" role="doc-biblioref">Wood, 2017</a>, <a href="5_一般化線形モデル_一般化加法モデル.html#ref-wood2020" role="doc-biblioref">2020</a>)</span>。</li>
+<li><strong>GAMM</strong>: 階層構造に加えて連続予測子の非線形も重要なとき<span class="citation" data-cites="wood2017 wood2020 pedersen2019">(<a href="Rの基本的な使い方.html#ref-pedersen2019" role="doc-biblioref">Pedersen et al., 2019</a>; <a href="Rの基本的な使い方.html#ref-wood2017" role="doc-biblioref">Wood, 2017</a>, <a href="Rの基本的な使い方.html#ref-wood2020" role="doc-biblioref">2020</a>)</span>。</li>
 </ul>
 <p>次の判断が有効です。</p>
 <ol type="1">
@@ -8969,7 +8969,7 @@ Low Correlation
 <tr class="odd">
 <td><strong>反応時間</strong>（正の連続量）</td>
 <td><code>Gamma(link = "log")</code></td>
-<td>係数は乗法的（倍率）解釈。変換の問題を回避できる<span class="citation" data-cites="lo2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lo2015" role="doc-biblioref">Lo &amp; Andrews, 2015</a>)</span></td>
+<td>係数は乗法的（倍率）解釈。変換の問題を回避できる<span class="citation" data-cites="lo2015">(<a href="Rの基本的な使い方.html#ref-lo2015" role="doc-biblioref">Lo &amp; Andrews, 2015</a>)</span></td>
 <td>5 章ケース 3</td>
 </tr>
 <tr class="even">
@@ -8981,13 +8981,13 @@ Low Correlation
 <tr class="odd">
 <td><strong>多値カテゴリカル</strong></td>
 <td><code>mclogit</code> or <code>brms</code> で多項ロジット</td>
-<td>3 値以上の選択データ<span class="citation" data-cites="gudmestad2025">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gudmestad2025" role="doc-biblioref">Gudmestad, 2025</a>)</span></td>
+<td>3 値以上の選択データ<span class="citation" data-cites="gudmestad2025">(<a href="Rの基本的な使い方.html#ref-gudmestad2025" role="doc-biblioref">Gudmestad, 2025</a>)</span></td>
 <td>—</td>
 </tr>
 <tr class="even">
 <td><strong>学習者コーパス</strong></td>
 <td>データ型に応じて上記を選択</td>
-<td><span class="citation" data-cites="gries2021">Gries (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gries2021" role="doc-biblioref">2021</a>)</span> が完全なワークフローを提示</td>
+<td><span class="citation" data-cites="gries2021">Gries (<a href="Rの基本的な使い方.html#ref-gries2021" role="doc-biblioref">2021</a>)</span> が完全なワークフローを提示</td>
 <td>—</td>
 </tr>
 </tbody>
@@ -9013,7 +9013,7 @@ Method 欄での引用のコツ
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>SLA 分野の論文では、<code>lme4</code> の技術論文<span class="citation" data-cites="bates2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bates2015" role="doc-biblioref">Bates, Machler, ほか, 2015</a>)</span>だけでなく、 <strong>分野内のチュートリアル論文</strong><span class="citation" data-cites="cunnings2012 linck2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cunnings2012" role="doc-biblioref">Cunnings, 2012</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-linck2015" role="doc-biblioref">Linck &amp; Cunnings, 2015</a>)</span>も併せて引用すると、 「なぜこの手法を選んだか」の正当化が査読者に伝わりやすくなります。</p>
+<p>SLA 分野の論文では、<code>lme4</code> の技術論文<span class="citation" data-cites="bates2015">(<a href="Rの基本的な使い方.html#ref-bates2015" role="doc-biblioref">Bates, Machler, et al., 2015</a>)</span>だけでなく、 <strong>分野内のチュートリアル論文</strong><span class="citation" data-cites="cunnings2012 linck2015">(<a href="Rの基本的な使い方.html#ref-cunnings2012" role="doc-biblioref">Cunnings, 2012</a>; <a href="Rの基本的な使い方.html#ref-linck2015" role="doc-biblioref">Linck &amp; Cunnings, 2015</a>)</span>も併せて引用すると、 「なぜこの手法を選んだか」の正当化が査読者に伝わりやすくなります。</p>
 </div>
 </div>
 <pre class="text"><code>We analyzed directed advice ties among 30 EFL learners using a
@@ -9247,7 +9247,7 @@ DHARMa の警告が出た
 <ul>
 <li><strong>testDispersion が有意</strong>: 過分散の可能性。2値データでは観測レベルのランダム効果（<code>(1 | obs_id)</code>）を追加するか、<code>MASS::glmmPQL</code> を検討。ただし、2値単独観測では過分散は定義上起こらないため、群レベルの集計をしていないか確認。</li>
 <li><strong>testUniformity が有意</strong>: モデル構造のミスフィット。非線形効果の追加（GAMM への拡張）や、外れ値の確認を検討。</li>
-<li><strong>有意だが視覚的に問題がない場合</strong>: サンプルサイズが大きいと微小な逸脱でも有意になることがあります。QQ プロットと残差プロットを視覚的に確認し、系統的パターンがなければ実務上は問題ないと判断できます。混合モデルは軽度の分布仮定の逸脱に対して頑健であることがシミュレーションで確認されているため<span class="citation" data-cites="schielzeth2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-schielzeth2020" role="doc-biblioref">Schielzeth ほか, 2020</a>)</span>、検定が有意でも<strong>視覚的に問題がなければ過度に心配する必要はありません</strong>。</li>
+<li><strong>有意だが視覚的に問題がない場合</strong>: サンプルサイズが大きいと微小な逸脱でも有意になることがあります。QQ プロットと残差プロットを視覚的に確認し、系統的パターンがなければ実務上は問題ないと判断できます。混合モデルは軽度の分布仮定の逸脱に対して頑健であることがシミュレーションで確認されているため<span class="citation" data-cites="schielzeth2020">(<a href="Rの基本的な使い方.html#ref-schielzeth2020" role="doc-biblioref">Schielzeth et al., 2020</a>)</span>、検定が有意でも<strong>視覚的に問題がなければ過度に心配する必要はありません</strong>。</li>
 </ul>
 </div>
 </div>
@@ -9301,50 +9301,50 @@ DHARMa の警告が出た
 <div id="tabset-3-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-3-1-tab">
 <p>本章を読んで「ランダム効果って何をしているの？」がまだ曖昧な場合は、以下の順で読み進めると効率的です。</p>
 <ol type="1">
-<li><span class="citation" data-cites="winter2013">Winter (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-winter2013" role="doc-biblioref">2013</a>)</span> — 言語学の例題で、線形モデルから混合モデルへの拡張を段階的に解説。数式よりコードで理解したい人向け。</li>
-<li><span class="citation" data-cites="brown2021">Brown (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brown2021" role="doc-biblioref">2021</a>)</span> — <code>lme4</code> で線形混合モデルを一から実装する R チュートリアル。心理学データを使用。</li>
-<li><span class="citation" data-cites="debruine2021">DeBruine &amp; Barr (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-debruine2021" role="doc-biblioref">2021</a>)</span> — 「自分でデータを生成して、ランダム効果が何をしているか体感する」アプローチ。式の意味が腑に落ちます。</li>
+<li><span class="citation" data-cites="winter2013">Winter (<a href="Rの基本的な使い方.html#ref-winter2013" role="doc-biblioref">2013</a>)</span> — 言語学の例題で、線形モデルから混合モデルへの拡張を段階的に解説。数式よりコードで理解したい人向け。</li>
+<li><span class="citation" data-cites="brown2021">Brown (<a href="Rの基本的な使い方.html#ref-brown2021" role="doc-biblioref">2021</a>)</span> — <code>lme4</code> で線形混合モデルを一から実装する R チュートリアル。心理学データを使用。</li>
+<li><span class="citation" data-cites="debruine2021">DeBruine &amp; Barr (<a href="Rの基本的な使い方.html#ref-debruine2021" role="doc-biblioref">2021</a>)</span> — 「自分でデータを生成して、ランダム効果が何をしているか体感する」アプローチ。式の意味が腑に落ちます。</li>
 </ol>
 </div>
 <div id="tabset-3-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-2-tab">
 <p>SLA・応用言語学に特化した GLMM ガイドです。論文の方法欄を書くときにも引用として役立ちます。</p>
 <ul>
-<li><span class="citation" data-cites="cunnings2012">Cunnings (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cunnings2012" role="doc-biblioref">2012</a>)</span> — SLA 研究者を対象に、混合モデルの基礎と利点を体系的に解説した先駆的論文。「なぜ ANOVA ではダメか」の議論も含む。</li>
-<li><span class="citation" data-cites="linck2015">Linck &amp; Cunnings (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-linck2015" role="doc-biblioref">2015</a>)</span> — ランダム効果構造の選択やモデル比較の手順を SLA データで実演。本章のステップ 2-3 と直接対応する内容。</li>
-<li><span class="citation" data-cites="gries2021">Gries (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gries2021" role="doc-biblioref">2021</a>)</span> — 学習者コーパスデータで GLMM の完全なワークフローを提示。カテゴリカル応答変数の扱いに重点を置いた実践例。</li>
-<li><span class="citation" data-cites="gudmestad2025">Gudmestad (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gudmestad2025" role="doc-biblioref">2025</a>)</span> — 3 値以上のカテゴリカル従属変数（例：正用・誤用・無反応）を扱う多項ロジスティック混合モデルの実装ガイド。</li>
+<li><span class="citation" data-cites="cunnings2012">Cunnings (<a href="Rの基本的な使い方.html#ref-cunnings2012" role="doc-biblioref">2012</a>)</span> — SLA 研究者を対象に、混合モデルの基礎と利点を体系的に解説した先駆的論文。「なぜ ANOVA ではダメか」の議論も含む。</li>
+<li><span class="citation" data-cites="linck2015">Linck &amp; Cunnings (<a href="Rの基本的な使い方.html#ref-linck2015" role="doc-biblioref">2015</a>)</span> — ランダム効果構造の選択やモデル比較の手順を SLA データで実演。本章のステップ 2-3 と直接対応する内容。</li>
+<li><span class="citation" data-cites="gries2021">Gries (<a href="Rの基本的な使い方.html#ref-gries2021" role="doc-biblioref">2021</a>)</span> — 学習者コーパスデータで GLMM の完全なワークフローを提示。カテゴリカル応答変数の扱いに重点を置いた実践例。</li>
+<li><span class="citation" data-cites="gudmestad2025">Gudmestad (<a href="Rの基本的な使い方.html#ref-gudmestad2025" role="doc-biblioref">2025</a>)</span> — 3 値以上のカテゴリカル従属変数（例：正用・誤用・無反応）を扱う多項ロジスティック混合モデルの実装ガイド。</li>
 </ul>
 </div>
 <div id="tabset-3-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-3-tab">
 <p>本章は 2 値（binomial）でしたが、同じ GLMM の枠組みを他のデータ型にも拡張できます。</p>
 <ul>
-<li><span class="citation" data-cites="jaeger2008">Jaeger (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-jaeger2008" role="doc-biblioref">2008</a>)</span>; <span class="citation" data-cites="quene2008">Quené &amp; Bergh (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-quene2008" role="doc-biblioref">2008</a>)</span> — 2 値データでの GLMM の基礎。本章の理論的背景。</li>
-<li><span class="citation" data-cites="lo2015">Lo &amp; Andrews (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lo2015" role="doc-biblioref">2015</a>)</span> — <strong>反応時間データ</strong>に対する「変換してから LMM」vs「GLMM（Gamma/逆ガウス）で直接扱う」を比較。変換の問題点を具体的に示した重要論文。</li>
-<li><span class="citation" data-cites="brysbaert2018">Brysbaert &amp; Stevens (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brysbaert2018" role="doc-biblioref">2018</a>)</span> — 混合モデルでのエフェクトサイズとパワー分析。サンプルサイズ計画に不可欠。</li>
+<li><span class="citation" data-cites="jaeger2008">Jaeger (<a href="Rの基本的な使い方.html#ref-jaeger2008" role="doc-biblioref">2008</a>)</span>; <span class="citation" data-cites="quene2008">Quené &amp; Bergh (<a href="Rの基本的な使い方.html#ref-quene2008" role="doc-biblioref">2008</a>)</span> — 2 値データでの GLMM の基礎。本章の理論的背景。</li>
+<li><span class="citation" data-cites="lo2015">Lo &amp; Andrews (<a href="Rの基本的な使い方.html#ref-lo2015" role="doc-biblioref">2015</a>)</span> — <strong>反応時間データ</strong>に対する「変換してから LMM」vs「GLMM（Gamma/逆ガウス）で直接扱う」を比較。変換の問題点を具体的に示した重要論文。</li>
+<li><span class="citation" data-cites="brysbaert2018">Brysbaert &amp; Stevens (<a href="Rの基本的な使い方.html#ref-brysbaert2018" role="doc-biblioref">2018</a>)</span> — 混合モデルでのエフェクトサイズとパワー分析。サンプルサイズ計画に不可欠。</li>
 </ul>
 </div>
 <div id="tabset-3-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-4-tab">
 <p>「最大構造にすべき」vs「節約的にすべき」という論争は、GLMM の最も実務的な難所です。</p>
 <ul>
-<li><span class="citation" data-cites="barr2013">Barr ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-barr2013" role="doc-biblioref">2013</a>)</span> — 「Keep it maximal」：確認的仮説検定ではランダム効果構造を最大にすべきという主張。</li>
-<li><span class="citation" data-cites="bates2015parsimonious">Bates, Kliegl, ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bates2015parsimonious" role="doc-biblioref">2015</a>)</span>; <span class="citation" data-cites="matuschek2017">Matuschek ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-matuschek2017" role="doc-biblioref">2017</a>)</span> — 「節約的モデリング」：過剰パラメータ化を避け、データが支持する範囲に留めるべきという反論。</li>
-<li><span class="citation" data-cites="schielzeth2020">Schielzeth ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-schielzeth2020" role="doc-biblioref">2020</a>)</span> — 混合モデルが分布仮定の逸脱にどこまで耐えるかを大規模シミュレーションで検証。「多少の違反は大丈夫」の根拠。</li>
+<li><span class="citation" data-cites="barr2013">Barr et al. (<a href="Rの基本的な使い方.html#ref-barr2013" role="doc-biblioref">2013</a>)</span> — 「Keep it maximal」：確認的仮説検定ではランダム効果構造を最大にすべきという主張。</li>
+<li><span class="citation" data-cites="bates2015parsimonious">Bates, Kliegl, et al. (<a href="Rの基本的な使い方.html#ref-bates2015parsimonious" role="doc-biblioref">2015</a>)</span>; <span class="citation" data-cites="matuschek2017">Matuschek et al. (<a href="Rの基本的な使い方.html#ref-matuschek2017" role="doc-biblioref">2017</a>)</span> — 「節約的モデリング」：過剰パラメータ化を避け、データが支持する範囲に留めるべきという反論。</li>
+<li><span class="citation" data-cites="schielzeth2020">Schielzeth et al. (<a href="Rの基本的な使い方.html#ref-schielzeth2020" role="doc-biblioref">2020</a>)</span> — 混合モデルが分布仮定の逸脱にどこまで耐えるかを大規模シミュレーションで検証。「多少の違反は大丈夫」の根拠。</li>
 </ul>
-<p>実務的な判断基準は <span class="citation" data-cites="meteyard2020">Meteyard &amp; Davies (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-meteyard2020" role="doc-biblioref">2020</a>)</span> が最もバランスよくまとめています。</p>
+<p>実務的な判断基準は <span class="citation" data-cites="meteyard2020">Meteyard &amp; Davies (<a href="Rの基本的な使い方.html#ref-meteyard2020" role="doc-biblioref">2020</a>)</span> が最もバランスよくまとめています。</p>
 </div>
 <div id="tabset-3-5" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-5-tab">
 <ul>
-<li><strong>GLMM FAQ</strong>: <span class="citation" data-cites="glmmfaq">B. Bolker ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-glmmfaq" role="doc-biblioref">2025</a>)</span> — 実務で遭遇するほぼすべての疑問に回答。ブックマーク推奨。</li>
-<li><strong>p 値の取得</strong>: <span class="citation" data-cites="lme4pvalues">Bates, Machler, ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lme4pvalues" role="doc-biblioref">2025</a>)</span> — <code>lme4</code> で p 値を得る複数の方法を比較。</li>
-<li><strong>特異適合の対処</strong>: <span class="citation" data-cites="lme4issingular">Bates, Bolker, ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lme4issingular" role="doc-biblioref">2025a</a>)</span>; <span class="citation" data-cites="lme4repca">Bates, Bolker, ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lme4repca" role="doc-biblioref">2025b</a>)</span> — <code>isSingular()</code> と <code>rePCA()</code> の公式ドキュメント。</li>
-<li><strong>モデル診断ツール</strong>: <span class="citation" data-cites="performance_compare">Luedeke, Ben-Shachar, Patil, &amp; Makowski (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performance_compare" role="doc-biblioref">2026b</a>)</span>; <span class="citation" data-cites="performance_checkmodel">Luedeke, Ben-Shachar, Patil, &amp; Makowski (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performance_checkmodel" role="doc-biblioref">2026a</a>)</span>; <span class="citation" data-cites="performancepkg">Luedeke, Ben-Shachar, Patil, Waggoner, ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performancepkg" role="doc-biblioref">2026</a>)</span> — <code>performance</code> パッケージの各関数リファレンス。</li>
-<li><strong>混合モデルの教科書</strong>: <span class="citation" data-cites="baayen2008">Baayen ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-baayen2008" role="doc-biblioref">2008</a>)</span>; <span class="citation" data-cites="bates2015">Bates, Machler, ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bates2015" role="doc-biblioref">2015</a>)</span>; <span class="citation" data-cites="snijders2012">Snijders &amp; Bosker (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-snijders2012" role="doc-biblioref">2012</a>)</span>; <span class="citation" data-cites="hox2018">Hox ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hox2018" role="doc-biblioref">2018</a>)</span>; <span class="citation" data-cites="bolker2009">B. M. Bolker ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bolker2009" role="doc-biblioref">2009</a>)</span></li>
+<li><strong>GLMM FAQ</strong>: <span class="citation" data-cites="glmmfaq">B. Bolker et al. (<a href="Rの基本的な使い方.html#ref-glmmfaq" role="doc-biblioref">2025</a>)</span> — 実務で遭遇するほぼすべての疑問に回答。ブックマーク推奨。</li>
+<li><strong>p 値の取得</strong>: <span class="citation" data-cites="lme4pvalues">Bates, Machler, et al. (<a href="Rの基本的な使い方.html#ref-lme4pvalues" role="doc-biblioref">2025</a>)</span> — <code>lme4</code> で p 値を得る複数の方法を比較。</li>
+<li><strong>特異適合の対処</strong>: <span class="citation" data-cites="lme4issingular">Bates, Bolker, et al. (<a href="Rの基本的な使い方.html#ref-lme4issingular" role="doc-biblioref">2025a</a>)</span>; <span class="citation" data-cites="lme4repca">Bates, Bolker, et al. (<a href="Rの基本的な使い方.html#ref-lme4repca" role="doc-biblioref">2025b</a>)</span> — <code>isSingular()</code> と <code>rePCA()</code> の公式ドキュメント。</li>
+<li><strong>モデル診断ツール</strong>: <span class="citation" data-cites="performance_compare">Luedeke, Ben-Shachar, Patil, &amp; Makowski (<a href="Rの基本的な使い方.html#ref-performance_compare" role="doc-biblioref">2026b</a>)</span>; <span class="citation" data-cites="performance_checkmodel">Luedeke, Ben-Shachar, Patil, &amp; Makowski (<a href="Rの基本的な使い方.html#ref-performance_checkmodel" role="doc-biblioref">2026a</a>)</span>; <span class="citation" data-cites="performancepkg">Luedeke, Ben-Shachar, Patil, Waggoner, et al. (<a href="Rの基本的な使い方.html#ref-performancepkg" role="doc-biblioref">2026</a>)</span> — <code>performance</code> パッケージの各関数リファレンス。</li>
+<li><strong>混合モデルの教科書</strong>: <span class="citation" data-cites="baayen2008">Baayen et al. (<a href="Rの基本的な使い方.html#ref-baayen2008" role="doc-biblioref">2008</a>)</span>; <span class="citation" data-cites="bates2015">Bates, Machler, et al. (<a href="Rの基本的な使い方.html#ref-bates2015" role="doc-biblioref">2015</a>)</span>; <span class="citation" data-cites="snijders2012">Snijders &amp; Bosker (<a href="Rの基本的な使い方.html#ref-snijders2012" role="doc-biblioref">2012</a>)</span>; <span class="citation" data-cites="hox2018">Hox et al. (<a href="Rの基本的な使い方.html#ref-hox2018" role="doc-biblioref">2018</a>)</span>; <span class="citation" data-cites="bolker2009">B. M. Bolker et al. (<a href="Rの基本的な使い方.html#ref-bolker2009" role="doc-biblioref">2009</a>)</span></li>
 </ul>
 </div>
 <div id="tabset-3-6" class="tab-pane" role="tabpanel" aria-labelledby="tabset-3-6-tab">
 <p>連続予測子に非線形関係が疑われる場合は、GLMM から GAMM へ拡張できます。</p>
 <ul>
-<li><span class="citation" data-cites="wood2017">Wood (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-wood2017" role="doc-biblioref">2017</a>)</span>; <span class="citation" data-cites="wood2020">Wood (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-wood2020" role="doc-biblioref">2020</a>)</span>; <span class="citation" data-cites="pedersen2019">Pedersen ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-pedersen2019" role="doc-biblioref">2019</a>)</span></li>
+<li><span class="citation" data-cites="wood2017">Wood (<a href="Rの基本的な使い方.html#ref-wood2017" role="doc-biblioref">2017</a>)</span>; <span class="citation" data-cites="wood2020">Wood (<a href="Rの基本的な使い方.html#ref-wood2020" role="doc-biblioref">2020</a>)</span>; <span class="citation" data-cites="pedersen2019">Pedersen et al. (<a href="Rの基本的な使い方.html#ref-pedersen2019" role="doc-biblioref">2019</a>)</span></li>
 </ul>
 </div>
 </div>
@@ -9375,7 +9375,7 @@ Bates, D., Machler, M., Bolker, B., &amp; Walker, S. (2015年). Fitting Linear M
 Bates, D., Machler, M., Bolker, B., &amp; Walker, S. (2025年). <em>Getting p-values for fitted models</em>. lme4 Reference. <a href="https://lme4.github.io/lme4/reference/pvalues.html">https://lme4.github.io/lme4/reference/pvalues.html</a>
 </div>
 <div id="ref-glmmfaq" class="csl-entry" role="listitem">
-Bolker, B. ほか. (2025年). <em>GLMM FAQ</em>. <a href="https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html">https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html</a>
+Bolker, B. et al. (2025年). <em>GLMM FAQ</em>. <a href="https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html">https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html</a>
 </div>
 <div id="ref-bolker2009" class="csl-entry" role="listitem">
 Bolker, B. M., Brooks, M. E., Clark, C. J., Geange, S. W., Poulsen, J. R., Stevens, M. H. H., &amp; White, J.-S. S. (2009年). Generalized linear mixed models: a practical guide for ecology and evolution. <em>Trends in Ecology &amp; Evolution</em>, <em>24</em>(3), 127–135. <a href="https://doi.org/10.1016/j.tree.2008.10.008">https://doi.org/10.1016/j.tree.2008.10.008</a>
@@ -9399,7 +9399,7 @@ Gries, S. Th. (2021年). (Generalized Linear) Mixed-Effects Modeling: A Learner 
 Gudmestad, A. (2025年). Multinomial Logistic Mixed-Effects Models for Studying Variable Grammar. <em>Research Methods in Applied Linguistics</em>, <em>4</em>(1), 100104. <a href="https://doi.org/10.1016/j.rmal.2024.100104">https://doi.org/10.1016/j.rmal.2024.100104</a>
 </div>
 <div id="ref-hox2018" class="csl-entry" role="listitem">
-Hox, J. J., Moerbeek, M., &amp; Schoot, R. van de. (2018年). <em>Multilevel Analysis: Techniques and Applications</em> (3rd 版). Routledge.
+Hox, J. J., Moerbeek, M., &amp; Schoot, R. van de. (2018年). <em>Multilevel Analysis: Techniques and Applications</em> (3rd 版). Routledge. <a href="https://doi.org/10.4324/9781315650982">https://doi.org/10.4324/9781315650982</a>
 </div>
 <div id="ref-jaeger2008" class="csl-entry" role="listitem">
 Jaeger, T. F. (2008年). Categorical Data Analysis: Away from ANOVAs (transformation or not) and towards Logit Mixed Models. <em>Journal of Memory and Language</em>, <em>59</em>(4), 434–446. <a href="https://doi.org/10.1016/j.jml.2007.11.007">https://doi.org/10.1016/j.jml.2007.11.007</a>
@@ -9477,7 +9477,7 @@ Stram, D. O., &amp; Lee, J. W. (1994年). Variance Components Testing in the Lon
 Winter, B. (2013年). <em>Linear Models and Linear Mixed Effects Models in <span>R</span> with Linguistic Applications</em>. <a href="https://arxiv.org/abs/1308.5499">https://arxiv.org/abs/1308.5499</a>
 </div>
 <div id="ref-wood2017" class="csl-entry" role="listitem">
-Wood, S. N. (2017年). <em>Generalized Additive Models: An Introduction with R</em> (2nd 版). Chapman; Hall/CRC.
+Wood, S. N. (2017年). <em>Generalized Additive Models: An Introduction with R</em> (2nd 版). Chapman; Hall/CRC. <a href="https://doi.org/10.1201/9781315370279">https://doi.org/10.1201/9781315370279</a>
 </div>
 <div id="ref-wood2020" class="csl-entry" role="listitem">
 Wood, S. N. (2020年). Inference and Computation with Generalized Additive Models and Their Extensions. <em>TEST</em>, <em>29</em>(2), 307–339. <a href="https://doi.org/10.1007/s11749-020-00711-5">https://doi.org/10.1007/s11749-020-00711-5</a>

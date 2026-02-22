@@ -503,7 +503,7 @@ window.Quarto = {
 <section id="はじめに" class="level2" data-number="13.1">
 <h2 data-number="13.1" class="anchored" data-anchor-id="はじめに"><span class="header-section-number">13.1</span> はじめに</h2>
 <p>5章・6章で扱ったロジスティック回帰では、「ある説明変数が正答確率にどう影響するか」をモデル化しました。しかし教育テストでは、同じ受験者が複数の項目に回答するため、<strong>「どの項目が難しいか」と「誰が高能力か」を同時に推定したい</strong>場面が頻出します。</p>
-<p>項目応答理論（Item Response Theory; IRT）は、この要請に直接応える枠組みです。受験者の潜在能力（()）と項目特性（困難度・識別力）を同時にモデル化し、「誰にとって、どの項目が、どれくらい難しいか」を推定します<span class="citation" data-cites="cai2016">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cai2016" role="doc-biblioref">Cai ほか, 2016</a>)</span>。特にラッシュモデル（1PL）は、測定モデルとしての単純さ、項目母数の不変性、教育評価における解釈しやすさのため、言語テスト研究で広く利用されています<span class="citation" data-cites="rasch1980 andersen1973 boone2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-boone2017" role="doc-biblioref">Boone ほか, 2017</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
+<p>項目応答理論（Item Response Theory; IRT）は、この要請に直接応える枠組みです。受験者の潜在能力（()）と項目特性（困難度・識別力）を同時にモデル化し、「誰にとって、どの項目が、どれくらい難しいか」を推定します<span class="citation" data-cites="cai2016">(<a href="Rの基本的な使い方.html#ref-cai2016" role="doc-biblioref">Cai et al., 2016</a>)</span>。特にラッシュモデル（1PL）は、測定モデルとしての単純さ、項目母数の不変性、教育評価における解釈しやすさのため、言語テスト研究で広く利用されています<span class="citation" data-cites="rasch1980 andersen1973 boone2017">(<a href="Rの基本的な使い方.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="Rの基本的な使い方.html#ref-boone2017" role="doc-biblioref">Boone et al., 2017</a>; <a href="Rの基本的な使い方.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
 <section id="最初にここだけはじめに" class="level3" data-number="13.1.1">
 <h3 data-number="13.1.1" class="anchored" data-anchor-id="最初にここだけはじめに"><span class="header-section-number">13.1.1</span> 最初にここだけ（はじめに）</h3>
 <section id="step-1-問題を1文で捉える" class="level4">
@@ -1161,7 +1161,7 @@ P(X_{ij}=1\mid \theta_i, b_j)=\frac{\exp(\theta_i-b_j)}{1+\exp(\theta_i-b_j)}
 <section id="ctt-から-irt-へ何が変わるのか" class="level2" data-number="13.3">
 <h2 data-number="13.3" class="anchored" data-anchor-id="ctt-から-irt-へ何が変わるのか"><span class="header-section-number">13.3</span> CTT から IRT へ：何が変わるのか</h2>
 <p>ここで具体的な場面を考えてみましょう。500人の EFL 学習者に語彙テスト（20項目）を実施したとします。受験者 A と受験者 B はどちらも合計12点でした。CTT ではこの2名は「同じ得点」として扱われます。しかし、A は易しい項目ばかり正解し、B は難しい項目を多く正解していたとしたらどうでしょうか。<strong>実際の語彙力に差がある可能性</strong>が高いのに、合計点だけではそれが見えません。</p>
-<p>IRT はまさにこの問題を解決します。「どの項目を正解したか」というパターン情報を使い、受験者能力と項目困難度を分離して推定します<span class="citation" data-cites="cai2016 rasch1980 mair2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cai2016" role="doc-biblioref">Cai ほか, 2016</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
+<p>IRT はまさにこの問題を解決します。「どの項目を正解したか」というパターン情報を使い、受験者能力と項目困難度を分離して推定します<span class="citation" data-cites="cai2016 rasch1980 mair2007">(<a href="Rの基本的な使い方.html#ref-cai2016" role="doc-biblioref">Cai et al., 2016</a>; <a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>; <a href="Rの基本的な使い方.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -2850,7 +2850,7 @@ glm() と Rasch の違いは何か
 </section>
 <section id="rasch-モデルの数理的定義" class="level3" data-number="13.4.2">
 <h3 data-number="13.4.2" class="anchored" data-anchor-id="rasch-モデルの数理的定義"><span class="header-section-number">13.4.2</span> Rasch モデルの数理的定義</h3>
-<p>2値 Rasch モデルは次式で表されます<span class="citation" data-cites="rasch1980 andersen1973">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
+<p>2値 Rasch モデルは次式で表されます<span class="citation" data-cites="rasch1980 andersen1973">(<a href="Rの基本的な使い方.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="Rの基本的な使い方.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
 <p><span class="math display">\[
 P(X_{ij}=1\mid \theta_i, b_j)=\frac{\exp(\theta_i-b_j)}{1+\exp(\theta_i-b_j)}
 \]</span></p>
@@ -2871,7 +2871,7 @@ P(X_{ij}=1\mid \theta_i, b_j)=\frac{\exp(\theta_i-b_j)}{1+\exp(\theta_i-b_j)}
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>IRT には2つの立場があります<span class="citation" data-cites="boone2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-boone2017" role="doc-biblioref">Boone ほか, 2017</a>)</span>。</p>
+<p>IRT には2つの立場があります<span class="citation" data-cites="boone2017">(<a href="Rの基本的な使い方.html#ref-boone2017" role="doc-biblioref">Boone et al., 2017</a>)</span>。</p>
 <ul>
 <li><strong>記述的アプローチ</strong>（IRT一般）: データに最も当てはまるモデル（1PL/2PL/3PL）を選ぶ。</li>
 <li><strong>規範的アプローチ</strong>（Rasch学派）: 公平な測定の条件を満たすモデルを<strong>先に決め</strong>、データがそれに適合するか検証する。</li>
@@ -2879,7 +2879,7 @@ P(X_{ij}=1\mid \theta_i, b_j)=\frac{\exp(\theta_i-b_j)}{1+\exp(\theta_i-b_j)}
 <p>Rasch モデルでは、識別力を等しいと仮定する（1PL）ことで、<strong>項目母数の不変性</strong>（標本によらない推定）と<strong>合計点の十分統計量性</strong>が保証されます。英語教育テストでは、異なる受験者集団間でも項目パラメータが安定していることが実務上重要であり、この規範的アプローチが広く採用されています。</p>
 </div>
 </div>
-<p>Rasch では識別力を等しいと仮定する点が、2PL と異なります<span class="citation" data-cites="birnbaum1968">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-birnbaum1968" role="doc-biblioref">Birnbaum, 1968</a>)</span>。2PL/3PL への拡張は本章後半で扱います。</p>
+<p>Rasch では識別力を等しいと仮定する点が、2PL と異なります<span class="citation" data-cites="birnbaum1968">(<a href="Rの基本的な使い方.html#ref-birnbaum1968" role="doc-biblioref">Birnbaum, 1968</a>)</span>。2PL/3PL への拡張は本章後半で扱います。</p>
 </section>
 <section id="指数型分布族としての表現" class="level3" data-number="13.4.3">
 <h3 data-number="13.4.3" class="anchored" data-anchor-id="指数型分布族としての表現"><span class="header-section-number">13.4.3</span> 指数型分布族としての表現</h3>
@@ -2904,7 +2904,7 @@ r_i=\sum_{j=1}^{J}x_{ij},\quad
 s_j=\sum_{i=1}^{N}x_{ij}
 \]</span></p>
 <p>です。(r_i) は受験者の素点、(s_j) は項目得点（通過者数）です。</p>
-<p>この形は、Rasch が「合計点に基づく推定」と整合的である理由を明示します<span class="citation" data-cites="rasch1980 andersen1973">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
+<p>この形は、Rasch が「合計点に基づく推定」と整合的である理由を明示します<span class="citation" data-cites="rasch1980 andersen1973">(<a href="Rの基本的な使い方.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="Rの基本的な使い方.html#ref-rasch1980" role="doc-biblioref">Rasch, 1980</a>)</span>。</p>
 </section>
 <section id="識別可能性identifiabilityの確認" class="level3" data-number="13.4.4">
 <h3 data-number="13.4.4" class="anchored" data-anchor-id="識別可能性identifiabilityの確認"><span class="header-section-number">13.4.4</span> 識別可能性（identifiability）の確認</h3>
@@ -2917,7 +2917,7 @@ s_j=\sum_{i=1}^{N}x_{ij}
 <li>(_{j=1}^{J}b_j=0)（項目困難度の平均を0に固定）</li>
 <li>あるいは (_{i=1}^{N}_i=0)</li>
 </ul>
-<p><code>eRm::RM()</code> はこの識別制約のもとで推定を行います<span class="citation" data-cites="mair2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
+<p><code>eRm::RM()</code> はこの識別制約のもとで推定を行います<span class="citation" data-cites="mair2007">(<a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -3421,7 +3421,7 @@ P(\mathbf{X}_i=\mathbf{x}_i \mid R_i=r_i, \mathbf{b})
 \]</span></p>
 <p>ここで ((r_i)) は「合計が (r_i) になる 0/1 ベクトル全体」です。</p>
 <p>重要なのは、右辺に (_i) が現れないことです。<br>
-つまり (R_i) で条件付けると、能力母数を積分せずに消去でき、 項目母数 () だけの尤度最大化（CML）が可能になります<span class="citation" data-cites="andersen1973 mair2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
+つまり (R_i) で条件付けると、能力母数を積分せずに消去でき、 項目母数 () だけの尤度最大化（CML）が可能になります<span class="citation" data-cites="andersen1973 mair2007">(<a href="Rの基本的な使い方.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>; <a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -3923,7 +3923,7 @@ P(\mathbf{X}_i=\mathbf{x}_i \mid R_i=r_i, \mathbf{b})
 </section>
 <section id="andersen-の-lr-検定の考え方" class="level3" data-number="13.4.6">
 <h3 data-number="13.4.6" class="anchored" data-anchor-id="andersen-の-lr-検定の考え方"><span class="header-section-number">13.4.6</span> Andersen の LR 検定の考え方</h3>
-<p>Andersen 検定は、項目母数の群間不変性を尤度比で検証します<span class="citation" data-cites="andersen1973">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>)</span>。<br>
+<p>Andersen 検定は、項目母数の群間不変性を尤度比で検証します<span class="citation" data-cites="andersen1973">(<a href="Rの基本的な使い方.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>)</span>。<br>
 例として、受験者を総得点中央値で2群に分けると、</p>
 <p><span class="math display">\[
 LR=-2\left\{\ell_{\mathrm{pooled}}-\left(\ell_{g1}+\ell_{g2}\right)\right\}
@@ -4579,7 +4579,7 @@ LR=-2\left\{\ell_{\mathrm{pooled}}-\left(\ell_{g1}+\ell_{g2}\right)\right\}
 </section>
 <section id="rasch-モデルの推定erm" class="level2" data-number="13.6">
 <h2 data-number="13.6" class="anchored" data-anchor-id="rasch-モデルの推定erm"><span class="header-section-number">13.6</span> Rasch モデルの推定（eRm）</h2>
-<p>得点分布を確認したところで、いよいよ Rasch モデルを推定します。<code>eRm::RM()</code> を用いて、条件付き最大尤度法（CML）で項目困難度を推定します<span class="citation" data-cites="mair2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
+<p>得点分布を確認したところで、いよいよ Rasch モデルを推定します。<code>eRm::RM()</code> を用いて、条件付き最大尤度法（CML）で項目困難度を推定します<span class="citation" data-cites="mair2007">(<a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -4610,23 +4610,23 @@ LR=-2\left\{\ell_{\mathrm{pooled}}-\left(\ell_{g1}+\ell_{g2}\right)\right\}
 <td><strong>CML</strong></td>
 <td>素点で条件付けて () を消去</td>
 <td><code>eRm</code></td>
-<td>Rasch の十分統計量性を直接利用。理論的に一貫<span class="citation" data-cites="andersen1973">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>)</span></td>
+<td>Rasch の十分統計量性を直接利用。理論的に一貫<span class="citation" data-cites="andersen1973">(<a href="Rの基本的な使い方.html#ref-andersen1973" role="doc-biblioref">Andersen, 1973</a>)</span></td>
 </tr>
 <tr class="even">
 <td><strong>MML</strong></td>
 <td>() に分布仮定を置き積分</td>
 <td><code>mirt</code>, <code>TAM</code></td>
-<td>2PL/3PL に柔軟。標本が大きいほど安定<span class="citation" data-cites="bock1981">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bock1981" role="doc-biblioref">Bock &amp; Aitkin, 1981</a>)</span></td>
+<td>2PL/3PL に柔軟。標本が大きいほど安定<span class="citation" data-cites="bock1981">(<a href="Rの基本的な使い方.html#ref-bock1981" role="doc-biblioref">Bock &amp; Aitkin, 1981</a>)</span></td>
 </tr>
 <tr class="odd">
 <td><strong>JML</strong></td>
 <td>() と (b) を同時最適化</td>
 <td><code>TAM::tam.jml()</code></td>
-<td>直感的だが incidental parameter problem あり<span class="citation" data-cites="neyman1948">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-neyman1948" role="doc-biblioref">Neyman &amp; Scott, 1948</a>)</span></td>
+<td>直感的だが incidental parameter problem あり<span class="citation" data-cites="neyman1948">(<a href="Rの基本的な使い方.html#ref-neyman1948" role="doc-biblioref">Neyman &amp; Scott, 1948</a>)</span></td>
 </tr>
 </tbody>
 </table>
-<p>本章では CML（<code>eRm::RM()</code>）を主に使います。MML ベースの <code>mirt</code> はモデル比較（2PL/3PL）で利用します。論文では<strong>推定法を必ず明記</strong>してください<span class="citation" data-cites="deayala2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-deayala2009" role="doc-biblioref">Ayala, 2009</a>)</span>。</p>
+<p>本章では CML（<code>eRm::RM()</code>）を主に使います。MML ベースの <code>mirt</code> はモデル比較（2PL/3PL）で利用します。論文では<strong>推定法を必ず明記</strong>してください<span class="citation" data-cites="deayala2009">(<a href="Rの基本的な使い方.html#ref-deayala2009" role="doc-biblioref">Ayala, 2009</a>)</span>。</p>
 </div>
 </div>
 <div class="cell">
@@ -5806,7 +5806,7 @@ Wright Map の読み方（3つのポイント）
 </ul>
 </div>
 </div>
-<p>Rasch では、Infit/Outfit を使って「モデル期待からの逸脱」を検討します<span class="citation" data-cites="mair2007 boone2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-boone2017" role="doc-biblioref">Boone ほか, 2017</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
+<p>Rasch では、Infit/Outfit を使って「モデル期待からの逸脱」を検討します<span class="citation" data-cites="mair2007 boone2017">(<a href="Rの基本的な使い方.html#ref-boone2017" role="doc-biblioref">Boone et al., 2017</a>; <a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -6415,9 +6415,9 @@ Fit 指標の読み方（実務上の注意）
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li>一般的な目安（例: 0.5〜1.5）はありますが、閾値は研究領域・目的・標本サイズで変わります<span class="citation" data-cites="boone2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-boone2017" role="doc-biblioref">Boone ほか, 2017</a>)</span>。</li>
+<li>一般的な目安（例: 0.5〜1.5）はありますが、閾値は研究領域・目的・標本サイズで変わります<span class="citation" data-cites="boone2017">(<a href="Rの基本的な使い方.html#ref-boone2017" role="doc-biblioref">Boone et al., 2017</a>)</span>。</li>
 <li>単一指標で機械的に除外せず、内容妥当性と併せて判断してください。</li>
-<li>モデル不適合は、推定値だけでなく等化・DIF解釈にも影響します<span class="citation" data-cites="zhao2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-zhao2017" role="doc-biblioref">Zhao &amp; Hambleton, 2017</a>)</span>。</li>
+<li>モデル不適合は、推定値だけでなく等化・DIF解釈にも影響します<span class="citation" data-cites="zhao2017">(<a href="Rの基本的な使い方.html#ref-zhao2017" role="doc-biblioref">Zhao &amp; Hambleton, 2017</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -7030,7 +7030,7 @@ Fit 指標の読み方（実務上の注意）
 </section>
 <section id="pathway-mapbond-fox型の可視化" class="level3" data-number="13.7.2">
 <h3 data-number="13.7.2" class="anchored" data-anchor-id="pathway-mapbond-fox型の可視化"><span class="header-section-number">13.7.2</span> Pathway Map（Bond &amp; Fox型）の可視化</h3>
-<p>Pathway Map は、縦軸に困難度、横軸に適合統計量を配置することで、「どの困難度帯の項目が不適合を示しているか」を一目で把握できる可視化です<span class="citation" data-cites="mair2007 bondfox2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bondfox2007" role="doc-biblioref">Bond &amp; Fox, 2007</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
+<p>Pathway Map は、縦軸に困難度、横軸に適合統計量を配置することで、「どの困難度帯の項目が不適合を示しているか」を一目で把握できる可視化です<span class="citation" data-cites="mair2007 bondfox2007">(<a href="Rの基本的な使い方.html#ref-bondfox2007" role="doc-biblioref">Bond &amp; Fox, 2007</a>; <a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -7076,7 +7076,7 @@ Fit 指標の読み方（実務上の注意）
 <p>適合度分析で個々の項目の振る舞いを確認しました。ここでは、Rasch モデルが依拠する2つの統計的前提、すなわち<strong>一次元性</strong>と<strong>局所独立性</strong>を検証します。これらの前提が崩れると、推定値の解釈やDIF分析の妥当性に影響が及びます。</p>
 <section id="一次元性unidimensionality" class="level3" data-number="13.8.1">
 <h3 data-number="13.8.1" class="anchored" data-anchor-id="一次元性unidimensionality"><span class="header-section-number">13.8.1</span> 1. 一次元性（Unidimensionality）</h3>
-<p>一次元性は「主要な潜在特性が1つであるか」を問う前提です。2値データに対しては、ピアソン相関よりも tetrachoric 相関に基づく固有値分析が適切です<span class="citation" data-cites="cai2016">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cai2016" role="doc-biblioref">Cai ほか, 2016</a>)</span>。</p>
+<p>一次元性は「主要な潜在特性が1つであるか」を問う前提です。2値データに対しては、ピアソン相関よりも tetrachoric 相関に基づく固有値分析が適切です<span class="citation" data-cites="cai2016">(<a href="Rの基本的な使い方.html#ref-cai2016" role="doc-biblioref">Cai et al., 2016</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -7605,7 +7605,7 @@ Fit 指標の読み方（実務上の注意）
 </section>
 <section id="局所独立性local-independence" class="level3" data-number="13.8.2">
 <h3 data-number="13.8.2" class="anchored" data-anchor-id="局所独立性local-independence"><span class="header-section-number">13.8.2</span> 2. 局所独立性（Local Independence）</h3>
-<p>一次元性を確認したら、次に局所独立性を検証します。局所独立性は「能力 () を固定すれば、項目残差同士は独立である」という前提です。違反の兆候は、特定の項目ペアの残差相関が高い場合に現れます。ここでは Yen の Q3 を用います<span class="citation" data-cites="yen1984 christensen2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-christensen2017" role="doc-biblioref">Christensen ほか, 2017</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-yen1984" role="doc-biblioref">Yen, 1984</a>)</span>。</p>
+<p>一次元性を確認したら、次に局所独立性を検証します。局所独立性は「能力 () を固定すれば、項目残差同士は独立である」という前提です。違反の兆候は、特定の項目ペアの残差相関が高い場合に現れます。ここでは Yen の Q3 を用います<span class="citation" data-cites="yen1984 christensen2017">(<a href="Rの基本的な使い方.html#ref-christensen2017" role="doc-biblioref">Christensen et al., 2017</a>; <a href="Rの基本的な使い方.html#ref-yen1984" role="doc-biblioref">Yen, 1984</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -8140,7 +8140,7 @@ Fit 指標の読み方（実務上の注意）
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>Q3 の閾値は固定値ではなく、項目数・標本サイズ・カテゴリ数に依存します。可能ならブートストラップ等で臨界値を設定してください<span class="citation" data-cites="christensen2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-christensen2017" role="doc-biblioref">Christensen ほか, 2017</a>)</span>。</p>
+<p>Q3 の閾値は固定値ではなく、項目数・標本サイズ・カテゴリ数に依存します。可能ならブートストラップ等で臨界値を設定してください<span class="citation" data-cites="christensen2017">(<a href="Rの基本的な使い方.html#ref-christensen2017" role="doc-biblioref">Christensen et al., 2017</a>)</span>。</p>
 </div>
 </div>
 </section>
@@ -8148,7 +8148,7 @@ Fit 指標の読み方（実務上の注意）
 <section id="plm3plm-はどう理解すべきか" class="level2" data-number="13.9">
 <h2 data-number="13.9" class="anchored" data-anchor-id="plm3plm-はどう理解すべきか"><span class="header-section-number">13.9</span> 2PLM・3PLM はどう理解すべきか</h2>
 <p>前節までの分析は、すべて Rasch（1PL）モデルに基づいていました。ここでは、識別力パラメータ (a_j) を項目ごとに自由推定する <strong>2PL</strong>、さらに当て推量パラメータ (c_j) を加える <strong>3PL</strong> への拡張を確認します。</p>
-<p>Rasch（1PL）から 2PL, 3PL への拡張は次式で表せます<span class="citation" data-cites="birnbaum1968 deayala2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-deayala2009" role="doc-biblioref">Ayala, 2009</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-birnbaum1968" role="doc-biblioref">Birnbaum, 1968</a>)</span>。</p>
+<p>Rasch（1PL）から 2PL, 3PL への拡張は次式で表せます<span class="citation" data-cites="birnbaum1968 deayala2009">(<a href="Rの基本的な使い方.html#ref-deayala2009" role="doc-biblioref">Ayala, 2009</a>; <a href="Rの基本的な使い方.html#ref-birnbaum1968" role="doc-biblioref">Birnbaum, 1968</a>)</span>。</p>
 <p><span class="math display">\[
 \text{1PL: }P(X_{ij}=1\mid\theta_i)=\operatorname{logit}^{-1}(\theta_i-b_j)
 \]</span></p>
@@ -8160,7 +8160,7 @@ Fit 指標の読み方（実務上の注意）
 \]</span></p>
 <p>ここで - (a_j): 識別力（ICCの傾き） - (b_j): 困難度（正答確率の位置） - (c_j): 下方漸近線（guessing）</p>
 <p>です。<br>
-3PL は多肢選択式テストでは有用ですが、標本が小さい場合や極端反応が多い場合に (c_j) が不安定になりやすいため、推定拘束や事前分布の工夫が必要です<span class="citation" data-cites="baker2004 deayala2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-deayala2009" role="doc-biblioref">Ayala, 2009</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-baker2004" role="doc-biblioref">Baker &amp; Kim, 2004</a>)</span>。</p>
+3PL は多肢選択式テストでは有用ですが、標本が小さい場合や極端反応が多い場合に (c_j) が不安定になりやすいため、推定拘束や事前分布の工夫が必要です<span class="citation" data-cites="baker2004 deayala2009">(<a href="Rの基本的な使い方.html#ref-deayala2009" role="doc-biblioref">Ayala, 2009</a>; <a href="Rの基本的な使い方.html#ref-baker2004" role="doc-biblioref">Baker &amp; Kim, 2004</a>)</span>。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -9827,7 +9827,7 @@ m3_3pl   11020.57 11083.00 11119.80 11273.45 -5450.286      7 20 0.997</code></p
 </section>
 <section id="公式ドキュメント準拠mirttamsirt-の拡張実装" class="level2" data-number="13.10">
 <h2 data-number="13.10" class="anchored" data-anchor-id="公式ドキュメント準拠mirttamsirt-の拡張実装"><span class="header-section-number">13.10</span> 公式ドキュメント準拠：mirt・TAM・sirt の拡張実装</h2>
-<p>前節で1PL/2PL/3PLのモデル比較を行いました。ここでは、R の IRT パッケージエコシステムを整理し、同一データに対する推定結果がパッケージ間でどの程度一致するかを確認します<span class="citation" data-cites="chalmers2012 tam2025 sirt2025">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-chalmers2012" role="doc-biblioref">Chalmers, 2012</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-tam2025" role="doc-biblioref">Robitzsch ほか, 2025</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-sirt2025" role="doc-biblioref">Robitzsch, 2025</a>)</span>。</p>
+<p>前節で1PL/2PL/3PLのモデル比較を行いました。ここでは、R の IRT パッケージエコシステムを整理し、同一データに対する推定結果がパッケージ間でどの程度一致するかを確認します<span class="citation" data-cites="chalmers2012 tam2025 sirt2025">(<a href="Rの基本的な使い方.html#ref-chalmers2012" role="doc-biblioref">Chalmers, 2012</a>; <a href="Rの基本的な使い方.html#ref-tam2025" role="doc-biblioref">Robitzsch et al., 2025</a>; <a href="Rの基本的な使い方.html#ref-sirt2025" role="doc-biblioref">Robitzsch, 2025</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -14686,8 +14686,8 @@ sirt ワークフロー（rasch.mml2 / rasch.jml / modelfit.sirt）— 展開し
 </ul>
 </div>
 </div>
-<p>英語教育テストでは、L1背景・専攻・受験形式などで項目機能が変わらないかを確認する必要があります<span class="citation" data-cites="runnels2013 tan2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-runnels2013" role="doc-biblioref">Runnels, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-tan2024" role="doc-biblioref">Tan ほか, 2024</a>)</span>。</p>
-<p>ここではシミュレーション上、<code>Item05</code> と <code>Item17</code> に DIF を埋め込んでいます。 実務では、アンカー項目選定と反復的な浄化手続きを行ってください<span class="citation" data-cites="runnels2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-runnels2013" role="doc-biblioref">Runnels, 2013</a>)</span>。</p>
+<p>英語教育テストでは、L1背景・専攻・受験形式などで項目機能が変わらないかを確認する必要があります<span class="citation" data-cites="runnels2013 tan2024">(<a href="Rの基本的な使い方.html#ref-runnels2013" role="doc-biblioref">Runnels, 2013</a>; <a href="Rの基本的な使い方.html#ref-tan2024" role="doc-biblioref">Tan et al., 2024</a>)</span>。</p>
+<p>ここではシミュレーション上、<code>Item05</code> と <code>Item17</code> に DIF を埋め込んでいます。 実務では、アンカー項目選定と反復的な浄化手続きを行ってください<span class="citation" data-cites="runnels2013">(<a href="Rの基本的な使い方.html#ref-runnels2013" role="doc-biblioref">Runnels, 2013</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -16391,7 +16391,7 @@ sirt ワークフロー（rasch.mml2 / rasch.jml / modelfit.sirt）— 展開し
 <section id="dif-とバイアスは同義ではない" class="level3" data-number="13.11.3">
 <h3 data-number="13.11.3" class="anchored" data-anchor-id="dif-とバイアスは同義ではない"><span class="header-section-number">13.11.3</span> DIF とバイアスは同義ではない</h3>
 <p><strong>DIF は統計的非不変性</strong>、<strong>バイアスは妥当性判断（解釈上の不公平）</strong>です。<br>
-したがって DIF 検出は必要条件ですが、内容妥当性・受験プロセス・学習機会差を含む実質的検討が不可欠です<span class="citation" data-cites="camilli1994 zhao2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-camilli1994" role="doc-biblioref">Camilli &amp; Shepard, 1994</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-zhao2017" role="doc-biblioref">Zhao &amp; Hambleton, 2017</a>)</span>。</p>
+したがって DIF 検出は必要条件ですが、内容妥当性・受験プロセス・学習機会差を含む実質的検討が不可欠です<span class="citation" data-cites="camilli1994 zhao2017">(<a href="Rの基本的な使い方.html#ref-camilli1994" role="doc-biblioref">Camilli &amp; Shepard, 1994</a>; <a href="Rの基本的な使い方.html#ref-zhao2017" role="doc-biblioref">Zhao &amp; Hambleton, 2017</a>)</span>。</p>
 </section>
 <section id="バイアス影響の簡易チェックシミュレーション" class="level3" data-number="13.11.4">
 <h3 data-number="13.11.4" class="anchored" data-anchor-id="バイアス影響の簡易チェックシミュレーション"><span class="header-section-number">13.11.4</span> バイアス影響の簡易チェック（シミュレーション）</h3>
@@ -16930,7 +16930,7 @@ sirt ワークフロー（rasch.mml2 / rasch.jml / modelfit.sirt）— 展開し
 </section>
 <section id="英語教育研究での実装上の示唆" class="level2" data-number="13.12">
 <h2 data-number="13.12" class="anchored" data-anchor-id="英語教育研究での実装上の示唆"><span class="header-section-number">13.12</span> 英語教育研究での実装上の示唆</h2>
-<p>ここまでの分析をまとめ、実務でのチェックリストと論文報告に必要な要素を整理します。近年の言語テスト研究では、 - Rasch による構成概念妥当性の検討 - 項目施設値（正答率）だけでは見えない測定上の歪みの同定 - DIF/DTF を含む公平性評価 が重要視されています<span class="citation" data-cites="ha2021 runnels2013 tan2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-ha2021" role="doc-biblioref">Ha, 2021</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-runnels2013" role="doc-biblioref">Runnels, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-tan2024" role="doc-biblioref">Tan ほか, 2024</a>)</span>。</p>
+<p>ここまでの分析をまとめ、実務でのチェックリストと論文報告に必要な要素を整理します。近年の言語テスト研究では、 - Rasch による構成概念妥当性の検討 - 項目施設値（正答率）だけでは見えない測定上の歪みの同定 - DIF/DTF を含む公平性評価 が重要視されています<span class="citation" data-cites="ha2021 runnels2013 tan2024">(<a href="Rの基本的な使い方.html#ref-ha2021" role="doc-biblioref">Ha, 2021</a>; <a href="Rの基本的な使い方.html#ref-runnels2013" role="doc-biblioref">Runnels, 2013</a>; <a href="Rの基本的な使い方.html#ref-tan2024" role="doc-biblioref">Tan et al., 2024</a>)</span>。</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -16957,7 +16957,7 @@ sirt ワークフロー（rasch.mml2 / rasch.jml / modelfit.sirt）— 展開し
 <h2 data-number="13.13" class="anchored" data-anchor-id="論文報告テンプレート英語"><span class="header-section-number">13.13</span> 論文報告テンプレート（英語）</h2>
 <p>以下は、英語教育研究の Methods/Results にそのまま展開しやすい最小テンプレートです。</p>
 <blockquote class="blockquote">
-<p><strong>IRT analysis.</strong> We analyzed dichotomous item responses using a Rasch model (1PL) in R with the <code>eRm</code> package <span class="citation" data-cites="mair2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>, estimating item parameters via conditional maximum likelihood. As assumption checks, we evaluated unidimensionality using tetrachoric-eigenvalue inspection and local independence using Yen’s Q3 residual correlations <span class="citation" data-cites="yen1984 christensen2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-christensen2017" role="doc-biblioref">Christensen ほか, 2017</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-yen1984" role="doc-biblioref">Yen, 1984</a>)</span>. For sensitivity analysis, we fitted 2PL and 3PL models with <code>mirt</code> <span class="citation" data-cites="chalmers2012">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-chalmers2012" role="doc-biblioref">Chalmers, 2012</a>)</span> and compared model fit and test information functions. To evaluate fairness across L1 background groups, we conducted both uniform and non-uniform DIF analyses in a multiple-group framework and reported item-level effect sizes ((b)) in addition to adjusted p-values. We distinguished statistical DIF from substantive bias and examined potential score impact after conditioning on anchor-based ability estimates <span class="citation" data-cites="camilli1994">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-camilli1994" role="doc-biblioref">Camilli &amp; Shepard, 1994</a>)</span>.</p>
+<p><strong>IRT analysis.</strong> We analyzed dichotomous item responses using a Rasch model (1PL) in R with the <code>eRm</code> package <span class="citation" data-cites="mair2007">(<a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">Mair &amp; Hatzinger, 2007</a>)</span>, estimating item parameters via conditional maximum likelihood. As assumption checks, we evaluated unidimensionality using tetrachoric-eigenvalue inspection and local independence using Yen’s Q3 residual correlations <span class="citation" data-cites="yen1984 christensen2017">(<a href="Rの基本的な使い方.html#ref-christensen2017" role="doc-biblioref">Christensen et al., 2017</a>; <a href="Rの基本的な使い方.html#ref-yen1984" role="doc-biblioref">Yen, 1984</a>)</span>. For sensitivity analysis, we fitted 2PL and 3PL models with <code>mirt</code> <span class="citation" data-cites="chalmers2012">(<a href="Rの基本的な使い方.html#ref-chalmers2012" role="doc-biblioref">Chalmers, 2012</a>)</span> and compared model fit and test information functions. To evaluate fairness across L1 background groups, we conducted both uniform and non-uniform DIF analyses in a multiple-group framework and reported item-level effect sizes ((b)) in addition to adjusted p-values. We distinguished statistical DIF from substantive bias and examined potential score impact after conditioning on anchor-based ability estimates <span class="citation" data-cites="camilli1994">(<a href="Rの基本的な使い方.html#ref-camilli1994" role="doc-biblioref">Camilli &amp; Shepard, 1994</a>)</span>.</p>
 </blockquote>
 <p>上記テンプレートは、研究の目的や分析範囲に応じて適宜拡張してください。次に、本章の要点を振り返ります。</p>
 </section>
@@ -16974,13 +16974,13 @@ sirt ワークフロー（rasch.mml2 / rasch.jml / modelfit.sirt）— 展開し
 <section id="学習のための主要文献" class="level2" data-number="13.15">
 <h2 data-number="13.15" class="anchored" data-anchor-id="学習のための主要文献"><span class="header-section-number">13.15</span> 学習のための主要文献</h2>
 <ul>
-<li>理論と全体像: <span class="citation" data-cites="rasch1980">Rasch (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-rasch1980" role="doc-biblioref">1980</a>)</span>; <span class="citation" data-cites="cai2016">Cai ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cai2016" role="doc-biblioref">2016</a>)</span></li>
-<li>Rでの実装: <span class="citation" data-cites="mair2007">Mair &amp; Hatzinger (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mair2007" role="doc-biblioref">2007</a>)</span>; <span class="citation" data-cites="rizopoulos2006">Rizopoulos (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-rizopoulos2006" role="doc-biblioref">2006</a>)</span>; <span class="citation" data-cites="chalmers2012">Chalmers (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-chalmers2012" role="doc-biblioref">2012</a>)</span>; <span class="citation" data-cites="tam2025">Robitzsch ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tam2025" role="doc-biblioref">2025</a>)</span>; <span class="citation" data-cites="sirt2025">Robitzsch (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sirt2025" role="doc-biblioref">2025</a>)</span>; <span class="citation" data-cites="burkner2021">B"urkner (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-burkner2021" role="doc-biblioref">2021</a>)</span></li>
-<li>推定法と母数推定: <span class="citation" data-cites="bock1981">Bock &amp; Aitkin (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bock1981" role="doc-biblioref">1981</a>)</span>; <span class="citation" data-cites="baker2004">Baker &amp; Kim (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-baker2004" role="doc-biblioref">2004</a>)</span>; <span class="citation" data-cites="deayala2009">Ayala (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-deayala2009" role="doc-biblioref">2009</a>)</span>; <span class="citation" data-cites="neyman1948">Neyman &amp; Scott (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-neyman1948" role="doc-biblioref">1948</a>)</span></li>
-<li>Rasch実務の入門: <span class="citation" data-cites="boone2017">Boone ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-boone2017" role="doc-biblioref">2017</a>)</span></li>
-<li>局所独立性とQ3: <span class="citation" data-cites="yen1984">Yen (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-yen1984" role="doc-biblioref">1984</a>)</span>; <span class="citation" data-cites="christensen2017">Christensen ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-christensen2017" role="doc-biblioref">2017</a>)</span></li>
-<li>DIFとバイアス: <span class="citation" data-cites="camilli1994">Camilli &amp; Shepard (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-camilli1994" role="doc-biblioref">1994</a>)</span>; <span class="citation" data-cites="zhao2017">Zhao &amp; Hambleton (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-zhao2017" role="doc-biblioref">2017</a>)</span></li>
-<li>言語テスト応用: <span class="citation" data-cites="ha2021">Ha (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-ha2021" role="doc-biblioref">2021</a>)</span>; <span class="citation" data-cites="runnels2013">Runnels (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-runnels2013" role="doc-biblioref">2013</a>)</span>; <span class="citation" data-cites="tan2024">Tan ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tan2024" role="doc-biblioref">2024</a>)</span></li>
+<li>理論と全体像: <span class="citation" data-cites="rasch1980">Rasch (<a href="Rの基本的な使い方.html#ref-rasch1980" role="doc-biblioref">1980</a>)</span>; <span class="citation" data-cites="cai2016">Cai et al. (<a href="Rの基本的な使い方.html#ref-cai2016" role="doc-biblioref">2016</a>)</span></li>
+<li>Rでの実装: <span class="citation" data-cites="mair2007">Mair &amp; Hatzinger (<a href="Rの基本的な使い方.html#ref-mair2007" role="doc-biblioref">2007</a>)</span>; <span class="citation" data-cites="rizopoulos2006">Rizopoulos (<a href="Rの基本的な使い方.html#ref-rizopoulos2006" role="doc-biblioref">2006</a>)</span>; <span class="citation" data-cites="chalmers2012">Chalmers (<a href="Rの基本的な使い方.html#ref-chalmers2012" role="doc-biblioref">2012</a>)</span>; <span class="citation" data-cites="tam2025">Robitzsch et al. (<a href="Rの基本的な使い方.html#ref-tam2025" role="doc-biblioref">2025</a>)</span>; <span class="citation" data-cites="sirt2025">Robitzsch (<a href="Rの基本的な使い方.html#ref-sirt2025" role="doc-biblioref">2025</a>)</span>; <span class="citation" data-cites="burkner2021">B"urkner (<a href="Rの基本的な使い方.html#ref-burkner2021" role="doc-biblioref">2021</a>)</span></li>
+<li>推定法と母数推定: <span class="citation" data-cites="bock1981">Bock &amp; Aitkin (<a href="Rの基本的な使い方.html#ref-bock1981" role="doc-biblioref">1981</a>)</span>; <span class="citation" data-cites="baker2004">Baker &amp; Kim (<a href="Rの基本的な使い方.html#ref-baker2004" role="doc-biblioref">2004</a>)</span>; <span class="citation" data-cites="deayala2009">Ayala (<a href="Rの基本的な使い方.html#ref-deayala2009" role="doc-biblioref">2009</a>)</span>; <span class="citation" data-cites="neyman1948">Neyman &amp; Scott (<a href="Rの基本的な使い方.html#ref-neyman1948" role="doc-biblioref">1948</a>)</span></li>
+<li>Rasch実務の入門: <span class="citation" data-cites="boone2017">Boone et al. (<a href="Rの基本的な使い方.html#ref-boone2017" role="doc-biblioref">2017</a>)</span></li>
+<li>局所独立性とQ3: <span class="citation" data-cites="yen1984">Yen (<a href="Rの基本的な使い方.html#ref-yen1984" role="doc-biblioref">1984</a>)</span>; <span class="citation" data-cites="christensen2017">Christensen et al. (<a href="Rの基本的な使い方.html#ref-christensen2017" role="doc-biblioref">2017</a>)</span></li>
+<li>DIFとバイアス: <span class="citation" data-cites="camilli1994">Camilli &amp; Shepard (<a href="Rの基本的な使い方.html#ref-camilli1994" role="doc-biblioref">1994</a>)</span>; <span class="citation" data-cites="zhao2017">Zhao &amp; Hambleton (<a href="Rの基本的な使い方.html#ref-zhao2017" role="doc-biblioref">2017</a>)</span></li>
+<li>言語テスト応用: <span class="citation" data-cites="ha2021">Ha (<a href="Rの基本的な使い方.html#ref-ha2021" role="doc-biblioref">2021</a>)</span>; <span class="citation" data-cites="runnels2013">Runnels (<a href="Rの基本的な使い方.html#ref-runnels2013" role="doc-biblioref">2013</a>)</span>; <span class="citation" data-cites="tan2024">Tan et al. (<a href="Rの基本的な使い方.html#ref-tan2024" role="doc-biblioref">2024</a>)</span></li>
 </ul>
 </section>
 <section id="参考文献" class="level2" data-number="13.16">
@@ -16993,7 +16993,7 @@ Andersen, E. B. (1973年). A Goodness of Fit Test for the Rasch Model. <em>Psych
 Ayala, R. J. de. (2009年). <em>The Theory and Practice of Item Response Theory</em>. Guilford Press.
 </div>
 <div id="ref-baker2004" class="csl-entry" role="listitem">
-Baker, F. B., &amp; Kim, S.-H. (2004年). <em>Item Response Theory: Parameter Estimation Techniques</em> (2nd 版). Marcel Dekker.
+Baker, F. B., &amp; Kim, S.-H. (2004年). <em>Item Response Theory: Parameter Estimation Techniques</em> (2nd 版). Marcel Dekker. <a href="https://doi.org/10.1201/9781482276725">https://doi.org/10.1201/9781482276725</a>
 </div>
 <div id="ref-birnbaum1968" class="csl-entry" role="listitem">
 Birnbaum, A. (1968年). Some Latent Trait Models and Their Use in Inferring an Examinee’s Ability. F. M. Lord &amp; M. R. Novick (編), <em>Statistical Theories of Mental Test Scores</em> (pp. 397–479). Addison-Wesley.

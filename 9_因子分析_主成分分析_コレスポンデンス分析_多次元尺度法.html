@@ -541,7 +541,7 @@ window.Quarto = {
 
 <section id="はじめに" class="level2" data-number="11.1">
 <h2 data-number="11.1" class="anchored" data-anchor-id="はじめに"><span class="header-section-number">11.1</span> はじめに</h2>
-<p>英語教育研究では、直接測定できない概念（構成概念）を扱う場面が頻繁にある。たとえば「動機づけ」「言語適性」「コミュニケーション能力」「読解力」はいずれも直接観察できず、複数の質問紙項目やテスト項目を通じて間接的に測定される。<span class="citation" data-cites="dornyei2005">Dörnyei (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dornyei2005" role="doc-biblioref">2005</a>)</span> は第二言語習得における個人差変数の心理学的基盤を包括的にレビューし、これらの構成概念が複数の下位次元から構成されることを示した。こうした<strong>観測変数の背後にある構造</strong>を統計的に明らかにするのが、本章で扱う潜在変数モデルと次元縮約の手法群である<span class="citation" data-cites="kline2023 brown2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brown2015" role="doc-biblioref">Brown, 2015</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。</p>
+<p>英語教育研究では、直接測定できない概念（構成概念）を扱う場面が頻繁にある。たとえば「動機づけ」「言語適性」「コミュニケーション能力」「読解力」はいずれも直接観察できず、複数の質問紙項目やテスト項目を通じて間接的に測定される。<span class="citation" data-cites="dornyei2005">Dörnyei (<a href="Rの基本的な使い方.html#ref-dornyei2005" role="doc-biblioref">2005</a>)</span> は第二言語習得における個人差変数の心理学的基盤を包括的にレビューし、これらの構成概念が複数の下位次元から構成されることを示した。こうした<strong>観測変数の背後にある構造</strong>を統計的に明らかにするのが、本章で扱う潜在変数モデルと次元縮約の手法群である<span class="citation" data-cites="kline2023 brown2015">(<a href="Rの基本的な使い方.html#ref-brown2015" role="doc-biblioref">Brown, 2015</a>; <a href="Rの基本的な使い方.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。</p>
 <p>本章では6つの手法を体系的に解説する。<strong>主成分分析（PCA）</strong> と <strong>探索的因子分析（EFA）</strong> で構造の探索と次元縮約を行い、<strong>確認的因子分析（CFA）</strong> と <strong>構造方程式モデリング（SEM）</strong> で理論に基づく仮説検証を行う。さらに、カテゴリカルデータの関係性を可視化する <strong>コレスポンデンス分析（CA/MCA）</strong> と、距離・類似度データを低次元空間に写像する <strong>多次元尺度法（MDS）</strong> を取り上げる。</p>
 <p>すべてのデータ例は英語教育研究の文脈に基づくシミュレーションデータを用いるため、分析結果の解釈がそのまま研究実践に接続する設計となっている。</p>
 <section id="最初にここだけはじめに" class="level3" data-number="11.1.1">
@@ -823,7 +823,7 @@ window.Quarto = {
 <div class="callout-body-container callout-body">
 <ul>
 <li>PCA / EFA は変数のスケールに敏感。基本は相関行列（標準化）を使う。</li>
-<li>Likert 等の順序尺度はポリコリック相関を検討（<code>psych::polychoric</code>）<span class="citation" data-cites="holgadotello2010">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-holgadotello2010" role="doc-biblioref">Holgado-Tello ほか, 2010</a>)</span>。</li>
+<li>Likert 等の順序尺度はポリコリック相関を検討（<code>psych::polychoric</code>）<span class="citation" data-cites="holgadotello2010">(<a href="Rの基本的な使い方.html#ref-holgadotello2010" role="doc-biblioref">Holgado-Tello et al., 2010</a>)</span>。</li>
 <li>欠損は単純除去より多重代入を検討（実務では <code>mice</code> など）。</li>
 <li>サンプルサイズの目安: 因子分析は項目数 × 5〜10 以上、できれば 200 件以上。</li>
 </ul>
@@ -833,7 +833,7 @@ window.Quarto = {
 </section>
 <section id="回帰分析からの橋渡し" class="level2" data-number="11.2">
 <h2 data-number="11.2" class="anchored" data-anchor-id="回帰分析からの橋渡し"><span class="header-section-number">11.2</span> 回帰分析からの橋渡し</h2>
-<p>読者がすでに馴染んでいる回帰分析から出発しよう。<span class="citation" data-cites="bandalos2018">Bandalos (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bandalos2018" role="doc-biblioref">2018</a>)</span> が測定理論の教科書で整理しているように、社会科学における統計手法は「観測変数間の関係」から「潜在構造の推定」へと段階的に拡張される。回帰分析では、1つの結果変数を複数の説明変数で予測する。</p>
+<p>読者がすでに馴染んでいる回帰分析から出発しよう。<span class="citation" data-cites="bandalos2018">Bandalos (<a href="Rの基本的な使い方.html#ref-bandalos2018" role="doc-biblioref">2018</a>)</span> が測定理論の教科書で整理しているように、社会科学における統計手法は「観測変数間の関係」から「潜在構造の推定」へと段階的に拡張される。回帰分析では、1つの結果変数を複数の説明変数で予測する。</p>
 <p><span class="math display">\[Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \cdots + \beta_p X_p + \varepsilon\]</span></p>
 <p>ここで <span class="math inline">\(Y\)</span> は観測される結果変数、<span class="math inline">\(X\)</span> は観測される説明変数である。しかし、英語教育研究では「動機づけ」「不安」「読解力」といった<strong>直接測定できない構成概念</strong>を扱う場面が多い。このとき、方向が逆転する。回帰では「<span class="math inline">\(X\)</span> から <span class="math inline">\(Y\)</span> を予測する」のに対し、因子分析では「潜在変数 <span class="math inline">\(f\)</span> が観測変数 <span class="math inline">\(X\)</span> を生成する」と考える。</p>
 <p><span class="math display">\[\underbrace{X = \Lambda f + u}_{\text{因子分析モデル}}\]</span></p>
@@ -1443,7 +1443,7 @@ window.Quarto = {
 <h2 data-number="11.3" class="anchored" data-anchor-id="主成分分析pca"><span class="header-section-number">11.3</span> 主成分分析（PCA）</h2>
 <section id="コンセプト" class="level3" data-number="11.3.1">
 <h3 data-number="11.3.1" class="anchored" data-anchor-id="コンセプト"><span class="header-section-number">11.3.1</span> コンセプト</h3>
-<p>主成分分析（PCA）は、多数の変数を少数の<strong>主成分</strong>（principal component）に要約する手法である。データの分散を最大限に保ちながら次元を削減することが目的であり、潜在変数モデルではなく幾何学的な変換手法である<span class="citation" data-cites="jolliffe2016">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-jolliffe2016" role="doc-biblioref">Jolliffe &amp; Cadima, 2016</a>)</span>。言語テスティングでは、テスト項目の次元構造を概観する目的で古くから用いられてきた<span class="citation" data-cites="bachman1982 loewen2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bachman1982" role="doc-biblioref">Bachman, 1982</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-loewen2020" role="doc-biblioref">Loewen &amp; Gonulal, 2015</a>)</span>。</p>
+<p>主成分分析（PCA）は、多数の変数を少数の<strong>主成分</strong>（principal component）に要約する手法である。データの分散を最大限に保ちながら次元を削減することが目的であり、潜在変数モデルではなく幾何学的な変換手法である<span class="citation" data-cites="jolliffe2016">(<a href="Rの基本的な使い方.html#ref-jolliffe2016" role="doc-biblioref">Jolliffe &amp; Cadima, 2016</a>)</span>。言語テスティングでは、テスト項目の次元構造を概観する目的で古くから用いられてきた<span class="citation" data-cites="bachman1982 loewen2020">(<a href="Rの基本的な使い方.html#ref-bachman1982" role="doc-biblioref">Bachman, 1982</a>; <a href="Rの基本的な使い方.html#ref-loewen2020" role="doc-biblioref">Loewen &amp; Gonulal, 2015</a>)</span>。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -1498,7 +1498,7 @@ PCA のスケーリング
 </section>
 <section id="sla-データ例-英語技能テスト" class="level3" data-number="11.3.2">
 <h3 data-number="11.3.2" class="anchored" data-anchor-id="sla-データ例-英語技能テスト"><span class="header-section-number">11.3.2</span> SLA データ例: 英語技能テスト</h3>
-<p>言語テスティングにおける PCA の古典的な活用例として、<span class="citation" data-cites="bachman1982">Bachman (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bachman1982" role="doc-biblioref">1982</a>)</span> はコミュニケーション能力の構成要素（言語能力・語用論的能力・社会言語学的能力）を multi-trait multi-method デザインで検討し、PCA で特性効果と方法効果を分離した。また <span class="citation" data-cites="dewaele2014">Dewaele &amp; MacIntyre (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dewaele2014" role="doc-biblioref">2014</a>)</span> は、1,746名の多言語話者のデータに PCA を適用し、Foreign Language Enjoyment（FLE）尺度の次元構造を解明している。<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> は L2 研究における因子分析的手法のメタ的レビューで、多くの研究が EFA と称しながら実際には PCA を実行していた実態を指摘しており、手法選択の重要性を示している。</p>
+<p>言語テスティングにおける PCA の古典的な活用例として、<span class="citation" data-cites="bachman1982">Bachman (<a href="Rの基本的な使い方.html#ref-bachman1982" role="doc-biblioref">1982</a>)</span> はコミュニケーション能力の構成要素（言語能力・語用論的能力・社会言語学的能力）を multi-trait multi-method デザインで検討し、PCA で特性効果と方法効果を分離した。また <span class="citation" data-cites="dewaele2014">Dewaele &amp; MacIntyre (<a href="Rの基本的な使い方.html#ref-dewaele2014" role="doc-biblioref">2014</a>)</span> は、1,746名の多言語話者のデータに PCA を適用し、Foreign Language Enjoyment（FLE）尺度の次元構造を解明している。<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="Rの基本的な使い方.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> は L2 研究における因子分析的手法のメタ的レビューで、多くの研究が EFA と称しながら実際には PCA を実行していた実態を指摘しており、手法選択の重要性を示している。</p>
 <p>以下では300名の日本人 EFL 学習者に対する12項目のテスト（Reading 4項目、Listening 4項目、Grammar 4項目）をシミュレーションで生成する。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -2153,17 +2153,17 @@ PCA のスケーリング
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li><strong>Kaiser 基準</strong>（固有値 &gt; 1）: 過大評価の傾向があり、単独では推奨しない<span class="citation" data-cites="kaiser1960">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kaiser1960" role="doc-biblioref">Kaiser, 1960</a>)</span>。</li>
-<li><strong>スクリープロット</strong>（肘の位置）: 主観的だが視覚的に有用<span class="citation" data-cites="cattell1966">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-cattell1966" role="doc-biblioref">Cattell, 1966</a>)</span>。</li>
-<li><strong>平行分析</strong>（Horn 法）: ランダムデータの固有値と比較する最も推奨される方法<span class="citation" data-cites="horn1965">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-horn1965" role="doc-biblioref">Horn, 1965</a>)</span>。</li>
-<li><strong>MAP テスト</strong>: 偏相関行列に基づく客観的基準<span class="citation" data-cites="velicer1976">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-velicer1976" role="doc-biblioref">Velicer, 1976</a>)</span>。</li>
+<li><strong>Kaiser 基準</strong>（固有値 &gt; 1）: 過大評価の傾向があり、単独では推奨しない<span class="citation" data-cites="kaiser1960">(<a href="Rの基本的な使い方.html#ref-kaiser1960" role="doc-biblioref">Kaiser, 1960</a>)</span>。</li>
+<li><strong>スクリープロット</strong>（肘の位置）: 主観的だが視覚的に有用<span class="citation" data-cites="cattell1966">(<a href="Rの基本的な使い方.html#ref-cattell1966" role="doc-biblioref">Cattell, 1966</a>)</span>。</li>
+<li><strong>平行分析</strong>（Horn 法）: ランダムデータの固有値と比較する最も推奨される方法<span class="citation" data-cites="horn1965">(<a href="Rの基本的な使い方.html#ref-horn1965" role="doc-biblioref">Horn, 1965</a>)</span>。</li>
+<li><strong>MAP テスト</strong>: 偏相関行列に基づく客観的基準<span class="citation" data-cites="velicer1976">(<a href="Rの基本的な使い方.html#ref-velicer1976" role="doc-biblioref">Velicer, 1976</a>)</span>。</li>
 <li>実務では<strong>複数の基準を総合判断</strong>するのがベストプラクティスである。</li>
 </ul>
 </div>
 </div>
 <section id="平行分析による成分数の検証" class="level4">
 <h4 class="anchored" data-anchor-id="平行分析による成分数の検証">平行分析による成分数の検証</h4>
-<p>平行分析は、実データの固有値をランダムデータ（同じサイズ）の固有値と比較する方法である。実データの固有値がランダムデータの固有値を上回る成分のみを保持する<span class="citation" data-cites="horn1965">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-horn1965" role="doc-biblioref">Horn, 1965</a>)</span>。</p>
+<p>平行分析は、実データの固有値をランダムデータ（同じサイズ）の固有値と比較する方法である。実データの固有値がランダムデータの固有値を上回る成分のみを保持する<span class="citation" data-cites="horn1965">(<a href="Rの基本的な使い方.html#ref-horn1965" role="doc-biblioref">Horn, 1965</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -3332,7 +3332,7 @@ PCA の注意点
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li>PCA は<strong>全分散</strong>（共通分散 + 独自性）を回収する。したがって、測定誤差を含む合成変数を生成する。これが因子分析との根本的な違いである<span class="citation" data-cites="loewen2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-loewen2020" role="doc-biblioref">Loewen &amp; Gonulal, 2015</a>)</span>。</li>
+<li>PCA は<strong>全分散</strong>（共通分散 + 独自性）を回収する。したがって、測定誤差を含む合成変数を生成する。これが因子分析との根本的な違いである<span class="citation" data-cites="loewen2020">(<a href="Rの基本的な使い方.html#ref-loewen2020" role="doc-biblioref">Loewen &amp; Gonulal, 2015</a>)</span>。</li>
 <li>外れ値に引っ張られやすい。主成分スコアの分布を事前に確認すること。</li>
 <li>2次元で十分とは限らない。<strong>累積寄与率</strong>と <strong><span class="math inline">\(\cos^2\)</span></strong> を必ず確認する。</li>
 </ul>
@@ -3344,9 +3344,9 @@ PCA の注意点
 <h2 data-number="11.4" class="anchored" data-anchor-id="探索的因子分析efa"><span class="header-section-number">11.4</span> 探索的因子分析（EFA）</h2>
 <section id="コンセプトと手順" class="level3" data-number="11.4.1">
 <h3 data-number="11.4.1" class="anchored" data-anchor-id="コンセプトと手順"><span class="header-section-number">11.4.1</span> コンセプトと手順</h3>
-<p>探索的因子分析（EFA）は、観測変数間の相関を「共通因子 + 独自性」に分解するモデルである。PCA と異なり、EFA は<strong>確率モデル</strong>であり、観測データの背後にある潜在因子を推定する<span class="citation" data-cites="thurstone1947 revelle2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-revelle2024" role="doc-biblioref">Revelle, 2024</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-thurstone1947" role="doc-biblioref">Thurstone, 1947</a>)</span>。</p>
-<p>SLA 研究では尺度開発の場面で EFA が最も頻繁に用いられてきた。<span class="citation" data-cites="gardner1985">Gardner (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gardner1985" role="doc-biblioref">1985</a>)</span> は Attitude/Motivation Test Battery（AMTB）を開発する過程で EFA を用い、統合的動機づけ・道具的動機づけ・言語不安・学習環境への態度という4つの上位構成概念を同定した。AMTB はその後数十年にわたり L2 動機づけ研究の標準的測定ツールとなった。<span class="citation" data-cites="horwitz1986">Horwitz ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-horwitz1986" role="doc-biblioref">1986</a>)</span> は33項目の Foreign Language Classroom Anxiety Scale（FLCAS）を EFA で分析し、コミュニケーション不安・テスト不安・否定的評価への恐れという3つの下位因子を抽出した。FLCAS は現在までに世界中で翻訳・追試されている、SLA 研究で最も引用される尺度の一つである。</p>
-<p>こうした歴史的な蓄積を踏まえ、<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> は L2 研究における EFA の実施慣行を体系的に検証した。このメタ的レビューでは、因子数決定に Kaiser 基準（固有値 &gt; 1）のみを用いている研究が依然として多いこと、回転法の選択根拠が報告されていないケースが頻繁にあること、そしてサンプルサイズが項目数に対して不十分な研究が散見されることが指摘されている。本章では、これらの問題点を踏まえたベストプラクティスに沿って EFA を解説する。</p>
+<p>探索的因子分析（EFA）は、観測変数間の相関を「共通因子 + 独自性」に分解するモデルである。PCA と異なり、EFA は<strong>確率モデル</strong>であり、観測データの背後にある潜在因子を推定する<span class="citation" data-cites="thurstone1947 revelle2024">(<a href="Rの基本的な使い方.html#ref-revelle2024" role="doc-biblioref">Revelle, 2024</a>; <a href="Rの基本的な使い方.html#ref-thurstone1947" role="doc-biblioref">Thurstone, 1947</a>)</span>。</p>
+<p>SLA 研究では尺度開発の場面で EFA が最も頻繁に用いられてきた。<span class="citation" data-cites="gardner1985">Gardner (<a href="Rの基本的な使い方.html#ref-gardner1985" role="doc-biblioref">1985</a>)</span> は Attitude/Motivation Test Battery（AMTB）を開発する過程で EFA を用い、統合的動機づけ・道具的動機づけ・言語不安・学習環境への態度という4つの上位構成概念を同定した。AMTB はその後数十年にわたり L2 動機づけ研究の標準的測定ツールとなった。<span class="citation" data-cites="horwitz1986">Horwitz et al. (<a href="Rの基本的な使い方.html#ref-horwitz1986" role="doc-biblioref">1986</a>)</span> は33項目の Foreign Language Classroom Anxiety Scale（FLCAS）を EFA で分析し、コミュニケーション不安・テスト不安・否定的評価への恐れという3つの下位因子を抽出した。FLCAS は現在までに世界中で翻訳・追試されている、SLA 研究で最も引用される尺度の一つである。</p>
+<p>こうした歴史的な蓄積を踏まえ、<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="Rの基本的な使い方.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> は L2 研究における EFA の実施慣行を体系的に検証した。このメタ的レビューでは、因子数決定に Kaiser 基準（固有値 &gt; 1）のみを用いている研究が依然として多いこと、回転法の選択根拠が報告されていないケースが頻繁にあること、そしてサンプルサイズが項目数に対して不十分な研究が散見されることが指摘されている。本章では、これらの問題点を踏まえたベストプラクティスに沿って EFA を解説する。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -3407,10 +3407,10 @@ PCA の注意点
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li><strong>最尤法（ML）</strong>: 正規性を仮定し、適合度検定が可能。中〜大サンプルで推奨<span class="citation" data-cites="kline2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。</li>
+<li><strong>最尤法（ML）</strong>: 正規性を仮定し、適合度検定が可能。中〜大サンプルで推奨<span class="citation" data-cites="kline2023">(<a href="Rの基本的な使い方.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。</li>
 <li><strong>主軸法（PA）</strong>: 分布の仮定が緩い。小サンプルでも頑健。</li>
 <li><strong>最小残差法（minres）</strong>: 反復なしで高速。探索段階で有用。</li>
-<li>Likert 尺度には <code>psych::fa()</code> の <code>cor="poly"</code>（ポリコリック相関）を検討<span class="citation" data-cites="holgadotello2010">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-holgadotello2010" role="doc-biblioref">Holgado-Tello ほか, 2010</a>)</span>。</li>
+<li>Likert 尺度には <code>psych::fa()</code> の <code>cor="poly"</code>（ポリコリック相関）を検討<span class="citation" data-cites="holgadotello2010">(<a href="Rの基本的な使い方.html#ref-holgadotello2010" role="doc-biblioref">Holgado-Tello et al., 2010</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -3418,7 +3418,7 @@ PCA の注意点
 </section>
 <section id="sla-データ例-l2-動機づけ質問紙" class="level3" data-number="11.4.2">
 <h3 data-number="11.4.2" class="anchored" data-anchor-id="sla-データ例-l2-動機づけ質問紙"><span class="header-section-number">11.4.2</span> SLA データ例: L2 動機づけ質問紙</h3>
-<p>Dörnyei の L2 動機づけ自己体系（L2 Motivational Self System）に基づく質問紙をシミュレーションする<span class="citation" data-cites="dornyei2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dornyei2009" role="doc-biblioref">Dörnyei, 2009</a>)</span>。この3因子構造は、日本・中国・イランのEFL学習者を対象とした <span class="citation" data-cites="taguchi2009">Taguchi ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-taguchi2009" role="doc-biblioref">2009</a>)</span> の CFA による多国間比較で妥当性が確認され、<span class="citation" data-cites="you2016">You &amp; Dörnyei (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-you2016" role="doc-biblioref">2016</a>)</span> の中国 EFL 学習者調査でも支持されてきた。近年では <span class="citation" data-cites="alhoorie2024">Al-Hoorie ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-alhoorie2024" role="doc-biblioref">2024</a>)</span> が弁別的妥当性の問題を指摘しており、適切な EFA・CFA の手続きの重要性が改めて強調されている。</p>
+<p>Dörnyei の L2 動機づけ自己体系（L2 Motivational Self System）に基づく質問紙をシミュレーションする<span class="citation" data-cites="dornyei2009">(<a href="Rの基本的な使い方.html#ref-dornyei2009" role="doc-biblioref">Dörnyei, 2009</a>)</span>。この3因子構造は、日本・中国・イランのEFL学習者を対象とした <span class="citation" data-cites="taguchi2009">Taguchi et al. (<a href="Rの基本的な使い方.html#ref-taguchi2009" role="doc-biblioref">2009</a>)</span> の CFA による多国間比較で妥当性が確認され、<span class="citation" data-cites="you2016">You &amp; Dörnyei (<a href="Rの基本的な使い方.html#ref-you2016" role="doc-biblioref">2016</a>)</span> の中国 EFL 学習者調査でも支持されてきた。近年では <span class="citation" data-cites="alhoorie2024">Al-Hoorie et al. (<a href="Rの基本的な使い方.html#ref-alhoorie2024" role="doc-biblioref">2024</a>)</span> が弁別的妥当性の問題を指摘しており、適切な EFA・CFA の手続きの重要性が改めて強調されている。</p>
 <p>以下では500名の日本人大学生に対する18項目（6点 Likert）で、3因子を想定したデータを生成する。</p>
 <ul>
 <li><strong>Ideal L2 Self（理想 L2 自己）</strong>: 自分が英語を流暢に使う将来像への志向</li>
@@ -5503,7 +5503,7 @@ PCA の注意点
 </section>
 <section id="信頼性omega-係数alpha-係数" class="level3" data-number="11.4.8">
 <h3 data-number="11.4.8" class="anchored" data-anchor-id="信頼性omega-係数alpha-係数"><span class="header-section-number">11.4.8</span> 信頼性（<span class="math inline">\(\omega\)</span> 係数・<span class="math inline">\(\alpha\)</span> 係数）</h3>
-<p>内的整合性の指標として、McDonald の <span class="math inline">\(\omega\)</span>（オメガ）が推奨される<span class="citation" data-cites="mcneish2018 flora2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-flora2020" role="doc-biblioref">Flora, 2020</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mcneish2018" role="doc-biblioref">McNeish, 2018</a>)</span>。Cronbach の <span class="math inline">\(\alpha\)</span> は因子負荷が等しいという仮定（本質的タウ等価モデル）を置くため、因子負荷にばらつきがある場合に信頼性を過小評価する。</p>
+<p>内的整合性の指標として、McDonald の <span class="math inline">\(\omega\)</span>（オメガ）が推奨される<span class="citation" data-cites="mcneish2018 flora2020">(<a href="Rの基本的な使い方.html#ref-flora2020" role="doc-biblioref">Flora, 2020</a>; <a href="Rの基本的な使い方.html#ref-mcneish2018" role="doc-biblioref">McNeish, 2018</a>)</span>。Cronbach の <span class="math inline">\(\alpha\)</span> は因子負荷が等しいという仮定（本質的タウ等価モデル）を置くため、因子負荷にばらつきがある場合に信頼性を過小評価する。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -6047,7 +6047,7 @@ PCA の注意点
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li><span class="math inline">\(\omega\)</span>（オメガ）を第一指標として報告し、<span class="math inline">\(\alpha\)</span> は比較可能性のため補助的に記載する<span class="citation" data-cites="flora2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-flora2020" role="doc-biblioref">Flora, 2020</a>)</span>。</li>
+<li><span class="math inline">\(\omega\)</span>（オメガ）を第一指標として報告し、<span class="math inline">\(\alpha\)</span> は比較可能性のため補助的に記載する<span class="citation" data-cites="flora2020">(<a href="Rの基本的な使い方.html#ref-flora2020" role="doc-biblioref">Flora, 2020</a>)</span>。</li>
 <li><span class="math inline">\(\omega &gt; .70\)</span> が一般的な目安だが、探索段階では .65 程度でも許容されることがある。</li>
 <li>95% 信頼区間も併記すると情報量が増す。</li>
 </ul>
@@ -6057,7 +6057,7 @@ PCA の注意点
 </section>
 <section id="pca-vs-efa-の比較" class="level2" data-number="11.5">
 <h2 data-number="11.5" class="anchored" data-anchor-id="pca-vs-efa-の比較"><span class="header-section-number">11.5</span> PCA vs EFA の比較</h2>
-<p>PCA と EFA は混同されやすいが、本質的に異なる手法である<span class="citation" data-cites="loewen2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-loewen2020" role="doc-biblioref">Loewen &amp; Gonulal, 2015</a>)</span>。<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> のメタ的レビューでは、L2 研究の論文で「因子分析」と称しつつ実際には PCA を実行しているケースが多数報告されており、手法選択の混乱が SLA 分野全体に影響を与えていることが指摘されている。この節では両者の違いを明確にする。</p>
+<p>PCA と EFA は混同されやすいが、本質的に異なる手法である<span class="citation" data-cites="loewen2020">(<a href="Rの基本的な使い方.html#ref-loewen2020" role="doc-biblioref">Loewen &amp; Gonulal, 2015</a>)</span>。<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="Rの基本的な使い方.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> のメタ的レビューでは、L2 研究の論文で「因子分析」と称しつつ実際には PCA を実行しているケースが多数報告されており、手法選択の混乱が SLA 分野全体に影響を与えていることが指摘されている。この節では両者の違いを明確にする。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -6612,9 +6612,9 @@ PCA は因子分析ではない
 <h2 data-number="11.6" class="anchored" data-anchor-id="確認的因子分析cfa"><span class="header-section-number">11.6</span> 確認的因子分析（CFA）</h2>
 <section id="コンセプト-1" class="level3" data-number="11.6.1">
 <h3 data-number="11.6.1" class="anchored" data-anchor-id="コンセプト-1"><span class="header-section-number">11.6.1</span> コンセプト</h3>
-<p>EFA で「3因子が良い」という仮説が得られたら、次のステップは<strong>別のデータ</strong>（もしくは分割した検証データ）でその構造を<strong>確認</strong>することである。確認的因子分析（CFA）は、事前に指定した因子構造がデータに適合するかどうかを検定する<span class="citation" data-cites="brown2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brown2015" role="doc-biblioref">Brown, 2015</a>)</span>。</p>
-<p>SLA 研究における CFA の代表的な活用例を挙げる。<span class="citation" data-cites="taguchi2009">Taguchi ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-taguchi2009" role="doc-biblioref">2009</a>)</span> は日本・中国・イランの EFL 学習者データで L2MSS の3因子構造（Ideal L2 Self / Ought-to L2 Self / L2 Learning Experience）に CFA を適用し、3か国すべてで同一の因子構造が成立することを確認した。<span class="citation" data-cites="kormos2008">Kormos &amp; Csizér (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kormos2008" role="doc-biblioref">2008</a>)</span> は中高生・大学生・成人の3群で同じ動機づけモデルの CFA を実施し、年齢層間で因子構造は維持されるものの因子間相関のパターンが異なることを示した。<span class="citation" data-cites="dewaele2014">Dewaele &amp; MacIntyre (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dewaele2014" role="doc-biblioref">2014</a>)</span> は FLE（Foreign Language Enjoyment）尺度を開発する過程で、享受と不安が単一次元の両極ではなく独立した構成概念であることを主成分分析で示し、その後の CFA 研究の土台を築いた。<span class="citation" data-cites="winke2014">Winke (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-winke2014" role="doc-biblioref">2014</a>)</span> は SEM のチュートリアル論文の中で、テストの構成概念妥当性を CFA で検証する手順を step-by-step で解説している。</p>
-<p>近年では、<span class="citation" data-cites="alhoorie2024">Al-Hoorie ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-alhoorie2024" role="doc-biblioref">2024</a>)</span> が L2MSS 関連の18尺度を384名の韓国 EFL 学習者に実施し、CFA で弁別的妥当性を検証した結果、多くの構成概念間で重大な弁別性の問題が発見された。これは L2 動機づけ研究における測定の質を根本的に問い直す知見であり、適切な CFA 手続きの重要性を改めて示している。</p>
+<p>EFA で「3因子が良い」という仮説が得られたら、次のステップは<strong>別のデータ</strong>（もしくは分割した検証データ）でその構造を<strong>確認</strong>することである。確認的因子分析（CFA）は、事前に指定した因子構造がデータに適合するかどうかを検定する<span class="citation" data-cites="brown2015">(<a href="Rの基本的な使い方.html#ref-brown2015" role="doc-biblioref">Brown, 2015</a>)</span>。</p>
+<p>SLA 研究における CFA の代表的な活用例を挙げる。<span class="citation" data-cites="taguchi2009">Taguchi et al. (<a href="Rの基本的な使い方.html#ref-taguchi2009" role="doc-biblioref">2009</a>)</span> は日本・中国・イランの EFL 学習者データで L2MSS の3因子構造（Ideal L2 Self / Ought-to L2 Self / L2 Learning Experience）に CFA を適用し、3か国すべてで同一の因子構造が成立することを確認した。<span class="citation" data-cites="kormos2008">Kormos &amp; Csizér (<a href="Rの基本的な使い方.html#ref-kormos2008" role="doc-biblioref">2008</a>)</span> は中高生・大学生・成人の3群で同じ動機づけモデルの CFA を実施し、年齢層間で因子構造は維持されるものの因子間相関のパターンが異なることを示した。<span class="citation" data-cites="dewaele2014">Dewaele &amp; MacIntyre (<a href="Rの基本的な使い方.html#ref-dewaele2014" role="doc-biblioref">2014</a>)</span> は FLE（Foreign Language Enjoyment）尺度を開発する過程で、享受と不安が単一次元の両極ではなく独立した構成概念であることを主成分分析で示し、その後の CFA 研究の土台を築いた。<span class="citation" data-cites="winke2014">Winke (<a href="Rの基本的な使い方.html#ref-winke2014" role="doc-biblioref">2014</a>)</span> は SEM のチュートリアル論文の中で、テストの構成概念妥当性を CFA で検証する手順を step-by-step で解説している。</p>
+<p>近年では、<span class="citation" data-cites="alhoorie2024">Al-Hoorie et al. (<a href="Rの基本的な使い方.html#ref-alhoorie2024" role="doc-biblioref">2024</a>)</span> が L2MSS 関連の18尺度を384名の韓国 EFL 学習者に実施し、CFA で弁別的妥当性を検証した結果、多くの構成概念間で重大な弁別性の問題が発見された。これは L2 動機づけ研究における測定の質を根本的に問い直す知見であり、適切な CFA 手続きの重要性を改めて示している。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -6627,7 +6627,7 @@ PCA は因子分析ではない
 <div class="callout-body-container callout-body">
 <ol type="1">
 <li>CFA は「仮説検証」。EFA で探索した構造をここで確認する。</li>
-<li>lavaan パッケージの <code>cfa()</code> で推定する<span class="citation" data-cites="rosseel2012">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-rosseel2012" role="doc-biblioref">Rosseel, 2012</a>)</span>。</li>
+<li>lavaan パッケージの <code>cfa()</code> で推定する<span class="citation" data-cites="rosseel2012">(<a href="Rの基本的な使い方.html#ref-rosseel2012" role="doc-biblioref">Rosseel, 2012</a>)</span>。</li>
 <li>適合度指標（CFI, TLI, RMSEA, SRMR）で評価する。</li>
 <li><strong>同じデータで EFA → CFA は禁止</strong>。必ず別サンプルを使う。</li>
 </ol>
@@ -6644,16 +6644,16 @@ CFA の前提条件
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li><strong>理論に基づく因子構造の仮説</strong>が必要。EFA の結果だけでなく、先行研究に基づいて因子構造を定義する。例えば、L2MSS の3因子構造を検証する場合、<span class="citation" data-cites="dornyei2009">Dörnyei (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dornyei2009" role="doc-biblioref">2009</a>)</span> の理論的枠組みと <span class="citation" data-cites="taguchi2009">Taguchi ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-taguchi2009" role="doc-biblioref">2009</a>)</span> の先行 CFA 結果が根拠となる。</li>
-<li>各因子に最低3つの指標変数が望ましい（2つでも推定は可能だが不安定）<span class="citation" data-cites="brown2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brown2015" role="doc-biblioref">Brown, 2015</a>)</span>。</li>
-<li>サンプルサイズは最低200、できれば300以上<span class="citation" data-cites="kline2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。</li>
+<li><strong>理論に基づく因子構造の仮説</strong>が必要。EFA の結果だけでなく、先行研究に基づいて因子構造を定義する。例えば、L2MSS の3因子構造を検証する場合、<span class="citation" data-cites="dornyei2009">Dörnyei (<a href="Rの基本的な使い方.html#ref-dornyei2009" role="doc-biblioref">2009</a>)</span> の理論的枠組みと <span class="citation" data-cites="taguchi2009">Taguchi et al. (<a href="Rの基本的な使い方.html#ref-taguchi2009" role="doc-biblioref">2009</a>)</span> の先行 CFA 結果が根拠となる。</li>
+<li>各因子に最低3つの指標変数が望ましい（2つでも推定は可能だが不安定）<span class="citation" data-cites="brown2015">(<a href="Rの基本的な使い方.html#ref-brown2015" role="doc-biblioref">Brown, 2015</a>)</span>。</li>
+<li>サンプルサイズは最低200、できれば300以上<span class="citation" data-cites="kline2023">(<a href="Rの基本的な使い方.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。</li>
 </ul>
 </div>
 </div>
 </section>
 <section id="lavaan-の記法" class="level3" data-number="11.6.2">
 <h3 data-number="11.6.2" class="anchored" data-anchor-id="lavaan-の記法"><span class="header-section-number">11.6.2</span> lavaan の記法</h3>
-<p><code>lavaan</code> パッケージでは以下の演算子を使ってモデルを記述する<span class="citation" data-cites="rosseel2012">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-rosseel2012" role="doc-biblioref">Rosseel, 2012</a>)</span>。</p>
+<p><code>lavaan</code> パッケージでは以下の演算子を使ってモデルを記述する<span class="citation" data-cites="rosseel2012">(<a href="Rの基本的な使い方.html#ref-rosseel2012" role="doc-biblioref">Rosseel, 2012</a>)</span>。</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
@@ -8120,11 +8120,11 @@ CFA の前提条件
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li><strong>CFI / TLI</strong>: 0.90 以上で許容、0.95 以上で良好<span class="citation" data-cites="hu1999">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hu1999" role="doc-biblioref">Hu &amp; Bentler, 1999</a>)</span></li>
+<li><strong>CFI / TLI</strong>: 0.90 以上で許容、0.95 以上で良好<span class="citation" data-cites="hu1999">(<a href="Rの基本的な使い方.html#ref-hu1999" role="doc-biblioref">Hu &amp; Bentler, 1999</a>)</span></li>
 <li><strong>RMSEA</strong>: 0.08 未満で許容、0.05 未満で良好。90% 信頼区間の上限が 0.08 未満なら安心</li>
 <li><strong>SRMR</strong>: 0.08 未満で良好</li>
 <li><strong><span class="math inline">\(\chi^2\)</span> 検定</strong>: サンプルサイズに敏感で大標本では常に有意になるため、単独で判断しない</li>
-<li>複数の指標を総合的に評価する。「全ての指標が完璧」を求める必要はない<span class="citation" data-cites="kline2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span></li>
+<li>複数の指標を総合的に評価する。「全ての指標が完璧」を求める必要はない<span class="citation" data-cites="kline2023">(<a href="Rの基本的な使い方.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span></li>
 </ul>
 </div>
 </div>
@@ -8138,7 +8138,7 @@ CFA の前提条件
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>Hu &amp; Bentler <span class="citation" data-cites="hu1999">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hu1999" role="doc-biblioref">1999</a>)</span> のカットオフ値は「目安」であり「絶対基準」ではない。適合度だけでなく、<strong>理論的整合性</strong>（因子構造に学術的意味があるか）、<strong>パラメータの解釈可能性</strong>（負荷量が合理的か）、<strong>局所適合</strong>（残差行列に系統的パターンがないか）を合わせて評価する。</p>
+<p>Hu &amp; Bentler <span class="citation" data-cites="hu1999">(<a href="Rの基本的な使い方.html#ref-hu1999" role="doc-biblioref">1999</a>)</span> のカットオフ値は「目安」であり「絶対基準」ではない。適合度だけでなく、<strong>理論的整合性</strong>（因子構造に学術的意味があるか）、<strong>パラメータの解釈可能性</strong>（負荷量が合理的か）、<strong>局所適合</strong>（残差行列に系統的パターンがないか）を合わせて評価する。</p>
 </div>
 </div>
 </section>
@@ -9849,7 +9849,7 @@ CFA の前提条件
 <h2 data-number="11.7" class="anchored" data-anchor-id="構造方程式モデリングsem"><span class="header-section-number">11.7</span> 構造方程式モデリング（SEM）</h2>
 <section id="コンセプト-2" class="level3" data-number="11.7.1">
 <h3 data-number="11.7.1" class="anchored" data-anchor-id="コンセプト-2"><span class="header-section-number">11.7.1</span> コンセプト</h3>
-<p>構造方程式モデリング（SEM）は、CFA の測定モデルに<strong>潜在変数間の回帰関係（構造モデル）</strong>を加えたものである<span class="citation" data-cites="kline2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。SLA 研究では、動機づけ、不安、自律性といった潜在構成概念間の因果仮説を検証するために広く用いられる<span class="citation" data-cites="innami2011 winke2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-innami2011" role="doc-biblioref">In’nami &amp; Koizumi, 2011</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-winke2014" role="doc-biblioref">Winke, 2014</a>)</span>。</p>
+<p>構造方程式モデリング（SEM）は、CFA の測定モデルに<strong>潜在変数間の回帰関係（構造モデル）</strong>を加えたものである<span class="citation" data-cites="kline2023">(<a href="Rの基本的な使い方.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。SLA 研究では、動機づけ、不安、自律性といった潜在構成概念間の因果仮説を検証するために広く用いられる<span class="citation" data-cites="innami2011 winke2014">(<a href="Rの基本的な使い方.html#ref-innami2011" role="doc-biblioref">In’nami &amp; Koizumi, 2011</a>; <a href="Rの基本的な使い方.html#ref-winke2014" role="doc-biblioref">Winke, 2014</a>)</span>。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -9891,23 +9891,23 @@ Two-Step Approach
 <li><strong>Step 2</strong>: 測定モデルが許容範囲内であれば、構造パスを追加して SEM を推定する</li>
 </ol>
 <ul>
-<li>この手順を守ることで、測定の問題と構造の問題を切り分けて診断できる<span class="citation" data-cites="kline2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span></li>
+<li>この手順を守ることで、測定の問題と構造の問題を切り分けて診断できる<span class="citation" data-cites="kline2023">(<a href="Rの基本的な使い方.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span></li>
 </ul>
 </div>
 </div>
 </section>
 <section id="sla-研究における-sem-の活用" class="level4">
 <h4 class="anchored" data-anchor-id="sla-研究における-sem-の活用">SLA 研究における SEM の活用</h4>
-<p>SEM は SLA 研究において理論モデルの検証に広く活用されている。<span class="citation" data-cites="innami2011">In’nami &amp; Koizumi (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-innami2011" role="doc-biblioref">2011</a>)</span> は <em>Language Assessment Quarterly</em> で言語テスティング・学習研究における SEM の使用状況をレビューし、報告慣行の問題点と改善策を整理した。<span class="citation" data-cites="kunnan1998">Kunnan (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kunnan1998" role="doc-biblioref">1998</a>)</span> はそれに先立ち、言語評価研究に SEM を導入するためのチュートリアルを <em>Language Testing</em> 誌で発表している。以下は SLA における SEM の代表的な活用例である。</p>
+<p>SEM は SLA 研究において理論モデルの検証に広く活用されている。<span class="citation" data-cites="innami2011">In’nami &amp; Koizumi (<a href="Rの基本的な使い方.html#ref-innami2011" role="doc-biblioref">2011</a>)</span> は <em>Language Assessment Quarterly</em> で言語テスティング・学習研究における SEM の使用状況をレビューし、報告慣行の問題点と改善策を整理した。<span class="citation" data-cites="kunnan1998">Kunnan (<a href="Rの基本的な使い方.html#ref-kunnan1998" role="doc-biblioref">1998</a>)</span> はそれに先立ち、言語評価研究に SEM を導入するためのチュートリアルを <em>Language Testing</em> 誌で発表している。以下は SLA における SEM の代表的な活用例である。</p>
 <ul>
-<li><strong>動機づけ → 学習行動 → 到達度</strong>: <span class="citation" data-cites="papi2010">Papi (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-papi2010" role="doc-biblioref">2010</a>)</span> は1,011名のイラン高校生のデータで L2MSS の3要素が不安と意図的努力に与える影響を SEM で検証し、Ideal L2 Self と L2 Learning Experience が不安を低減する一方、Ought-to L2 Self は不安を増加させることを示した。</li>
-<li><strong>WTC モデル</strong>: <span class="citation" data-cites="yashima2002">Yashima (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-yashima2002" role="doc-biblioref">2002</a>)</span> は297名の日本人大学生のデータで「国際的志向性 → 動機づけ → L2自信 → WTC」の因果経路を SEM で明らかにし、L2 WTC 研究に新たな枠組みを提示した。</li>
-<li><strong>L2 selves と情動</strong>: <span class="citation" data-cites="teimouri2017">Teimouri (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-teimouri2017" role="doc-biblioref">2017</a>)</span> は Ideal L2 Self / Ought-to L2 Self を三分法に拡張し、各自己概念が享受や不安といった情動を介して動機的行動を予測するモデルを SEM で検証した。</li>
-<li><strong>年齢差と動機</strong>: <span class="citation" data-cites="kormos2008">Kormos &amp; Csizér (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kormos2008" role="doc-biblioref">2008</a>)</span> は3つの年齢群（中高生・大学生・成人）で L2 動機づけモデルを SEM で比較し、Ideal L2 Self の影響力が年齢層によって異なることを示した。</li>
-<li><strong>大規模調査</strong>: <span class="citation" data-cites="you2016">You &amp; Dörnyei (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-you2016" role="doc-biblioref">2016</a>)</span> は中国 EFL 学習者の大規模調査で L2MSS の構造関係をジェンダー差に着目して SEM で検証した。</li>
-<li><strong>テストの構成概念妥当性</strong>: <span class="citation" data-cites="winke2014">Winke (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-winke2014" role="doc-biblioref">2014</a>)</span> は <em>Annual Review of Applied Linguistics</em> のチュートリアル論文で、SEM を用いた言語テストの構成概念妥当性検証を step-by-step で解説し、リスニング・リーディング・文法テスト間の潜在関係モデリングの実例を示した。</li>
+<li><strong>動機づけ → 学習行動 → 到達度</strong>: <span class="citation" data-cites="papi2010">Papi (<a href="Rの基本的な使い方.html#ref-papi2010" role="doc-biblioref">2010</a>)</span> は1,011名のイラン高校生のデータで L2MSS の3要素が不安と意図的努力に与える影響を SEM で検証し、Ideal L2 Self と L2 Learning Experience が不安を低減する一方、Ought-to L2 Self は不安を増加させることを示した。</li>
+<li><strong>WTC モデル</strong>: <span class="citation" data-cites="yashima2002">Yashima (<a href="Rの基本的な使い方.html#ref-yashima2002" role="doc-biblioref">2002</a>)</span> は297名の日本人大学生のデータで「国際的志向性 → 動機づけ → L2自信 → WTC」の因果経路を SEM で明らかにし、L2 WTC 研究に新たな枠組みを提示した。</li>
+<li><strong>L2 selves と情動</strong>: <span class="citation" data-cites="teimouri2017">Teimouri (<a href="Rの基本的な使い方.html#ref-teimouri2017" role="doc-biblioref">2017</a>)</span> は Ideal L2 Self / Ought-to L2 Self を三分法に拡張し、各自己概念が享受や不安といった情動を介して動機的行動を予測するモデルを SEM で検証した。</li>
+<li><strong>年齢差と動機</strong>: <span class="citation" data-cites="kormos2008">Kormos &amp; Csizér (<a href="Rの基本的な使い方.html#ref-kormos2008" role="doc-biblioref">2008</a>)</span> は3つの年齢群（中高生・大学生・成人）で L2 動機づけモデルを SEM で比較し、Ideal L2 Self の影響力が年齢層によって異なることを示した。</li>
+<li><strong>大規模調査</strong>: <span class="citation" data-cites="you2016">You &amp; Dörnyei (<a href="Rの基本的な使い方.html#ref-you2016" role="doc-biblioref">2016</a>)</span> は中国 EFL 学習者の大規模調査で L2MSS の構造関係をジェンダー差に着目して SEM で検証した。</li>
+<li><strong>テストの構成概念妥当性</strong>: <span class="citation" data-cites="winke2014">Winke (<a href="Rの基本的な使い方.html#ref-winke2014" role="doc-biblioref">2014</a>)</span> は <em>Annual Review of Applied Linguistics</em> のチュートリアル論文で、SEM を用いた言語テストの構成概念妥当性検証を step-by-step で解説し、リスニング・リーディング・文法テスト間の潜在関係モデリングの実例を示した。</li>
 </ul>
-<p>重要なのは、SEM は<strong>因果関係を「証明」するものではない</strong>ということである<span class="citation" data-cites="kline2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。SEM が示すのは「データがこの因果仮説と矛盾しない」ということであり、因果の方向性はあくまで理論に基づく仮定である。同じデータに対して、異なる因果方向のモデルが等しく適合することもある（等価モデルの問題）。</p>
+<p>重要なのは、SEM は<strong>因果関係を「証明」するものではない</strong>ということである<span class="citation" data-cites="kline2023">(<a href="Rの基本的な使い方.html#ref-kline2023" role="doc-biblioref">Kline, 2023</a>)</span>。SEM が示すのは「データがこの因果仮説と矛盾しない」ということであり、因果の方向性はあくまで理論に基づく仮定である。同じデータに対して、異なる因果方向のモデルが等しく適合することもある（等価モデルの問題）。</p>
 </section>
 </section>
 <section id="sla-データ例-動機づけ-努力-英語力" class="level3" data-number="11.7.2">
@@ -11670,7 +11670,7 @@ Two-Step Approach
 <li><strong>直接効果</strong>: Ideal L2 Self → Proficiency のパス（<span class="math inline">\(c_1\)</span>）</li>
 <li><strong>間接効果</strong>: Ideal L2 Self → Effort → Proficiency（<span class="math inline">\(a_1 \times b\)</span>）</li>
 <li><strong>総効果</strong>: 直接 + 間接（<span class="math inline">\(c_1 + a_1 \times b\)</span>）</li>
-<li><code>parameterEstimates()</code> で <code>:=</code> 行を確認する<span class="citation" data-cites="preacher2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-preacher2008" role="doc-biblioref">Preacher &amp; Hayes, 2008</a>)</span></li>
+<li><code>parameterEstimates()</code> で <code>:=</code> 行を確認する<span class="citation" data-cites="preacher2008">(<a href="Rの基本的な使い方.html#ref-preacher2008" role="doc-biblioref">Preacher &amp; Hayes, 2008</a>)</span></li>
 </ul>
 </div>
 </div>
@@ -13241,7 +13241,7 @@ Two-Step Approach
 </section>
 <section id="測定不変性多群比較" class="level3" data-number="11.7.8">
 <h3 data-number="11.7.8" class="anchored" data-anchor-id="測定不変性多群比較"><span class="header-section-number">11.7.8</span> 測定不変性（多群比較）</h3>
-<p>群間（例: 男女、L1背景）で同じ測定モデルが成立するかを検証する。不変性が成立しなければ、群間のスコア比較は意味をなさない<span class="citation" data-cites="chen2007 putnick2016">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-chen2007" role="doc-biblioref">Chen, 2007</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-putnick2016" role="doc-biblioref">Putnick &amp; Bornstein, 2016</a>)</span>。</p>
+<p>群間（例: 男女、L1背景）で同じ測定モデルが成立するかを検証する。不変性が成立しなければ、群間のスコア比較は意味をなさない<span class="citation" data-cites="chen2007 putnick2016">(<a href="Rの基本的な使い方.html#ref-chen2007" role="doc-biblioref">Chen, 2007</a>; <a href="Rの基本的な使い方.html#ref-putnick2016" role="doc-biblioref">Putnick &amp; Bornstein, 2016</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -13806,7 +13806,7 @@ Two-Step Approach
 <li><strong>スカラー（Scalar）</strong>: 切片も等しい → 潜在平均の群間比較が可能</li>
 </ol>
 <ul>
-<li>ΔCFI ≤ .010 かつ ΔRMSEA ≤ .015 で不変性が支持される<span class="citation" data-cites="chen2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-chen2007" role="doc-biblioref">Chen, 2007</a>)</span></li>
+<li>ΔCFI ≤ .010 かつ ΔRMSEA ≤ .015 で不変性が支持される<span class="citation" data-cites="chen2007">(<a href="Rの基本的な使い方.html#ref-chen2007" role="doc-biblioref">Chen, 2007</a>)</span></li>
 </ul>
 </div>
 </div>
@@ -13817,7 +13817,7 @@ Two-Step Approach
 <section id="sem-縦断データ-個人差の変化を捉える" class="level3" data-number="11.8.1">
 <h3 data-number="11.8.1" class="anchored" data-anchor-id="sem-縦断データ-個人差の変化を捉える"><span class="header-section-number">11.8.1</span> SEM × 縦断データ: 個人差の変化を捉える</h3>
 <p>ここまでの SEM は<strong>横断データ</strong>（1時点）を扱ってきた。しかし、英語教育研究や心理言語学研究では<strong>縦断データ</strong>（同一参加者を複数時点で測定）が不可欠である。たとえば「語彙力は学期を通じてどの程度伸びるか」「伸びの速さに個人差はあるか」「動機づけの高さが成長率を予測するか」といった問いは、横断 SEM では回答できない。</p>
-<p>潜在成長曲線モデル（Latent Growth Curve Model; LGM）は、SEM の枠組みで<strong>個人の成長軌跡</strong>をモデリングする手法である<span class="citation" data-cites="bollen2006 duncan2006 meredith1990">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bollen2006" role="doc-biblioref">Bollen &amp; Curran, 2006</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-duncan2006" role="doc-biblioref">Duncan ほか, 2006</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-meredith1990" role="doc-biblioref">Meredith &amp; Tisak, 1990</a>)</span>。直感的には、各個人に線形回帰を当てはめ、その<strong>切片（初期水準）と傾き（成長率）を潜在変数</strong>として扱う。これにより、個人間のばらつき（分散）や予測変数との関係（回帰パス）を同時に推定できる。</p>
+<p>潜在成長曲線モデル（Latent Growth Curve Model; LGM）は、SEM の枠組みで<strong>個人の成長軌跡</strong>をモデリングする手法である<span class="citation" data-cites="bollen2006 duncan2006 meredith1990">(<a href="Rの基本的な使い方.html#ref-bollen2006" role="doc-biblioref">Bollen &amp; Curran, 2006</a>; <a href="Rの基本的な使い方.html#ref-duncan2006" role="doc-biblioref">Duncan et al., 2006</a>; <a href="Rの基本的な使い方.html#ref-meredith1990" role="doc-biblioref">Meredith &amp; Tisak, 1990</a>)</span>。直感的には、各個人に線形回帰を当てはめ、その<strong>切片（初期水準）と傾き（成長率）を潜在変数</strong>として扱う。これにより、個人間のばらつき（分散）や予測変数との関係（回帰パス）を同時に推定できる。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -13909,7 +13909,7 @@ Two-Step Approach
 </section>
 <section id="縦断データに必要な構造" class="level4">
 <h4 class="anchored" data-anchor-id="縦断データに必要な構造">縦断データに必要な構造</h4>
-<p>LGM で扱う縦断データには以下の特徴がある<span class="citation" data-cites="singer2003 mcarthur2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mcarthur2006" role="doc-biblioref">McArdle, 2006</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-singer2003" role="doc-biblioref">Singer &amp; Willett, 2003</a>)</span>。</p>
+<p>LGM で扱う縦断データには以下の特徴がある<span class="citation" data-cites="singer2003 mcarthur2006">(<a href="Rの基本的な使い方.html#ref-mcarthur2006" role="doc-biblioref">McArdle, 2006</a>; <a href="Rの基本的な使い方.html#ref-singer2003" role="doc-biblioref">Singer &amp; Willett, 2003</a>)</span>。</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -14095,7 +14095,7 @@ SEM の言葉で読む LGM
 <h3 data-number="11.8.4" class="anchored" data-anchor-id="sla-応用例-語彙力の縦断的成長"><span class="header-section-number">11.8.4</span> SLA 応用例: 語彙力の縦断的成長</h3>
 <section id="データのシミュレーション" class="level4">
 <h4 class="anchored" data-anchor-id="データのシミュレーション">データのシミュレーション</h4>
-<p>日本人 EFL 学習者 300 名を対象に、4学期にわたって語彙サイズテスト（同一テスト）を実施したという設定でデータを生成する。動機づけ（<code>motivation</code>）を時間不変の共変量として含め、成長率への影響を検証する。この種の縦断的語彙成長研究は、<span class="citation" data-cites="zheng2022">Zhou ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-zheng2022" role="doc-biblioref">2023</a>)</span> が SSLA 誌で L2 研究における LGM の方法論的チュートリアルとして体系化しており、<span class="citation" data-cites="hiver2020">Hiver ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hiver2020" role="doc-biblioref">2021</a>)</span> は複雑系理論の観点から縦断データの分析法を論じている。</p>
+<p>日本人 EFL 学習者 300 名を対象に、4学期にわたって語彙サイズテスト（同一テスト）を実施したという設定でデータを生成する。動機づけ（<code>motivation</code>）を時間不変の共変量として含め、成長率への影響を検証する。この種の縦断的語彙成長研究は、<span class="citation" data-cites="zheng2022">Zhou et al. (<a href="Rの基本的な使い方.html#ref-zheng2022" role="doc-biblioref">2023</a>)</span> が SSLA 誌で L2 研究における LGM の方法論的チュートリアルとして体系化しており、<span class="citation" data-cites="hiver2020">Hiver et al. (<a href="Rの基本的な使い方.html#ref-hiver2020" role="doc-biblioref">2021</a>)</span> は複雑系理論の観点から縦断データの分析法を論じている。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -17554,7 +17554,7 @@ SEM の言葉で読む LGM
 </section>
 <section id="心理言語学応用-視線計測データの成長モデル" class="level3" data-number="11.8.5">
 <h3 data-number="11.8.5" class="anchored" data-anchor-id="心理言語学応用-視線計測データの成長モデル"><span class="header-section-number">11.8.5</span> 心理言語学応用: 視線計測データの成長モデル</h3>
-<p>LGM は SLA だけでなく、心理言語学の実験研究にも広く応用される。ここでは<strong>視線計測（eye-tracking）データ</strong>を用いた例を示す<span class="citation" data-cites="conklin2018 godfroid2020 jegerski2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-conklin2018" role="doc-biblioref">Conklin ほか, 2018</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-godfroid2020" role="doc-biblioref">Godfroid, 2020</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-jegerski2014" role="doc-biblioref">Jegerski &amp; VanPatten, 2014</a>)</span>。</p>
+<p>LGM は SLA だけでなく、心理言語学の実験研究にも広く応用される。ここでは<strong>視線計測（eye-tracking）データ</strong>を用いた例を示す<span class="citation" data-cites="conklin2018 godfroid2020 jegerski2014">(<a href="Rの基本的な使い方.html#ref-conklin2018" role="doc-biblioref">Conklin et al., 2018</a>; <a href="Rの基本的な使い方.html#ref-godfroid2020" role="doc-biblioref">Godfroid, 2020</a>; <a href="Rの基本的な使い方.html#ref-jegerski2014" role="doc-biblioref">Jegerski &amp; VanPatten, 2014</a>)</span>。</p>
 <section id="視線計測の主要指標" class="level4">
 <h4 class="anchored" data-anchor-id="視線計測の主要指標">視線計測の主要指標</h4>
 <p>視線計測研究では、読解中の認知処理を反映する多様な指標が用いられる。LGM で縦断的な変化を追跡する場合、以下の指標が候補となる。</p>
@@ -19304,7 +19304,7 @@ SEM の言葉で読む LGM
 <li><strong>傾きの平均が負</strong>: セッションを重ねるごとに注視時間が短縮 → 処理の自動化。</li>
 <li><strong>Proficiency → Intercept（負）</strong>: 習熟度が高い学習者は、初回から注視時間が短い。</li>
 <li><strong>Proficiency → Slope（負）</strong>: 習熟度が高い学習者は、自動化のペースも速い。</li>
-<li>教育的示唆: 多読プログラムなどの介入前後で視線計測データを収集し、LGM で処理効率の変化を追跡できる<span class="citation" data-cites="godfroid2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-godfroid2020" role="doc-biblioref">Godfroid, 2020</a>)</span>。</li>
+<li>教育的示唆: 多読プログラムなどの介入前後で視線計測データを収集し、LGM で処理効率の変化を追跡できる<span class="citation" data-cites="godfroid2020">(<a href="Rの基本的な使い方.html#ref-godfroid2020" role="doc-biblioref">Godfroid, 2020</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -19404,36 +19404,36 @@ LGM を使う際のチェックリスト
 <tr class="odd">
 <td>区分的 LGM</td>
 <td>成長パターンが途中で変化（例: 介入前後で傾きが異なる）</td>
-<td><span class="citation" data-cites="bollen2006">Bollen &amp; Curran (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bollen2006" role="doc-biblioref">2006</a>)</span></td>
+<td><span class="citation" data-cites="bollen2006">Bollen &amp; Curran (<a href="Rの基本的な使い方.html#ref-bollen2006" role="doc-biblioref">2006</a>)</span></td>
 </tr>
 <tr class="even">
 <td>多変量 LGM</td>
 <td>複数アウトカムの並行成長をモデリング</td>
-<td><span class="citation" data-cites="duncan2006">Duncan ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-duncan2006" role="doc-biblioref">2006</a>)</span></td>
+<td><span class="citation" data-cites="duncan2006">Duncan et al. (<a href="Rの基本的な使い方.html#ref-duncan2006" role="doc-biblioref">2006</a>)</span></td>
 </tr>
 <tr class="odd">
 <td>二次 LGM</td>
 <td>曲線的成長パターンのモデリング</td>
-<td><span class="citation" data-cites="curran2010">Curran ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-curran2010" role="doc-biblioref">2010</a>)</span></td>
+<td><span class="citation" data-cites="curran2010">Curran et al. (<a href="Rの基本的な使い方.html#ref-curran2010" role="doc-biblioref">2010</a>)</span></td>
 </tr>
 <tr class="even">
 <td>潜在クラス成長分析（LCGA）</td>
 <td>異質な成長パターンのサブグループを発見</td>
-<td><span class="citation" data-cites="vanlissa2023">van Lissa (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-vanlissa2023" role="doc-biblioref">2023</a>)</span></td>
+<td><span class="citation" data-cites="vanlissa2023">van Lissa (<a href="Rの基本的な使い方.html#ref-vanlissa2023" role="doc-biblioref">2023</a>)</span></td>
 </tr>
 <tr class="odd">
 <td>ALT モデル（Autoregressive LGM）</td>
 <td>自己回帰効果と成長曲線を統合</td>
-<td><span class="citation" data-cites="bollen2006">Bollen &amp; Curran (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bollen2006" role="doc-biblioref">2006</a>)</span></td>
+<td><span class="citation" data-cites="bollen2006">Bollen &amp; Curran (<a href="Rの基本的な使い方.html#ref-bollen2006" role="doc-biblioref">2006</a>)</span></td>
 </tr>
 <tr class="even">
 <td>LGM + 媒介</td>
 <td>成長率が別のアウトカムを媒介</td>
-<td><span class="citation" data-cites="preacher2008lgm">Preacher ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-preacher2008lgm" role="doc-biblioref">2008</a>)</span></td>
+<td><span class="citation" data-cites="preacher2008lgm">Preacher et al. (<a href="Rの基本的な使い方.html#ref-preacher2008lgm" role="doc-biblioref">2008</a>)</span></td>
 </tr>
 </tbody>
 </table>
-<p>これらの発展モデルは、基本的な線形 LGM を理解した上で段階的に学ぶとよい。SLA 応用例は <span class="citation" data-cites="zheng2022">Zhou ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-zheng2022" role="doc-biblioref">2023</a>)</span> を参照。</p>
+<p>これらの発展モデルは、基本的な線形 LGM を理解した上で段階的に学ぶとよい。SLA 応用例は <span class="citation" data-cites="zheng2022">Zhou et al. (<a href="Rの基本的な使い方.html#ref-zheng2022" role="doc-biblioref">2023</a>)</span> を参照。</p>
 </div>
 </div>
 </section>
@@ -19553,7 +19553,7 @@ LGM を使う際のチェックリスト
 <span id="cb58-19"><a href="#cb58-19" aria-hidden="true" tabindex="-1"></a>fit_cfa <span class="ot">&lt;-</span> lavaan<span class="sc">::</span><span class="fu">cfa</span>(cfa_model, <span class="at">data =</span> data_confirm, <span class="at">std.lv =</span> <span class="cn">TRUE</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
-<p>サンプルサイズが限られている場合は、<strong>異なる時期に収集したデータ</strong>を探索用と確認用に分ける方法も有効である。また、<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> が指摘するように、SLA 研究ではサンプルサイズの制約が大きいため、EFA の段階で理論的根拠を十分に吟味し、CFA への移行を慎重に行うことが重要である。</p>
+<p>サンプルサイズが限られている場合は、<strong>異なる時期に収集したデータ</strong>を探索用と確認用に分ける方法も有効である。また、<span class="citation" data-cites="plonsky2015">Plonsky &amp; Gonulal (<a href="Rの基本的な使い方.html#ref-plonsky2015" role="doc-biblioref">2015</a>)</span> が指摘するように、SLA 研究ではサンプルサイズの制約が大きいため、EFA の段階で理論的根拠を十分に吟味し、CFA への移行を慎重に行うことが重要である。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -19578,8 +19578,8 @@ LGM を使う際のチェックリスト
 <h2 data-number="11.10" class="anchored" data-anchor-id="コレスポンデンス分析ca-mca"><span class="header-section-number">11.10</span> コレスポンデンス分析（CA / MCA）</h2>
 <section id="コンセプト-3" class="level3" data-number="11.10.1">
 <h3 data-number="11.10.1" class="anchored" data-anchor-id="コンセプト-3"><span class="header-section-number">11.10.1</span> コンセプト</h3>
-<p>コレスポンデンス分析（CA）は、クロス集計表（行カテゴリ × 列カテゴリ）の関係を低次元空間に写像して可視化する手法である<span class="citation" data-cites="greenacre2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-greenacre2017" role="doc-biblioref">Greenacre, 2017</a>)</span>。連続変数に対する PCA の役割を、カテゴリカルデータに対して果たす。</p>
-<p>言語学・SLA 研究では CA が多様な場面で活用されている。<span class="citation" data-cites="glynn2014">Glynn (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-glynn2014" role="doc-biblioref">2014</a>)</span> はコーパス意味論の分野で、多義語や類義語の用法パターンをクロス集計表としてまとめ、CA で視覚的に探索する手法を体系的に解説した。この方法により、例えば動詞 <em>run</em> の多義的用法がどのような文脈変数と結びつくかを2次元平面上で一望できる。<span class="citation" data-cites="gries2014">Gries (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gries2014" role="doc-biblioref">2014</a>)</span> は学習者コーパス研究で MuPDAR（Multifactorial Prediction and Deviation Analysis using Regressions）を提案し、ネイティブ話者と学習者の言語使用偏差を回帰と CA の組み合わせで多角的に分析する枠組みを示した。<span class="citation" data-cites="levshina2015">Levshina (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-levshina2015" role="doc-biblioref">2015</a>)</span> は応用言語学者向けの R 統計入門書で、CA と MCA をそれぞれ専用の章で扱い、構文文法やポリセミー研究への適用例を豊富に紹介しており、言語学における CA の標準的な参照文献となっている。</p>
+<p>コレスポンデンス分析（CA）は、クロス集計表（行カテゴリ × 列カテゴリ）の関係を低次元空間に写像して可視化する手法である<span class="citation" data-cites="greenacre2017">(<a href="Rの基本的な使い方.html#ref-greenacre2017" role="doc-biblioref">Greenacre, 2017</a>)</span>。連続変数に対する PCA の役割を、カテゴリカルデータに対して果たす。</p>
+<p>言語学・SLA 研究では CA が多様な場面で活用されている。<span class="citation" data-cites="glynn2014">Glynn (<a href="Rの基本的な使い方.html#ref-glynn2014" role="doc-biblioref">2014</a>)</span> はコーパス意味論の分野で、多義語や類義語の用法パターンをクロス集計表としてまとめ、CA で視覚的に探索する手法を体系的に解説した。この方法により、例えば動詞 <em>run</em> の多義的用法がどのような文脈変数と結びつくかを2次元平面上で一望できる。<span class="citation" data-cites="gries2014">Gries (<a href="Rの基本的な使い方.html#ref-gries2014" role="doc-biblioref">2014</a>)</span> は学習者コーパス研究で MuPDAR（Multifactorial Prediction and Deviation Analysis using Regressions）を提案し、ネイティブ話者と学習者の言語使用偏差を回帰と CA の組み合わせで多角的に分析する枠組みを示した。<span class="citation" data-cites="levshina2015">Levshina (<a href="Rの基本的な使い方.html#ref-levshina2015" role="doc-biblioref">2015</a>)</span> は応用言語学者向けの R 統計入門書で、CA と MCA をそれぞれ専用の章で扱い、構文文法やポリセミー研究への適用例を豊富に紹介しており、言語学における CA の標準的な参照文献となっている。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -19591,8 +19591,8 @@ LGM を使う際のチェックリスト
 </div>
 <div class="callout-body-container callout-body">
 <ol type="1">
-<li>CA はクロス集計表の入力。行 / 列プロファイルのカイ二乗距離を分解する。R では <code>FactoMineR::CA()</code><span class="citation" data-cites="le2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-le2008" role="doc-biblioref">Lê ほか, 2008</a>)</span> を使う。</li>
-<li>MCA は個票データ（複数カテゴリ変数）の入力。ダミー展開して CA を適用。<code>FactoMineR::MCA()</code> が対応<span class="citation" data-cites="le2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-le2008" role="doc-biblioref">Lê ほか, 2008</a>)</span>。</li>
+<li>CA はクロス集計表の入力。行 / 列プロファイルのカイ二乗距離を分解する。R では <code>FactoMineR::CA()</code><span class="citation" data-cites="le2008">(<a href="Rの基本的な使い方.html#ref-le2008" role="doc-biblioref">Lê et al., 2008</a>)</span> を使う。</li>
+<li>MCA は個票データ（複数カテゴリ変数）の入力。ダミー展開して CA を適用。<code>FactoMineR::MCA()</code> が対応<span class="citation" data-cites="le2008">(<a href="Rの基本的な使い方.html#ref-le2008" role="doc-biblioref">Lê et al., 2008</a>)</span>。</li>
 <li>慣性（inertia）= <span class="math inline">\(\chi^2 / n\)</span>。軸ごとの寄与率で次元数を決める。</li>
 <li>まれなカテゴリは結果を不安定にするので併合を検討する。</li>
 </ol>
@@ -19607,7 +19607,7 @@ LGM を使う際のチェックリスト
 </section>
 <section id="ca-の例-l1-背景-エラータイプ" class="level3" data-number="11.10.2">
 <h3 data-number="11.10.2" class="anchored" data-anchor-id="ca-の例-l1-背景-エラータイプ"><span class="header-section-number">11.10.2</span> CA の例: L1 背景 × エラータイプ</h3>
-<p>英語学習者のエラーパターンが母語（L1）によってどう異なるかを CA で可視化する。この種の分析は、学習者コーパス研究で広く行われている。<span class="citation" data-cites="gries2014">Gries (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-gries2014" role="doc-biblioref">2014</a>)</span> は MuPDAR（Multifactorial Prediction and Deviation Analysis using Regressions）を提案し、フランス語/中国語 L1 話者による英語法助動詞の使用偏向を CA と回帰の組み合わせで分析した。CA は、こうしたクロス集計型の中間言語データにおいてカテゴリ間の関連パターンを直感的に把握するための有力なツールである<span class="citation" data-cites="greenacre2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-greenacre2017" role="doc-biblioref">Greenacre, 2017</a>)</span>。</p>
+<p>英語学習者のエラーパターンが母語（L1）によってどう異なるかを CA で可視化する。この種の分析は、学習者コーパス研究で広く行われている。<span class="citation" data-cites="gries2014">Gries (<a href="Rの基本的な使い方.html#ref-gries2014" role="doc-biblioref">2014</a>)</span> は MuPDAR（Multifactorial Prediction and Deviation Analysis using Regressions）を提案し、フランス語/中国語 L1 話者による英語法助動詞の使用偏向を CA と回帰の組み合わせで分析した。CA は、こうしたクロス集計型の中間言語データにおいてカテゴリ間の関連パターンを直感的に把握するための有力なツールである<span class="citation" data-cites="greenacre2017">(<a href="Rの基本的な使い方.html#ref-greenacre2017" role="doc-biblioref">Greenacre, 2017</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -22477,7 +22477,7 @@ CA / MCA の解釈の注意
 <h2 data-number="11.11" class="anchored" data-anchor-id="多次元尺度法mds"><span class="header-section-number">11.11</span> 多次元尺度法（MDS）</h2>
 <section id="コンセプト-4" class="level3" data-number="11.11.1">
 <h3 data-number="11.11.1" class="anchored" data-anchor-id="コンセプト-4"><span class="header-section-number">11.11.1</span> コンセプト</h3>
-<p>多次元尺度法（MDS）は、対象間の距離や類似度を入力として、低次元の座標空間に配置する手法である<span class="citation" data-cites="borg2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-borg2005" role="doc-biblioref">Borg &amp; Groenen, 2005</a>)</span>。PCA が共分散 / 相関構造を入力とするのに対し、MDS は<strong>距離行列</strong>を直接扱う点が特徴的である。心理言語学では、<span class="citation" data-cites="iverson1995">Iverson &amp; Kuhl (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-iverson1995" role="doc-biblioref">1995</a>)</span> が MDS を用いて母音知覚における「知覚マグネット効果」を可視化し、カテゴリプロトタイプ付近で知覚空間が圧縮される現象を示した。また <span class="citation" data-cites="fox1995">Fox (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-fox1995" role="doc-biblioref">1995</a>)</span> は、英語/スペイン語バイリンガルの母音知覚空間を MDS で再構成し、L2 習熟度に応じた知覚カテゴリの再編を実証した。言語類型論では <span class="citation" data-cites="croft2008">Croft &amp; Cruse (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-croft2008" role="doc-biblioref">2004</a>)</span> が MDS を不定代名詞の意味地図や時制・アスペクトの類型分析に適用し、言語普遍性の幾何学的推論に道を開いた。</p>
+<p>多次元尺度法（MDS）は、対象間の距離や類似度を入力として、低次元の座標空間に配置する手法である<span class="citation" data-cites="borg2005">(<a href="Rの基本的な使い方.html#ref-borg2005" role="doc-biblioref">Borg &amp; Groenen, 2005</a>)</span>。PCA が共分散 / 相関構造を入力とするのに対し、MDS は<strong>距離行列</strong>を直接扱う点が特徴的である。心理言語学では、<span class="citation" data-cites="iverson1995">Iverson &amp; Kuhl (<a href="Rの基本的な使い方.html#ref-iverson1995" role="doc-biblioref">1995</a>)</span> が MDS を用いて母音知覚における「知覚マグネット効果」を可視化し、カテゴリプロトタイプ付近で知覚空間が圧縮される現象を示した。また <span class="citation" data-cites="fox1995">Fox (<a href="Rの基本的な使い方.html#ref-fox1995" role="doc-biblioref">1995</a>)</span> は、英語/スペイン語バイリンガルの母音知覚空間を MDS で再構成し、L2 習熟度に応じた知覚カテゴリの再編を実証した。言語類型論では <span class="citation" data-cites="croft2008">Croft &amp; Cruse (<a href="Rの基本的な使い方.html#ref-croft2008" role="doc-biblioref">2004</a>)</span> が MDS を不定代名詞の意味地図や時制・アスペクトの類型分析に適用し、言語普遍性の幾何学的推論に道を開いた。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -22491,7 +22491,7 @@ CA / MCA の解釈の注意
 <ol type="1">
 <li>計量 MDS: 距離そのものを再現する（固有値ベース）</li>
 <li>非計量 MDS: 距離の順位のみ保つ（外れ値やスケールに頑健）</li>
-<li>ストレス（stress）で適合度を評価。&lt; 0.10 で良好<span class="citation" data-cites="kruskal1964">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kruskal1964" role="doc-biblioref">Kruskal, 1964</a>)</span></li>
+<li>ストレス（stress）で適合度を評価。&lt; 0.10 で良好<span class="citation" data-cites="kruskal1964">(<a href="Rの基本的な使い方.html#ref-kruskal1964" role="doc-biblioref">Kruskal, 1964</a>)</span></li>
 <li>距離の選択（ユークリッド、マンハッタン、相関距離など）が結果に大きく影響する</li>
 </ol>
 </div>
@@ -22500,7 +22500,7 @@ CA / MCA の解釈の注意
 <h4 class="anchored" data-anchor-id="計量-mds-vs-非計量-mds">計量 MDS vs 非計量 MDS</h4>
 <ul>
 <li><strong>計量 MDS（classical MDS）</strong>: 距離行列を二重中心化し、固有値分解で座標を得る。PCA と数学的に等価（入力がユークリッド距離の場合）。</li>
-<li><strong>非計量 MDS（ordinal MDS）</strong>: 距離の順位情報のみ保持する。反復最適化でストレスを最小化<span class="citation" data-cites="kruskal1964">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kruskal1964" role="doc-biblioref">Kruskal, 1964</a>)</span>。R では <code>smacof</code> パッケージが代表的<span class="citation" data-cites="deleeuw2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-deleeuw2009" role="doc-biblioref">de Leeuw &amp; Mair, 2009</a>)</span>。外れ値やスケールの不確かさに頑健。</li>
+<li><strong>非計量 MDS（ordinal MDS）</strong>: 距離の順位情報のみ保持する。反復最適化でストレスを最小化<span class="citation" data-cites="kruskal1964">(<a href="Rの基本的な使い方.html#ref-kruskal1964" role="doc-biblioref">Kruskal, 1964</a>)</span>。R では <code>smacof</code> パッケージが代表的<span class="citation" data-cites="deleeuw2009">(<a href="Rの基本的な使い方.html#ref-deleeuw2009" role="doc-biblioref">de Leeuw &amp; Mair, 2009</a>)</span>。外れ値やスケールの不確かさに頑健。</li>
 </ul>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -22524,7 +22524,7 @@ CA / MCA の解釈の注意
 </section>
 <section id="sla-データ例-英語母音の知覚類似度" class="level3" data-number="11.11.2">
 <h3 data-number="11.11.2" class="anchored" data-anchor-id="sla-データ例-英語母音の知覚類似度"><span class="header-section-number">11.11.2</span> SLA データ例: 英語母音の知覚類似度</h3>
-<p>日本人英語学習者が10個の英語母音ペアの「聞き取りやすさの類似度」を評定した非類似度行列をシミュレーションする。L2 母音知覚の MDS 研究は、<span class="citation" data-cites="flege1999">Flege ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-flege1999" role="doc-biblioref">1999</a>)</span> のイタリア語話者による英語母音知覚・産出研究や、<span class="citation" data-cites="fox1995">Fox (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-fox1995" role="doc-biblioref">1995</a>)</span> のスペイン語-英語バイリンガルの知覚空間分析に端を発する。これらの研究は、L1 の母音カテゴリ構造が L2 知覚空間をどのように制約するかを MDS で視覚的に示した。<span class="citation" data-cites="iverson1995">Iverson &amp; Kuhl (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-iverson1995" role="doc-biblioref">1995</a>)</span> の知覚マグネット効果の研究も、MDS が音声知覚研究で果たす役割を象徴的に示している。</p>
+<p>日本人英語学習者が10個の英語母音ペアの「聞き取りやすさの類似度」を評定した非類似度行列をシミュレーションする。L2 母音知覚の MDS 研究は、<span class="citation" data-cites="flege1999">Flege et al. (<a href="Rの基本的な使い方.html#ref-flege1999" role="doc-biblioref">1999</a>)</span> のイタリア語話者による英語母音知覚・産出研究や、<span class="citation" data-cites="fox1995">Fox (<a href="Rの基本的な使い方.html#ref-fox1995" role="doc-biblioref">1995</a>)</span> のスペイン語-英語バイリンガルの知覚空間分析に端を発する。これらの研究は、L1 の母音カテゴリ構造が L2 知覚空間をどのように制約するかを MDS で視覚的に示した。<span class="citation" data-cites="iverson1995">Iverson &amp; Kuhl (<a href="Rの基本的な使い方.html#ref-iverson1995" role="doc-biblioref">1995</a>)</span> の知覚マグネット効果の研究も、MDS が音声知覚研究で果たす役割を象徴的に示している。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -24449,7 +24449,7 @@ MDS の解釈の注意
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>手法の選択は研究の問いに依存する<span class="citation" data-cites="bandalos2018">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bandalos2018" role="doc-biblioref">Bandalos, 2018</a>)</span>。構成概念の妥当性を検証したければ CFA / SEM<span class="citation" data-cites="innami2011">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-innami2011" role="doc-biblioref">In’nami &amp; Koizumi, 2011</a>)</span>、カテゴリカルデータの探索なら CA / MCA<span class="citation" data-cites="greenacre2017 glynn2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-glynn2014" role="doc-biblioref">Glynn, 2014</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-greenacre2017" role="doc-biblioref">Greenacre, 2017</a>)</span>、距離データの可視化なら MDS<span class="citation" data-cites="borg2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-borg2005" role="doc-biblioref">Borg &amp; Groenen, 2005</a>)</span> を選ぶ。縦断的な成長の個人差に関心があれば LGM が適切である<span class="citation" data-cites="bollen2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bollen2006" role="doc-biblioref">Bollen &amp; Curran, 2006</a>)</span>。複数の手法を組み合わせることで、多角的な知見が得られる。</p>
+<p>手法の選択は研究の問いに依存する<span class="citation" data-cites="bandalos2018">(<a href="Rの基本的な使い方.html#ref-bandalos2018" role="doc-biblioref">Bandalos, 2018</a>)</span>。構成概念の妥当性を検証したければ CFA / SEM<span class="citation" data-cites="innami2011">(<a href="Rの基本的な使い方.html#ref-innami2011" role="doc-biblioref">In’nami &amp; Koizumi, 2011</a>)</span>、カテゴリカルデータの探索なら CA / MCA<span class="citation" data-cites="greenacre2017 glynn2014">(<a href="Rの基本的な使い方.html#ref-glynn2014" role="doc-biblioref">Glynn, 2014</a>; <a href="Rの基本的な使い方.html#ref-greenacre2017" role="doc-biblioref">Greenacre, 2017</a>)</span>、距離データの可視化なら MDS<span class="citation" data-cites="borg2005">(<a href="Rの基本的な使い方.html#ref-borg2005" role="doc-biblioref">Borg &amp; Groenen, 2005</a>)</span> を選ぶ。縦断的な成長の個人差に関心があれば LGM が適切である<span class="citation" data-cites="bollen2006">(<a href="Rの基本的な使い方.html#ref-bollen2006" role="doc-biblioref">Bollen &amp; Curran, 2006</a>)</span>。複数の手法を組み合わせることで、多角的な知見が得られる。</p>
 </div>
 </div>
 <section id="手法の組み合わせ例" class="level4">
@@ -24708,10 +24708,10 @@ Bachman, L. F. (1982年). The Trait Structure of Cloze Test Scores. <em>TESOL Qu
 Bandalos, D. L. (2018年). <em>Measurement Theory and Applications for the Social Sciences</em>. The Guilford Press.
 </div>
 <div id="ref-bollen2006" class="csl-entry" role="listitem">
-Bollen, K. A., &amp; Curran, P. J. (2006年). <em>Latent Curve Models: A Structural Equation Perspective</em>. Wiley.
+Bollen, K. A., &amp; Curran, P. J. (2006年). <em>Latent Curve Models: A Structural Equation Perspective</em>. Wiley. <a href="https://doi.org/10.1002/0471746096">https://doi.org/10.1002/0471746096</a>
 </div>
 <div id="ref-borg2005" class="csl-entry" role="listitem">
-Borg, I., &amp; Groenen, P. J. F. (2005年). <em>Modern Multidimensional Scaling: Theory and Applications</em> (2nd 版). Springer.
+Borg, I., &amp; Groenen, P. J. F. (2005年). <em>Modern Multidimensional Scaling: Theory and Applications</em> (2nd 版). Springer. <a href="https://doi.org/10.1007/0-387-28981-X">https://doi.org/10.1007/0-387-28981-X</a>
 </div>
 <div id="ref-brown2015" class="csl-entry" role="listitem">
 Brown, T. A. (2015年). <em>Confirmatory Factor Analysis for Applied Research</em> (2nd 版). The Guilford Press.
@@ -24723,10 +24723,10 @@ Cattell, R. B. (1966年). The Scree Test for the Number of Factors. <em>Multivar
 Chen, F. F. (2007年). Sensitivity of Goodness of Fit Indexes to Lack of Measurement Invariance. <em>Structural Equation Modeling</em>, <em>14</em>(3), 464–504. <a href="https://doi.org/10.1080/10705510701301834">https://doi.org/10.1080/10705510701301834</a>
 </div>
 <div id="ref-conklin2018" class="csl-entry" role="listitem">
-Conklin, K., Pellicer-Sánchez, A., &amp; Carrol, G. (2018年). <em>Eye-Tracking: A Guide for Applied Linguistics Research</em>. Cambridge University Press.
+Conklin, K., Pellicer-Sánchez, A., &amp; Carrol, G. (2018年). <em>Eye-Tracking: A Guide for Applied Linguistics Research</em>. Cambridge University Press. <a href="https://doi.org/10.1017/9781108233279">https://doi.org/10.1017/9781108233279</a>
 </div>
 <div id="ref-croft2008" class="csl-entry" role="listitem">
-Croft, W., &amp; Cruse, D. A. (2004年). <em>Cognitive Linguistics</em>. Cambridge University Press.
+Croft, W., &amp; Cruse, D. A. (2004年). <em>Cognitive Linguistics</em>. Cambridge University Press. <a href="https://doi.org/10.1017/CBO9780511803864">https://doi.org/10.1017/CBO9780511803864</a>
 </div>
 <div id="ref-curran2010" class="csl-entry" role="listitem">
 Curran, P. J., Obeidat, K., &amp; Losardo, D. (2010年). Twelve Frequently Asked Questions about Growth Curve Modeling. <em>Journal of Cognition and Development</em>, <em>11</em>(2), 121–136. <a href="https://doi.org/10.1080/15248371003699969">https://doi.org/10.1080/15248371003699969</a>
@@ -24741,7 +24741,7 @@ Dewaele, J.-M., &amp; MacIntyre, P. D. (2014年). The Two Faces of <span>Janus</
 Dörnyei, Z. (2005年). <em>The Psychology of the Language Learner: Individual Differences in Second Language Acquisition</em>. Lawrence Erlbaum Associates.
 </div>
 <div id="ref-dornyei2009" class="csl-entry" role="listitem">
-Dörnyei, Z. (2009年). The <span>L2</span> Motivational Self System. Z. Dörnyei &amp; E. Ushioda (編), <em>Motivation, Language Identity and the <span>L2</span> Self</em> (pp. 9–42). Multilingual Matters.
+Dörnyei, Z. (2009年). The <span>L2</span> Motivational Self System. Z. Dörnyei &amp; E. Ushioda (編), <em>Motivation, Language Identity and the <span>L2</span> Self</em> (pp. 9–42). Multilingual Matters. <a href="https://doi.org/10.21832/9781847691293-003">https://doi.org/10.21832/9781847691293-003</a>
 </div>
 <div id="ref-duncan2006" class="csl-entry" role="listitem">
 Duncan, T. E., Duncan, S. C., &amp; Strycker, L. A. (2006年). <em>An Introduction to Latent Variable Growth Curve Modeling: Concepts, Issues, and Application</em> (2nd 版). Lawrence Erlbaum Associates.
@@ -24759,19 +24759,19 @@ Fox, J. (1995年). Polychoric and Polyserial Correlations. <em>Encyclopedia of S
 Gardner, R. C. (1985年). <em>Social Psychology and Second Language Learning: The Role of Attitudes and Motivation</em>. Edward Arnold.
 </div>
 <div id="ref-glynn2014" class="csl-entry" role="listitem">
-Glynn, D. (2014年). Correspondence Analysis: Exploring Data and Identifying Patterns. D. Glynn &amp; J. A. Robinson (編), <em>Corpus Methods for Semantics: Quantitative Studies in Polysemy and Synonymy</em> (pp. 443–485). John Benjamins.
+Glynn, D. (2014年). Correspondence Analysis: Exploring Data and Identifying Patterns. D. Glynn &amp; J. A. Robinson (編), <em>Corpus Methods for Semantics: Quantitative Studies in Polysemy and Synonymy</em> (pp. 443–485). John Benjamins. <a href="https://doi.org/10.1075/hcp.43.17gly">https://doi.org/10.1075/hcp.43.17gly</a>
 </div>
 <div id="ref-godfroid2020" class="csl-entry" role="listitem">
-Godfroid, A. (2020年). <em>Eye Tracking in Second Language Acquisition and Bilingualism: A Research Synthesis and Methodological Guide</em>. Routledge.
+Godfroid, A. (2020年). <em>Eye Tracking in Second Language Acquisition and Bilingualism: A Research Synthesis and Methodological Guide</em>. Routledge. <a href="https://doi.org/10.4324/9781315775616">https://doi.org/10.4324/9781315775616</a>
 </div>
 <div id="ref-greenacre2017" class="csl-entry" role="listitem">
-Greenacre, M. (2017年). <em>Correspondence Analysis in Practice</em> (3rd 版). Chapman; Hall/CRC Press.
+Greenacre, M. (2017年). <em>Correspondence Analysis in Practice</em> (3rd 版). Chapman; Hall/CRC Press. <a href="https://doi.org/10.1201/9781315369983">https://doi.org/10.1201/9781315369983</a>
 </div>
 <div id="ref-gries2014" class="csl-entry" role="listitem">
 Gries, S. Th. (2014年). Frequency Tables: Tests, Effect Sizes, and Explorations. <em>Corpus Methods for Semantics: Quantitative Studies in Polysemy and Synonymy</em>, 365–389.
 </div>
 <div id="ref-hiver2020" class="csl-entry" role="listitem">
-Hiver, P., Al-Hoorie, A. H., &amp; Mercer, S. (2021年). <em>Student Engagement in the Language Classroom</em>. Multilingual Matters.
+Hiver, P., Al-Hoorie, A. H., &amp; Mercer, S. (2021年). <em>Student Engagement in the Language Classroom</em>. Multilingual Matters. <a href="https://doi.org/10.21832/9781788527194">https://doi.org/10.21832/9781788527194</a>
 </div>
 <div id="ref-holgadotello2010" class="csl-entry" role="listitem">
 Holgado-Tello, F. P., Chacón-Moscoso, S., Barbero-García, I., &amp; Vila-Abad, E. (2010年). Polychoric versus <span>Pearson</span> Correlations in Exploratory and Confirmatory Factor Analysis of Ordinal Variables. <em>Quality &amp; Quantity</em>, <em>44</em>(1), 153–166. <a href="https://doi.org/10.1007/s11135-008-9190-y">https://doi.org/10.1007/s11135-008-9190-y</a>
@@ -24792,7 +24792,7 @@ In’nami, Y., &amp; Koizumi, R. (2011年). Structural Equation Modeling in Lang
 Iverson, P., &amp; Kuhl, P. K. (1995年). Mapping the Perceptual Magnet Effect for Speech Using Signal Detection Theory and Multidimensional Scaling. <em>The Journal of the Acoustical Society of America</em>, <em>97</em>(1), 553–562. <a href="https://doi.org/10.1121/1.412280">https://doi.org/10.1121/1.412280</a>
 </div>
 <div id="ref-jegerski2014" class="csl-entry" role="listitem">
-Jegerski, J., &amp; VanPatten, B. (編). (2014年). <em>Research Methods in Second Language Psycholinguistics</em>. Routledge.
+Jegerski, J., &amp; VanPatten, B. (編). (2014年). <em>Research Methods in Second Language Psycholinguistics</em>. Routledge. <a href="https://doi.org/10.4324/9780203123430">https://doi.org/10.4324/9780203123430</a>
 </div>
 <div id="ref-jolliffe2016" class="csl-entry" role="listitem">
 Jolliffe, I. T., &amp; Cadima, J. (2016年). Principal Component Analysis: A Review and Recent Developments. <em>Philosophical Transactions of the Royal Society A: Mathematical, Physical and Engineering Sciences</em>, <em>374</em>(2065), 20150202. <a href="https://doi.org/10.1098/rsta.2015.0202">https://doi.org/10.1098/rsta.2015.0202</a>
@@ -24840,7 +24840,7 @@ Plonsky, L., &amp; Gonulal, T. (2015年). Methodological Synthesis in Quantitati
 Preacher, K. J., &amp; Hayes, A. F. (2008年). Asymptotic and Resampling Strategies for Assessing and Comparing Indirect Effects in Multiple Mediator Models. <em>Behavior Research Methods</em>, <em>40</em>(3), 879–891. <a href="https://doi.org/10.3758/BRM.40.3.879">https://doi.org/10.3758/BRM.40.3.879</a>
 </div>
 <div id="ref-preacher2008lgm" class="csl-entry" role="listitem">
-Preacher, K. J., Wichman, A. L., MacCallum, R. C., &amp; Briggs, N. E. (2008年). <em>Latent Growth Curve Modeling</em>. Sage.
+Preacher, K. J., Wichman, A. L., MacCallum, R. C., &amp; Briggs, N. E. (2008年). <em>Latent Growth Curve Modeling</em>. Sage. <a href="https://doi.org/10.4135/9781412984737">https://doi.org/10.4135/9781412984737</a>
 </div>
 <div id="ref-putnick2016" class="csl-entry" role="listitem">
 Putnick, D. L., &amp; Bornstein, M. H. (2016年). Measurement Invariance Conventions and Reporting: The State of the Art and Future Directions for Psychological Research. <em>Developmental Review</em>, <em>41</em>, 71–90. <a href="https://doi.org/10.1016/j.dr.2016.06.004">https://doi.org/10.1016/j.dr.2016.06.004</a>
@@ -24852,10 +24852,10 @@ Revelle, W. (2024年). <em>psych: Procedures for Psychological, Psychometric, an
 Rosseel, Y. (2012年). <span>lavaan</span>: An <span>R</span> Package for Structural Equation Modeling. <em>Journal of Statistical Software</em>, <em>48</em>(2), 1–36. <a href="https://doi.org/10.18637/jss.v048.i02">https://doi.org/10.18637/jss.v048.i02</a>
 </div>
 <div id="ref-singer2003" class="csl-entry" role="listitem">
-Singer, J. D., &amp; Willett, J. B. (2003年). <em>Applied Longitudinal Data Analysis: Modeling Change and Event Occurrence</em>. Oxford University Press.
+Singer, J. D., &amp; Willett, J. B. (2003年). <em>Applied Longitudinal Data Analysis: Modeling Change and Event Occurrence</em>. Oxford University Press. <a href="https://doi.org/10.1093/acprof:oso/9780195152968.001.0001">https://doi.org/10.1093/acprof:oso/9780195152968.001.0001</a>
 </div>
 <div id="ref-taguchi2009" class="csl-entry" role="listitem">
-Taguchi, T., Magid, M., &amp; Papi, M. (2009年). The <span>L2</span> Motivational Self System among <span>Japanese</span>, <span>Chinese</span> and <span>Iranian</span> Learners of <span>English</span>: A Comparative Study. Z. Dörnyei &amp; E. Ushioda (編), <em>Motivation, Language Identity and the <span>L2</span> Self</em> (pp. 66–97). Multilingual Matters.
+Taguchi, T., Magid, M., &amp; Papi, M. (2009年). The <span>L2</span> Motivational Self System among <span>Japanese</span>, <span>Chinese</span> and <span>Iranian</span> Learners of <span>English</span>: A Comparative Study. Z. Dörnyei &amp; E. Ushioda (編), <em>Motivation, Language Identity and the <span>L2</span> Self</em> (pp. 66–97). Multilingual Matters. <a href="https://doi.org/10.21832/9781847691293-006">https://doi.org/10.21832/9781847691293-006</a>
 </div>
 <div id="ref-teimouri2017" class="csl-entry" role="listitem">
 Teimouri, Y. (2017年). <span>L2</span> Selves, Emotions, and Motivated Behaviors. <em>Studies in Second Language Acquisition</em>, <em>39</em>(4), 681–709. <a href="https://doi.org/10.1017/S0272263116000243">https://doi.org/10.1017/S0272263116000243</a>

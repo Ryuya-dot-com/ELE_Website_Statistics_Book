@@ -55,7 +55,27 @@ div.sourceCode
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-</style>
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="site_libs/quarto-nav/quarto-nav.js"></script>
@@ -377,6 +397,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#中級者向け" id="toc-中級者向け" class="nav-link" data-scroll-target="#中級者向け"><span class="header-section-number">20.0.2</span> 中級者向け</a></li>
   <li><a href="#上級者向け" id="toc-上級者向け" class="nav-link" data-scroll-target="#上級者向け"><span class="header-section-number">20.0.3</span> 上級者向け</a></li>
   <li><a href="#その他参考となるwebサイト" id="toc-その他参考となるwebサイト" class="nav-link" data-scroll-target="#その他参考となるwebサイト"><span class="header-section-number">20.0.4</span> その他、参考となるwebサイト</a></li>
+  <li><a href="#参考文献" id="toc-参考文献" class="nav-link" data-scroll-target="#参考文献">参考文献</a></li>
   </ul>
 </nav>
     </div>
@@ -405,183 +426,108 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>こちらのページではRを使った統計モデリングでおすすめの書籍や参考となるwebサイトを紹介していきます。</p>
 <section id="初心者向け" class="level3" data-number="20.0.1">
 <h3 data-number="20.0.1" class="anchored" data-anchor-id="初心者向け"><span class="header-section-number">20.0.1</span> 初心者向け</h3>
-<section id="analyzing-linguistic-data-a-practical-introduction-to-statistics-using-r" class="level4">
-<h4 class="anchored" data-anchor-id="analyzing-linguistic-data-a-practical-introduction-to-statistics-using-r">Analyzing linguistic data: A practical introduction to statistics using R</h4>
 <ul>
-<li><strong>著者</strong>: Baayen, R. H. (2008)</li>
-<li><strong>出版社</strong>: Cambridge University Press</li>
-<li><strong>リンク</strong>: <a href="https://www.cambridge.org/highereducation/books/analyzing-linguistic-data/B2AF752A30911F4144CA35E075C6B233#overview">Cambridge University Press</a></li>
-<li><strong>概要</strong>: 言語データを用いた分析について述べた統計モデリングの入門書となります。<a href="https://www.sciencedirect.com/journal/journal-of-memory-and-language/vol/59/issue/4">こちら</a>と合わせ、この時期から混合効果モデルが言語研究でも着目されるようになりました。</li>
-<li><strong>備考</strong>: <a href="http://www.sfs.uni-tuebingen.de/~hbaayen/publications/baayenCUPstats.pdf">第一版が無料で公開</a>されています。一般化加法モデルについて含めた第二版が出版されるという噂です。</li>
+<li><p><span class="citation" data-cites="baayen2008book">Baayen (<a href="Rの基本的な使い方.html#ref-baayen2008book" role="doc-biblioref">2008</a>)</span> — 言語データを用いた分析について述べた統計モデリングの入門書。<a href="https://www.sciencedirect.com/journal/journal-of-memory-and-language/vol/59/issue/4">こちら</a>と合わせ、この時期から混合効果モデルが言語研究でも着目されるようになった。<a href="http://www.sfs.uni-tuebingen.de/~hbaayen/publications/baayenCUPstats.pdf">第一版が無料で公開</a>されている。</p></li>
+<li><p><span class="citation" data-cites="levshina2015">Levshina (<a href="Rの基本的な使い方.html#ref-levshina2015" role="doc-biblioref">2015</a>)</span> — 言語データを用いた分析について幅広いトピックを扱った入門書。決定木分析やランダムフォレストについても言及している。</p></li>
+<li><p><span class="citation" data-cites="winter2019">Winter (<a href="Rの基本的な使い方.html#ref-winter2019" role="doc-biblioref">2019</a>)</span> — 回帰分析の入門書。個人的にとてもおすすめ。混合効果についても言及している。</p></li>
 </ul>
-</section>
-<section id="how-to-do-linguistics-with-r" class="level4">
-<h4 class="anchored" data-anchor-id="how-to-do-linguistics-with-r">How to do Linguistics with R</h4>
-<ul>
-<li><strong>著者</strong>: Levshina, N. (2015)</li>
-<li><strong>出版社</strong>: John Benjamins</li>
-<li><strong>リンク</strong>: <a href="https://benjamins.com/catalog/z.195">John Benjamins</a></li>
-<li><strong>概要</strong>: 言語データを用いた分析について幅広いトピックを扱った入門書となります。決定木分析やランダムフォレストについても言及しています。</li>
-</ul>
-</section>
-<section id="statistics-for-linguistics-an-introduction-using-r" class="level4">
-<h4 class="anchored" data-anchor-id="statistics-for-linguistics-an-introduction-using-r">Statistics for linguistics: An introduction using R</h4>
-<ul>
-<li><strong>著者</strong>: Winter, B. (2019)</li>
-<li><strong>出版社</strong>: Routledge</li>
-<li><strong>リンク</strong>: <a href="https://www.routledge.com/Statistics-for-Linguists-An-Introduction-Using-R/Winter/p/book/9781138056091">Routledge</a></li>
-<li><strong>概要</strong>: 回帰分析の入門書となります。個人的にとてもおすすめです。混合効果についても言及しています。</li>
-</ul>
-</section>
 </section>
 <section id="中級者向け" class="level3" data-number="20.0.2">
 <h3 data-number="20.0.2" class="anchored" data-anchor-id="中級者向け"><span class="header-section-number">20.0.2</span> 中級者向け</h3>
-<section id="データ解析のための統計モデリング入門" class="level4">
-<h4 class="anchored" data-anchor-id="データ解析のための統計モデリング入門">データ解析のための統計モデリング入門</h4>
 <ul>
-<li><strong>著者</strong>: 久保拓弥 (2012)</li>
-<li><strong>出版社</strong>: 岩波書店</li>
-<li><strong>リンク</strong>: <a href="https://www.iwanami.co.jp/book/b257893.html">岩波書店</a></li>
-<li><strong>概要</strong>: GLM、GLMM、ベイズなど幅広く統計モデリングについて解説しています。</li>
+<li><p><span class="citation" data-cites="kubo2012">久保 (<a href="Rの基本的な使い方.html#ref-kubo2012" role="doc-biblioref">2012</a>)</span> — GLM、GLMM、ベイズなど幅広く統計モデリングについて解説している。</p></li>
+<li><p><span class="citation" data-cites="shimizu2014">清水 (<a href="Rの基本的な使い方.html#ref-shimizu2014" role="doc-biblioref">2014</a>)</span> — 混合効果について解説している。</p></li>
+<li><p><span class="citation" data-cites="privitera2022">Privitera (<a href="Rの基本的な使い方.html#ref-privitera2022" role="doc-biblioref">2022</a>)</span> — 行動科学のための統計学の教科書。</p></li>
+<li><p><span class="citation" data-cites="kosugi2014">小杉 et al. (<a href="Rの基本的な使い方.html#ref-kosugi2014" role="doc-biblioref">2014</a>)</span> — 回帰分析から混合効果モデリングをRとMplusで実行するコードについて解説している。潜在変数と観測変数、説明変数と目的変数という分類に基づき、さまざまな統計モデリングを網羅している。</p></li>
+<li><p><span class="citation" data-cites="barr2021">Barr (<a href="Rの基本的な使い方.html#ref-barr2021" role="doc-biblioref">2021</a>)</span> — 混合効果について言及している。<a href="https://psyteachr.github.io/stat-models-v1/">オンライン版</a>のみ。</p></li>
+<li><p><span class="citation" data-cites="hastie2009">Hastie et al. (<a href="Rの基本的な使い方.html#ref-hastie2009" role="doc-biblioref">2009</a>)</span> — 回帰分析や機械学習の手法などについて扱っている。<a href="https://www.statlearning.com/">オンライン版</a>で読むことが可能。</p></li>
+<li><p><span class="citation" data-cites="gries2021book">Gries (<a href="Rの基本的な使い方.html#ref-gries2021book" role="doc-biblioref">2021</a>)</span> — コーパスデータを例として扱った入門書。混合効果や決定木分析などについても扱っている。</p></li>
+<li><p><span class="citation" data-cites="vasishth_lmm">Vasishth et al. (<a href="Rの基本的な使い方.html#ref-vasishth_lmm" role="doc-biblioref">2024</a>)</span> — 視線計測や反応時間などの例を用いているもの。書籍としては未完。<a href="https://vasishth.github.io/Freq_CogSci/">オンライン版</a>。</p></li>
+<li><p><span class="citation" data-cites="fox2019">Fox &amp; Weisberg (<a href="Rの基本的な使い方.html#ref-fox2019" role="doc-biblioref">2019</a>)</span> — 一般化線型モデルについて分かりやすく書かれたもの。<code>car</code> や <code>effect</code> などのよく使うパッケージの例もある。</p></li>
+<li><p><span class="citation" data-cites="gelman2020">Gelman et al. (<a href="Rの基本的な使い方.html#ref-gelman2020" role="doc-biblioref">2020</a>)</span> — 回帰分析から統計的因果推論を網羅したもの。シミュレーションベースのベイズの考え方に基づいている。<a href="https://avehtari.github.io/ROS-Examples/">Examples</a>。</p></li>
 </ul>
-</section>
-<section id="個人と集団のマルチレベル分析" class="level4">
-<h4 class="anchored" data-anchor-id="個人と集団のマルチレベル分析">個人と集団のマルチレベル分析</h4>
-<ul>
-<li><strong>著者</strong>: 清水裕士 (2014)</li>
-<li><strong>出版社</strong>: ナカニシヤ出版</li>
-<li><strong>リンク</strong>: <a href="https://www.nakanishiya.co.jp/book/b183308.html">ナカニシヤ出版</a></li>
-<li><strong>概要</strong>: 混合効果について解説しています。</li>
-</ul>
-</section>
-<section id="essential-statistics-for-the-behavioral-sciences" class="level4">
-<h4 class="anchored" data-anchor-id="essential-statistics-for-the-behavioral-sciences">Essential Statistics for the Behavioral Sciences</h4>
-<ul>
-<li><strong>著者</strong>: Gregory J. Privitera</li>
-</ul>
-</section>
-<section id="mplusとrによる構造方程式モデリング入門" class="level4">
-<h4 class="anchored" data-anchor-id="mplusとrによる構造方程式モデリング入門">MplusとRによる構造方程式モデリング入門</h4>
-<ul>
-<li><strong>著者</strong>: 小杉考司・清水裕士 (2014)</li>
-<li><strong>出版社</strong>: 北大路書房</li>
-<li><strong>リンク</strong>: <a href="https://www.kitaohji.com/book/b579998.html">北大路書房</a></li>
-<li><strong>概要</strong>: 回帰分析から混合効果モデリングをRとMplusで実行するコードについて解説しています。潜在変数と観測変数、説明変数と目的変数という分類に基づき、さまざまな統計モデリングを網羅しています。</li>
-</ul>
-</section>
-<section id="learning-statistical-models-through-simulation-in-r" class="level4">
-<h4 class="anchored" data-anchor-id="learning-statistical-models-through-simulation-in-r">Learning statistical models through simulation in R</h4>
-<ul>
-<li><strong>著者</strong>: Barr, D. (2021)</li>
-<li><strong>リンク</strong>: <a href="https://psyteachr.github.io/stat-models-v1/">オンライン版</a></li>
-<li><strong>概要</strong>: 混合効果について言及しています。オンライン版のみ。</li>
-</ul>
-</section>
-<section id="the-elements-of-statistical-learning" class="level4">
-<h4 class="anchored" data-anchor-id="the-elements-of-statistical-learning">The elements of statistical learning</h4>
-<ul>
-<li><strong>著者</strong>: Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009)</li>
-<li><strong>出版社</strong>: Springer</li>
-<li><strong>リンク</strong>: <a href="https://www.statlearning.com/">オンライン版</a></li>
-<li><strong>概要</strong>: 回帰分析や機械学習の手法などについて扱っています。オンライン上で読むことが可能。</li>
-</ul>
-</section>
-<section id="statistics-for-linguistics-with-r-a-practical-introduction-3rd-edition" class="level4">
-<h4 class="anchored" data-anchor-id="statistics-for-linguistics-with-r-a-practical-introduction-3rd-edition">Statistics for linguistics with R: A practical introduction (3rd edition)</h4>
-<ul>
-<li><strong>著者</strong>: Gries, S. Th. (2021)</li>
-<li><strong>出版社</strong>: De Gruyter Mouton</li>
-<li><strong>リンク</strong>: <a href="https://www.degruyter.com/document/doi/10.1515/9783110718256/html">De Gruyter</a></li>
-<li><strong>概要</strong>: コーパスデータを例として扱った入門書となります。混合効果や決定木分析などについても扱っています。</li>
-</ul>
-</section>
-<section id="linear-mixed-models-in-linguistics-and-psychology" class="level4">
-<h4 class="anchored" data-anchor-id="linear-mixed-models-in-linguistics-and-psychology">Linear mixed models in linguistics and psychology</h4>
-<ul>
-<li><strong>著者</strong>: Vasishth, S., Schad, D., Bürki, A., &amp; Kliegl, R. (in progress)</li>
-<li><strong>リンク</strong>: <a href="https://vasishth.github.io/Freq_CogSci/">オンライン版</a></li>
-<li><strong>概要</strong>: 視線計測や反応時間などの例を用いているものです。書籍としては未完 (2024年3月)</li>
-</ul>
-</section>
-<section id="an-r-companion-to-applied-regression-3rd-edition" class="level4">
-<h4 class="anchored" data-anchor-id="an-r-companion-to-applied-regression-3rd-edition">An R companion to applied regression (3rd edition)</h4>
-<ul>
-<li><strong>著者</strong>: Fox, J., &amp; Weisberg, S. (2019)</li>
-<li><strong>出版社</strong>: Sage Publications</li>
-<li><strong>リンク</strong>: <a href="https://us.sagepub.com/en-us/nam/an-r-companion-to-applied-regression/book246125">Sage Publications</a></li>
-<li><strong>概要</strong>: 一般化線型モデルについて分かりやすく書かれたものです。carやeffectなどのよく使うパッケージの例もあります。</li>
-</ul>
-</section>
-<section id="regression-and-other-stories" class="level4">
-<h4 class="anchored" data-anchor-id="regression-and-other-stories">Regression and other stories</h4>
-<ul>
-<li><strong>著者</strong>: Gelman, G., Hill, J., &amp; Vehtari, A. (2020)</li>
-<li><strong>出版社</strong>: Cambridge University Press</li>
-<li><strong>リンク</strong>: <a href="https://avehtari.github.io/ROS-Examples/">Examples</a></li>
-<li><strong>概要</strong>: 回帰分析から統計的因果推論を網羅したものです。シミュレーションベースのベイズの考え方に基づいています。</li>
-</ul>
-</section>
 </section>
 <section id="上級者向け" class="level3" data-number="20.0.3">
 <h3 data-number="20.0.3" class="anchored" data-anchor-id="上級者向け"><span class="header-section-number">20.0.3</span> 上級者向け</h3>
-<section id="multilevel-analysis-techniques-and-applications-3rd-edition" class="level4">
-<h4 class="anchored" data-anchor-id="multilevel-analysis-techniques-and-applications-3rd-edition">Multilevel analysis: Techniques and applications (3rd edition)</h4>
 <ul>
-<li><strong>著者</strong>: Hox, J., Moerbeek, M., &amp; van de Schoot, R. (2018)</li>
-<li><strong>出版社</strong>: Routledge</li>
-<li><strong>リンク</strong>: <a href="https://multilevel-analysis.sites.uu.nl/">オンライン版</a></li>
-<li><strong>概要</strong>: 混合効果モデルについて書かれたものです。後半は難しめという印象。</li>
+<li><p><span class="citation" data-cites="hox2018">Hox et al. (<a href="Rの基本的な使い方.html#ref-hox2018" role="doc-biblioref">2018</a>)</span> — 混合効果モデルについて書かれたもの。後半は難しめという印象。<a href="https://multilevel-analysis.sites.uu.nl/">オンライン版</a>。</p></li>
+<li><p><span class="citation" data-cites="suzuki2017">鈴木 (<a href="Rの基本的な使い方.html#ref-suzuki2017" role="doc-biblioref">2017</a>)</span> — ネットワーク分析について扱ったもの。Rのコードもwebサイトに公開されている。</p></li>
+<li><p><span class="citation" data-cites="singer2003">Singer &amp; Willett (<a href="Rの基本的な使い方.html#ref-singer2003" role="doc-biblioref">2003</a>)</span> — 縦断（時系列）データについて書かれたもの。混合効果と生存分析について、時系列データの観点から述べている。</p></li>
 </ul>
-</section>
-<section id="ｒで学ぶデータサイエンス８ネットワーク分析" class="level4">
-<h4 class="anchored" data-anchor-id="ｒで学ぶデータサイエンス８ネットワーク分析">Ｒで学ぶデータサイエンス〈８〉ネットワーク分析</h4>
-<ul>
-<li><strong>著者</strong>: 鈴木 努 (2017)</li>
-<li><strong>出版社</strong>: 共立出版</li>
-<li><strong>リンク</strong>: <a href="https://www.kyoritsu-pub.co.jp/book/b10003845.html">共立出版</a></li>
-<li><strong>概要</strong>: ネットワーク分析について扱ったものです。Rのコードもwebサイトに公開されています。</li>
-</ul>
-</section>
-<section id="applied-longitudinal-data-analysis" class="level4">
-<h4 class="anchored" data-anchor-id="applied-longitudinal-data-analysis">Applied longitudinal data analysis</h4>
-<ul>
-<li><strong>著者</strong>: Singer, J. D., &amp; Willett, J. B. (2003)</li>
-<li><strong>出版社</strong>: Oxford University Press</li>
-<li><strong>リンク</strong>: <a href="https://academic.oup.com/book/41753">Oxford University Press</a></li>
-<li><strong>概要</strong>: 縦断 (時系列) データについて書かれたものです。混合効果と生存分析について、時系列データの観点から述べています。</li>
-</ul>
-</section>
 </section>
 <section id="その他参考となるwebサイト" class="level3" data-number="20.0.4">
 <h3 data-number="20.0.4" class="anchored" data-anchor-id="その他参考となるwebサイト"><span class="header-section-number">20.0.4</span> その他、参考となるwebサイト</h3>
-<section id="statistical-rethinking-with-brms-ggplot2-and-the-tidyverse" class="level4">
-<h4 class="anchored" data-anchor-id="statistical-rethinking-with-brms-ggplot2-and-the-tidyverse">Statistical Rethinking with brms, ggplot2, and the tidyverse</h4>
 <ul>
-<li><strong>著者</strong>: A. S. Kurz</li>
-<li><strong>リンク</strong>: <a href="https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/">Bookdown</a></li>
-<li><strong>概要</strong>: <a href="https://xcelab.net/rm/statistical-rethinking/">Statistical Rethinking</a> (ベイズ統計についての入門) をbrmsとtidyverseパッケージを使って書き直したもの</li>
+<li><p><span class="citation" data-cites="kurz_rethinking">Kurz (<a href="Rの基本的な使い方.html#ref-kurz_rethinking" role="doc-biblioref">2023</a>)</span> — <a href="https://xcelab.net/rm/statistical-rethinking/">Statistical Rethinking</a>（ベイズ統計についての入門）をbrmsとtidyverseパッケージを使って書き直したもの。<a href="https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/">Bookdown</a>。</p></li>
+<li><p><span class="citation" data-cites="windhua2022">Wind &amp; Hua (<a href="Rの基本的な使い方.html#ref-windhua2022" role="doc-biblioref">2022</a>)</span> — ラッシュモデルについてRで扱ったもの。</p></li>
+<li><p><span class="citation" data-cites="nicenboim2025">Nicenboim et al. (<a href="Rの基本的な使い方.html#ref-nicenboim2025" role="doc-biblioref">2025</a>)</span> — 認知心理学のデータでベイズ統計について扱ったもの。<a href="https://vasishth.github.io/bayescogsci/book/">オンライン版</a>。</p></li>
 </ul>
 </section>
-<section id="rasch-measurement-theory-analysis-in-r" class="level4">
-<h4 class="anchored" data-anchor-id="rasch-measurement-theory-analysis-in-r">Rasch Measurement Theory Analysis in R</h4>
-<ul>
-<li><strong>著者</strong>: Stefanie Wind &amp; Cheng Hua</li>
-<li><strong>リンク</strong>: <a href="https://bookdown.org/connect/#/apps/5286/access/1060">Bookdown</a></li>
-<li><strong>概要</strong>: ラッシュモデルについてRで扱ったもの</li>
-</ul>
-</section>
-<section id="an-introduction-to-bayesian-data-analysis-for-cognitive-science" class="level4">
-<h4 class="anchored" data-anchor-id="an-introduction-to-bayesian-data-analysis-for-cognitive-science">An Introduction to Bayesian Data Analysis for Cognitive Science</h4>
-<ul>
-<li><strong>著者</strong>: Bruno Nicenboim, Daniel Schad, and Shravan Vasishth</li>
-<li><strong>リンク</strong>: <a href="https://vasishth.github.io/bayescogsci/book/">オンライン版</a></li>
-<li><strong>概要</strong>: 認知心理学のデータでベイズ統計について扱ったもの</li>
-</ul>
+<section id="参考文献" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="参考文献">参考文献</h2>
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list" style="display: none">
+<div id="ref-baayen2008book" class="csl-entry" role="listitem">
+Baayen, R. H. (2008年). <em>Analyzing Linguistic Data: A Practical Introduction to Statistics Using <span>R</span></em>. Cambridge University Press. <a href="https://doi.org/10.1017/CBO9780511801686">https://doi.org/10.1017/CBO9780511801686</a>
+</div>
+<div id="ref-barr2021" class="csl-entry" role="listitem">
+Barr, D. J. (2021年). <em>Learning Statistical Models Through Simulation in <span>R</span></em>. <a href="https://psyteachr.github.io/stat-models-v1/">https://psyteachr.github.io/stat-models-v1/</a>
+</div>
+<div id="ref-fox2019" class="csl-entry" role="listitem">
+Fox, J., &amp; Weisberg, S. (2019年). <em>An <span>R</span> Companion to Applied Regression</em> (3rd 版). Sage Publications. <a href="https://socialsciences.mcmaster.ca/jfox/Books/Companion/">https://socialsciences.mcmaster.ca/jfox/Books/Companion/</a>
+</div>
+<div id="ref-gelman2020" class="csl-entry" role="listitem">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020年). <em>Regression and Other Stories</em>. Cambridge University Press. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-gries2021book" class="csl-entry" role="listitem">
+Gries, S. Th. (2021年). <em>Statistics for Linguistics with <span>R</span>: A Practical Introduction</em> (3rd 版). De Gruyter Mouton. <a href="https://doi.org/10.1515/9783110718256">https://doi.org/10.1515/9783110718256</a>
+</div>
+<div id="ref-hastie2009" class="csl-entry" role="listitem">
+Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009年). <em>The Elements of Statistical Learning: Data Mining, Inference, and Prediction</em> (2nd 版). Springer. <a href="https://doi.org/10.1007/978-0-387-84858-7">https://doi.org/10.1007/978-0-387-84858-7</a>
+</div>
+<div id="ref-hox2018" class="csl-entry" role="listitem">
+Hox, J. J., Moerbeek, M., &amp; Schoot, R. van de. (2018年). <em>Multilevel Analysis: Techniques and Applications</em> (3rd 版). Routledge. <a href="https://doi.org/10.4324/9781315650982">https://doi.org/10.4324/9781315650982</a>
+</div>
+<div id="ref-kurz_rethinking" class="csl-entry" role="listitem">
+Kurz, A. S. (2023年). <em>Statistical Rethinking with brms, ggplot2, and the Tidyverse</em>. <a href="https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/">https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/</a>
+</div>
+<div id="ref-levshina2015" class="csl-entry" role="listitem">
+Levshina, N. (2015年). <em>How to Do Linguistics with <span>R</span>: Data Exploration and Statistical Analysis</em>. John Benjamins. <a href="https://doi.org/10.1075/z.195">https://doi.org/10.1075/z.195</a>
+</div>
+<div id="ref-nicenboim2025" class="csl-entry" role="listitem">
+Nicenboim, B., Schad, D. J., &amp; Vasishth, S. (2025年). <em>An Introduction to <span>Bayesian</span> Data Analysis for Cognitive Science</em>. Chapman; Hall/CRC. <a href="https://doi.org/10.1201/9781003341734">https://doi.org/10.1201/9781003341734</a>
+</div>
+<div id="ref-privitera2022" class="csl-entry" role="listitem">
+Privitera, G. J. (2022年). <em>Essential Statistics for the Behavioral Sciences</em> (3rd 版). Sage Publications.
+</div>
+<div id="ref-singer2003" class="csl-entry" role="listitem">
+Singer, J. D., &amp; Willett, J. B. (2003年). <em>Applied Longitudinal Data Analysis: Modeling Change and Event Occurrence</em>. Oxford University Press. <a href="https://doi.org/10.1093/acprof:oso/9780195152968.001.0001">https://doi.org/10.1093/acprof:oso/9780195152968.001.0001</a>
+</div>
+<div id="ref-vasishth_lmm" class="csl-entry" role="listitem">
+Vasishth, S., Schad, D., Bürki, A., &amp; Kliegl, R. (2024年). <em>Linear Mixed Models in Linguistics and Psychology: A Comprehensive Introduction</em>. <a href="https://vasishth.github.io/Freq_CogSci/">https://vasishth.github.io/Freq_CogSci/</a>
+</div>
+<div id="ref-windhua2022" class="csl-entry" role="listitem">
+Wind, S. A., &amp; Hua, C. (2022年). <em>Rasch Measurement Theory Analysis in <span>R</span>: Illustrations and Practical Guidance for Researchers and Practitioners</em>. Chapman; Hall/CRC. <a href="https://doi.org/10.1201/9781003308867">https://doi.org/10.1201/9781003308867</a>
+</div>
+<div id="ref-winter2019" class="csl-entry" role="listitem">
+Winter, B. (2019年). <em>Statistics for Linguists: An Introduction Using <span>R</span></em>. Routledge. <a href="https://doi.org/10.4324/9781315165547">https://doi.org/10.4324/9781315165547</a>
+</div>
+<div id="ref-kubo2012" class="csl-entry" role="listitem">
+久保拓弥. (2012年). <em>データ解析のための統計モデリング入門――一般化線形モデル・階層ベイズモデル・<span>MCMC</span></em>. 岩波書店.
+</div>
+<div id="ref-kosugi2014" class="csl-entry" role="listitem">
+小杉考司., 清水裕士., 押江隆., 山根嵩史., 平川真., 浅野良輔., 竹林由武., 藤原翔., 大谷和大., 森敦広., &amp; 林真広. (2014年). <em><span>M-plus</span>と<span>R</span>による構造方程式モデリング入門</em>. 北大路書房.
+</div>
+<div id="ref-shimizu2014" class="csl-entry" role="listitem">
+清水裕士. (2014年). <em>個人と集団のマルチレベル分析</em>. ナカニシヤ出版.
+</div>
+<div id="ref-suzuki2017" class="csl-entry" role="listitem">
+鈴木努. (2017年). <em><span>R</span>で学ぶデータサイエンス 8 ネットワーク分析</em> (第2版 版). 共立出版.
+</div>
+</div>
 
 
 <!-- -->
 
-</section>
 </section>
 
 </main> <!-- /main -->
@@ -1046,124 +992,61 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">ソースコード</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
 <div class="sourceCode" id="cb1" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "参考文献・おすすめの書籍"</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>こちらのページではRを使った統計モデリングでおすすめの書籍や参考となるwebサイトを紹介していきます。</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">### 初心者向け</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Analyzing linguistic data: A practical introduction to statistics using R</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Baayen, R. H. (2008)</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: Cambridge University Press</span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">Cambridge University Press</span><span class="co">](https://www.cambridge.org/highereducation/books/analyzing-linguistic-data/B2AF752A30911F4144CA35E075C6B233#overview)</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 言語データを用いた分析について述べた統計モデリングの入門書となります。<span class="co">[</span><span class="ot">こちら</span><span class="co">](https://www.sciencedirect.com/journal/journal-of-memory-and-language/vol/59/issue/4)</span>と合わせ、この時期から混合効果モデルが言語研究でも着目されるようになりました。</span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**備考**: <span class="co">[</span><span class="ot">第一版が無料で公開</span><span class="co">](http://www.sfs.uni-tuebingen.de/~hbaayen/publications/baayenCUPstats.pdf)</span>されています。一般化加法モデルについて含めた第二版が出版されるという噂です。</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="an">bibliography:</span><span class="co"> references_recommended.bib</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>こちらのページではRを使った統計モデリングでおすすめの書籍や参考となるwebサイトを紹介していきます。</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">### 初心者向け</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@baayen2008book — 言語データを用いた分析について述べた統計モデリングの入門書。<span class="co">[</span><span class="ot">こちら</span><span class="co">](https://www.sciencedirect.com/journal/journal-of-memory-and-language/vol/59/issue/4)</span>と合わせ、この時期から混合効果モデルが言語研究でも着目されるようになった。<span class="co">[</span><span class="ot">第一版が無料で公開</span><span class="co">](http://www.sfs.uni-tuebingen.de/~hbaayen/publications/baayenCUPstats.pdf)</span>されている。</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@levshina2015 — 言語データを用いた分析について幅広いトピックを扱った入門書。決定木分析やランダムフォレストについても言及している。</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@winter2019 — 回帰分析の入門書。個人的にとてもおすすめ。混合効果についても言及している。</span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">#### How to do Linguistics with R</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Levshina, N. (2015)</span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: John Benjamins</span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">John Benjamins</span><span class="co">](https://benjamins.com/catalog/z.195)</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 言語データを用いた分析について幅広いトピックを扱った入門書となります。決定木分析やランダムフォレストについても言及しています。</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">### 中級者向け</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@kubo2012 — GLM、GLMM、ベイズなど幅広く統計モデリングについて解説している。</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@shimizu2014 — 混合効果について解説している。</span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Statistics for linguistics: An introduction using R</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Winter, B. (2019)</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: Routledge</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">Routledge</span><span class="co">](https://www.routledge.com/Statistics-for-Linguists-An-Introduction-Using-R/Winter/p/book/9781138056091)</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 回帰分析の入門書となります。個人的にとてもおすすめです。混合効果についても言及しています。</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@privitera2022 — 行動科学のための統計学の教科書。</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@kosugi2014 — 回帰分析から混合効果モデリングをRとMplusで実行するコードについて解説している。潜在変数と観測変数、説明変数と目的変数という分類に基づき、さまざまな統計モデリングを網羅している。</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@barr2021 — 混合効果について言及している。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://psyteachr.github.io/stat-models-v1/)</span>のみ。</span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="fu">### 中級者向け</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@hastie2009 — 回帰分析や機械学習の手法などについて扱っている。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://www.statlearning.com/)</span>で読むことが可能。</span>
 <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="fu">#### データ解析のための統計モデリング入門</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: 久保拓弥 (2012)</span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: 岩波書店</span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">岩波書店</span><span class="co">](https://www.iwanami.co.jp/book/b257893.html)</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: GLM、GLMM、ベイズなど幅広く統計モデリングについて解説しています。</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@gries2021book — コーパスデータを例として扱った入門書。混合効果や決定木分析などについても扱っている。</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@vasishth_lmm — 視線計測や反応時間などの例を用いているもの。書籍としては未完。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://vasishth.github.io/Freq_CogSci/)</span>。</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@fox2019 — 一般化線型モデルについて分かりやすく書かれたもの。<span class="in">`car`</span> や <span class="in">`effect`</span> などのよく使うパッケージの例もある。</span>
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 個人と集団のマルチレベル分析</span></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: 清水裕士 (2014)</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: ナカニシヤ出版</span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">ナカニシヤ出版</span><span class="co">](https://www.nakanishiya.co.jp/book/b183308.html)</span></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 混合効果について解説しています。</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@gelman2020 — 回帰分析から統計的因果推論を網羅したもの。シミュレーションベースのベイズの考え方に基づいている。<span class="co">[</span><span class="ot">Examples</span><span class="co">](https://avehtari.github.io/ROS-Examples/)</span>。</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="fu">### 上級者向け</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@hox2018 — 混合効果モデルについて書かれたもの。後半は難しめという印象。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://multilevel-analysis.sites.uu.nl/)</span>。</span>
 <span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Essential Statistics for the Behavioral Sciences</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Gregory J. Privitera</span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="fu">#### MplusとRによる構造方程式モデリング入門</span></span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: 小杉考司・清水裕士 (2014)</span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: 北大路書房</span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">北大路書房</span><span class="co">](https://www.kitaohji.com/book/b579998.html)</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 回帰分析から混合効果モデリングをRとMplusで実行するコードについて解説しています。潜在変数と観測変数、説明変数と目的変数という分類に基づき、さまざまな統計モデリングを網羅しています。</span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Learning statistical models through simulation in R</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Barr, D. (2021)</span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://psyteachr.github.io/stat-models-v1/)</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 混合効果について言及しています。オンライン版のみ。</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@suzuki2017 — ネットワーク分析について扱ったもの。Rのコードもwebサイトに公開されている。</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@singer2003 — 縦断（時系列）データについて書かれたもの。混合効果と生存分析について、時系列データの観点から述べている。</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="fu">### その他、参考となるwebサイト</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@kurz_rethinking — <span class="co">[</span><span class="ot">Statistical Rethinking</span><span class="co">](https://xcelab.net/rm/statistical-rethinking/)</span>（ベイズ統計についての入門）をbrmsとtidyverseパッケージを使って書き直したもの。<span class="co">[</span><span class="ot">Bookdown</span><span class="co">](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)</span>。</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@windhua2022 — ラッシュモデルについてRで扱ったもの。</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@nicenboim2025 — 認知心理学のデータでベイズ統計について扱ったもの。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://vasishth.github.io/bayescogsci/book/)</span>。</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参考文献 {.unnumbered}</span></span>
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="fu">#### The elements of statistical learning</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009)</span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: Springer</span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://www.statlearning.com/)</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 回帰分析や機械学習の手法などについて扱っています。オンライン上で読むことが可能。</span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Statistics for linguistics with R: A practical introduction (3rd edition)</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Gries, S. Th. (2021)</span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: De Gruyter Mouton</span>
-<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">De Gruyter</span><span class="co">](https://www.degruyter.com/document/doi/10.1515/9783110718256/html)</span></span>
-<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: コーパスデータを例として扱った入門書となります。混合効果や決定木分析などについても扱っています。</span>
-<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Linear mixed models in linguistics and psychology</span></span>
-<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Vasishth, S., Schad, D., Bürki, A., &amp; Kliegl, R. (in progress)</span>
-<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://vasishth.github.io/Freq_CogSci/)</span></span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 視線計測や反応時間などの例を用いているものです。書籍としては未完 (2024年3月)</span>
-<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a><span class="fu">#### An R companion to applied regression (3rd edition)</span></span>
-<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Fox, J., &amp; Weisberg, S. (2019)</span>
-<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: Sage Publications</span>
-<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">Sage Publications</span><span class="co">](https://us.sagepub.com/en-us/nam/an-r-companion-to-applied-regression/book246125)</span></span>
-<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 一般化線型モデルについて分かりやすく書かれたものです。carやeffectなどのよく使うパッケージの例もあります。</span>
-<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-79"><a href="#cb1-79" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Regression and other stories</span></span>
-<span id="cb1-80"><a href="#cb1-80" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Gelman, G., Hill, J., &amp; Vehtari, A. (2020)</span>
-<span id="cb1-81"><a href="#cb1-81" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: Cambridge University Press</span>
-<span id="cb1-82"><a href="#cb1-82" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">Examples</span><span class="co">](https://avehtari.github.io/ROS-Examples/)</span></span>
-<span id="cb1-83"><a href="#cb1-83" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 回帰分析から統計的因果推論を網羅したものです。シミュレーションベースのベイズの考え方に基づいています。</span>
-<span id="cb1-84"><a href="#cb1-84" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-85"><a href="#cb1-85" aria-hidden="true" tabindex="-1"></a><span class="fu">### 上級者向け</span></span>
-<span id="cb1-86"><a href="#cb1-86" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-87"><a href="#cb1-87" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Multilevel analysis: Techniques and applications (3rd edition)</span></span>
-<span id="cb1-88"><a href="#cb1-88" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Hox, J., Moerbeek, M., &amp; van de Schoot, R. (2018)</span>
-<span id="cb1-89"><a href="#cb1-89" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: Routledge</span>
-<span id="cb1-90"><a href="#cb1-90" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://multilevel-analysis.sites.uu.nl/)</span></span>
-<span id="cb1-91"><a href="#cb1-91" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 混合効果モデルについて書かれたものです。後半は難しめという印象。</span>
-<span id="cb1-92"><a href="#cb1-92" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-93"><a href="#cb1-93" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Ｒで学ぶデータサイエンス〈８〉ネットワーク分析</span></span>
-<span id="cb1-94"><a href="#cb1-94" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: 鈴木 努 (2017)</span>
-<span id="cb1-95"><a href="#cb1-95" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: 共立出版</span>
-<span id="cb1-96"><a href="#cb1-96" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">共立出版</span><span class="co">](https://www.kyoritsu-pub.co.jp/book/b10003845.html)</span></span>
-<span id="cb1-97"><a href="#cb1-97" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: ネットワーク分析について扱ったものです。Rのコードもwebサイトに公開されています。</span>
-<span id="cb1-98"><a href="#cb1-98" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-99"><a href="#cb1-99" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Applied longitudinal data analysis</span></span>
-<span id="cb1-100"><a href="#cb1-100" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Singer, J. D., &amp; Willett, J. B. (2003)</span>
-<span id="cb1-101"><a href="#cb1-101" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**出版社**: Oxford University Press</span>
-<span id="cb1-102"><a href="#cb1-102" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">Oxford University Press</span><span class="co">](https://academic.oup.com/book/41753)</span></span>
-<span id="cb1-103"><a href="#cb1-103" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 縦断 (時系列) データについて書かれたものです。混合効果と生存分析について、時系列データの観点から述べています。</span>
-<span id="cb1-104"><a href="#cb1-104" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-105"><a href="#cb1-105" aria-hidden="true" tabindex="-1"></a><span class="fu">### その他、参考となるwebサイト</span></span>
-<span id="cb1-106"><a href="#cb1-106" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-107"><a href="#cb1-107" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Statistical Rethinking with brms, ggplot2, and the tidyverse</span></span>
-<span id="cb1-108"><a href="#cb1-108" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: A. S. Kurz</span>
-<span id="cb1-109"><a href="#cb1-109" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">Bookdown</span><span class="co">](https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/)</span></span>
-<span id="cb1-110"><a href="#cb1-110" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: <span class="co">[</span><span class="ot">Statistical Rethinking</span><span class="co">](https://xcelab.net/rm/statistical-rethinking/)</span> (ベイズ統計についての入門) をbrmsとtidyverseパッケージを使って書き直したもの</span>
-<span id="cb1-111"><a href="#cb1-111" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-112"><a href="#cb1-112" aria-hidden="true" tabindex="-1"></a><span class="fu">#### Rasch Measurement Theory Analysis in R</span></span>
-<span id="cb1-113"><a href="#cb1-113" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Stefanie Wind &amp; Cheng Hua</span>
-<span id="cb1-114"><a href="#cb1-114" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">Bookdown</span><span class="co">](https://bookdown.org/connect/#/apps/5286/access/1060)</span></span>
-<span id="cb1-115"><a href="#cb1-115" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: ラッシュモデルについてRで扱ったもの</span>
-<span id="cb1-116"><a href="#cb1-116" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-117"><a href="#cb1-117" aria-hidden="true" tabindex="-1"></a><span class="fu">#### An Introduction to Bayesian Data Analysis for Cognitive Science</span></span>
-<span id="cb1-118"><a href="#cb1-118" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**著者**: Bruno Nicenboim, Daniel Schad, and Shravan Vasishth</span>
-<span id="cb1-119"><a href="#cb1-119" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**リンク**: <span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://vasishth.github.io/bayescogsci/book/)</span></span>
-<span id="cb1-120"><a href="#cb1-120" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**概要**: 認知心理学のデータでベイズ統計について扱ったもの</span></code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>::: {#refs}</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>:::</span></code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 

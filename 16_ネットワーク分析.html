@@ -544,13 +544,13 @@ window.Quarto = {
 
 <section id="イントロダクション" class="level2" data-number="18.1">
 <h2 data-number="18.1" class="anchored" data-anchor-id="イントロダクション"><span class="header-section-number">18.1</span> イントロダクション</h2>
-<p>ネットワーク分析（social network analysis; SNA）は、<strong>「個体の属性」ではなく「個体間の関係」</strong>を分析単位に置く方法論である。従来の回帰分析や分散分析は個々の学習者を独立した観測単位として扱うが、ネットワーク分析は学習者間の相互作用の<strong>構造</strong>そのものを対象とする。この視点の転換により、従来の変数中心アプローチ（variable-centered approach）では捉えきれなかった社会的文脈の影響を定量的に分析できるようになる<span class="citation" data-cites="kennedyterry2024 saqr2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kennedyterry2024" role="doc-biblioref">Kennedy Terry &amp; Bayley, 2024</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-saqr2024" role="doc-biblioref">Saqr ほか, 2024</a>)</span>。</p>
+<p>ネットワーク分析（social network analysis; SNA）は、<strong>「個体の属性」ではなく「個体間の関係」</strong>を分析単位に置く方法論である。従来の回帰分析や分散分析は個々の学習者を独立した観測単位として扱うが、ネットワーク分析は学習者間の相互作用の<strong>構造</strong>そのものを対象とする。この視点の転換により、従来の変数中心アプローチ（variable-centered approach）では捉えきれなかった社会的文脈の影響を定量的に分析できるようになる<span class="citation" data-cites="kennedyterry2024 saqr2024">(<a href="Rの基本的な使い方.html#ref-kennedyterry2024" role="doc-biblioref">Kennedy Terry &amp; Bayley, 2024</a>; <a href="Rの基本的な使い方.html#ref-saqr2024" role="doc-biblioref">Saqr et al., 2024</a>)</span>。</p>
 <p>英語教育研究では、ネットワーク分析によって以下のような問いに直接的に答えることが可能である。</p>
 <ul>
 <li>協働学習において、誰がグループのハブ（情報結節点）として機能しているか</li>
 <li>クラス内の交流パターンがクラス外へどの程度広がっているか</li>
 <li>介入前後で学習者コミュニティの分断が弱まったか、あるいは強まったか</li>
-<li>留学先での社会的ネットワーク構造がL2習熟度の伸びにどう関連するか<span class="citation" data-cites="isbell2024 strawbridge2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-strawbridge2023" role="doc-biblioref">Strawbridge, 2023</a>)</span></li>
+<li>留学先での社会的ネットワーク構造がL2習熟度の伸びにどう関連するか<span class="citation" data-cites="isbell2024 strawbridge2023">(<a href="Rの基本的な使い方.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>; <a href="Rの基本的な使い方.html#ref-strawbridge2023" role="doc-biblioref">Strawbridge, 2023</a>)</span></li>
 </ul>
 <p>本章は、英語教育専攻の大学院生（回帰分析の基礎既習）を対象に、理論と実装の両面からネットワーク分析を体系的に解説する。具体的には、以下の4部構成で進める。</p>
 <ol type="1">
@@ -693,7 +693,7 @@ window.Quarto = {
 <p><span class="math display">\[k_i = \sum_{j=1}^{n} A_{ij}\]</span></p>
 <p>重み付きグラフでは、<strong>強度</strong>（strength）がエッジの重みの合計として定義される。</p>
 <p><span class="math display">\[s_i = \sum_{j=1}^{n} W_{ij}\]</span></p>
-<p>次数は「何人と関わったか」を、強度は「どの程度の量の関わりがあったか」を表す。留学研究において、ネットワークの次数（接触人数）よりも強度（接触頻度）の方がL2習熟度の伸びをよく予測するという知見がある<span class="citation" data-cites="isbell2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>)</span>。</p>
+<p>次数は「何人と関わったか」を、強度は「どの程度の量の関わりがあったか」を表す。留学研究において、ネットワークの次数（接触人数）よりも強度（接触頻度）の方がL2習熟度の伸びをよく予測するという知見がある<span class="citation" data-cites="isbell2024">(<a href="Rの基本的な使い方.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>)</span>。</p>
 </section>
 <section id="経路と測地距離" class="level4">
 <h4 class="anchored" data-anchor-id="経路と測地距離">経路と測地距離</h4>
@@ -714,10 +714,10 @@ window.Quarto = {
 </section>
 <section id="slaにおけるネットワーク分析の意義" class="level3" data-number="18.2.3">
 <h3 data-number="18.2.3" class="anchored" data-anchor-id="slaにおけるネットワーク分析の意義"><span class="header-section-number">18.2.3</span> SLAにおけるネットワーク分析の意義</h3>
-<p><span class="citation" data-cites="kennedyterry2024">Kennedy Terry &amp; Bayley (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kennedyterry2024" role="doc-biblioref">2024</a>)</span> は、ネットワーク分析がSLA研究に提供する独自の視座を3つに整理している。</p>
+<p><span class="citation" data-cites="kennedyterry2024">Kennedy Terry &amp; Bayley (<a href="Rの基本的な使い方.html#ref-kennedyterry2024" role="doc-biblioref">2024</a>)</span> は、ネットワーク分析がSLA研究に提供する独自の視座を3つに整理している。</p>
 <ol type="1">
 <li><strong>社会関係資本</strong>（social capital）: 学習者がネットワーク内の位置によってアクセスできる資源。中心的な位置にある学習者は、より多くの言語的インプットや修正フィードバックを得やすい。</li>
-<li><strong>仲介性</strong>（brokerage）: 異なるグループ間を橋渡しする役割。留学先で異なるL1背景を持つ学習者同士をつなぐブローカーは、L2使用の機会を拡大しうる<span class="citation" data-cites="paradowski2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-paradowski2024" role="doc-biblioref">Paradowski ほか, 2024</a>)</span>。</li>
+<li><strong>仲介性</strong>（brokerage）: 異なるグループ間を橋渡しする役割。留学先で異なるL1背景を持つ学習者同士をつなぐブローカーは、L2使用の機会を拡大しうる<span class="citation" data-cites="paradowski2024">(<a href="Rの基本的な使い方.html#ref-paradowski2024" role="doc-biblioref">Paradowski et al., 2024</a>)</span>。</li>
 <li><strong>同類選好</strong>（homophily）: 類似した属性（L1、熟達度、クラスなど）を持つ個体同士が結びつきやすい傾向。同類選好が強すぎると、L2使用の機会が制限される可能性がある。</li>
 </ol>
 <p>これらの概念は、本章の後半で具体的な分析手法（中心性、コミュニティ検出、ERGM）と結びつく。</p>
@@ -892,7 +892,7 @@ L5  0  0  1  0  0</code></pre>
 </section>
 <section id="回帰分析との対応で理解する" class="level2" data-number="18.3">
 <h2 data-number="18.3" class="anchored" data-anchor-id="回帰分析との対応で理解する"><span class="header-section-number">18.3</span> 回帰分析との対応で理解する</h2>
-<p>回帰分析との対応関係を明確にしておくと、ネットワーク分析の発想をより速く理解できる<span class="citation" data-cites="saqr2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-saqr2024" role="doc-biblioref">Saqr ほか, 2024</a>)</span>。</p>
+<p>回帰分析との対応関係を明確にしておくと、ネットワーク分析の発想をより速く理解できる<span class="citation" data-cites="saqr2024">(<a href="Rの基本的な使い方.html#ref-saqr2024" role="doc-biblioref">Saqr et al., 2024</a>)</span>。</p>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -963,7 +963,7 @@ L5  0  0  1  0  0</code></pre>
 </div>
 <div class="callout-body-container callout-body">
 <ul>
-<li><strong>留学プログラム</strong>: ホストファミリー、クラスメイト、現地の友人をどこまで含めるか<span class="citation" data-cites="isbell2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>)</span></li>
+<li><strong>留学プログラム</strong>: ホストファミリー、クラスメイト、現地の友人をどこまで含めるか<span class="citation" data-cites="isbell2024">(<a href="Rの基本的な使い方.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>)</span></li>
 <li><strong>クラスルーム</strong>: TA・教員をノードに含めるか、学習者のみか</li>
 <li><strong>オンライン環境</strong>: 同期（Zoom）と非同期（LMS掲示板）を一つのネットワークにまとめるか</li>
 </ul>
@@ -1004,19 +1004,19 @@ L5  0  0  1  0  0</code></pre>
 <tbody>
 <tr class="odd">
 <td><code>igraph</code></td>
-<td>グラフの構築、指標計算、コミュニティ検出<span class="citation" data-cites="csardi2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-csardi2006" role="doc-biblioref">Csardi &amp; Nepusz, 2006</a>)</span></td>
+<td>グラフの構築、指標計算、コミュニティ検出<span class="citation" data-cites="csardi2006">(<a href="Rの基本的な使い方.html#ref-csardi2006" role="doc-biblioref">Csardi &amp; Nepusz, 2006</a>)</span></td>
 </tr>
 <tr class="even">
 <td><code>tidygraph</code></td>
-<td>igraphの tidy インターフェース<span class="citation" data-cites="pedersen2024tidygraph">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-pedersen2024tidygraph" role="doc-biblioref">Pedersen, 2024b</a>)</span></td>
+<td>igraphの tidy インターフェース<span class="citation" data-cites="pedersen2024tidygraph">(<a href="Rの基本的な使い方.html#ref-pedersen2024tidygraph" role="doc-biblioref">Pedersen, 2024b</a>)</span></td>
 </tr>
 <tr class="odd">
 <td><code>ggraph</code></td>
-<td>Grammar of Graphics に基づくネットワーク可視化<span class="citation" data-cites="pedersen2024ggraph">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-pedersen2024ggraph" role="doc-biblioref">Pedersen, 2024a</a>)</span></td>
+<td>Grammar of Graphics に基づくネットワーク可視化<span class="citation" data-cites="pedersen2024ggraph">(<a href="Rの基本的な使い方.html#ref-pedersen2024ggraph" role="doc-biblioref">Pedersen, 2024a</a>)</span></td>
 </tr>
 <tr class="even">
 <td><code>network</code> / <code>sna</code></td>
-<td>ERGM・QAP回帰のためのネットワーク基盤<span class="citation" data-cites="handcock2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-handcock2008" role="doc-biblioref">Handcock ほか, 2008</a>)</span></td>
+<td>ERGM・QAP回帰のためのネットワーク基盤<span class="citation" data-cites="handcock2008">(<a href="Rの基本的な使い方.html#ref-handcock2008" role="doc-biblioref">Handcock et al., 2008</a>)</span></td>
 </tr>
 <tr class="odd">
 <td><code>intergraph</code></td>
@@ -2136,7 +2136,7 @@ L5  0  0  1  0  0</code></pre>
 </section>
 <section id="グラフを構築する" class="level2" data-number="18.7">
 <h2 data-number="18.7" class="anchored" data-anchor-id="グラフを構築する"><span class="header-section-number">18.7</span> グラフを構築する</h2>
-<p><code>igraph::graph_from_data_frame()</code> にエッジリストとノード属性を渡すことで、グラフオブジェクトを構築する。<code>tidygraph</code> はこの igraph オブジェクトを、ノードテーブルとエッジテーブルの二重構造（tbl_graph）として扱い、<code>dplyr</code> の動詞（<code>filter</code>, <code>mutate</code>, <code>arrange</code> など）で操作できるようにする<span class="citation" data-cites="pedersen2024tidygraph">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-pedersen2024tidygraph" role="doc-biblioref">Pedersen, 2024b</a>)</span>。</p>
+<p><code>igraph::graph_from_data_frame()</code> にエッジリストとノード属性を渡すことで、グラフオブジェクトを構築する。<code>tidygraph</code> はこの igraph オブジェクトを、ノードテーブルとエッジテーブルの二重構造（tbl_graph）として扱い、<code>dplyr</code> の動詞（<code>filter</code>, <code>mutate</code>, <code>arrange</code> など）で操作できるようにする<span class="citation" data-cites="pedersen2024tidygraph">(<a href="Rの基本的な使い方.html#ref-pedersen2024tidygraph" role="doc-biblioref">Pedersen, 2024b</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -2278,7 +2278,7 @@ L5  0  0  1  0  0</code></pre>
 <ul>
 <li><strong>Fruchterman-Reingold（FR）</strong>: 力学モデルに基づく代表的なレイアウト。ランダム性があるため <code>set.seed()</code> が必要。</li>
 <li><strong>Kamada-Kawai（KK）</strong>: グラフ理論的距離を空間距離に近づける。比較的決定論的。</li>
-<li><strong>Stress Minimization</strong>: 測地距離を忠実に再現する。<strong>特にこだわりがなければ推奨</strong><span class="citation" data-cites="pedersen2024ggraph">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-pedersen2024ggraph" role="doc-biblioref">Pedersen, 2024a</a>)</span>。</li>
+<li><strong>Stress Minimization</strong>: 測地距離を忠実に再現する。<strong>特にこだわりがなければ推奨</strong><span class="citation" data-cites="pedersen2024ggraph">(<a href="Rの基本的な使い方.html#ref-pedersen2024ggraph" role="doc-biblioref">Pedersen, 2024a</a>)</span>。</li>
 <li><strong>Circle</strong>: すべてのノードを円上に配置。コミュニティ構造を見るには不向きだが、次数の分布が一覧しやすい。</li>
 </ul>
 </section>
@@ -3508,7 +3508,7 @@ L5  0  0  1  0  0</code></pre>
 </section>
 <section id="ノード中心性を計算する" class="level2" data-number="18.10">
 <h2 data-number="18.10" class="anchored" data-anchor-id="ノード中心性を計算する"><span class="header-section-number">18.10</span> ノード中心性を計算する</h2>
-<p>中心性（centrality）は「ネットワーク内で何を重要とみなすか」の操作的定義である<span class="citation" data-cites="freeman1979">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-freeman1979" role="doc-biblioref">Freeman, 1979</a>)</span>。目的に応じて使い分ける必要がある。</p>
+<p>中心性（centrality）は「ネットワーク内で何を重要とみなすか」の操作的定義である<span class="citation" data-cites="freeman1979">(<a href="Rの基本的な使い方.html#ref-freeman1979" role="doc-biblioref">Freeman, 1979</a>)</span>。目的に応じて使い分ける必要がある。</p>
 <section id="中心性の数学的定義" class="level3" data-number="18.10.1">
 <h3 data-number="18.10.1" class="anchored" data-anchor-id="中心性の数学的定義"><span class="header-section-number">18.10.1</span> 中心性の数学的定義</h3>
 <section id="次数中心性degree-centrality" class="level4">
@@ -3524,12 +3524,12 @@ L5  0  0  1  0  0</code></pre>
 <section id="媒介中心性betweenness-centrality" class="level4">
 <h4 class="anchored" data-anchor-id="媒介中心性betweenness-centrality">媒介中心性（Betweenness Centrality）</h4>
 <p><span class="math display">\[C_B(v_i) = \sum_{s \neq i \neq t} \frac{\sigma_{st}(v_i)}{\sigma_{st}}\]</span></p>
-<p>ここで <span class="math inline">\(\sigma_{st}\)</span> はノード <span class="math inline">\(s\)</span> から <span class="math inline">\(t\)</span> への最短経路の総数、<span class="math inline">\(\sigma_{st}(v_i)\)</span> はそのうちノード <span class="math inline">\(v_i\)</span> を通過するものの数である。媒介中心性が高いノードは、異なるグループ間の「橋渡し」役を担っている。留学研究では、異なる言語コミュニティ間をつなぐブローカー的な学習者を特定するのに有用である<span class="citation" data-cites="paradowski2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-paradowski2024" role="doc-biblioref">Paradowski ほか, 2024</a>)</span>。</p>
+<p>ここで <span class="math inline">\(\sigma_{st}\)</span> はノード <span class="math inline">\(s\)</span> から <span class="math inline">\(t\)</span> への最短経路の総数、<span class="math inline">\(\sigma_{st}(v_i)\)</span> はそのうちノード <span class="math inline">\(v_i\)</span> を通過するものの数である。媒介中心性が高いノードは、異なるグループ間の「橋渡し」役を担っている。留学研究では、異なる言語コミュニティ間をつなぐブローカー的な学習者を特定するのに有用である<span class="citation" data-cites="paradowski2024">(<a href="Rの基本的な使い方.html#ref-paradowski2024" role="doc-biblioref">Paradowski et al., 2024</a>)</span>。</p>
 </section>
 <section id="近接中心性closeness-centrality" class="level4">
 <h4 class="anchored" data-anchor-id="近接中心性closeness-centrality">近接中心性（Closeness Centrality）</h4>
 <p><span class="math display">\[C_C(v_i) = \frac{n - 1}{\sum_{j \neq i} d(v_i, v_j)}\]</span></p>
-<p>全ノードへの平均距離の逆数であり、「他の全員にどの程度素早く到達できるか」を示す。非連結グラフでは不安定になるため、本章では<strong>調和中心性</strong>（harmonic centrality）を優先する<span class="citation" data-cites="igraph_closeness">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-igraph_closeness" role="doc-biblioref">igraph developers, 2024</a>)</span>。</p>
+<p>全ノードへの平均距離の逆数であり、「他の全員にどの程度素早く到達できるか」を示す。非連結グラフでは不安定になるため、本章では<strong>調和中心性</strong>（harmonic centrality）を優先する<span class="citation" data-cites="igraph_closeness">(<a href="Rの基本的な使い方.html#ref-igraph_closeness" role="doc-biblioref">igraph developers, 2024</a>)</span>。</p>
 <p><span class="math display">\[C_H(v_i) = \frac{1}{n-1} \sum_{j \neq i} \frac{1}{d(v_i, v_j)}\]</span></p>
 </section>
 <section id="固有ベクトル中心性eigenvector-centrality" class="level4">
@@ -4231,7 +4231,7 @@ closeness の注意
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>非連結グラフでは通常の closeness centrality が不安定になる。<code>igraph</code> 公式ドキュメントでも、解釈と前処理（連結成分の扱い）に注意が必要であると記されている<span class="citation" data-cites="igraph_closeness">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-igraph_closeness" role="doc-biblioref">igraph developers, 2024</a>)</span>。本章では harmonic centrality を優先している。</p>
+<p>非連結グラフでは通常の closeness centrality が不安定になる。<code>igraph</code> 公式ドキュメントでも、解釈と前処理（連結成分の扱い）に注意が必要であると記されている<span class="citation" data-cites="igraph_closeness">(<a href="Rの基本的な使い方.html#ref-igraph_closeness" role="doc-biblioref">igraph developers, 2024</a>)</span>。本章では harmonic centrality を優先している。</p>
 </div>
 </div>
 </section>
@@ -4360,7 +4360,7 @@ closeness の注意
 <p>コミュニティ検出は、ネットワークを「内部で密・外部で疎」なサブグループに分割する手法である。教室ネットワークにおいて、検出されたコミュニティがクラス編成とどの程度一致するかを確認することで、クラスを超えた交流の程度を評価できる。</p>
 <section id="モジュラリティの定義" class="level3" data-number="18.11.1">
 <h3 data-number="18.11.1" class="anchored" data-anchor-id="モジュラリティの定義"><span class="header-section-number">18.11.1</span> モジュラリティの定義</h3>
-<p>コミュニティ分割の質は<strong>モジュラリティ</strong> <span class="math inline">\(Q\)</span> で評価される<span class="citation" data-cites="blondel2008 newman2004">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-blondel2008" role="doc-biblioref">Blondel ほか, 2008</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-newman2004" role="doc-biblioref">Newman, 2004</a>)</span>。</p>
+<p>コミュニティ分割の質は<strong>モジュラリティ</strong> <span class="math inline">\(Q\)</span> で評価される<span class="citation" data-cites="blondel2008 newman2004">(<a href="Rの基本的な使い方.html#ref-blondel2008" role="doc-biblioref">Blondel et al., 2008</a>; <a href="Rの基本的な使い方.html#ref-newman2004" role="doc-biblioref">Newman, 2004</a>)</span>。</p>
 <p><span class="math display">\[Q = \frac{1}{2m}\sum_{ij}\left[A_{ij} - \frac{k_i k_j}{2m}\right]\delta(c_i, c_j)\]</span></p>
 <p>ここで <span class="math inline">\(m\)</span> はエッジの総数、<span class="math inline">\(k_i\)</span> はノード <span class="math inline">\(i\)</span> の次数、<span class="math inline">\(c_i\)</span> はノード <span class="math inline">\(i\)</span> が属するコミュニティ、<span class="math inline">\(\delta\)</span> はクロネッカーのデルタ関数（同じコミュニティなら1、異なれば0）である。<span class="math inline">\(Q\)</span> が高いほど、コミュニティ内のエッジ密度がランダムな期待値よりも高いことを意味する。一般に <span class="math inline">\(Q &gt; 0.3\)</span> で有意なコミュニティ構造があるとみなされる。</p>
 </section>
@@ -5049,7 +5049,7 @@ Adjusted Rand Index: 0.43 </code></pre>
 <li>高モジュラリティ（<span class="math inline">\(Q &gt; 0.3\)</span>）は「内部で密・外部で疎」の傾向を示す。</li>
 <li>ARI が高い（例: <span class="math inline">\(&gt; 0.5\)</span>）場合、コミュニティはクラス編成を概ね反映している。</li>
 <li>ARI が低い場合、クラスを超えた交流グループが形成されている可能性がある。</li>
-<li>コミュニティ検出はアルゴリズム依存であるため、単一の結果を絶対視せず、外部情報（クラス編成、活動設計）と照合すること<span class="citation" data-cites="blondel2008 traag2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-blondel2008" role="doc-biblioref">Blondel ほか, 2008</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-traag2019" role="doc-biblioref">Traag ほか, 2019</a>)</span>。</li>
+<li>コミュニティ検出はアルゴリズム依存であるため、単一の結果を絶対視せず、外部情報（クラス編成、活動設計）と照合すること<span class="citation" data-cites="blondel2008 traag2019">(<a href="Rの基本的な使い方.html#ref-blondel2008" role="doc-biblioref">Blondel et al., 2008</a>; <a href="Rの基本的な使い方.html#ref-traag2019" role="doc-biblioref">Traag et al., 2019</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -6475,7 +6475,7 @@ Adjusted Rand Index: 0.43 </code></pre>
 <section id="なぜergmが必要か" class="level3" data-number="18.13.1">
 <h3 data-number="18.13.1" class="anchored" data-anchor-id="なぜergmが必要か"><span class="header-section-number">18.13.1</span> なぜERGMが必要か</h3>
 <p>ここまでの分析は記述的（descriptive）である。密度や中心性は構造を要約するが、「同じクラスの学習者同士は有意に協働しやすいか」「熟達度が近い学習者同士のリンク形成確率は高いか」といった<strong>推論的</strong>な問いには答えられない。</p>
-<p>通常の回帰分析でダイアド（ペア）データを分析する場合、観測の独立性が仮定されるが、ネットワークデータでは同一ノードが複数のダイアドに関与するため、この仮定が構造的に破れる。<strong>指数ランダムグラフモデル</strong>（Exponential Random Graph Model; ERGM）は、この問題に対処するためのモデルである<span class="citation" data-cites="robins2007 lusher2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lusher2013" role="doc-biblioref">Lusher ほか, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-robins2007" role="doc-biblioref">Robins ほか, 2007</a>)</span>。</p>
+<p>通常の回帰分析でダイアド（ペア）データを分析する場合、観測の独立性が仮定されるが、ネットワークデータでは同一ノードが複数のダイアドに関与するため、この仮定が構造的に破れる。<strong>指数ランダムグラフモデル</strong>（Exponential Random Graph Model; ERGM）は、この問題に対処するためのモデルである<span class="citation" data-cites="robins2007 lusher2013">(<a href="Rの基本的な使い方.html#ref-lusher2013" role="doc-biblioref">Lusher et al., 2013</a>; <a href="Rの基本的な使い方.html#ref-robins2007" role="doc-biblioref">Robins et al., 2007</a>)</span>。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -6504,7 +6504,7 @@ ERGMの直感的理解
 </section>
 <section id="statnet-による実装" class="level3" data-number="18.13.3">
 <h3 data-number="18.13.3" class="anchored" data-anchor-id="statnet-による実装"><span class="header-section-number">18.13.3</span> statnet による実装</h3>
-<p>ERGM の推定には <code>statnet</code> / <code>ergm</code> パッケージを使用する<span class="citation" data-cites="hunter2008 handcock2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-handcock2008" role="doc-biblioref">Handcock ほか, 2008</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-hunter2008" role="doc-biblioref">Hunter ほか, 2008</a>)</span>。<code>igraph</code> オブジェクトを <code>network</code> オブジェクトに変換してからモデルを推定する。</p>
+<p>ERGM の推定には <code>statnet</code> / <code>ergm</code> パッケージを使用する<span class="citation" data-cites="hunter2008 handcock2008">(<a href="Rの基本的な使い方.html#ref-handcock2008" role="doc-biblioref">Handcock et al., 2008</a>; <a href="Rの基本的な使い方.html#ref-hunter2008" role="doc-biblioref">Hunter et al., 2008</a>)</span>。<code>igraph</code> オブジェクトを <code>network</code> オブジェクトに変換してからモデルを推定する。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -8263,7 +8263,7 @@ ERGMのよくある問題
 <h2 data-number="18.14" class="anchored" data-anchor-id="qap回帰-ネットワークの非独立性に対処する"><span class="header-section-number">18.14</span> QAP回帰: ネットワークの非独立性に対処する</h2>
 <section id="なぜqapが必要か" class="level3" data-number="18.14.1">
 <h3 data-number="18.14.1" class="anchored" data-anchor-id="なぜqapが必要か"><span class="header-section-number">18.14.1</span> なぜQAPが必要か</h3>
-<p>ネットワークデータにおいて、ノード <span class="math inline">\(i\)</span> が関与するすべてのダイアド <span class="math inline">\((i, j_1), (i, j_2), \ldots\)</span> は独立ではない。通常のOLS回帰やロジスティック回帰をダイアドデータに適用すると、標準誤差が過小推定され、Type I error が増大する<span class="citation" data-cites="krackhardt1988 dekker2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dekker2007" role="doc-biblioref">Dekker ほか, 2007</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-krackhardt1988" role="doc-biblioref">Krackhardt, 1988</a>)</span>。</p>
+<p>ネットワークデータにおいて、ノード <span class="math inline">\(i\)</span> が関与するすべてのダイアド <span class="math inline">\((i, j_1), (i, j_2), \ldots\)</span> は独立ではない。通常のOLS回帰やロジスティック回帰をダイアドデータに適用すると、標準誤差が過小推定され、Type I error が増大する<span class="citation" data-cites="krackhardt1988 dekker2007">(<a href="Rの基本的な使い方.html#ref-dekker2007" role="doc-biblioref">Dekker et al., 2007</a>; <a href="Rの基本的な使い方.html#ref-krackhardt1988" role="doc-biblioref">Krackhardt, 1988</a>)</span>。</p>
 <p><strong>Quadratic Assignment Procedure（QAP）</strong>は、ネットワーク行列の行と列を同時に置換する（permutation）ことで、ネットワーク構造を保持したまま帰無分布を構成する非パラメトリック検定法である。</p>
 </section>
 <section id="qap相関" class="level3" data-number="18.14.2">
@@ -8330,7 +8330,7 @@ ERGMのよくある問題
 </section>
 <section id="mrqap回帰" class="level3" data-number="18.14.3">
 <h3 data-number="18.14.3" class="anchored" data-anchor-id="mrqap回帰"><span class="header-section-number">18.14.3</span> MRQAP回帰</h3>
-<p><strong>Multiple Regression QAP（MRQAP）</strong>は、ダイアド特性（同クラスか否か、熟達度の差など）から関係の強さ（協働回数）を予測する回帰分析である<span class="citation" data-cites="dekker2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dekker2007" role="doc-biblioref">Dekker ほか, 2007</a>)</span>。帰無分布の構成にはDouble Semi-Partialing（DSP）法を用いる。</p>
+<p><strong>Multiple Regression QAP（MRQAP）</strong>は、ダイアド特性（同クラスか否か、熟達度の差など）から関係の強さ（協働回数）を予測する回帰分析である<span class="citation" data-cites="dekker2007">(<a href="Rの基本的な使い方.html#ref-dekker2007" role="doc-biblioref">Dekker et al., 2007</a>)</span>。帰無分布の構成にはDouble Semi-Partialing（DSP）法を用いる。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -8914,7 +8914,7 @@ ERGMのよくある問題
 </div>
 </div>
 </div>
-<p>通常のOLS回帰では、ダイアド間の非独立性により標準誤差が過小推定される。QAP回帰は行列の行と列を同時に置換することでこの問題に対処し、より保守的（正確な）p値を提供する<span class="citation" data-cites="dekker2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dekker2007" role="doc-biblioref">Dekker ほか, 2007</a>)</span>。</p>
+<p>通常のOLS回帰では、ダイアド間の非独立性により標準誤差が過小推定される。QAP回帰は行列の行と列を同時に置換することでこの問題に対処し、より保守的（正確な）p値を提供する<span class="citation" data-cites="dekker2007">(<a href="Rの基本的な使い方.html#ref-dekker2007" role="doc-biblioref">Dekker et al., 2007</a>)</span>。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -8928,7 +8928,7 @@ ERGMとQAPの使い分け
 <ul>
 <li><strong>ERGM</strong>: ネットワーク形成の<strong>生成モデル</strong>。同類選好・三角形閉鎖などのメカニズムを同時に検定できる。構造的な依存をモデルの中に組み込む。</li>
 <li><strong>QAP</strong>: ネットワーク行列間の<strong>関連検定</strong>。置換により非独立性に対処する。計算が軽く、探索的分析に向いている。</li>
-<li>両者は補完的に使用することが推奨される<span class="citation" data-cites="saqr2024">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-saqr2024" role="doc-biblioref">Saqr ほか, 2024</a>)</span>。</li>
+<li>両者は補完的に使用することが推奨される<span class="citation" data-cites="saqr2024">(<a href="Rの基本的な使い方.html#ref-saqr2024" role="doc-biblioref">Saqr et al., 2024</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -8947,7 +8947,7 @@ ERGMとQAPの使い分け
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>これは<strong>方法理解のためのシミュレーション</strong>であり、因果推論を行う例ではない。ネットワークデータは相互依存を持つため、通常の回帰仮定（独立性）が崩れやすい。厳密な推論には、前節で紹介したERGMやQAPが必要である<span class="citation" data-cites="krackhardt1988">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-krackhardt1988" role="doc-biblioref">Krackhardt, 1988</a>)</span>。</p>
+<p>これは<strong>方法理解のためのシミュレーション</strong>であり、因果推論を行う例ではない。ネットワークデータは相互依存を持つため、通常の回帰仮定（独立性）が崩れやすい。厳密な推論には、前節で紹介したERGMやQAPが必要である<span class="citation" data-cites="krackhardt1988">(<a href="Rの基本的な使い方.html#ref-krackhardt1988" role="doc-biblioref">Krackhardt, 1988</a>)</span>。</p>
 </div>
 </div>
 <div class="cell">
@@ -10014,7 +10014,7 @@ ERGMとQAPの使い分け
 <h2 data-number="18.16" class="anchored" data-anchor-id="sla研究への応用例"><span class="header-section-number">18.16</span> SLA研究への応用例</h2>
 <section id="留学ネットワークと熟達度の伸び" class="level3" data-number="18.16.1">
 <h3 data-number="18.16.1" class="anchored" data-anchor-id="留学ネットワークと熟達度の伸び"><span class="header-section-number">18.16.1</span> 留学ネットワークと熟達度の伸び</h3>
-<p>留学研究では、学習者のソーシャルネットワーク構造がL2習熟度の伸びに関連することが報告されている<span class="citation" data-cites="isbell2024 dewey2013 strawbridge2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-dewey2013" role="doc-biblioref">Dewey ほか, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-strawbridge2023" role="doc-biblioref">Strawbridge, 2023</a>)</span>。ここでは、エゴネットワーク（ego-network: ある個人を中心とするネットワーク）データを想定したシミュレーションを示す。</p>
+<p>留学研究では、学習者のソーシャルネットワーク構造がL2習熟度の伸びに関連することが報告されている<span class="citation" data-cites="isbell2024 dewey2013 strawbridge2023">(<a href="Rの基本的な使い方.html#ref-dewey2013" role="doc-biblioref">Dewey et al., 2013</a>; <a href="Rの基本的な使い方.html#ref-isbell2024" role="doc-biblioref">Isbell, 2024</a>; <a href="Rの基本的な使い方.html#ref-strawbridge2023" role="doc-biblioref">Strawbridge, 2023</a>)</span>。ここでは、エゴネットワーク（ego-network: ある個人を中心とするネットワーク）データを想定したシミュレーションを示す。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -11079,7 +11079,7 @@ ERGMとQAPの使い分け
 </div>
 </div>
 </div>
-<p>このシミュレーションでは、L2話者との接触割合（<code>prop_l2_contacts</code>）が熟達度の伸びの主要な予測子となっている。これは <span class="citation" data-cites="isbell2024">Isbell (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-isbell2024" role="doc-biblioref">2024</a>)</span> の知見――ネットワークの次数よりもL2使用の質（特にL2話者との接触比率）が重要である――と整合的な結果である。</p>
+<p>このシミュレーションでは、L2話者との接触割合（<code>prop_l2_contacts</code>）が熟達度の伸びの主要な予測子となっている。これは <span class="citation" data-cites="isbell2024">Isbell (<a href="Rの基本的な使い方.html#ref-isbell2024" role="doc-biblioref">2024</a>)</span> の知見――ネットワークの次数よりもL2使用の質（特にL2話者との接触比率）が重要である――と整合的な結果である。</p>
 </section>
 <section id="教室インタラクションとwtc" class="level3" data-number="18.16.2">
 <h3 data-number="18.16.2" class="anchored" data-anchor-id="教室インタラクションとwtc"><span class="header-section-number">18.16.2</span> 教室インタラクションとWTC</h3>
@@ -14098,7 +14098,7 @@ Q: ネットワーク分析に最低何名の参加者が必要か？
 </div>
 <div id="callout-27" class="callout-27-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
-<p>明確な下限はないが、一般にノード数20名未満では中心性指標の安定性が低下する。ERGMの推定にはノード数50以上が推奨される<span class="citation" data-cites="lusher2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lusher2013" role="doc-biblioref">Lusher ほか, 2013</a>)</span>。小規模データではQAPやエゴネットワーク分析を検討すると良い。</p>
+<p>明確な下限はないが、一般にノード数20名未満では中心性指標の安定性が低下する。ERGMの推定にはノード数50以上が推奨される<span class="citation" data-cites="lusher2013">(<a href="Rの基本的な使い方.html#ref-lusher2013" role="doc-biblioref">Lusher et al., 2013</a>)</span>。小規模データではQAPやエゴネットワーク分析を検討すると良い。</p>
 </div>
 </div>
 </div>
@@ -14146,7 +14146,7 @@ Q: igraph と statnet は同じ結果を返すか？
 </div>
 <div id="callout-30" class="callout-30-contents callout-collapse collapse">
 <div class="callout-body-container callout-body">
-<p>基本的な指標（次数、密度、推移性など）は同じ結果を返す。ただし、ERGMは <code>statnet</code> / <code>ergm</code> パッケージ専用であるため、ERGMを使う場合は <code>intergraph::asNetwork()</code> で変換が必要である<span class="citation" data-cites="handcock2008">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-handcock2008" role="doc-biblioref">Handcock ほか, 2008</a>)</span>。</p>
+<p>基本的な指標（次数、密度、推移性など）は同じ結果を返す。ただし、ERGMは <code>statnet</code> / <code>ergm</code> パッケージ専用であるため、ERGMを使う場合は <code>intergraph::asNetwork()</code> で変換が必要である<span class="citation" data-cites="handcock2008">(<a href="Rの基本的な使い方.html#ref-handcock2008" role="doc-biblioref">Handcock et al., 2008</a>)</span>。</p>
 </div>
 </div>
 </div>
@@ -14216,19 +14216,19 @@ Q: ERGMが収束しない場合はどうするか？
 <div class="callout-body-container callout-body">
 <p><strong>入門書</strong>:</p>
 <ul>
-<li><span class="citation" data-cites="borgatti2018">Borgatti ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-borgatti2018" role="doc-biblioref">2018</a>)</span> – ネットワーク分析の概念と方法を体系的に学べる教科書。数式は最小限で、応用例が豊富。</li>
-<li><span class="citation" data-cites="hanneman2005">Hanneman &amp; Riddle (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hanneman2005" role="doc-biblioref">2005</a>)</span> – 無料オンライン教科書。基礎概念から丁寧に解説。</li>
-<li><span class="citation" data-cites="saqr2024">Saqr ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-saqr2024" role="doc-biblioref">2024</a>)</span> – Rによる実装に焦点を当てたチュートリアル。教育研究の文脈で書かれている。</li>
+<li><span class="citation" data-cites="borgatti2018">Borgatti et al. (<a href="Rの基本的な使い方.html#ref-borgatti2018" role="doc-biblioref">2018</a>)</span> – ネットワーク分析の概念と方法を体系的に学べる教科書。数式は最小限で、応用例が豊富。</li>
+<li><span class="citation" data-cites="hanneman2005">Hanneman &amp; Riddle (<a href="Rの基本的な使い方.html#ref-hanneman2005" role="doc-biblioref">2005</a>)</span> – 無料オンライン教科書。基礎概念から丁寧に解説。</li>
+<li><span class="citation" data-cites="saqr2024">Saqr et al. (<a href="Rの基本的な使い方.html#ref-saqr2024" role="doc-biblioref">2024</a>)</span> – Rによる実装に焦点を当てたチュートリアル。教育研究の文脈で書かれている。</li>
 </ul>
 <p><strong>SLA特化</strong>:</p>
 <ul>
-<li><span class="citation" data-cites="kennedyterry2024">Kennedy Terry &amp; Bayley (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-kennedyterry2024" role="doc-biblioref">2024</a>)</span> – SLA研究におけるネットワーク分析の理論と方法を包括的に解説した初の専門書。</li>
-<li><span class="citation" data-cites="paradowski2024">Paradowski ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-paradowski2024" role="doc-biblioref">2024</a>)</span> – 言語学習者グループの中心性分析に関するプライマー。</li>
+<li><span class="citation" data-cites="kennedyterry2024">Kennedy Terry &amp; Bayley (<a href="Rの基本的な使い方.html#ref-kennedyterry2024" role="doc-biblioref">2024</a>)</span> – SLA研究におけるネットワーク分析の理論と方法を包括的に解説した初の専門書。</li>
+<li><span class="citation" data-cites="paradowski2024">Paradowski et al. (<a href="Rの基本的な使い方.html#ref-paradowski2024" role="doc-biblioref">2024</a>)</span> – 言語学習者グループの中心性分析に関するプライマー。</li>
 </ul>
 <p><strong>高度な手法</strong>:</p>
 <ul>
-<li><span class="citation" data-cites="lusher2013">Lusher ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-lusher2013" role="doc-biblioref">2013</a>)</span> – ERGMの理論と応用を詳述。ERGMを本格的に使う際の必読文献。</li>
-<li><span class="citation" data-cites="wasserman1994">Wasserman &amp; Faust (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-wasserman1994" role="doc-biblioref">1994</a>)</span> – ネットワーク分析の古典的教科書。数学的基盤を深く学びたい場合に参照。</li>
+<li><span class="citation" data-cites="lusher2013">Lusher et al. (<a href="Rの基本的な使い方.html#ref-lusher2013" role="doc-biblioref">2013</a>)</span> – ERGMの理論と応用を詳述。ERGMを本格的に使う際の必読文献。</li>
+<li><span class="citation" data-cites="wasserman1994">Wasserman &amp; Faust (<a href="Rの基本的な使い方.html#ref-wasserman1994" role="doc-biblioref">1994</a>)</span> – ネットワーク分析の古典的教科書。数学的基盤を深く学びたい場合に参照。</li>
 </ul>
 </div>
 </div>
@@ -14353,7 +14353,7 @@ Pedersen, T. L. (2024年b). <em>tidygraph: A Tidy <span>API</span> for Graph Man
 Robins, G., Pattison, P., Kalish, Y., &amp; Lusher, D. (2007年). An introduction to exponential random graph (<span>p*</span>) models for social networks. <em>Social Networks</em>, <em>29</em>(2), 173–191. <a href="https://doi.org/10.1016/j.socnet.2006.08.002">https://doi.org/10.1016/j.socnet.2006.08.002</a>
 </div>
 <div id="ref-saqr2024" class="csl-entry" role="listitem">
-Saqr, M., López-Pernas, S., Conde, M. Á., &amp; Hernández-Garcı́a, Á. (2024年). Social network analysis: A primer, a guide and a tutorial in <span>R</span>. M. Saqr, N. D. Gašević, ほか (編), <em>Learning Analytics Methods and Tutorials</em> (pp. 473–511). Springer. <a href="https://doi.org/10.1007/978-3-031-54464-4_15">https://doi.org/10.1007/978-3-031-54464-4_15</a>
+Saqr, M., López-Pernas, S., Conde, M. Á., &amp; Hernández-Garcı́a, Á. (2024年). Social network analysis: A primer, a guide and a tutorial in <span>R</span>. M. Saqr, N. D. Gašević, et al. (編), <em>Learning Analytics Methods and Tutorials</em> (pp. 473–511). Springer. <a href="https://doi.org/10.1007/978-3-031-54464-4_15">https://doi.org/10.1007/978-3-031-54464-4_15</a>
 </div>
 <div id="ref-strawbridge2023" class="csl-entry" role="listitem">
 Strawbridge, T. (2023年). The relationship between social network typology, <span>L2</span> proficiency growth, and curriculum design in university study abroad. <em>Studies in Second Language Acquisition</em>, <em>45</em>(4), 866–890. <a href="https://doi.org/10.1017/S0272263123000096">https://doi.org/10.1017/S0272263123000096</a>

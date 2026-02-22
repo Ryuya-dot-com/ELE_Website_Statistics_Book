@@ -479,6 +479,7 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#他章との接続" id="toc-他章との接続" class="nav-link" data-scroll-target="#他章との接続"><span class="header-section-number">6.14.1</span> 他章との接続</a></li>
   </ul></li>
+  <li><a href="#参考文献" id="toc-参考文献" class="nav-link" data-scroll-target="#参考文献"><span class="header-section-number">6.15</span> 参考文献</a></li>
   </ul>
 </nav>
     </div>
@@ -541,7 +542,7 @@ window.Quarto = {
 <div class="callout-body-container callout-body">
 <ul>
 <li>本章は、<strong><code>lm</code> による回帰モデレーションの基礎訓練</strong>です。</li>
-<li>反復測定や項目レベルの 0/1 応答を主対象にする場合は、GLMM を優先します <span class="citation" data-cites="jaeger2008 barr2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-barr2013" role="doc-biblioref">Barr ほか, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-jaeger2008" role="doc-biblioref">Jaeger, 2008</a>)</span>。</li>
+<li>反復測定や項目レベルの 0/1 応答を主対象にする場合は、GLMM を優先します <span class="citation" data-cites="jaeger2008 barr2013">(<a href="Rの基本的な使い方.html#ref-barr2013" role="doc-biblioref">Barr et al., 2013</a>; <a href="Rの基本的な使い方.html#ref-jaeger2008" role="doc-biblioref">Jaeger, 2008</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -583,19 +584,19 @@ window.Quarto = {
 <p>本章は、SLA理論の紹介よりも<strong>重回帰分析の実装手順</strong>に焦点を置きます。<br>
 とくに次のチュートリアル文献を実務ガイドとして参照します。</p>
 <ul>
-<li>交互作用の下位検定（simple slope / Johnson–Neyman）: Bauer &amp; Curran (2005) <span class="citation" data-cites="bauer2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>)</span></li>
-<li>実装支援（計算・可視化の運用）: Preacher et al.&nbsp;(2006) <span class="citation" data-cites="preacher2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-preacher2006" role="doc-biblioref">Preacher ほか, 2006</a>)</span></li>
-<li>多カテゴリ変数を含む交互作用の扱い: Hayes &amp; Montoya (2017) <span class="citation" data-cites="hayesmontoya2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span></li>
-<li>モデレーション研究の検出力設計: Brown &amp; Abulela (2025) <span class="citation" data-cites="brownabulela2025">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span></li>
+<li>交互作用の下位検定（simple slope / Johnson–Neyman）: Bauer &amp; Curran (2005) <span class="citation" data-cites="bauer2005">(<a href="Rの基本的な使い方.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>)</span></li>
+<li>実装支援（計算・可視化の運用）: Preacher et al.&nbsp;(2006) <span class="citation" data-cites="preacher2006">(<a href="Rの基本的な使い方.html#ref-preacher2006" role="doc-biblioref">Preacher et al., 2006</a>)</span></li>
+<li>多カテゴリ変数を含む交互作用の扱い: Hayes &amp; Montoya (2017) <span class="citation" data-cites="hayesmontoya2017">(<a href="Rの基本的な使い方.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span></li>
+<li>モデレーション研究の検出力設計: Brown &amp; Abulela (2025) <span class="citation" data-cites="brownabulela2025">(<a href="Rの基本的な使い方.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span></li>
 </ul>
 <section id="チュートリアル論文の具体例本章との対応" class="level3" data-number="6.2.1">
 <h3 data-number="6.2.1" class="anchored" data-anchor-id="チュートリアル論文の具体例本章との対応"><span class="header-section-number">6.2.1</span> チュートリアル論文の具体例（本章との対応）</h3>
 <ul>
-<li><strong>Bauer &amp; Curran (2005)</strong>: simple slope だけでなく Johnson-Neyman（J-N）法を使って「有意となるモデレータ範囲」を示す。 本章の <code>emtrends()</code> と J-N 節はこの流れに対応 <span class="citation" data-cites="bauer2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>)</span>。</li>
-<li><strong>Preacher et al.&nbsp;(2006)</strong>: 交互作用のプロービングを計算ツールで実装する実務手順を提示。 本章の「式だけで終わらず、条件付き効果を計算して報告する」方針に直結 <span class="citation" data-cites="preacher2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-preacher2006" role="doc-biblioref">Preacher ほか, 2006</a>)</span>。</li>
-<li><strong>Hayes &amp; Montoya (2017)</strong>: 3群以上のカテゴリ変数が絡む回帰交互作用で、符号化と条件付き効果比較をどう行うかを整理。 本章では2水準を扱うが、拡張時の設計はこの枠組みに接続 <span class="citation" data-cites="hayesmontoya2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span>。</li>
-<li><strong>Baranger et al.&nbsp;(2023)</strong>: 交互作用検出力の具体例として、相関を入力した解析的/シミュレーションベースの power 分析を提示 （例: <code>r.x1.y</code>, <code>r.x2.y</code>, <code>r.x1.x2</code>, <code>r.x1x2.y</code>）<span class="citation" data-cites="baranger2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-baranger2023" role="doc-biblioref">Baranger ほか, 2023</a>)</span>。</li>
-<li><strong>Brown &amp; Abulela (2025)</strong>: MMR の power を段階的に組み立てるチュートリアル。 「小さな交互作用」「信頼性」「抑制/増幅」を見込んだ設計を、Rコード付きで示す <span class="citation" data-cites="brownabulela2025">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span>。</li>
+<li><strong>Bauer &amp; Curran (2005)</strong>: simple slope だけでなく Johnson-Neyman（J-N）法を使って「有意となるモデレータ範囲」を示す。 本章の <code>emtrends()</code> と J-N 節はこの流れに対応 <span class="citation" data-cites="bauer2005">(<a href="Rの基本的な使い方.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>)</span>。</li>
+<li><strong>Preacher et al.&nbsp;(2006)</strong>: 交互作用のプロービングを計算ツールで実装する実務手順を提示。 本章の「式だけで終わらず、条件付き効果を計算して報告する」方針に直結 <span class="citation" data-cites="preacher2006">(<a href="Rの基本的な使い方.html#ref-preacher2006" role="doc-biblioref">Preacher et al., 2006</a>)</span>。</li>
+<li><strong>Hayes &amp; Montoya (2017)</strong>: 3群以上のカテゴリ変数が絡む回帰交互作用で、符号化と条件付き効果比較をどう行うかを整理。 本章では2水準を扱うが、拡張時の設計はこの枠組みに接続 <span class="citation" data-cites="hayesmontoya2017">(<a href="Rの基本的な使い方.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span>。</li>
+<li><strong>Baranger et al.&nbsp;(2023)</strong>: 交互作用検出力の具体例として、相関を入力した解析的/シミュレーションベースの power 分析を提示 （例: <code>r.x1.y</code>, <code>r.x2.y</code>, <code>r.x1.x2</code>, <code>r.x1x2.y</code>）<span class="citation" data-cites="baranger2023">(<a href="Rの基本的な使い方.html#ref-baranger2023" role="doc-biblioref">Baranger et al., 2023</a>)</span>。</li>
+<li><strong>Brown &amp; Abulela (2025)</strong>: MMR の power を段階的に組み立てるチュートリアル。 「小さな交互作用」「信頼性」「抑制/増幅」を見込んだ設計を、Rコード付きで示す <span class="citation" data-cites="brownabulela2025">(<a href="Rの基本的な使い方.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span>。</li>
 </ul>
 <p>本章後半に、以下の4テーマを<strong>コード付きレシピ</strong>としてまとめます。</p>
 <ul>
@@ -618,7 +619,7 @@ window.Quarto = {
 <li>交互作用が有意でも、<strong>simple slope と予測図を併記</strong>しない限り教育的含意は確定しない。</li>
 <li>係数の有意性だけでなく、<strong>効果量・信頼区間・教育的に意味のある差</strong>を同時に報告する。</li>
 <li>コントラストの設計行列や符号化の厳密な扱いは、第2章 （<code>2_ANOVAとカテゴリカル変数のコーディング.qmd</code>）で確認する。</li>
-<li>反復測定・項目効果が中心の設計は、第6章 （<code>6_混合効果モデル_2値ロジスティック回帰.qmd</code>）に接続する <span class="citation" data-cites="cunnings2012 brysbaert2018">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brysbaert2018" role="doc-biblioref">Brysbaert &amp; Stevens, 2018</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-cunnings2012" role="doc-biblioref">Cunnings, 2012</a>)</span>。</li>
+<li>反復測定・項目効果が中心の設計は、第6章 （<code>6_混合効果モデル_2値ロジスティック回帰.qmd</code>）に接続する <span class="citation" data-cites="cunnings2012 brysbaert2018">(<a href="Rの基本的な使い方.html#ref-brysbaert2018" role="doc-biblioref">Brysbaert &amp; Stevens, 2018</a>; <a href="Rの基本的な使い方.html#ref-cunnings2012" role="doc-biblioref">Cunnings, 2012</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -702,7 +703,7 @@ window.Quarto = {
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-1-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-1" role="tab" aria-controls="tabset-1-1" aria-selected="true" aria-current="page">z変換（連続変数）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-2" role="tab" aria-controls="tabset-1-2" aria-selected="false">コントラスト（カテゴリカル）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-1-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-1-3" role="tab" aria-controls="tabset-1-3" aria-selected="false">モデル式</a></li></ul>
 <div class="tab-content">
 <div id="tabset-1-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-1-1-tab">
-<p>z変換は、係数を「<strong>1 SD 増加あたりの変化量</strong>」として読めるようにし、 交互作用の解釈を安定化します<span class="citation" data-cites="aiken1991 cohen2003">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-aiken1991" role="doc-biblioref">Aiken &amp; West, 1991</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-cohen2003" role="doc-biblioref">Cohen ほか, 2003</a>)</span>。</p>
+<p>z変換は、係数を「<strong>1 SD 増加あたりの変化量</strong>」として読めるようにし、 交互作用の解釈を安定化します<span class="citation" data-cites="aiken1991 cohen2003">(<a href="Rの基本的な使い方.html#ref-aiken1991" role="doc-biblioref">Aiken &amp; West, 1991</a>; <a href="Rの基本的な使い方.html#ref-cohen2003" role="doc-biblioref">Cohen et al., 2003</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -1868,7 +1869,7 @@ m_step   |     0.445 | 2.268 | 2.290</code></pre>
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><code>step()</code> は便利ですが、変数選択の不安定性や過学習を招く可能性があるため、 <strong>仮説検証の主軸には置かない</strong>のが安全です<span class="citation" data-cites="babyak2004 rstatsstep">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-babyak2004" role="doc-biblioref">Babyak, 2004</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-rstatsstep" role="doc-biblioref">R Core Team, 2026</a>)</span>。 AIC/BICやCVは「判断補助」として使い、最終モデルは理論根拠で固定します <span class="citation" data-cites="burnham2002">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-burnham2002" role="doc-biblioref">Burnham &amp; Anderson, 2002</a>)</span>。</p>
+<p><code>step()</code> は便利ですが、変数選択の不安定性や過学習を招く可能性があるため、 <strong>仮説検証の主軸には置かない</strong>のが安全です<span class="citation" data-cites="babyak2004 rstatsstep">(<a href="Rの基本的な使い方.html#ref-babyak2004" role="doc-biblioref">Babyak, 2004</a>; <a href="Rの基本的な使い方.html#ref-rstatsstep" role="doc-biblioref">R Core Team, 2026</a>)</span>。 AIC/BICやCVは「判断補助」として使い、最終モデルは理論根拠で固定します <span class="citation" data-cites="burnham2002">(<a href="Rの基本的な使い方.html#ref-burnham2002" role="doc-biblioref">Burnham &amp; Anderson, 2002</a>)</span>。</p>
 </div>
 </div>
 </section>
@@ -1911,7 +1912,7 @@ m_step   |     0.445 | 2.268 | 2.290</code></pre>
 </section>
 <section id="モデル前提の確認" class="level2" data-number="6.6">
 <h2 data-number="6.6" class="anchored" data-anchor-id="モデル前提の確認"><span class="header-section-number">6.6</span> モデル前提の確認</h2>
-<p><code>performance</code> パッケージの診断関数を使うと、回帰前提を系統的に確認できます <span class="citation" data-cites="performancepkg performance_checkmodel">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-performancepkg" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, Waggoner, ほか, 2026</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-performance_checkmodel" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026</a>)</span>。</p>
+<p><code>performance</code> パッケージの診断関数を使うと、回帰前提を系統的に確認できます <span class="citation" data-cites="performancepkg performance_checkmodel">(<a href="Rの基本的な使い方.html#ref-performancepkg" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, Waggoner, et al., 2026</a>; <a href="Rの基本的な使い方.html#ref-performance_checkmodel" role="doc-biblioref">Luedeke, Ben-Shachar, Patil, &amp; Makowski, 2026</a>)</span>。</p>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-2-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-1" role="tab" aria-controls="tabset-2-1" aria-selected="true">総合診断</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-2" role="tab" aria-controls="tabset-2-2" aria-selected="false">等分散性・正規性・独立性</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-3" role="tab" aria-controls="tabset-2-3" aria-selected="false">多重共線性</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-2-4-tab" data-bs-toggle="tab" data-bs-target="#tabset-2-4" role="tab" aria-controls="tabset-2-4" aria-selected="false">ロバスト標準誤差（HC3）</a></li></ul>
 <div class="tab-content">
@@ -2016,7 +2017,7 @@ Time1:Proficiency       0.277965   0.099568   2.7917  0.005456 **
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 </div>
-<p>等分散性に懸念がある場合、HC3 は実務的な頑健化として有効です <span class="citation" data-cites="mackinnon1985 longervin2000">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-longervin2000" role="doc-biblioref">J. S. Long &amp; Ervin, 2000</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mackinnon1985" role="doc-biblioref">MacKinnon &amp; White, 1985</a>)</span>。</p>
+<p>等分散性に懸念がある場合、HC3 は実務的な頑健化として有効です <span class="citation" data-cites="mackinnon1985 longervin2000">(<a href="Rの基本的な使い方.html#ref-longervin2000" role="doc-biblioref">J. S. Long &amp; Ervin, 2000</a>; <a href="Rの基本的な使い方.html#ref-mackinnon1985" role="doc-biblioref">MacKinnon &amp; White, 1985</a>)</span>。</p>
 </div>
 </div>
 </div>
@@ -2702,7 +2703,7 @@ Time [1] × Proficiency      |       0.09 | [ 0.02,  0.16]</code></pre>
 <li><strong>Simple slope（傾き）</strong>: <code>emtrends()</code></li>
 <li><strong>条件付き平均差</strong>: <code>ref_grid()</code> + <code>emmeans()</code></li>
 </ul>
-<p>この切り分けは <code>emmeans</code> の公式ドキュメントで明確に整理されています <span class="citation" data-cites="emmeansemtrends emmeansbasics emmeanspkg">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-emmeansemtrends" role="doc-biblioref">Lenth, 2026c</a>, <a href="5_一般化線形モデル_一般化加法モデル.html#ref-emmeansbasics" role="doc-biblioref">2026a</a>, <a href="5_一般化線形モデル_一般化加法モデル.html#ref-emmeanspkg" role="doc-biblioref">2026b</a>)</span>。</p>
+<p>この切り分けは <code>emmeans</code> の公式ドキュメントで明確に整理されています <span class="citation" data-cites="emmeansemtrends emmeansbasics emmeanspkg">(<a href="Rの基本的な使い方.html#ref-emmeansemtrends" role="doc-biblioref">Lenth, 2026c</a>, <a href="Rの基本的な使い方.html#ref-emmeansbasics" role="doc-biblioref">2026a</a>, <a href="Rの基本的な使い方.html#ref-emmeanspkg" role="doc-biblioref">2026b</a>)</span>。</p>
 <div class="tabset-margin-container"></div><div class="panel-tabset">
 <ul class="nav nav-tabs" role="tablist"><li class="nav-item" role="presentation"><a class="nav-link active" id="tabset-3-1-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-1" role="tab" aria-controls="tabset-3-1" aria-selected="true">1) Proficiency の simple slope（Treatment × Time 別）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-2-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-2" role="tab" aria-controls="tabset-3-2" aria-selected="false">2) Proficiency 水準ごとの群差（-1SD, 平均, +1SD）</a></li><li class="nav-item" role="presentation"><a class="nav-link" id="tabset-3-3-tab" data-bs-toggle="tab" data-bs-target="#tabset-3-3" role="tab" aria-controls="tabset-3-3" aria-selected="false">3) 図示（条件付き平均）</a></li></ul>
 <div class="tab-content">
@@ -2810,7 +2811,7 @@ Results are averaged over the levels of: Time </code></pre>
 </div>
 <section id="参考-johnson-neyman-法" class="level3" data-number="6.8.1">
 <h3 data-number="6.8.1" class="anchored" data-anchor-id="参考-johnson-neyman-法"><span class="header-section-number">6.8.1</span> 参考: Johnson-Neyman 法</h3>
-<p>Johnson-Neyman 法は、<strong>連続 × 連続</strong>の交互作用で「有意領域」を連続的に示す手法です <span class="citation" data-cites="bauer2005 interactionspkg">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-interactionspkg" role="doc-biblioref">J. A. Long, 2026</a>)</span>。</p>
+<p>Johnson-Neyman 法は、<strong>連続 × 連続</strong>の交互作用で「有意領域」を連続的に示す手法です <span class="citation" data-cites="bauer2005 interactionspkg">(<a href="Rの基本的な使い方.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>; <a href="Rの基本的な使い方.html#ref-interactionspkg" role="doc-biblioref">J. A. Long, 2026</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -2937,7 +2938,7 @@ Note: The range of observed values of Aptitude is [-2.16, 2.44]</code></pre>
 </section>
 <section id="preacher-条件付き効果の計算手順" class="level3" data-number="6.9.2">
 <h3 data-number="6.9.2" class="anchored" data-anchor-id="preacher-条件付き効果の計算手順"><span class="header-section-number">6.9.2</span> 2. Preacher: 条件付き効果の計算手順</h3>
-<p>Preacher et al.&nbsp;(2006) の流れに合わせ、条件付き効果を係数と分散共分散行列から計算します <span class="citation" data-cites="preacher2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-preacher2006" role="doc-biblioref">Preacher ほか, 2006</a>)</span>。</p>
+<p>Preacher et al.&nbsp;(2006) の流れに合わせ、条件付き効果を係数と分散共分散行列から計算します <span class="citation" data-cites="preacher2006">(<a href="Rの基本的な使い方.html#ref-preacher2006" role="doc-biblioref">Preacher et al., 2006</a>)</span>。</p>
 <p><span class="math display">\[
 \hat{\\tau}(z)=\hat{\\beta}_{T}+z\hat{\\beta}_{T\\times Z},\quad
 SE\\{\\hat{\\tau}(z)\\}=\\sqrt{Var(\\hat{\\beta}_{T})+z^2Var(\\hat{\\beta}_{T\\times Z})+2zCov(\\hat{\\beta}_{T},\\hat{\\beta}_{T\\times Z})}
@@ -3037,7 +3038,7 @@ Results are averaged over the levels of: Time </code></pre>
 </section>
 <section id="hayesmontoya-多カテゴリ交互作用のr実装" class="level3" data-number="6.9.3">
 <h3 data-number="6.9.3" class="anchored" data-anchor-id="hayesmontoya-多カテゴリ交互作用のr実装"><span class="header-section-number">6.9.3</span> 3. Hayes/Montoya: 多カテゴリ交互作用のR実装</h3>
-<p>Hayes &amp; Montoya (2017) の要点は、3水準以上のカテゴリ変数でも 「条件付き効果 + 多重比較」を系統的に示すことです<span class="citation" data-cites="hayesmontoya2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span>。</p>
+<p>Hayes &amp; Montoya (2017) の要点は、3水準以上のカテゴリ変数でも 「条件付き効果 + 多重比較」を系統的に示すことです<span class="citation" data-cites="hayesmontoya2017">(<a href="Rの基本的な使い方.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -3679,8 +3680,8 @@ P value adjustment: holm method for 3 tests </code></pre>
 <h4 class="anchored" data-anchor-id="手順a-論文値で解析的-power-曲線を作るpower_interaction_r2">手順A: 論文値で解析的 power 曲線を作る（<code>power_interaction_r2</code>）</h4>
 <p>以下は、チュートリアル論文で示される代表値を用いた設計例です。</p>
 <ul>
-<li><strong>Baranger et al.&nbsp;(2023)</strong> の例: <code>r.x1.y=.51, r.x2.y=.22, r.x1.x2=.09</code> を固定し、 <code>r.x1x2.y=.09</code>（比較的大きい交互作用）と <code>r.x1x2.y=.045</code>（小さい交互作用）を比較 <span class="citation" data-cites="baranger2023">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-baranger2023" role="doc-biblioref">Baranger ほか, 2023</a>)</span>。</li>
-<li><strong>Brown &amp; Abulela (2025)</strong> の例: <code>r.x1.y=-.18, r.x2.y=-.03, r.x1.x2=.64, r.x1x2.y=.10</code> を使い、 信頼性 <code>rel.x1=.89, rel.x2=.95, rel.y=.79</code> を反映した場合と、 完全信頼性（1.0）を比較 <span class="citation" data-cites="brownabulela2025">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span>。</li>
+<li><strong>Baranger et al.&nbsp;(2023)</strong> の例: <code>r.x1.y=.51, r.x2.y=.22, r.x1.x2=.09</code> を固定し、 <code>r.x1x2.y=.09</code>（比較的大きい交互作用）と <code>r.x1x2.y=.045</code>（小さい交互作用）を比較 <span class="citation" data-cites="baranger2023">(<a href="Rの基本的な使い方.html#ref-baranger2023" role="doc-biblioref">Baranger et al., 2023</a>)</span>。</li>
+<li><strong>Brown &amp; Abulela (2025)</strong> の例: <code>r.x1.y=-.18, r.x2.y=-.03, r.x1.x2=.64, r.x1x2.y=.10</code> を使い、 信頼性 <code>rel.x1=.89, rel.x2=.95, rel.y=.79</code> を反映した場合と、 完全信頼性（1.0）を比較 <span class="citation" data-cites="brownabulela2025">(<a href="Rの基本的な使い方.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span>。</li>
 </ul>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3928,7 +3929,7 @@ P value adjustment: holm method for 3 tests </code></pre>
 <ol type="1">
 <li><strong>統計的記述</strong>: 「<code>Treatment × Proficiency</code> は有意であった（β = …, 95% CI […, …]）。」</li>
 <li><strong>条件付き解釈</strong>: 「simple slope では、<code>Proficiency = +1SD</code> で Writing 優位が確認された。」</li>
-<li><strong>理論的含意</strong>: 「このパターンは、学習者要因が処置効果を調整する ATI の見立てと整合的である <span class="citation" data-cites="li2015">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-li2015" role="doc-biblioref">Li, 2015</a>)</span>。」</li>
+<li><strong>理論的含意</strong>: 「このパターンは、学習者要因が処置効果を調整する ATI の見立てと整合的である <span class="citation" data-cites="li2015">(<a href="Rの基本的な使い方.html#ref-li2015" role="doc-biblioref">Li, 2015</a>)</span>。」</li>
 </ol>
 <p>補足として、コントラスト設計に踏み込んだ厳密解釈は第2章で扱います （本章では運用上の最小要件に絞ります）。</p>
 </section>
@@ -3937,7 +3938,7 @@ P value adjustment: holm method for 3 tests </code></pre>
 <h2 data-number="6.11" class="anchored" data-anchor-id="実データへ移すときの注意"><span class="header-section-number">6.11</span> 実データへ移すときの注意</h2>
 <ul>
 <li>参加者内反復測定や項目効果が強い場合、<code>lm</code> では独立性仮定が崩れます。</li>
-<li>語彙テストの項目正誤（0/1）を扱う場合、logit GLMM が原則です <span class="citation" data-cites="jaeger2008 barr2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-barr2013" role="doc-biblioref">Barr ほか, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-jaeger2008" role="doc-biblioref">Jaeger, 2008</a>)</span>。</li>
+<li>語彙テストの項目正誤（0/1）を扱う場合、logit GLMM が原則です <span class="citation" data-cites="jaeger2008 barr2013">(<a href="Rの基本的な使い方.html#ref-barr2013" role="doc-biblioref">Barr et al., 2013</a>; <a href="Rの基本的な使い方.html#ref-jaeger2008" role="doc-biblioref">Jaeger, 2008</a>)</span>。</li>
 <li>したがって本章は「交互作用解釈の基礎」と位置づけ、設計に応じて第6章へ接続してください。</li>
 </ul>
 </section>
@@ -3952,17 +3953,17 @@ P value adjustment: holm method for 3 tests </code></pre>
 <section id="参考ウェブ資料" class="level2" data-number="6.13">
 <h2 data-number="6.13" class="anchored" data-anchor-id="参考ウェブ資料"><span class="header-section-number">6.13</span> 参考ウェブ資料</h2>
 <ul>
-<li>UVA StatLab: <a href="https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis">Getting Started with Simple Slopes Analysis</a> <span class="citation" data-cites="uva_simpleslopes">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-uva_simpleslopes" role="doc-biblioref">UVA Library StatLab, 2026</a>)</span></li>
-<li>UCLA OARC: <a href="https://stats.oarc.ucla.edu/stata/faq/how-can-i-explain-a-continuous-by-continuous-interaction-stata-12/">Interaction effects in linear regression</a> <span class="citation" data-cites="ucla_interactions">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-ucla_interactions" role="doc-biblioref">UCLA Statistical Consulting Group, 2026</a>)</span></li>
+<li>UVA StatLab: <a href="https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis">Getting Started with Simple Slopes Analysis</a> <span class="citation" data-cites="uva_simpleslopes">(<a href="Rの基本的な使い方.html#ref-uva_simpleslopes" role="doc-biblioref">UVA Library StatLab, 2026</a>)</span></li>
+<li>UCLA OARC: <a href="https://stats.oarc.ucla.edu/stata/faq/how-can-i-explain-a-continuous-by-continuous-interaction-stata-12/">Interaction effects in linear regression</a> <span class="citation" data-cites="ucla_interactions">(<a href="Rの基本的な使い方.html#ref-ucla_interactions" role="doc-biblioref">UCLA Statistical Consulting Group, 2026</a>)</span></li>
 </ul>
 </section>
 <section id="さらに学習したい人へ重回帰交互作用チュートリアル" class="level2" data-number="6.14">
 <h2 data-number="6.14" class="anchored" data-anchor-id="さらに学習したい人へ重回帰交互作用チュートリアル"><span class="header-section-number">6.14</span> さらに学習したい人へ（重回帰・交互作用チュートリアル）</h2>
 <ul>
-<li>Bauer &amp; Curran (2005): simple slope と Johnson–Neyman の理論整理 <span class="citation" data-cites="bauer2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>)</span></li>
-<li>Preacher et al.&nbsp;(2006): 交互作用プロービングの計算支援 <span class="citation" data-cites="preacher2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-preacher2006" role="doc-biblioref">Preacher ほか, 2006</a>)</span></li>
-<li>Hayes &amp; Montoya (2017): 多カテゴリ変数を含む回帰交互作用の実装 <span class="citation" data-cites="hayesmontoya2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span></li>
-<li>Brown &amp; Abulela (2025): moderated multiple regression の検出力設計 <span class="citation" data-cites="brownabulela2025">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span></li>
+<li>Bauer &amp; Curran (2005): simple slope と Johnson–Neyman の理論整理 <span class="citation" data-cites="bauer2005">(<a href="Rの基本的な使い方.html#ref-bauer2005" role="doc-biblioref">Bauer &amp; Curran, 2005</a>)</span></li>
+<li>Preacher et al.&nbsp;(2006): 交互作用プロービングの計算支援 <span class="citation" data-cites="preacher2006">(<a href="Rの基本的な使い方.html#ref-preacher2006" role="doc-biblioref">Preacher et al., 2006</a>)</span></li>
+<li>Hayes &amp; Montoya (2017): 多カテゴリ変数を含む回帰交互作用の実装 <span class="citation" data-cites="hayesmontoya2017">(<a href="Rの基本的な使い方.html#ref-hayesmontoya2017" role="doc-biblioref">Hayes &amp; Montoya, 2017</a>)</span></li>
+<li>Brown &amp; Abulela (2025): moderated multiple regression の検出力設計 <span class="citation" data-cites="brownabulela2025">(<a href="Rの基本的な使い方.html#ref-brownabulela2025" role="doc-biblioref">Brown &amp; Abulela, 2025</a>)</span></li>
 </ul>
 <section id="他章との接続" class="level3" data-number="6.14.1">
 <h3 data-number="6.14.1" class="anchored" data-anchor-id="他章との接続"><span class="header-section-number">6.14.1</span> 他章との接続</h3>
@@ -3970,13 +3971,13 @@ P value adjustment: holm method for 3 tests </code></pre>
 <li>コントラスト・符号化（設計行列を含む）: 第2章 <code>2_ANOVAとカテゴリカル変数のコーディング.qmd</code></li>
 <li>反復測定/階層データでの拡張: 第6章 <code>6_混合効果モデル_2値ロジスティック回帰.qmd</code></li>
 </ul>
-
-
-<!-- -->
-
+</section>
+</section>
+<section id="参考文献" class="level2" data-number="6.15">
+<h2 data-number="6.15" class="anchored" data-anchor-id="参考文献"><span class="header-section-number">6.15</span> 参考文献</h2>
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list" style="display: none">
 <div id="ref-aiken1991" class="csl-entry" role="listitem">
-Aiken, L. S., &amp; West, S. G. (1991年). <em>Multiple Regression: Testing and Interpreting Interactions</em>. SAGE.
+Aiken, L. S., &amp; West, S. G. (1991年). <em>Multiple Regression: Testing and Interpreting Interactions</em>. SAGE. <a href="https://doi.org/10.4135/9781412986014">https://doi.org/10.4135/9781412986014</a>
 </div>
 <div id="ref-babyak2004" class="csl-entry" role="listitem">
 Babyak, M. A. (2004年). What You See May Not Be What You Get: A Brief, Nontechnical Introduction to Overfitting in Regression-Type Models. <em>Psychosomatic Medicine</em>, <em>66</em>(3), 411–421. <a href="https://doi.org/10.1097/01.psy.0000127692.23278.a9">https://doi.org/10.1097/01.psy.0000127692.23278.a9</a>
@@ -3997,10 +3998,10 @@ Brown, E. C., &amp; Abulela, M. A. A. (2025年). Power Analysis for Moderated Mu
 Brysbaert, M., &amp; Stevens, M. (2018年). Power Analysis and Effect Size in Mixed Effects Models: A Tutorial. <em>Journal of Cognition</em>, <em>1</em>(1), 17. <a href="https://doi.org/10.5334/joc.10">https://doi.org/10.5334/joc.10</a>
 </div>
 <div id="ref-burnham2002" class="csl-entry" role="listitem">
-Burnham, K. P., &amp; Anderson, D. R. (2002年). <em>Model Selection and Multimodel Inference: A Practical Information-Theoretic Approach</em> (2nd 版). Springer.
+Burnham, K. P., &amp; Anderson, D. R. (2002年). <em>Model Selection and Multimodel Inference: A Practical Information-Theoretic Approach</em> (2nd 版). Springer. <a href="https://doi.org/10.1007/b97636">https://doi.org/10.1007/b97636</a>
 </div>
 <div id="ref-cohen2003" class="csl-entry" role="listitem">
-Cohen, J., Cohen, P., West, S. G., &amp; Aiken, L. S. (2003年). <em>Applied Multiple Regression/Correlation Analysis for the Behavioral Sciences</em> (3rd 版). Routledge.
+Cohen, J., Cohen, P., West, S. G., &amp; Aiken, L. S. (2003年). <em>Applied Multiple Regression/Correlation Analysis for the Behavioral Sciences</em> (3rd 版). Routledge. <a href="https://doi.org/10.4324/9780203774441">https://doi.org/10.4324/9780203774441</a>
 </div>
 <div id="ref-cunnings2012" class="csl-entry" role="listitem">
 Cunnings, I. (2012年). An Overview of Mixed-Effects Statistical Models for Second Language Researchers. <em>Second Language Research</em>, <em>28</em>(3), 369–382. <a href="https://doi.org/10.1177/0267658311415718">https://doi.org/10.1177/0267658311415718</a>
@@ -4051,7 +4052,10 @@ UCLA Statistical Consulting Group. (2026年). <em>How Can I Explain a Continuous
 UVA Library StatLab. (2026年). <em>Getting Started with Simple Slopes Analysis</em>. <a href="https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis">https://library.virginia.edu/data/articles/getting-started-with-simple-slopes-analysis</a>
 </div>
 </div>
-</section>
+
+
+<!-- -->
+
 </section>
 
 </main> <!-- /main -->
@@ -5345,6 +5349,11 @@ UVA Library StatLab. (2026年). <em>Getting Started with Simple Slopes Analysis<
 <span id="cb62-886"><a href="#cb62-886" aria-hidden="true" tabindex="-1"></a>  <span class="in">`2_ANOVAとカテゴリカル変数のコーディング.qmd`</span></span>
 <span id="cb62-887"><a href="#cb62-887" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>反復測定/階層データでの拡張: 第6章</span>
 <span id="cb62-888"><a href="#cb62-888" aria-hidden="true" tabindex="-1"></a>  <span class="in">`6_混合効果モデル_2値ロジスティック回帰.qmd`</span></span>
+<span id="cb62-889"><a href="#cb62-889" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-890"><a href="#cb62-890" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参考文献</span></span>
+<span id="cb62-891"><a href="#cb62-891" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-892"><a href="#cb62-892" aria-hidden="true" tabindex="-1"></a>::: {#refs}</span>
+<span id="cb62-893"><a href="#cb62-893" aria-hidden="true" tabindex="-1"></a>:::</span>
 </code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->

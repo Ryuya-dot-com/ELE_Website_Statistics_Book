@@ -487,6 +487,7 @@ window.Quarto = {
   <li><a href="#結果記述テンプレート論文の結果節向け" id="toc-結果記述テンプレート論文の結果節向け" class="nav-link" data-scroll-target="#結果記述テンプレート論文の結果節向け"><span class="header-section-number">5.14</span> 結果記述テンプレート（論文の結果節向け）</a></li>
   <li><a href="#まとめ" id="toc-まとめ" class="nav-link" data-scroll-target="#まとめ"><span class="header-section-number">5.15</span> まとめ</a></li>
   <li><a href="#参考webリソース再学習用" id="toc-参考webリソース再学習用" class="nav-link" data-scroll-target="#参考webリソース再学習用"><span class="header-section-number">5.16</span> 参考Webリソース（再学習用）</a></li>
+  <li><a href="#参考文献" id="toc-参考文献" class="nav-link" data-scroll-target="#参考文献"><span class="header-section-number">5.17</span> 参考文献</a></li>
   </ul>
 </nav>
     </div>
@@ -576,8 +577,8 @@ window.Quarto = {
 <h3 data-number="5.2.1" class="anchored" data-anchor-id="なぜ個別anovaの繰り返しではだめなのか"><span class="header-section-number">5.2.1</span> なぜ個別ANOVAの繰り返しではだめなのか</h3>
 <p>従属変数が複数ある場合、「DVごとにANOVAを繰り返す」アプローチをとりたくなるかもしれません。しかし、このアプローチには2つの根本的な問題があります。</p>
 <ol type="1">
-<li><p><strong>Type Iエラーの膨張</strong>: DV が <span class="math inline">\(p\)</span> 個あれば、各 <span class="math inline">\(\alpha = .05\)</span> で検定を繰り返すと、族全体での偽陽性率は <span class="math inline">\(1 - (1 - .05)^p\)</span> に膨張します。<span class="math inline">\(p = 2\)</span> でも 9.75%、<span class="math inline">\(p = 5\)</span> なら 22.6% に達します。Smith et al. <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は英才教育研究の56本を体系的にレビューし、ほぼすべての論文がMANOVA後に単変量ANOVAのみで追跡しており、Type Iエラー率が最大76%に達しうるケースがあったと報告しています。</p></li>
-<li><p><strong>DV間の相関構造の無視</strong>: 個別ANOVAは各DVを独立に扱うため、DV間の共変動パターンに埋め込まれた群差を検出できません。MANOVAが有意でも、すべてのANOVAが非有意になるケースは珍しくありません。Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> はMANOVAの58本の実証論文をレビューし、「MANOVAを実施しながらも追跡分析で多変量構造を適切に考慮した論文はほとんどない」と指摘しています。</p></li>
+<li><p><strong>Type Iエラーの膨張</strong>: DV が <span class="math inline">\(p\)</span> 個あれば、各 <span class="math inline">\(\alpha = .05\)</span> で検定を繰り返すと、族全体での偽陽性率は <span class="math inline">\(1 - (1 - .05)^p\)</span> に膨張します。<span class="math inline">\(p = 2\)</span> でも 9.75%、<span class="math inline">\(p = 5\)</span> なら 22.6% に達します。Smith et al. <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は英才教育研究の56本を体系的にレビューし、ほぼすべての論文がMANOVA後に単変量ANOVAのみで追跡しており、Type Iエラー率が最大76%に達しうるケースがあったと報告しています。</p></li>
+<li><p><strong>DV間の相関構造の無視</strong>: 個別ANOVAは各DVを独立に扱うため、DV間の共変動パターンに埋め込まれた群差を検出できません。MANOVAが有意でも、すべてのANOVAが非有意になるケースは珍しくありません。Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> はMANOVAの58本の実証論文をレビューし、「MANOVAを実施しながらも追跡分析で多変量構造を適切に考慮した論文はほとんどない」と指摘しています。</p></li>
 </ol>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -589,7 +590,7 @@ window.Quarto = {
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>MANOVAは単にANOVAを同時に実行するものではありません。MANOVAは<strong>DV間の共分散構造を考慮した上で群差を検定</strong>します。これは、H行列（群間変動）とE行列（群内変動）の相対的な大きさを多変量的に評価するものであり、個別ANOVAにはこの情報がありません <span class="citation" data-cites="warne2014 huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span>。Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> は、MANOVAの本質を「DVの最適な重み付け線形結合に対する検定」と定義しており、これは個別ANOVAでは原理的にアクセスできない情報です。</p>
+<p>MANOVAは単にANOVAを同時に実行するものではありません。MANOVAは<strong>DV間の共分散構造を考慮した上で群差を検定</strong>します。これは、H行列（群間変動）とE行列（群内変動）の相対的な大きさを多変量的に評価するものであり、個別ANOVAにはこの情報がありません <span class="citation" data-cites="warne2014 huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span>。Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> は、MANOVAの本質を「DVの最適な重み付け線形結合に対する検定」と定義しており、これは個別ANOVAでは原理的にアクセスできない情報です。</p>
 </div>
 </div>
 <p>では、MANOVAが常に最善かというと、DV間の相関の程度によって判断が変わります。</p>
@@ -632,11 +633,11 @@ window.Quarto = {
 <p><span class="math display">\[
 \mathbf{Y} = \mathbf{X}\mathbf{B} + \mathbf{E}
 \]</span></p>
-<p>と書けます。ここで、<span class="math inline">\(\mathbf{Y}\)</span> は <span class="math inline">\(n \times p\)</span> の従属変数行列（<span class="math inline">\(p\)</span> 個のDVを列に持つ）、<span class="math inline">\(\mathbf{X}\)</span> は計画行列、<span class="math inline">\(\mathbf{B}\)</span> は係数行列、<span class="math inline">\(\mathbf{E}\)</span> は誤差行列です。つまり「回帰式を同時に推定し、<strong>誤差の共分散構造も含めて</strong>効果を検定する」という理解が、回帰既習者には最も自然です <span class="citation" data-cites="warne2014 huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span>。</p>
+<p>と書けます。ここで、<span class="math inline">\(\mathbf{Y}\)</span> は <span class="math inline">\(n \times p\)</span> の従属変数行列（<span class="math inline">\(p\)</span> 個のDVを列に持つ）、<span class="math inline">\(\mathbf{X}\)</span> は計画行列、<span class="math inline">\(\mathbf{B}\)</span> は係数行列、<span class="math inline">\(\mathbf{E}\)</span> は誤差行列です。つまり「回帰式を同時に推定し、<strong>誤差の共分散構造も含めて</strong>効果を検定する」という理解が、回帰既習者には最も自然です <span class="citation" data-cites="warne2014 huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span>。</p>
 </section>
 <section id="h行列とe行列-manovaの核心" class="level3" data-number="5.2.3">
 <h3 data-number="5.2.3" class="anchored" data-anchor-id="h行列とe行列-manovaの核心"><span class="header-section-number">5.2.3</span> H行列とE行列: MANOVAの核心</h3>
-<p>MANOVAを理解する鍵は、<strong>H行列</strong>（Hypothesis SSCP）と<strong>E行列</strong>（Error SSCP）の関係です <span class="citation" data-cites="huberty2006 psu505_lesson08">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>)</span>。これは、単変量ANOVAにおける群間平方和（<span class="math inline">\(SS_B\)</span>）と群内平方和（<span class="math inline">\(SS_W\)</span>）の多変量版です。Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> はMANOVAの理解において「H行列とE行列の比が全統計量の基盤であることを把握することが最も重要」と述べています。</p>
+<p>MANOVAを理解する鍵は、<strong>H行列</strong>（Hypothesis SSCP）と<strong>E行列</strong>（Error SSCP）の関係です <span class="citation" data-cites="huberty2006 psu505_lesson08">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="Rの基本的な使い方.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>)</span>。これは、単変量ANOVAにおける群間平方和（<span class="math inline">\(SS_B\)</span>）と群内平方和（<span class="math inline">\(SS_W\)</span>）の多変量版です。Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> はMANOVAの理解において「H行列とE行列の比が全統計量の基盤であることを把握することが最も重要」と述べています。</p>
 <table class="table-striped caption-top table">
 <caption>ANOVAとMANOVAの対応関係</caption>
 <colgroup>
@@ -691,9 +692,9 @@ window.Quarto = {
 </section>
 <section id="つの検定統計量の比較" class="level3" data-number="5.2.4">
 <h3 data-number="5.2.4" class="anchored" data-anchor-id="つの検定統計量の比較"><span class="header-section-number">5.2.4</span> 4つの検定統計量の比較</h3>
-<p>4つの検定統計量はいずれもH行列とE行列の関係を要約しますが、要約の仕方が異なります <span class="citation" data-cites="olson1974 r_summary_manova psu505_lesson08">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span>。</p>
+<p>4つの検定統計量はいずれもH行列とE行列の関係を要約しますが、要約の仕方が異なります <span class="citation" data-cites="olson1974 r_summary_manova psu505_lesson08">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>; <a href="Rの基本的な使い方.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>; <a href="Rの基本的な使い方.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span>。</p>
 <table class="table-striped caption-top table">
-<caption>4つのMANOVA検定統計量の比較 <span class="citation" data-cites="olson1974 psu505_lesson08">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>)</span></caption>
+<caption>4つのMANOVA検定統計量の比較 <span class="citation" data-cites="olson1974 psu505_lesson08">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>; <a href="Rの基本的な使い方.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>)</span></caption>
 <colgroup>
 <col style="width: 18%">
 <col style="width: 18%">
@@ -741,14 +742,14 @@ window.Quarto = {
 </tr>
 </tbody>
 </table>
-<p>Olson <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> は6つの多変量検定統計量をモンテカルロ・シミュレーションで比較し、以下の実務的な結論を導いています。</p>
+<p>Olson <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> は6つの多変量検定統計量をモンテカルロ・シミュレーションで比較し、以下の実務的な結論を導いています。</p>
 <ul>
 <li><strong>正規性違反のみ</strong>の場合: すべての統計量が比較的頑健であり、結果は大きく変わらない。</li>
 <li><strong>共分散行列の不等質性（等共分散の違反）</strong>: Pillai のトレースが最も頑健。Wilks や Hotelling-Lawley は保守的になりすぎるか自由主義的になるリスクがある。</li>
 <li><strong>不等質性 + サンプルサイズの不均衡</strong>: 最も実務的に危険な条件。このとき、Pillai のみが名義 <span class="math inline">\(\alpha\)</span> 水準を比較的よく維持する。</li>
 <li><strong>Roy の最大根</strong>: F近似が上界に過ぎないため、すべての条件で最も Type I エラー率が高く、群数が多い場合やDV数が多い場合に特に問題が大きい。</li>
 </ul>
-<p>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson08">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson08" role="doc-biblioref">2026b</a>)</span> も同様に、実務でまず確認すべきはPillaiであると明記しています。R の <code>summary.manova()</code> のデフォルトがPillaiであるのもこの根拠に基づいています <span class="citation" data-cites="r_summary_manova">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span>。</p>
+<p>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson08">(<a href="Rの基本的な使い方.html#ref-psu505_lesson08" role="doc-biblioref">2026b</a>)</span> も同様に、実務でまず確認すべきはPillaiであると明記しています。R の <code>summary.manova()</code> のデフォルトがPillaiであるのもこの根拠に基づいています <span class="citation" data-cites="r_summary_manova">(<a href="Rの基本的な使い方.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span>。</p>
 <div class="callout callout-style-default callout-important callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -759,23 +760,23 @@ Roy’s Largest Root は実務では非推奨
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>Roy の最大根は最大の固有値のみに基づくため、多変量的な群差の全体像を反映しません。さらに、F近似が上界に過ぎないため、Type Iエラーが膨張しやすいことが知られています。Olson <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究では、正規性・等共分散の両方が違反し、かつ群サイズが不均衡な条件で、Roy のType Iエラー率が名義水準の2倍以上に達する場合があることが示されています。本章では <strong>Pillai を主報告</strong>とし、他の統計量は一貫性確認のために併記します。</p>
+<p>Roy の最大根は最大の固有値のみに基づくため、多変量的な群差の全体像を反映しません。さらに、F近似が上界に過ぎないため、Type Iエラーが膨張しやすいことが知られています。Olson <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究では、正規性・等共分散の両方が違反し、かつ群サイズが不均衡な条件で、Roy のType Iエラー率が名義水準の2倍以上に達する場合があることが示されています。本章では <strong>Pillai を主報告</strong>とし、他の統計量は一貫性確認のために併記します。</p>
 </div>
 </div>
 </section>
 <section id="manovaとdda判別分析の関係" class="level3" data-number="5.2.5">
 <h3 data-number="5.2.5" class="anchored" data-anchor-id="manovaとdda判別分析の関係"><span class="header-section-number">5.2.5</span> MANOVAとDDA（判別分析）の関係</h3>
-<p>MANOVAと判別分析は、同じ数学的構造の「表と裏」です <span class="citation" data-cites="finch2013 huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>)</span>。</p>
+<p>MANOVAと判別分析は、同じ数学的構造の「表と裏」です <span class="citation" data-cites="finch2013 huberty2006">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>)</span>。</p>
 <ul>
 <li><strong>MANOVA</strong>: 「群間に多変量的な差があるか？」を検定する（有意性の判定）</li>
 <li><strong>DDA（Descriptive Discriminant Analysis）</strong>: 「どのDVが、どの方向に群分離に寄与しているか？」を明らかにする（効果の解釈）</li>
 </ul>
-<p>両者はともに <span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有値分解に基づきますが、MANOVAは固有値の大きさを検定し、DDAは対応する固有ベクトル（＝判別関数の係数）を解釈します。このため、<strong>DDAはMANOVAの最も自然な追跡法</strong>であり、単変量ANOVAよりも理論的に一貫した追跡分析を提供します <span class="citation" data-cites="smith2020 sherry2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">Sherry &amp; Henson, 2005</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">Smith ほか, 2020</a>)</span>。</p>
+<p>両者はともに <span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有値分解に基づきますが、MANOVAは固有値の大きさを検定し、DDAは対応する固有ベクトル（＝判別関数の係数）を解釈します。このため、<strong>DDAはMANOVAの最も自然な追跡法</strong>であり、単変量ANOVAよりも理論的に一貫した追跡分析を提供します <span class="citation" data-cites="smith2020 sherry2005">(<a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">Sherry &amp; Henson, 2005</a>; <a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">Smith et al., 2020</a>)</span>。</p>
 <p>にもかかわらず、実証研究の実態はDDAの使用率が極めて低いことを示しています。</p>
 <ul>
-<li><strong>Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span></strong> はMANOVAを用いた58本の実証論文をレビューし、DDAを追跡法として適切に使用した論文は<strong>1本もなかった</strong>と報告しています。ほぼすべてが単変量ANOVAのみで追跡しており、多変量構造の解釈が放棄されていました。</li>
-<li><strong>Smith et al. <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span></strong> は英才教育研究の56本をレビューし、同様の傾向を確認しています。さらに、DDAを使用しないことでType Iエラーが深刻に膨張するリスクを定量的に示しました。</li>
-<li><strong>Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">2013</a>)</span></strong> は、DDAの判別関数がMANOVAの検定統計量と数学的に同一の情報源（<span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有値・固有ベクトル）に基づくことを示し、追跡法としての理論的一貫性を強調しています。</li>
+<li><strong>Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span></strong> はMANOVAを用いた58本の実証論文をレビューし、DDAを追跡法として適切に使用した論文は<strong>1本もなかった</strong>と報告しています。ほぼすべてが単変量ANOVAのみで追跡しており、多変量構造の解釈が放棄されていました。</li>
+<li><strong>Smith et al. <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span></strong> は英才教育研究の56本をレビューし、同様の傾向を確認しています。さらに、DDAを使用しないことでType Iエラーが深刻に膨張するリスクを定量的に示しました。</li>
+<li><strong>Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">2013</a>)</span></strong> は、DDAの判別関数がMANOVAの検定統計量と数学的に同一の情報源（<span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有値・固有ベクトル）に基づくことを示し、追跡法としての理論的一貫性を強調しています。</li>
 </ul>
 <p>本章では、これらのレビューの知見を踏まえ、<strong>DDAを主要追跡法として一貫して使用する</strong>方針を採ります。</p>
 <div class="callout callout-style-default callout-note callout-titled">
@@ -826,35 +827,35 @@ Roy’s Largest Root は実務では非推奨
 <p>本章は以下の文献を統合しています。</p>
 <p><strong>MANOVAの設計と解釈</strong></p>
 <ul>
-<li><strong>Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span></strong>: MANOVAの実証論文58本をレビュー。DDAを追跡に使った論文は0本。推奨手順は「(1) 前提確認 → (2) 多変量検定 → (3) 効果量 → (4) DDAによる追跡」の4段階。</li>
-<li><strong>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson08">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson08" role="doc-biblioref">2026b</a>)</span></strong>: 4統計量はH行列とE行列の比を異なる視点で要約するもの。フローは「前提確認→MANOVA→追跡」。各統計量の数式的導出も掲載。</li>
+<li><strong>Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span></strong>: MANOVAの実証論文58本をレビュー。DDAを追跡に使った論文は0本。推奨手順は「(1) 前提確認 → (2) 多変量検定 → (3) 効果量 → (4) DDAによる追跡」の4段階。</li>
+<li><strong>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson08">(<a href="Rの基本的な使い方.html#ref-psu505_lesson08" role="doc-biblioref">2026b</a>)</span></strong>: 4統計量はH行列とE行列の比を異なる視点で要約するもの。フローは「前提確認→MANOVA→追跡」。各統計量の数式的導出も掲載。</li>
 </ul>
 <p><strong>検定統計量の頑健性</strong></p>
 <ul>
-<li><strong>Olson <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">1974</a>)</span></strong>: モンテカルロ・シミュレーションで6統計量を比較。正規性違反・共分散不等質性・群サイズ不均衡の3条件を組み合わせた結果、Pillaiが最も名義 <span class="math inline">\(\alpha\)</span> 水準を維持。Royは全条件で最も脆弱。</li>
-<li><strong>R公式ドキュメント <span class="citation" data-cites="r_summary_manova">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-r_summary_manova" role="doc-biblioref">2026c</a>)</span></strong>: <code>summary.manova()</code> でPillaiがデフォルト。</li>
+<li><strong>Olson <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">1974</a>)</span></strong>: モンテカルロ・シミュレーションで6統計量を比較。正規性違反・共分散不等質性・群サイズ不均衡の3条件を組み合わせた結果、Pillaiが最も名義 <span class="math inline">\(\alpha\)</span> 水準を維持。Royは全条件で最も脆弱。</li>
+<li><strong>R公式ドキュメント <span class="citation" data-cites="r_summary_manova">(<a href="Rの基本的な使い方.html#ref-r_summary_manova" role="doc-biblioref">2026c</a>)</span></strong>: <code>summary.manova()</code> でPillaiがデフォルト。</li>
 </ul>
 <p><strong>前提チェック</strong></p>
 <ul>
-<li><strong>Korkmaz et al. <span class="citation" data-cites="korkmaz2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-korkmaz2014" role="doc-biblioref">2014</a>)</span></strong>: MVNパッケージ。HZ検定はアフィン変換不変で、次元数と標本サイズに依存しにくい。Mardia の歪度・尖度検定やRoyston検定も提供。</li>
-<li><strong>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span></strong>: Box’s M は過敏であるため <span class="math inline">\(p &lt; .001\)</span> を実務基準とする。DV間相関が .90 を超える場合は多重共線性を疑い、DV の統合を検討。</li>
+<li><strong>Korkmaz et al. <span class="citation" data-cites="korkmaz2014">(<a href="Rの基本的な使い方.html#ref-korkmaz2014" role="doc-biblioref">2014</a>)</span></strong>: MVNパッケージ。HZ検定はアフィン変換不変で、次元数と標本サイズに依存しにくい。Mardia の歪度・尖度検定やRoyston検定も提供。</li>
+<li><strong>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span></strong>: Box’s M は過敏であるため <span class="math inline">\(p &lt; .001\)</span> を実務基準とする。DV間相関が .90 を超える場合は多重共線性を疑い、DV の統合を検討。</li>
 </ul>
 <p><strong>判別分析（DDA）</strong></p>
 <ul>
-<li><strong>Smith et al. <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span></strong>: 英才教育研究56本をレビュー。ほぼ全論文が単変量ANOVAのみで追跡。Type Iエラー率は最大76%に達しうることをシミュレーションで示す。DDAの使用を強く推奨。</li>
-<li><strong>Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span></strong>: 構造係数の解釈基準（<span class="math inline">\(|r_s| \geq .30\)</span> で実質的寄与）。標準化係数は多重共線性に敏感であるため、構造係数を優先すべきことを具体例で示す。</li>
-<li><strong>Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">2013</a>)</span></strong>: DDAとMANOVAが数学的に同一の固有値分解に基づくことの厳密な証明。DVが5個以上の場合でもDDAが安定していることを示す。</li>
-<li><strong>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson10">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span></strong>: 7段階の判別分析手順を提示。(1) 前提確認 → (2) 判別関数推定 → (3) 有意性検定 → (4) 構造係数 → (5) 分類規則 → (6) LOOCV → (7) 結果の解釈。</li>
+<li><strong>Smith et al. <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span></strong>: 英才教育研究56本をレビュー。ほぼ全論文が単変量ANOVAのみで追跡。Type Iエラー率は最大76%に達しうることをシミュレーションで示す。DDAの使用を強く推奨。</li>
+<li><strong>Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span></strong>: 構造係数の解釈基準（<span class="math inline">\(|r_s| \geq .30\)</span> で実質的寄与）。標準化係数は多重共線性に敏感であるため、構造係数を優先すべきことを具体例で示す。</li>
+<li><strong>Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">2013</a>)</span></strong>: DDAとMANOVAが数学的に同一の固有値分解に基づくことの厳密な証明。DVが5個以上の場合でもDDAが安定していることを示す。</li>
+<li><strong>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson10">(<a href="Rの基本的な使い方.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span></strong>: 7段階の判別分析手順を提示。(1) 前提確認 → (2) 判別関数推定 → (3) 有意性検定 → (4) 構造係数 → (5) 分類規則 → (6) LOOCV → (7) 結果の解釈。</li>
 </ul>
 <p><strong>HEプロット</strong></p>
 <ul>
-<li><strong>Friendly <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span></strong>: H行列とE行列を楕円として可視化する方法論。H楕円がE楕円からはみ出す方向が、Roy の最大根の検定で有意な方向と対応するという幾何学的解釈を提供。</li>
+<li><strong>Friendly <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span></strong>: H行列とE行列を楕円として可視化する方法論。H楕円がE楕円からはみ出す方向が、Roy の最大根の検定で有意な方向と対応するという幾何学的解釈を提供。</li>
 </ul>
 <p><strong>教科書的参照</strong></p>
 <ul>
-<li><strong>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span></strong>: 各群のN &gt; DV数が最低条件。構造係数 <span class="math inline">\(|r_s| \geq .30\)</span> を実質的寄与の閾値とする。DV間相関の適正範囲は .30-.70。</li>
-<li><strong>Stevens <span class="citation" data-cites="stevens2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-stevens2009" role="doc-biblioref">2009</a>)</span></strong>: 社会科学向け。検定力の観点から、各群20名以上を推奨。効果量小（<span class="math inline">\(f = .10\)</span>）の検出には各群50名以上が必要。</li>
-<li><strong>Hahs-Vaughn <span class="citation" data-cites="hahs2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hahs2017" role="doc-biblioref">2017</a>)</span></strong>: MANOVA の前提条件を段階的に解説。初学者向けの判断フローチャートを提供。</li>
+<li><strong>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span></strong>: 各群のN &gt; DV数が最低条件。構造係数 <span class="math inline">\(|r_s| \geq .30\)</span> を実質的寄与の閾値とする。DV間相関の適正範囲は .30-.70。</li>
+<li><strong>Stevens <span class="citation" data-cites="stevens2009">(<a href="Rの基本的な使い方.html#ref-stevens2009" role="doc-biblioref">2009</a>)</span></strong>: 社会科学向け。検定力の観点から、各群20名以上を推奨。効果量小（<span class="math inline">\(f = .10\)</span>）の検出には各群50名以上が必要。</li>
+<li><strong>Hahs-Vaughn <span class="citation" data-cites="hahs2017">(<a href="Rの基本的な使い方.html#ref-hahs2017" role="doc-biblioref">2017</a>)</span></strong>: MANOVA の前提条件を段階的に解説。初学者向けの判断フローチャートを提供。</li>
 </ul>
 </div>
 </div>
@@ -2137,7 +2138,7 @@ Roy’s Largest Root は実務では非推奨
 </ul>
 <section id="dv間相関の確認" class="level3" data-number="5.5.1">
 <h3 data-number="5.5.1" class="anchored" data-anchor-id="dv間相関の確認"><span class="header-section-number">5.5.1</span> DV間相関の確認</h3>
-<p>MANOVAを実施する前に、DV間の相関が適切な範囲（.30-.70）にあるかを確認します。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は、DV間相関が .90 を超える場合は「深刻な多重共線性」と判断し、DVの統合または一方の除外を推奨しています。一方、相関が .30 未満の場合はDVがほぼ独立であるため、MANOVAの付加価値は小さく、個別ANOVAで十分な場合があります。</p>
+<p>MANOVAを実施する前に、DV間の相関が適切な範囲（.30-.70）にあるかを確認します。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は、DV間相関が .90 を超える場合は「深刻な多重共線性」と判断し、DVの統合または一方の除外を推奨しています。一方、相関が .30 未満の場合はDVがほぼ独立であるため、MANOVAの付加価値は小さく、個別ANOVAで十分な場合があります。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -2677,7 +2678,7 @@ Roy’s Largest Root は実務では非推奨
 <section id="多変量正規性群ごと" class="level3" data-number="5.6.2">
 <h3 data-number="5.6.2" class="anchored" data-anchor-id="多変量正規性群ごと"><span class="header-section-number">5.6.2</span> 多変量正規性（群ごと）</h3>
 <p>MANOVAで確認したいのは、<strong>各群における従属変数ベクトルの多変量正規性</strong>です。全体ではなく群ごとに検定することが重要です。なぜなら、MANOVAの仮定は「各群内の残差が多変量正規分布に従う」ことだからです。</p>
-<p>本章では Henze-Zirkler（HZ）検定を用います。HZ検定はアフィン変換に不変という望ましい性質を持ちます <span class="citation" data-cites="korkmaz2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-korkmaz2014" role="doc-biblioref">Korkmaz ほか, 2014</a>)</span>。</p>
+<p>本章では Henze-Zirkler（HZ）検定を用います。HZ検定はアフィン変換に不変という望ましい性質を持ちます <span class="citation" data-cites="korkmaz2014">(<a href="Rの基本的な使い方.html#ref-korkmaz2014" role="doc-biblioref">Korkmaz et al., 2014</a>)</span>。</p>
 <section id="hz検定をrで実施する最小コード" class="level4">
 <h4 class="anchored" data-anchor-id="hz検定をrで実施する最小コード">HZ検定をRで実施する最小コード</h4>
 <p>まずは、全データを一括で検定する最小コードです（動作確認用）。</p>
@@ -4877,7 +4878,7 @@ HZ検定の読み方（実務まとめ）
 <li><code>p &gt;= .05</code>: 「MVNを棄却しない」。通常どおりMANOVAへ進む。</li>
 <li><code>p &lt; .05</code>: 「逸脱の示唆」。即中止ではなく、外れ値確認・図示・Pillai中心報告で対応する。</li>
 <li>群ごとに判定し、どの群で逸脱が強いかを先に把握すると解釈が安定する。</li>
-<li>Pillai の Trace は MVN 逸脱に最も頑健な検定統計量である <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>)</span>。</li>
+<li>Pillai の Trace は MVN 逸脱に最も頑健な検定統計量である <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>)</span>。</li>
 </ul>
 </div>
 </div>
@@ -5482,9 +5483,9 @@ HZ検定の読み方（実務まとめ）
 </section>
 <section id="共分散行列の等質性boxs-m" class="level3" data-number="5.6.3">
 <h3 data-number="5.6.3" class="anchored" data-anchor-id="共分散行列の等質性boxs-m"><span class="header-section-number">5.6.3</span> 共分散行列の等質性（Box’s M）</h3>
-<p>Box’s M検定は「群間で共分散行列が等しい」という帰無仮説を検定します <span class="citation" data-cites="box1949">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-box1949" role="doc-biblioref">Box, 1949</a>)</span>。MANOVAの検定統計量（特にWilks’ <span class="math inline">\(\Lambda\)</span>）は等共分散を仮定するため、この前提の確認が必要です。</p>
-<p>ただし、Box’s M は標本サイズに対して過敏であり、大標本では実質的に無視できる程度の違いでも有意になることがあります。このため、Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> および Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> は、<span class="math inline">\(p &lt; .05\)</span> ではなく <strong><span class="math inline">\(p &lt; .001\)</span> を実務的な基準</strong>として採用することを推奨しています。</p>
-<p>さらに、Olson <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究は、等共分散の違反があっても<strong>群サイズが均衡していればPillaiのトレースは比較的頑健</strong>であることを示しています。最も危険なのは「共分散不等質 + 群サイズ不均衡」の組み合わせであり、この条件ではすべての検定統計量が影響を受けますが、Pillaiが最も安定しています。</p>
+<p>Box’s M検定は「群間で共分散行列が等しい」という帰無仮説を検定します <span class="citation" data-cites="box1949">(<a href="Rの基本的な使い方.html#ref-box1949" role="doc-biblioref">Box, 1949</a>)</span>。MANOVAの検定統計量（特にWilks’ <span class="math inline">\(\Lambda\)</span>）は等共分散を仮定するため、この前提の確認が必要です。</p>
+<p>ただし、Box’s M は標本サイズに対して過敏であり、大標本では実質的に無視できる程度の違いでも有意になることがあります。このため、Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> および Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> は、<span class="math inline">\(p &lt; .05\)</span> ではなく <strong><span class="math inline">\(p &lt; .001\)</span> を実務的な基準</strong>として採用することを推奨しています。</p>
+<p>さらに、Olson <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究は、等共分散の違反があっても<strong>群サイズが均衡していればPillaiのトレースは比較的頑健</strong>であることを示しています。最も危険なのは「共分散不等質 + 群サイズ不均衡」の組み合わせであり、この条件ではすべての検定統計量が影響を受けますが、Pillaiが最も安定しています。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -6534,7 +6535,7 @@ HZ検定の読み方（実務まとめ）
 <h2 data-number="5.7" class="anchored" data-anchor-id="manovaの実行"><span class="header-section-number">5.7</span> MANOVAの実行</h2>
 <section id="つの統計量を併記して確認" class="level3" data-number="5.7.1">
 <h3 data-number="5.7.1" class="anchored" data-anchor-id="つの統計量を併記して確認"><span class="header-section-number">5.7.1</span> 4つの統計量を併記して確認</h3>
-<p>ここでは、<code>manova()</code> 関数を用いて多変量分散分析を実行します。<code>cbind(Recall, Recognition)</code> で2つの従属変数を同時に指定し、Treatment と Time の主効果および交互作用を検定します。4つの検定統計量を併記しますが、<strong>Pillai のトレースを主報告</strong>とします <span class="citation" data-cites="olson1974 r_summary_manova">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span>。</p>
+<p>ここでは、<code>manova()</code> 関数を用いて多変量分散分析を実行します。<code>cbind(Recall, Recognition)</code> で2つの従属変数を同時に指定し、Treatment と Time の主効果および交互作用を検定します。4つの検定統計量を併記しますが、<strong>Pillai のトレースを主報告</strong>とします <span class="citation" data-cites="olson1974 r_summary_manova">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">Olson, 1974</a>; <a href="Rの基本的な使い方.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -7697,7 +7698,7 @@ HZ検定の読み方（実務まとめ）
 </section>
 <section id="多変量効果量pillai-のトレースに基づく-eta2" class="level3" data-number="5.7.3">
 <h3 data-number="5.7.3" class="anchored" data-anchor-id="多変量効果量pillai-のトレースに基づく-eta2"><span class="header-section-number">5.7.3</span> 多変量効果量（Pillai のトレースに基づく <span class="math inline">\(\eta^2\)</span>）</h3>
-<p>Pillai のトレース自体が 0-1 の範囲をとるため、多変量効果量の指標として直接的に解釈できます。ただし、Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の4段階手順にならい、効果量を明示的に算出して報告します。多変量 <span class="math inline">\(\eta^2\)</span> は <span class="math inline">\(\text{Pillai} / s\)</span>（<span class="math inline">\(s = \min(p, k-1)\)</span>）で近似できます <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</p>
+<p>Pillai のトレース自体が 0-1 の範囲をとるため、多変量効果量の指標として直接的に解釈できます。ただし、Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の4段階手順にならい、効果量を明示的に算出して報告します。多変量 <span class="math inline">\(\eta^2\)</span> は <span class="math inline">\(\text{Pillai} / s\)</span>（<span class="math inline">\(s = \min(p, k-1)\)</span>）で近似できます <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -8248,20 +8249,20 @@ MANOVAの有意性と追跡検定のType Iエラー
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>「MANOVAが有意なら、追跡ANOVAのType Iエラーは制御されている」と書かれることがありますが、これは<strong>誤り</strong>です。MANOVAの有意性は多変量空間での検定結果であり、個々のDVに対する保護効果は提供しません。追跡分析では依然として多重性調整（Holm法など）が必要です <span class="citation" data-cites="huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>)</span>。</p>
-<p>Smith et al. <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は56本のレビューにより、この誤解に基づく慣行が広く定着していることを実証しました。さらに重要なことに、単変量ANOVAによる追跡は<strong>多変量パターンを見逃す</strong>可能性があります。Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> は58本のレビューでDDAを使った論文がゼロであったことを示し、DDAこそがMANOVAの数学的構造と整合した追跡法であると強調しています。</p>
+<p>「MANOVAが有意なら、追跡ANOVAのType Iエラーは制御されている」と書かれることがありますが、これは<strong>誤り</strong>です。MANOVAの有意性は多変量空間での検定結果であり、個々のDVに対する保護効果は提供しません。追跡分析では依然として多重性調整（Holm法など）が必要です <span class="citation" data-cites="huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>)</span>。</p>
+<p>Smith et al. <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は56本のレビューにより、この誤解に基づく慣行が広く定着していることを実証しました。さらに重要なことに、単変量ANOVAによる追跡は<strong>多変量パターンを見逃す</strong>可能性があります。Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> は58本のレビューでDDAを使った論文がゼロであったことを示し、DDAこそがMANOVAの数学的構造と整合した追跡法であると強調しています。</p>
 </div>
 </div>
 </section>
 </section>
 <section id="heプロット-h行列とe行列の可視化" class="level2" data-number="5.8">
 <h2 data-number="5.8" class="anchored" data-anchor-id="heプロット-h行列とe行列の可視化"><span class="header-section-number">5.8</span> HEプロット: H行列とE行列の可視化</h2>
-<p>HEプロットは、MANOVA のH行列（群間変動）とE行列（群内変動）を<strong>楕円として可視化</strong>する手法です <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span>。Friendly <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> はこの手法を体系的に定式化し、多変量一般線形モデルの効果を2次元散布図上で幾何学的に解釈する方法を示しました。</p>
+<p>HEプロットは、MANOVA のH行列（群間変動）とE行列（群内変動）を<strong>楕円として可視化</strong>する手法です <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span>。Friendly <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> はこの手法を体系的に定式化し、多変量一般線形モデルの効果を2次元散布図上で幾何学的に解釈する方法を示しました。</p>
 <p>HEプロットの核心的な読み方は次のとおりです。</p>
 <ul>
 <li><strong>E楕円</strong>は群内変動（誤差）の大きさと方向を表す。E楕円は全効果で共通です。</li>
 <li><strong>H楕円</strong>は各効果の群間変動を表す。効果ごとに1つずつ描かれます。</li>
-<li><strong>H楕円がE楕円からはみ出す方向</strong>は、その効果が統計的に有意な方向を示す。Friendly <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> はこれが<strong>Roy の最大根の検定で有意になる方向と幾何学的に対応する</strong>ことを証明しています。</li>
+<li><strong>H楕円がE楕円からはみ出す方向</strong>は、その効果が統計的に有意な方向を示す。Friendly <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> はこれが<strong>Roy の最大根の検定で有意になる方向と幾何学的に対応する</strong>ことを証明しています。</li>
 <li>H楕円がE楕円に完全に収まる場合、その効果は（少なくともその2DV平面では）有意ではない。</li>
 </ul>
 <p>この幾何学的対応は、数値だけでは把握しにくい多変量的な群差のパターンを直感的に読み取ることを可能にします。</p>
@@ -8875,14 +8876,14 @@ HEプロットの実務的な読み方
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>HEプロットでは「H楕円がE楕円からはみ出す方向」に注目してください <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span>。</p>
+<p>HEプロットでは「H楕円がE楕円からはみ出す方向」に注目してください <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span>。</p>
 <ol type="1">
 <li><strong>はみ出す方向</strong>: H楕円がE楕円の外に出る方向が、統計的に有意な群差の方向です。これはRoyの最大根の検定方向と幾何学的に対応します。</li>
 <li><strong>楕円の大きさ</strong>: H楕円が大きいほど群間変動が大きい。E楕円に完全に収まるH楕円は、その効果が（その平面では）小さいことを示します。</li>
 <li><strong>楕円の傾き</strong>: DV間に正の相関がある場合、楕円は右上がりに傾きます。この傾きの方向は DV 間の共分散構造を反映しています。</li>
 <li><strong>複数の効果の比較</strong>: Treatment のH楕円が大きく、Interaction のH楕円が小さければ、主効果が支配的で交互作用は弱いことが一目でわかります。</li>
 </ol>
-<p>Friendly <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> は、HEプロットの最大の利点を「数表だけでは見えない多変量的パターンを、研究者が直感的に把握できること」と述べています。特に、MANOVAが有意なのに全ANOVAが非有意なケース（DVの組み合わせが群差を担う場合）では、HEプロットが唯一の視覚的手がかりを提供します。</p>
+<p>Friendly <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> は、HEプロットの最大の利点を「数表だけでは見えない多変量的パターンを、研究者が直感的に把握できること」と述べています。特に、MANOVAが有意なのに全ANOVAが非有意なケース（DVの組み合わせが群差を担う場合）では、HEプロットが唯一の視覚的手がかりを提供します。</p>
 </div>
 </div>
 </section>
@@ -8965,13 +8966,13 @@ HEプロットの実務的な読み方
 </section>
 <section id="判別分析による追跡dda-主要追跡法" class="level2" data-number="5.9">
 <h2 data-number="5.9" class="anchored" data-anchor-id="判別分析による追跡dda-主要追跡法"><span class="header-section-number">5.9</span> 判別分析による追跡（DDA）: 主要追跡法</h2>
-<p>MANOVAは「群間に多変量的な差があるか？」を検定しますが、<strong>どのDVが、どの方向に群分離に寄与しているか</strong>は明らかにしません。DDA（Descriptive Discriminant Analysis）は、MANOVAと同じ固有値分解を逆方向から解釈することで、この問いに答えます <span class="citation" data-cites="smith2020 finch2013 sherry2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">Sherry &amp; Henson, 2005</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">Smith ほか, 2020</a>)</span>。</p>
-<p>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson10">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span> は、判別分析を以下の7段階で体系化しています。本章もこの流れに沿って進めます。</p>
+<p>MANOVAは「群間に多変量的な差があるか？」を検定しますが、<strong>どのDVが、どの方向に群分離に寄与しているか</strong>は明らかにしません。DDA（Descriptive Discriminant Analysis）は、MANOVAと同じ固有値分解を逆方向から解釈することで、この問いに答えます <span class="citation" data-cites="smith2020 finch2013 sherry2005">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">Sherry &amp; Henson, 2005</a>; <a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">Smith et al., 2020</a>)</span>。</p>
+<p>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson10">(<a href="Rの基本的な使い方.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span> は、判別分析を以下の7段階で体系化しています。本章もこの流れに沿って進めます。</p>
 <ol type="1">
 <li><strong>前提の確認</strong>: 多変量正規性、共分散行列の等質性（Box’s M）</li>
 <li><strong>判別関数の推定</strong>: <span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有値分解から判別関数を導出</li>
 <li><strong>有意性の検定</strong>: 各判別関数のWilks’ <span class="math inline">\(\Lambda\)</span> 検定（MANOVAと等価）</li>
-<li><strong>構造係数の評価</strong>: DVと判別関数の相関（<span class="math inline">\(|r_s| \geq .30\)</span> が実質的寄与の基準; <span class="citation" data-cites="tabachnick2019">Tabachnick &amp; Fidell (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span>）</li>
+<li><strong>構造係数の評価</strong>: DVと判別関数の相関（<span class="math inline">\(|r_s| \geq .30\)</span> が実質的寄与の基準; <span class="citation" data-cites="tabachnick2019">Tabachnick &amp; Fidell (<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span>）</li>
 <li><strong>分類規則の構築</strong>: 事前確率と誤分類コストに基づく判別境界</li>
 <li><strong>交差検証</strong>: LOOCVによる分類精度の評価</li>
 <li><strong>結果の解釈</strong>: 構造係数・分散説明割合・分類精度を統合的に報告</li>
@@ -9002,23 +9003,23 @@ DDAとANOVA追跡の比較
 <tbody>
 <tr class="odd">
 <td style="text-align: left;"><strong>DDA（判別分析）</strong></td>
-<td style="text-align: left;">多変量構造を保持し、DV間の相関を考慮。MANOVAと数学的に整合 <span class="citation" data-cites="finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>)</span></td>
+<td style="text-align: left;">多変量構造を保持し、DV間の相関を考慮。MANOVAと数学的に整合 <span class="citation" data-cites="finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>)</span></td>
 <td style="text-align: left;">英語教育研究では馴染みが薄い場合がある</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">個別ANOVA</td>
 <td style="text-align: left;">直感的に理解しやすい。個々のDVの効果量が明確</td>
-<td style="text-align: left;">DV間の相関を無視。Type Iエラー膨張（最大76%; <span class="citation" data-cites="smith2020">Smith ほか (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span>）。多変量パターンを見逃す</td>
+<td style="text-align: left;">DV間の相関を無視。Type Iエラー膨張（最大76%; <span class="citation" data-cites="smith2020">Smith et al. (<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span>）。多変量パターンを見逃す</td>
 </tr>
 </tbody>
 </table>
-<p>Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> のレビューでは、MANOVAを使った58本中DDAを適切に使った論文は0本でした。本章では <strong>DDAを主要追跡法</strong>とし、個別ANOVAは補助的な追跡法として後に報告します。</p>
+<p>Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> のレビューでは、MANOVAを使った58本中DDAを適切に使った論文は0本でした。本章では <strong>DDAを主要追跡法</strong>とし、個別ANOVAは補助的な追跡法として後に報告します。</p>
 </div>
 </div>
 <section id="ldaの推定と係数" class="level3" data-number="5.9.1">
 <h3 data-number="5.9.1" class="anchored" data-anchor-id="ldaの推定と係数"><span class="header-section-number">5.9.1</span> LDAの推定と係数</h3>
-<p>ここでは、<code>MASS::lda()</code> を用いて線形判別分析を実行します <span class="citation" data-cites="venables2002 mass_lda_doc">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mass_lda_doc" role="doc-biblioref">R Core Team, 2026a</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-venables2002" role="doc-biblioref">Venables &amp; Ripley, 2002</a>)</span>。DDAとして使う場合、分類精度よりも<strong>判別関数の係数</strong>と<strong>構造係数</strong>に注目します。</p>
-<p>Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">2013</a>)</span> が示したように、LDAの判別関数は <span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有ベクトルに対応しており、MANOVAの固有値と同一の情報源です。つまり、LDAの結果を解釈することは、MANOVAの結果を「群分離の方向と構造」という観点から補完することに相当します。</p>
+<p>ここでは、<code>MASS::lda()</code> を用いて線形判別分析を実行します <span class="citation" data-cites="venables2002 mass_lda_doc">(<a href="Rの基本的な使い方.html#ref-mass_lda_doc" role="doc-biblioref">R Core Team, 2026a</a>; <a href="Rの基本的な使い方.html#ref-venables2002" role="doc-biblioref">Venables &amp; Ripley, 2002</a>)</span>。DDAとして使う場合、分類精度よりも<strong>判別関数の係数</strong>と<strong>構造係数</strong>に注目します。</p>
+<p>Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">2013</a>)</span> が示したように、LDAの判別関数は <span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有ベクトルに対応しており、MANOVAの固有値と同一の情報源です。つまり、LDAの結果を解釈することは、MANOVAの結果を「群分離の方向と構造」という観点から補完することに相当します。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -10035,8 +10036,8 @@ DDAとANOVA追跡の比較
 </section>
 <section id="構造係数structure-coefficients" class="level3" data-number="5.9.2">
 <h3 data-number="5.9.2" class="anchored" data-anchor-id="構造係数structure-coefficients"><span class="header-section-number">5.9.2</span> 構造係数（Structure Coefficients）</h3>
-<p>構造係数は、各DVと判別関数の相関であり、<strong>各DVが判別関数にどれだけ寄与しているか</strong>を示します。Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span> は構造係数を「判別関数が捉える多変量的パターンの中で、各DVがどの程度そのパターンを共有しているか」と定義しています。</p>
-<p>標準化係数（LDA係数）は回帰分析の <span class="math inline">\(\beta\)</span> 係数と同様に多重共線性の影響を受けますが、構造係数は<strong>DV間の相関に対してより安定</strong>しています。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は、DV間相関が .40 を超える場合、標準化係数と構造係数の乖離が大きくなりうることを示しており、そのような場合に構造係数の優先使用を推奨しています。</p>
+<p>構造係数は、各DVと判別関数の相関であり、<strong>各DVが判別関数にどれだけ寄与しているか</strong>を示します。Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span> は構造係数を「判別関数が捉える多変量的パターンの中で、各DVがどの程度そのパターンを共有しているか」と定義しています。</p>
+<p>標準化係数（LDA係数）は回帰分析の <span class="math inline">\(\beta\)</span> 係数と同様に多重共線性の影響を受けますが、構造係数は<strong>DV間の相関に対してより安定</strong>しています。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は、DV間相関が .40 を超える場合、標準化係数と構造係数の乖離が大きくなりうることを示しており、そのような場合に構造係数の優先使用を推奨しています。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -10534,7 +10535,7 @@ DDAとANOVA追跡の比較
 </div>
 </div>
 </div>
-<p><strong>構造係数の解釈基準</strong> <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>:</p>
+<p><strong>構造係数の解釈基準</strong> <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>:</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -10568,14 +10569,14 @@ DDAとANOVA追跡の比較
 </div>
 <div class="callout-body-container callout-body">
 <p>LDA の標準化係数は回帰分析の <span class="math inline">\(\beta\)</span> と同様に、多重共線性の影響を受けます。DV間の相関が高い場合、一方のDVの係数が不安定になったり、符号が反転したりすることがあります。</p>
-<p>Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span> は以下の指針を示しています。</p>
+<p>Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span> は以下の指針を示しています。</p>
 <ol type="1">
 <li><strong>構造係数を常に報告する</strong>。標準化係数のみの報告は、多変量構造の解釈を歪める。</li>
 <li><strong>両者が一致する場合</strong>: DV間の多重共線性が低い。標準化係数も信頼できる。</li>
 <li><strong>両者が乖離する場合</strong>: DV間の多重共線性が高い。構造係数を優先し、標準化係数は参考として報告する。</li>
 <li><strong>構造係数の符号が逆転する場合</strong>: そのDVは他のDVを通じて間接的に判別関数に関与している（抑圧効果の可能性）。</li>
 </ol>
-<p>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> も同じ立場をとり、「構造係数 <span class="math inline">\(\geq .30\)</span> を実質的寄与の閾値とする」という基準を広く普及させています。</p>
+<p>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> も同じ立場をとり、「構造係数 <span class="math inline">\(\geq .30\)</span> を実質的寄与の閾値とする」という基準を広く普及させています。</p>
 </div>
 </div>
 </section>
@@ -11089,8 +11090,8 @@ DDAとANOVA追跡の比較
 </section>
 <section id="loocvによる分類精度" class="level3" data-number="5.9.4">
 <h3 data-number="5.9.4" class="anchored" data-anchor-id="loocvによる分類精度"><span class="header-section-number">5.9.4</span> LOOCVによる分類精度</h3>
-<p>DDAの分類性能を Leave-One-Out Cross-Validation（LOOCV）で評価します <span class="citation" data-cites="psu505_lesson10">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson10" role="doc-biblioref">Penn State Department of Statistics, 2026a</a>)</span>。LOOCVは各観測を1つずつ除外して残りで判別関数を推定し、除外した観測の群を予測します。これにより、過学習を軽減した分類精度が得られます。</p>
-<p>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson10">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span> の7段階手順では、LOOCVは第6段階に位置づけられ、「判別関数の予測的妥当性を新データに対して検証する」ステップとして位置づけられています。再代入精度（学習データ自体での正解率）は過大評価されるため、LOOCVまたはk分割交差検証が標準的です。</p>
+<p>DDAの分類性能を Leave-One-Out Cross-Validation（LOOCV）で評価します <span class="citation" data-cites="psu505_lesson10">(<a href="Rの基本的な使い方.html#ref-psu505_lesson10" role="doc-biblioref">Penn State Department of Statistics, 2026a</a>)</span>。LOOCVは各観測を1つずつ除外して残りで判別関数を推定し、除外した観測の群を予測します。これにより、過学習を軽減した分類精度が得られます。</p>
+<p>Penn State STAT 505 <span class="citation" data-cites="psu505_lesson10">(<a href="Rの基本的な使い方.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span> の7段階手順では、LOOCVは第6段階に位置づけられ、「判別関数の予測的妥当性を新データに対して検証する」ステップとして位置づけられています。再代入精度（学習データ自体での正解率）は過大評価されるため、LOOCVまたはk分割交差検証が標準的です。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -13207,7 +13208,7 @@ DDAとANOVA追跡の比較
 </section>
 <section id="qdaとの比較" class="level3" data-number="5.9.6">
 <h3 data-number="5.9.6" class="anchored" data-anchor-id="qdaとの比較"><span class="header-section-number">5.9.6</span> QDAとの比較</h3>
-<p>LDAは<strong>全群で共通の共分散行列を仮定</strong>しますが、QDA（Quadratic Discriminant Analysis）は<strong>群ごとに異なる共分散行列を許容</strong>します <span class="citation" data-cites="venables2002 mass_lda_doc mass_qda_doc">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mass_lda_doc" role="doc-biblioref">R Core Team, 2026a</a>, <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mass_qda_doc" role="doc-biblioref">2026b</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-venables2002" role="doc-biblioref">Venables &amp; Ripley, 2002</a>)</span>。Box’s M検定が有意で、群間の共分散構造が異なる場合はQDAの方が適切な可能性があります。ただし、QDAはパラメータ数が多いため、各群に十分な標本サイズが必要です。</p>
+<p>LDAは<strong>全群で共通の共分散行列を仮定</strong>しますが、QDA（Quadratic Discriminant Analysis）は<strong>群ごとに異なる共分散行列を許容</strong>します <span class="citation" data-cites="venables2002 mass_lda_doc mass_qda_doc">(<a href="Rの基本的な使い方.html#ref-mass_lda_doc" role="doc-biblioref">R Core Team, 2026a</a>, <a href="Rの基本的な使い方.html#ref-mass_qda_doc" role="doc-biblioref">2026b</a>; <a href="Rの基本的な使い方.html#ref-venables2002" role="doc-biblioref">Venables &amp; Ripley, 2002</a>)</span>。Box’s M検定が有意で、群間の共分散構造が異なる場合はQDAの方が適切な可能性があります。ただし、QDAはパラメータ数が多いため、各群に十分な標本サイズが必要です。</p>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -15335,7 +15336,7 @@ DDAとANOVA追跡の比較
 </section>
 <section id="単変量追跡分析follow-up-補助的追跡法" class="level2" data-number="5.10">
 <h2 data-number="5.10" class="anchored" data-anchor-id="単変量追跡分析follow-up-補助的追跡法"><span class="header-section-number">5.10</span> 単変量追跡分析（Follow-up）: 補助的追跡法</h2>
-<p>前節でDDAを主要追跡法として実施しました。ここでは、<strong>補助的な追跡法</strong>として単変量ANOVAを実行します。Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の推奨手順に沿いつつも、個々のDVについて効果量を確認するために補助的に報告します。DV間の相関構造は考慮されない点に留意してください。</p>
+<p>前節でDDAを主要追跡法として実施しました。ここでは、<strong>補助的な追跡法</strong>として単変量ANOVAを実行します。Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の推奨手順に沿いつつも、個々のDVについて効果量を確認するために補助的に報告します。DV間の相関構造は考慮されない点に留意してください。</p>
 <div class="callout callout-style-default callout-warning callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -15346,12 +15347,12 @@ DDAとANOVA追跡の比較
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>注意</strong>: 単変量ANOVAを追跡法として使う場合、以下の2つの問題があります <span class="citation" data-cites="smith2020 finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">Smith ほか, 2020</a>)</span>。</p>
+<p><strong>注意</strong>: 単変量ANOVAを追跡法として使う場合、以下の2つの問題があります <span class="citation" data-cites="smith2020 finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">Smith et al., 2020</a>)</span>。</p>
 <ol type="1">
-<li><strong>Type Iエラーの膨張</strong>: 2 DV × 3 効果 = 6検定。Holm補正が必要。Smith et al. <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は、無補正の単変量追跡でType Iエラー率が最大76%に達しうることをシミュレーションで示しています。</li>
-<li><strong>多変量パターンの見逃し</strong>: DV間の相関を無視するため、個々のANOVAでは非有意でもMANOVAでは有意になるケースを説明できない。Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">2013</a>)</span> はこのケースをDDAでのみ解釈できることを示しています。</li>
+<li><strong>Type Iエラーの膨張</strong>: 2 DV × 3 効果 = 6検定。Holm補正が必要。Smith et al. <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は、無補正の単変量追跡でType Iエラー率が最大76%に達しうることをシミュレーションで示しています。</li>
+<li><strong>多変量パターンの見逃し</strong>: DV間の相関を無視するため、個々のANOVAでは非有意でもMANOVAでは有意になるケースを説明できない。Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">2013</a>)</span> はこのケースをDDAでのみ解釈できることを示しています。</li>
 </ol>
-<p>Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の58本レビューでは、ほぼすべてがANOVAのみで追跡しDDAを使っていませんでした。本章では<strong>DDAを主要追跡法</strong>とし、ANOVAは補助的に使います。</p>
+<p>Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の58本レビューでは、ほぼすべてがANOVAのみで追跡しDDAを使っていませんでした。本章では<strong>DDAを主要追跡法</strong>とし、ANOVAは補助的に使います。</p>
 </div>
 </div>
 <p>MANOVAで有意な効果が見られた場合、どの従属変数が効果を担っているかを単変量で追跡します。ここでは6つの検定（2従属変数 × 3効果）に対して Holm 補正を適用します。</p>
@@ -17067,7 +17068,7 @@ DDAとANOVA追跡の比較
 <section id="検定力分析" class="level2" data-number="5.11">
 <h2 data-number="5.11" class="anchored" data-anchor-id="検定力分析"><span class="header-section-number">5.11</span> 検定力分析</h2>
 <p>MANOVAは多変量検定であるため、推定すべきパラメータが単変量ANOVAよりも多くなります。十分な検定力（通常 <span class="math inline">\(\geq .80\)</span>）を確保するには、サンプルサイズの事前計画が不可欠です。</p>
-<p>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は、MANOVAにおけるサンプルサイズの基本ルールとして以下を示しています。</p>
+<p>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は、MANOVAにおけるサンプルサイズの基本ルールとして以下を示しています。</p>
 <table class="table-striped caption-top table">
 <caption>MANOVAのサンプルサイズに関する基本ルール</caption>
 <colgroup>
@@ -17091,7 +17092,7 @@ DDAとANOVA追跡の比較
 <tr class="even">
 <td style="text-align: left;"><strong>推奨条件</strong></td>
 <td style="text-align: left;">各セルの <span class="math inline">\(n \geq 20\)</span></td>
-<td style="text-align: left;">検定統計量のF近似が安定するために推奨 <span class="citation" data-cites="stevens2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span></td>
+<td style="text-align: left;">検定統計量のF近似が安定するために推奨 <span class="citation" data-cites="stevens2009">(<a href="Rの基本的な使い方.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span></td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;"><strong>DDA用の追加条件</strong></td>
@@ -17101,11 +17102,11 @@ DDAとANOVA追跡の比較
 <tr class="even">
 <td style="text-align: left;"><strong>検定力の確保</strong></td>
 <td style="text-align: left;">総N に対して検定力計算で .80 以上</td>
-<td style="text-align: left;">事前のパワー分析で確認 <span class="citation" data-cites="zhang2018">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-zhang2018" role="doc-biblioref">Zhang &amp; Yuan, 2018</a>)</span></td>
+<td style="text-align: left;">事前のパワー分析で確認 <span class="citation" data-cites="zhang2018">(<a href="Rの基本的な使い方.html#ref-zhang2018" role="doc-biblioref">Zhang &amp; Yuan, 2018</a>)</span></td>
 </tr>
 </tbody>
 </table>
-<p>ここでは <code>WebPower</code> パッケージの <code>wp.kanova()</code> を用いてMANOVA近似の検定力を計算します <span class="citation" data-cites="zhang2018">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-zhang2018" role="doc-biblioref">Zhang &amp; Yuan, 2018</a>)</span>。MANOVAの場合、分子自由度は <span class="math inline">\(\text{ndf} = p \times (k - 1)\)</span>（DV数 × 群の自由度）となります。4群・2DVの場合、<span class="math inline">\(\text{ndf} = 2 \times 3 = 6\)</span> です。</p>
+<p>ここでは <code>WebPower</code> パッケージの <code>wp.kanova()</code> を用いてMANOVA近似の検定力を計算します <span class="citation" data-cites="zhang2018">(<a href="Rの基本的な使い方.html#ref-zhang2018" role="doc-biblioref">Zhang &amp; Yuan, 2018</a>)</span>。MANOVAの場合、分子自由度は <span class="math inline">\(\text{ndf} = p \times (k - 1)\)</span>（DV数 × 群の自由度）となります。4群・2DVの場合、<span class="math inline">\(\text{ndf} = 2 \times 3 = 6\)</span> です。</p>
 <section id="本データの検定力" class="level3" data-number="5.11.1">
 <h3 data-number="5.11.1" class="anchored" data-anchor-id="本データの検定力"><span class="header-section-number">5.11.1</span> 本データの検定力</h3>
 <div class="cell">
@@ -18222,12 +18223,12 @@ DDAとANOVA追跡の比較
 </tr>
 </tbody>
 </table>
-<p>先行研究の効果量を参照してサンプルサイズを計画することが重要です。英語教育研究では <span class="math inline">\(f = 0.25\)</span> 前後が現実的な目安となることが多いです <span class="citation" data-cites="stevens2009 hahs2017">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-hahs2017" role="doc-biblioref">Hahs-Vaughn, 2017</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span>。</p>
+<p>先行研究の効果量を参照してサンプルサイズを計画することが重要です。英語教育研究では <span class="math inline">\(f = 0.25\)</span> 前後が現実的な目安となることが多いです <span class="citation" data-cites="stevens2009 hahs2017">(<a href="Rの基本的な使い方.html#ref-hahs2017" role="doc-biblioref">Hahs-Vaughn, 2017</a>; <a href="Rの基本的な使い方.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span>。</p>
 <p><strong>実務上のポイント</strong>:</p>
 <ul>
-<li>Stevens <span class="citation" data-cites="stevens2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-stevens2009" role="doc-biblioref">2009</a>)</span> は、効果量が小さい（<span class="math inline">\(f = .10\)</span>）場合の検出には各群50名以上が必要であると指摘しており、教育研究で典型的な30名前後のクラスサイズでは検出が困難であることを示唆しています。</li>
+<li>Stevens <span class="citation" data-cites="stevens2009">(<a href="Rの基本的な使い方.html#ref-stevens2009" role="doc-biblioref">2009</a>)</span> は、効果量が小さい（<span class="math inline">\(f = .10\)</span>）場合の検出には各群50名以上が必要であると指摘しており、教育研究で典型的な30名前後のクラスサイズでは検出が困難であることを示唆しています。</li>
 <li>英語教育研究では1クラス20-30名が現実的な制約であるため、<strong>2-3クラスをまとめて1群40-60名</strong>を確保するか、効果量が中程度以上の介入に焦点を絞る戦略が必要です。</li>
-<li>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は「各セルの <span class="math inline">\(n &gt;\)</span> DV数」を最低条件としていますが、これはあくまり行列演算上の最低限であり、検定力の観点ではさらに大きなNが必要です。</li>
+<li>Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は「各セルの <span class="math inline">\(n &gt;\)</span> DV数」を最低条件としていますが、これはあくまり行列演算上の最低限であり、検定力の観点ではさらに大きなNが必要です。</li>
 </ul>
 </div>
 </div>
@@ -18245,8 +18246,8 @@ DDAとANOVA追跡の比較
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>事実</strong>: MANOVAの有意性は多変量空間全体での検定結果であり、個々のDVへの追跡ANOVAに対する「保護的ゲートキーパー」機能は限定的です。Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> はこの点を明確に指摘し、追跡ANOVAにはHolm法などの多重性補正が依然として必要であると述べています。</p>
-<p>Smith et al. <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は英才教育研究の56論文を体系的にレビューし、ほぼすべてがMANOVA後に無補正の単変量ANOVAのみで追跡していることを発見しました。シミュレーションにより、DV数が増えるとこの慣行のType Iエラー率が最大76%に達しうることを示しています。</p>
+<p><strong>事実</strong>: MANOVAの有意性は多変量空間全体での検定結果であり、個々のDVへの追跡ANOVAに対する「保護的ゲートキーパー」機能は限定的です。Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> はこの点を明確に指摘し、追跡ANOVAにはHolm法などの多重性補正が依然として必要であると述べています。</p>
+<p>Smith et al. <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> は英才教育研究の56論文を体系的にレビューし、ほぼすべてがMANOVA後に無補正の単変量ANOVAのみで追跡していることを発見しました。シミュレーションにより、DV数が増えるとこの慣行のType Iエラー率が最大76%に達しうることを示しています。</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-important callout-titled">
@@ -18259,7 +18260,7 @@ DDAとANOVA追跡の比較
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>事実</strong>: 非有意の結果は「差がない」ことの証拠ではなく、「差を検出できなかった」可能性があります。検定力が不足している場合（N不足、効果量が小さい場合）、真の差があっても検出できません。必ず検定力分析で確認し、「power = XX であった」と報告してください <span class="citation" data-cites="stevens2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span>。</p>
+<p><strong>事実</strong>: 非有意の結果は「差がない」ことの証拠ではなく、「差を検出できなかった」可能性があります。検定力が不足している場合（N不足、効果量が小さい場合）、真の差があっても検出できません。必ず検定力分析で確認し、「power = XX であった」と報告してください <span class="citation" data-cites="stevens2009">(<a href="Rの基本的な使い方.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span>。</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-important callout-titled">
@@ -18273,7 +18274,7 @@ DDAとANOVA追跡の比較
 </div>
 <div class="callout-body-container callout-body">
 <p><strong>事実</strong>: 追跡ANOVAは各DVを個別に検定するため、DV間の相関構造を無視します。MANOVAが有意でも全てのANOVAが非有意になるケースがあります（DVの組み合わせが群差のパターンを担う場合）。</p>
-<p>Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> は58本のMANOVA論文をレビューし、DDAを適切に使った論文が<strong>1本もなかった</strong>ことを報告しています。このことは、追跡ANOVAのみに頼る慣行がいかに根深いかを示しています。Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">2013</a>)</span> は、DDAがMANOVAと数学的に同一の情報源（<span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有値分解）に基づくことを示し、追跡法としての理論的一貫性を強調しています。DDAを併用することで、単変量では見えない多変量的パターンを捉えることが可能になります。</p>
+<p>Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> は58本のMANOVA論文をレビューし、DDAを適切に使った論文が<strong>1本もなかった</strong>ことを報告しています。このことは、追跡ANOVAのみに頼る慣行がいかに根深いかを示しています。Finch &amp; French <span class="citation" data-cites="finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">2013</a>)</span> は、DDAがMANOVAと数学的に同一の情報源（<span class="math inline">\(\mathbf{H}\mathbf{E}^{-1}\)</span> の固有値分解）に基づくことを示し、追跡法としての理論的一貫性を強調しています。DDAを併用することで、単変量では見えない多変量的パターンを捉えることが可能になります。</p>
 </div>
 </div>
 <div class="callout callout-style-default callout-important callout-titled">
@@ -18286,8 +18287,8 @@ DDAとANOVA追跡の比較
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>事実</strong>: MANOVAはDV間の共分散構造を考慮した上で群差を検定します。H行列とE行列の比がMANOVAの検定統計量の基盤であり、DVを個別に検定するANOVAにはこの情報がありません。Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> はMANOVAの本質を「DVの最適な重み付け線形結合に対する検定」と定義しています。</p>
-<p>この違いは、HEプロットで視覚的に確認できます。Friendly <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> のHEプロット手法では、H楕円がE楕円からはみ出す方向が多変量的な群差の方向を示しますが、この方向は個々のDV軸とは異なる場合があります。つまり、MANOVAは個別ANOVAでは原理的にアクセスできない「DV間の組み合わせに基づく群差」を検出する能力を持ちます。</p>
+<p><strong>事実</strong>: MANOVAはDV間の共分散構造を考慮した上で群差を検定します。H行列とE行列の比がMANOVAの検定統計量の基盤であり、DVを個別に検定するANOVAにはこの情報がありません。Huberty &amp; Olejnik <span class="citation" data-cites="huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">2006</a>)</span> はMANOVAの本質を「DVの最適な重み付け線形結合に対する検定」と定義しています。</p>
+<p>この違いは、HEプロットで視覚的に確認できます。Friendly <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> のHEプロット手法では、H楕円がE楕円からはみ出す方向が多変量的な群差の方向を示しますが、この方向は個々のDV軸とは異なる場合があります。つまり、MANOVAは個別ANOVAでは原理的にアクセスできない「DV間の組み合わせに基づく群差」を検出する能力を持ちます。</p>
 </div>
 </div>
 </section>
@@ -18308,9 +18309,9 @@ DDAとANOVA追跡の比較
 <p><strong>修正</strong>:</p>
 <ol type="1">
 <li>マハラノビス距離で外れ値を特定し、感度分析（含む/除く）を行う。</li>
-<li>Pillai統計量を主報告にする。Olson <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究で、正規性違反に最も頑健であることが確認されている。</li>
+<li>Pillai統計量を主報告にする。Olson <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究で、正規性違反に最も頑健であることが確認されている。</li>
 <li>逸脱が著しい場合、変数変換（log, sqrt）を検討。</li>
-<li>大標本（各群 <span class="math inline">\(n &gt; 30\)</span>）であれば中心極限定理により頑健性が高まる <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</li>
+<li>大標本（各群 <span class="math inline">\(n &gt; 30\)</span>）であれば中心極限定理により頑健性が高まる <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</li>
 <li>論文には「HZ検定の結果と対応策」を明記する。</li>
 </ol>
 </div>
@@ -18326,13 +18327,13 @@ Box’s M検定の有意
 </div>
 <div class="callout-body-container callout-body">
 <p><strong>症状</strong>: Box’s M が <span class="math inline">\(p &lt; .001\)</span>。</p>
-<p><strong>原因</strong>: 群間で共分散行列の構造が異なる。群サイズの不均衡があるとさらに影響が大きい。Box’s M は標本サイズに過敏であるため、<span class="math inline">\(p &lt; .05\)</span> ではなく <span class="math inline">\(p &lt; .001\)</span> を実務基準とすることが推奨されます <span class="citation" data-cites="tabachnick2019 huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</p>
+<p><strong>原因</strong>: 群間で共分散行列の構造が異なる。群サイズの不均衡があるとさらに影響が大きい。Box’s M は標本サイズに過敏であるため、<span class="math inline">\(p &lt; .05\)</span> ではなく <span class="math inline">\(p &lt; .001\)</span> を実務基準とすることが推奨されます <span class="citation" data-cites="tabachnick2019 huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>; <a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</p>
 <p><strong>修正</strong>:</p>
 <ol type="1">
-<li>群サイズがバランスしていれば、Pillai統計量は比較的頑健。Olson <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> はこの条件でPillaiが名義 <span class="math inline">\(\alpha\)</span> 水準を維持することを示している。</li>
+<li>群サイズがバランスしていれば、Pillai統計量は比較的頑健。Olson <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> はこの条件でPillaiが名義 <span class="math inline">\(\alpha\)</span> 水準を維持することを示している。</li>
 <li>群サイズが不均衡なら、最も危険な条件（共分散不等質 + 不均衡N）に該当するため、結果の解釈に特に慎重になる。</li>
 <li>群ごとの共分散楕円を可視化し（HEプロットで確認可能）、逸脱の程度を確認する。</li>
-<li>QDAの使用を検討する（群別共分散を許容）。ただし各群の <span class="math inline">\(n &gt;\)</span> DV数 + 1 が必要 <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</li>
+<li>QDAの使用を検討する（群別共分散を許容）。ただし各群の <span class="math inline">\(n &gt;\)</span> DV数 + 1 が必要 <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span>。</li>
 </ol>
 </div>
 </div>
@@ -18346,12 +18347,12 @@ DV間の多重共線性
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p><strong>症状</strong>: DV間相関が .70 を超える。判別関数の係数が不安定。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は .90 以上を「深刻な多重共線性」として警告している。</p>
+<p><strong>症状</strong>: DV間相関が .70 を超える。判別関数の係数が不安定。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> は .90 以上を「深刻な多重共線性」として警告している。</p>
 <p><strong>原因</strong>: DVが測定している構成概念がほぼ同一。</p>
 <p><strong>修正</strong>:</p>
 <ol type="1">
 <li>一方のDVを除外するか、複合スコアに統合することを検討。</li>
-<li>構造係数を優先して解釈する。Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span> は、DV間相関が高い場合に標準化係数が不安定になることを示しており、構造係数のみでの解釈を推奨している。</li>
+<li>構造係数を優先して解釈する。Sherry &amp; Henson <span class="citation" data-cites="sherry2005">(<a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span> は、DV間相関が高い場合に標準化係数が不安定になることを示しており、構造係数のみでの解釈を推奨している。</li>
 <li>理論的にDVが異なる構成概念であることを再確認する。</li>
 <li>DV間相関が .30-.70 の「理想的な範囲」に収まるようDVの選択を見直す。</li>
 </ol>
@@ -18388,12 +18389,12 @@ MANOVAは有意だが全てのANOVAが非有意
 </div>
 <div class="callout-body-container callout-body">
 <p><strong>症状</strong>: Pillai が <span class="math inline">\(p &lt; .05\)</span> だが、追跡ANOVAでは全DVが <span class="math inline">\(p &gt; .05\)</span>。</p>
-<p><strong>原因</strong>: 群差がDV間の相関パターンに埋め込まれており、個々のDVでは表面化しない。これは「矛盾」ではなく、<strong>MANOVAの利点が発揮された場面</strong>です。Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> はこの状況を「MANOVAの存在意義を最もよく示すケース」と述べています。</p>
+<p><strong>原因</strong>: 群差がDV間の相関パターンに埋め込まれており、個々のDVでは表面化しない。これは「矛盾」ではなく、<strong>MANOVAの利点が発揮された場面</strong>です。Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> はこの状況を「MANOVAの存在意義を最もよく示すケース」と述べています。</p>
 <p><strong>修正</strong>:</p>
 <ol type="1">
 <li>DDA（判別分析）で多変量的な群分離パターンを確認する。構造係数を読むことで、DVの組み合わせがどの方向に群差を形成しているかがわかります。</li>
-<li>HEプロットで視覚的にパターンを確認する。Friendly <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> のHEプロットでは、H楕円がE楕円からはみ出す方向がDV軸と斜めになる場合、個別のDVでは検出できない「斜め方向」の群差が存在していることを示します。</li>
-<li>論文には「多変量検定は有意であったが、単変量では個別に有意な変数は見られなかった。DDAにより、DVの組み合わせとして群分離が確認された」と報告する <span class="citation" data-cites="smith2020 finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">Smith ほか, 2020</a>)</span>。</li>
+<li>HEプロットで視覚的にパターンを確認する。Friendly <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">2007</a>)</span> のHEプロットでは、H楕円がE楕円からはみ出す方向がDV軸と斜めになる場合、個別のDVでは検出できない「斜め方向」の群差が存在していることを示します。</li>
+<li>論文には「多変量検定は有意であったが、単変量では個別に有意な変数は見られなかった。DDAにより、DVの組み合わせとして群分離が確認された」と報告する <span class="citation" data-cites="smith2020 finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>; <a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">Smith et al., 2020</a>)</span>。</li>
 </ol>
 </div>
 </div>
@@ -19038,12 +19039,12 @@ APA 7 最低限の表記ルール
 <h2 data-number="5.15" class="anchored" data-anchor-id="まとめ"><span class="header-section-number">5.15</span> まとめ</h2>
 <p>本章では、MANOVA と判別分析（DDA）を用いた多変量解析の一連のワークフローを整理しました。先行研究のチュートリアル論文の知見を統合し、以下の主要なポイントを実装しています。</p>
 <ol type="1">
-<li><p><strong>MANOVAは、複数DVを同時に扱う</strong>ことで、単変量ANOVAの反復より整合的な推論を提供する <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span>。DV間の相関構造（理想的には .30-.70 の範囲; <span class="citation" data-cites="tabachnick2019">Tabachnick &amp; Fidell (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span>）を考慮できることが本質的な強みである。</p></li>
-<li><p><strong>H行列とE行列</strong>がMANOVAの基盤であり、HEプロット <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span> によりその関係を直感的に把握できる。H楕円がE楕円を超える方向が、有意な群差の方向を示す（Royの最大根と幾何学的に対応）。</p></li>
-<li><p><strong>Pillai のトレース</strong>を主報告とする。Olson <span class="citation" data-cites="olson1974">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究で、正規性違反・共分散不等質性・群サイズ不均衡の全条件を通じて最も頑健であることが確認されている。</p></li>
-<li><p><strong>DDA（判別分析）はMANOVAの主要追跡法</strong>である。構造係数（<span class="math inline">\(|r_s| \geq .30\)</span> を基準; <span class="citation" data-cites="tabachnick2019">Tabachnick &amp; Fidell (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span>; <span class="citation" data-cites="sherry2005">Sherry &amp; Henson (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span>）により、各DVの群分離への寄与を安定的に評価できる。Warne <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の58本レビューおよびSmith et al. <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> の56本レビューが示すように、DDAの使用率は極めて低いのが現状であるが、理論的にはMANOVAの最も自然な追跡法である <span class="citation" data-cites="finch2013">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>)</span>。</p></li>
-<li><p><strong>分類精度</strong>（LOOCV; <span class="citation" data-cites="psu505_lesson10">Penn State Department of Statistics (<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span>）をチャンス水準と比較することで、「統計的に有意かどうか」だけでなく「実務的にどの程度群を分離できるか」を示す。</p></li>
-<li><p><strong>検定力分析</strong> <span class="citation" data-cites="zhang2018">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-zhang2018" role="doc-biblioref">Zhang &amp; Yuan, 2018</a>)</span> により、研究の事前計画（必要サンプルサイズ）および事後評価（実際の検定力）を定量化する。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> の「各セルの <span class="math inline">\(n &gt;\)</span> DV数」を最低条件とし、Stevens <span class="citation" data-cites="stevens2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-stevens2009" role="doc-biblioref">2009</a>)</span> の「各群20名以上」を推奨条件とする。</p></li>
+<li><p><strong>MANOVAは、複数DVを同時に扱う</strong>ことで、単変量ANOVAの反復より整合的な推論を提供する <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span>。DV間の相関構造（理想的には .30-.70 の範囲; <span class="citation" data-cites="tabachnick2019">Tabachnick &amp; Fidell (<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span>）を考慮できることが本質的な強みである。</p></li>
+<li><p><strong>H行列とE行列</strong>がMANOVAの基盤であり、HEプロット <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span> によりその関係を直感的に把握できる。H楕円がE楕円を超える方向が、有意な群差の方向を示す（Royの最大根と幾何学的に対応）。</p></li>
+<li><p><strong>Pillai のトレース</strong>を主報告とする。Olson <span class="citation" data-cites="olson1974">(<a href="Rの基本的な使い方.html#ref-olson1974" role="doc-biblioref">1974</a>)</span> のモンテカルロ研究で、正規性違反・共分散不等質性・群サイズ不均衡の全条件を通じて最も頑健であることが確認されている。</p></li>
+<li><p><strong>DDA（判別分析）はMANOVAの主要追跡法</strong>である。構造係数（<span class="math inline">\(|r_s| \geq .30\)</span> を基準; <span class="citation" data-cites="tabachnick2019">Tabachnick &amp; Fidell (<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span>; <span class="citation" data-cites="sherry2005">Sherry &amp; Henson (<a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">2005</a>)</span>）により、各DVの群分離への寄与を安定的に評価できる。Warne <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">2014</a>)</span> の58本レビューおよびSmith et al. <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">2020</a>)</span> の56本レビューが示すように、DDAの使用率は極めて低いのが現状であるが、理論的にはMANOVAの最も自然な追跡法である <span class="citation" data-cites="finch2013">(<a href="Rの基本的な使い方.html#ref-finch2013" role="doc-biblioref">Finch &amp; French, 2013</a>)</span>。</p></li>
+<li><p><strong>分類精度</strong>（LOOCV; <span class="citation" data-cites="psu505_lesson10">Penn State Department of Statistics (<a href="Rの基本的な使い方.html#ref-psu505_lesson10" role="doc-biblioref">2026a</a>)</span>）をチャンス水準と比較することで、「統計的に有意かどうか」だけでなく「実務的にどの程度群を分離できるか」を示す。</p></li>
+<li><p><strong>検定力分析</strong> <span class="citation" data-cites="zhang2018">(<a href="Rの基本的な使い方.html#ref-zhang2018" role="doc-biblioref">Zhang &amp; Yuan, 2018</a>)</span> により、研究の事前計画（必要サンプルサイズ）および事後評価（実際の検定力）を定量化する。Tabachnick &amp; Fidell <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">2019</a>)</span> の「各セルの <span class="math inline">\(n &gt;\)</span> DV数」を最低条件とし、Stevens <span class="citation" data-cites="stevens2009">(<a href="Rの基本的な使い方.html#ref-stevens2009" role="doc-biblioref">2009</a>)</span> の「各群20名以上」を推奨条件とする。</p></li>
 <li><p><strong>報告では</strong>、p値だけでなく多変量効果量（Pillai のトレースに基づく <span class="math inline">\(\eta^2\)</span>）・構造係数・分類精度（チャンス比較）・検定力を併記する。</p></li>
 </ol>
 </section>
@@ -19054,39 +19055,38 @@ APA 7 最低限の表記ルール
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
 <ul>
-<li>Warne (2014): MANOVAの設計と解釈の実務ガイド <span class="citation" data-cites="warne2014">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span></li>
-<li>Penn State STAT 505 Lesson 8: One-Way MANOVA <span class="citation" data-cites="psu505_lesson08">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>)</span></li>
-<li>R Documentation: <code>summary.manova</code> <span class="citation" data-cites="r_summary_manova">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span></li>
+<li>Warne (2014): MANOVAの設計と解釈の実務ガイド <span class="citation" data-cites="warne2014">(<a href="Rの基本的な使い方.html#ref-warne2014" role="doc-biblioref">Warne, 2014</a>)</span></li>
+<li>Penn State STAT 505 Lesson 8: One-Way MANOVA <span class="citation" data-cites="psu505_lesson08">(<a href="Rの基本的な使い方.html#ref-psu505_lesson08" role="doc-biblioref">Penn State Department of Statistics, 2026b</a>)</span></li>
+<li>R Documentation: <code>summary.manova</code> <span class="citation" data-cites="r_summary_manova">(<a href="Rの基本的な使い方.html#ref-r_summary_manova" role="doc-biblioref">R Core Team, 2026c</a>)</span></li>
 </ul>
 </div>
 <div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
 <ul>
-<li>Smith et al.&nbsp;(2020): MANOVAの多変量追跡法としてのDDA <span class="citation" data-cites="smith2020">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-smith2020" role="doc-biblioref">Smith ほか, 2020</a>)</span></li>
-<li>Sherry &amp; Henson (2005): 構造係数の解釈 <span class="citation" data-cites="sherry2005">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-sherry2005" role="doc-biblioref">Sherry &amp; Henson, 2005</a>)</span></li>
-<li>Penn State STAT 505 Lesson 10: Discriminant Analysis <span class="citation" data-cites="psu505_lesson10">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-psu505_lesson10" role="doc-biblioref">Penn State Department of Statistics, 2026a</a>)</span></li>
-<li>R Documentation: <code>MASS::lda</code> / <code>MASS::qda</code> <span class="citation" data-cites="mass_lda_doc mass_qda_doc">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-mass_lda_doc" role="doc-biblioref">R Core Team, 2026a</a>, <a href="5_一般化線形モデル_一般化加法モデル.html#ref-mass_qda_doc" role="doc-biblioref">2026b</a>)</span></li>
+<li>Smith et al.&nbsp;(2020): MANOVAの多変量追跡法としてのDDA <span class="citation" data-cites="smith2020">(<a href="Rの基本的な使い方.html#ref-smith2020" role="doc-biblioref">Smith et al., 2020</a>)</span></li>
+<li>Sherry &amp; Henson (2005): 構造係数の解釈 <span class="citation" data-cites="sherry2005">(<a href="Rの基本的な使い方.html#ref-sherry2005" role="doc-biblioref">Sherry &amp; Henson, 2005</a>)</span></li>
+<li>Penn State STAT 505 Lesson 10: Discriminant Analysis <span class="citation" data-cites="psu505_lesson10">(<a href="Rの基本的な使い方.html#ref-psu505_lesson10" role="doc-biblioref">Penn State Department of Statistics, 2026a</a>)</span></li>
+<li>R Documentation: <code>MASS::lda</code> / <code>MASS::qda</code> <span class="citation" data-cites="mass_lda_doc mass_qda_doc">(<a href="Rの基本的な使い方.html#ref-mass_lda_doc" role="doc-biblioref">R Core Team, 2026a</a>, <a href="Rの基本的な使い方.html#ref-mass_qda_doc" role="doc-biblioref">2026b</a>)</span></li>
 </ul>
 </div>
 <div id="tabset-2-3" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-3-tab">
 <ul>
-<li>Friendly (2007): HEプロットの理論と実装 <span class="citation" data-cites="friendly2007">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span></li>
+<li>Friendly (2007): HEプロットの理論と実装 <span class="citation" data-cites="friendly2007">(<a href="Rの基本的な使い方.html#ref-friendly2007" role="doc-biblioref">Friendly, 2007</a>)</span></li>
 <li><code>heplots</code> パッケージ: MANOVA可視化</li>
-<li><code>candisc</code> パッケージ: 正準判別分析の可視化 <span class="citation" data-cites="friendly2021candisc">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-friendly2021candisc" role="doc-biblioref">Friendly &amp; Fox, 2021</a>)</span></li>
+<li><code>candisc</code> パッケージ: 正準判別分析の可視化 <span class="citation" data-cites="friendly2021candisc">(<a href="Rの基本的な使い方.html#ref-friendly2021candisc" role="doc-biblioref">Friendly &amp; Fox, 2021</a>)</span></li>
 </ul>
 </div>
 <div id="tabset-2-4" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-4-tab">
 <ul>
-<li>Tabachnick &amp; Fidell (2019): 多変量統計の標準的教科書 <span class="citation" data-cites="tabachnick2019">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span></li>
-<li>Stevens (2009): 社会科学向け応用多変量統計 <span class="citation" data-cites="stevens2009">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span></li>
-<li>Huberty &amp; Olejnik (2006): Applied MANOVA and Discriminant Analysis <span class="citation" data-cites="huberty2006">(<a href="5_一般化線形モデル_一般化加法モデル.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>)</span></li>
+<li>Tabachnick &amp; Fidell (2019): 多変量統計の標準的教科書 <span class="citation" data-cites="tabachnick2019">(<a href="Rの基本的な使い方.html#ref-tabachnick2019" role="doc-biblioref">Tabachnick &amp; Fidell, 2019</a>)</span></li>
+<li>Stevens (2009): 社会科学向け応用多変量統計 <span class="citation" data-cites="stevens2009">(<a href="Rの基本的な使い方.html#ref-stevens2009" role="doc-biblioref">Stevens, 2009</a>)</span></li>
+<li>Huberty &amp; Olejnik (2006): Applied MANOVA and Discriminant Analysis <span class="citation" data-cites="huberty2006">(<a href="Rの基本的な使い方.html#ref-huberty2006" role="doc-biblioref">Huberty &amp; Olejnik, 2006</a>)</span></li>
 </ul>
 </div>
 </div>
 </div>
-
-
-<!-- -->
-
+</section>
+<section id="参考文献" class="level2" data-number="5.17">
+<h2 data-number="5.17" class="anchored" data-anchor-id="参考文献"><span class="header-section-number">5.17</span> 参考文献</h2>
 <div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list" style="display: none">
 <div id="ref-box1949" class="csl-entry" role="listitem">
 Box, G. E. P. (1949年). A General Distribution Theory for a Class of Likelihood Criteria. <em>Biometrika</em>, <em>36</em>(3/4), 317–346. <a href="https://doi.org/10.1093/biomet/36.3-4.317">https://doi.org/10.1093/biomet/36.3-4.317</a>
@@ -19134,13 +19134,13 @@ Sherry, A., &amp; Henson, R. K. (2005年). Conducting and Interpreting Canonical
 Smith, K. N., Lamb, K. N., &amp; Henson, R. K. (2020年). Making Meaning out of <span>MANOVA</span>: The Need for Multivariate Post Hoc Testing in Gifted Education Research. <em>Gifted Child Quarterly</em>, <em>64</em>(1), 41–55. <a href="https://doi.org/10.1177/0016986219886935">https://doi.org/10.1177/0016986219886935</a>
 </div>
 <div id="ref-stevens2009" class="csl-entry" role="listitem">
-Stevens, J. P. (2009年). <em>Applied Multivariate Statistics for the Social Sciences</em> (5th 版). Routledge.
+Stevens, J. P. (2009年). <em>Applied Multivariate Statistics for the Social Sciences</em> (5th 版). Routledge. <a href="https://doi.org/10.4324/9780203843130">https://doi.org/10.4324/9780203843130</a>
 </div>
 <div id="ref-tabachnick2019" class="csl-entry" role="listitem">
 Tabachnick, B. G., &amp; Fidell, L. S. (2019年). <em>Using Multivariate Statistics</em> (7th 版). Pearson.
 </div>
 <div id="ref-venables2002" class="csl-entry" role="listitem">
-Venables, W. N., &amp; Ripley, B. D. (2002年). <em>Modern Applied Statistics with <span>S</span></em> (4th 版). Springer.
+Venables, W. N., &amp; Ripley, B. D. (2002年). <em>Modern Applied Statistics with <span>S</span></em> (4th 版). Springer. <a href="https://doi.org/10.1007/978-0-387-21706-2">https://doi.org/10.1007/978-0-387-21706-2</a>
 </div>
 <div id="ref-warne2014" class="csl-entry" role="listitem">
 Warne, R. T. (2014年). A Primer on Multivariate Analysis of Variance (<span>MANOVA</span>) for Behavioral Scientists. <em>Practical Assessment, Research, and Evaluation</em>, <em>19</em>(17), 1–10. <a href="https://doi.org/10.7275/sm63-7h70">https://doi.org/10.7275/sm63-7h70</a>
@@ -19149,6 +19149,10 @@ Warne, R. T. (2014年). A Primer on Multivariate Analysis of Variance (<span>MAN
 Zhang, Z., &amp; Yuan, K.-H. (2018年). <em><span>WebPower</span>: Basic and Advanced Statistical Power Analysis</em>. <a href="https://CRAN.R-project.org/package=WebPower">https://CRAN.R-project.org/package=WebPower</a>
 </div>
 </div>
+
+
+<!-- -->
+
 </section>
 
 </main> <!-- /main -->
@@ -21601,6 +21605,11 @@ Zhang, Z., &amp; Yuan, K.-H. (2018年). <em><span>WebPower</span>: Basic and Adv
 <span id="cb46-2063"><a href="#cb46-2063" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Huberty &amp; Olejnik (2006): Applied MANOVA and Discriminant Analysis <span class="co">[</span><span class="ot">@huberty2006</span><span class="co">]</span></span>
 <span id="cb46-2064"><a href="#cb46-2064" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb46-2065"><a href="#cb46-2065" aria-hidden="true" tabindex="-1"></a>:::</span>
+<span id="cb46-2066"><a href="#cb46-2066" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-2067"><a href="#cb46-2067" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参考文献</span></span>
+<span id="cb46-2068"><a href="#cb46-2068" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb46-2069"><a href="#cb46-2069" aria-hidden="true" tabindex="-1"></a>::: {#refs}</span>
+<span id="cb46-2070"><a href="#cb46-2070" aria-hidden="true" tabindex="-1"></a>:::</span>
 </code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
