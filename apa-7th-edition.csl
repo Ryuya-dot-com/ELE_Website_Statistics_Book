@@ -54,6 +54,11 @@
       <term name="review-of" form="short">review of</term>
     </terms>
   </locale>
+  <locale xml:lang="ja">
+    <terms>
+      <term name="et-al">et al.</term>
+    </terms>
+  </locale>
   <locale xml:lang="da">
     <terms>
       <term name="et-al">et al.</term>

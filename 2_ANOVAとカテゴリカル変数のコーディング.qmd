@@ -4,11 +4,6 @@ bibliography: references_anova.bib
 csl: apa-7th-edition.csl
 ---
 
-::: {.callout-tip}
-### Conventions
-本チュートリアルの図表ラベルは英語、本文は日本語で統一します。コードはすべてRです。
-:::
-
 ## はじめに
 
 英語教育研究では、次のような問いがしばしば立てられます。
@@ -1150,3 +1145,8 @@ standard ANOVA interpretation.
 - @singmann2025afex — `afex`: 要因実験の分析。Type III SS、球面性補正、効果量を統合的に扱う
 - @lenth2023emmeans — `emmeans`: 推定周辺平均と事後比較。ANOVAの解釈に不可欠
 - @benshachar2020 — `effectsize`: 効果量指標と標準化パラメータの算出
+
+## 参考文献
+
+::: {#refs}
+:::

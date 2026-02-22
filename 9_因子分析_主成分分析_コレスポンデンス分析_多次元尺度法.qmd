@@ -5,11 +5,6 @@ bibliography: references_latent_variable.bib
 
 ## はじめに
 
-::: {.callout-tip}
-### Conventions
-Figures use English labels. All code chunks are R.
-:::
-
 英語教育研究では、直接測定できない概念（構成概念）を扱う場面が頻繁にある。たとえば「動機づけ」「言語適性」「コミュニケーション能力」「読解力」はいずれも直接観察できず、複数の質問紙項目やテスト項目を通じて間接的に測定される。@dornyei2005 は第二言語習得における個人差変数の心理学的基盤を包括的にレビューし、これらの構成概念が複数の下位次元から構成されることを示した。こうした**観測変数の背後にある構造**を統計的に明らかにするのが、本章で扱う潜在変数モデルと次元縮約の手法群である[@kline2023; @brown2015]。
 
 本章では6つの手法を体系的に解説する。**主成分分析（PCA）** と **探索的因子分析（EFA）** で構造の探索と次元縮約を行い、**確認的因子分析（CFA）** と **構造方程式モデリング（SEM）** で理論に基づく仮説検証を行う。さらに、カテゴリカルデータの関係性を可視化する **コレスポンデンス分析（CA/MCA）** と、距離・類似度データを低次元空間に写像する **多次元尺度法（MDS）** を取り上げる。
@@ -140,6 +135,8 @@ pacman::p_load(
   glue              # Reporting templates
 )
 set.seed(2024)
+theme_set(theme_bw())
+theme_update(legend.position = "bottom")
 ```
 
 ::: {.callout-note}
@@ -687,8 +684,13 @@ data.frame(
 # Fit EFA with promax rotation (oblique: allows factor correlations)
 fit_efa <- psych::fa(motivation, nfactors = 3, fm = "ml", rotate = "promax")
 
-# Display summary
-print(fit_efa, cut = 0.30, sort = TRUE)
+# Display summary as gt table
+unclass(fit_efa$loadings) |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Item") |>
+  gt() |>
+  tab_header(title = "EFA Factor Loadings (cut = 0.30)") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
 ```
 
 ::: {.callout-note}
@@ -1001,8 +1003,14 @@ cfa_model_1f <- '
 fit_cfa_3f <- cfa(cfa_model_3f, data = motivation_cfa, std.lv = TRUE)
 fit_cfa_1f <- cfa(cfa_model_1f, data = motivation_cfa, std.lv = TRUE)
 
-# Display 3-factor model summary
-summary(fit_cfa_3f, fit.measures = TRUE, standardized = TRUE)
+# Display 3-factor model summary as gt table
+parameterEstimates(fit_cfa_3f, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "CFA 3-Factor Model: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
 ```
 
 ### 適合度指標の比較
@@ -1290,7 +1298,15 @@ sem_model <- '
 '
 
 fit_sem <- lavaan::sem(sem_model, data = sem_data, std.lv = TRUE, estimator = "MLR")
-summary(fit_sem, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE)
+
+# Display SEM parameter estimates as gt table
+parameterEstimates(fit_sem, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "SEM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
 ```
 
 ### パラメータ推定値
@@ -1755,7 +1771,15 @@ lgm_uncond <- '
 '
 
 fit_lgm_uncond <- growth(lgm_uncond, data = lgm_data)
-summary(fit_lgm_uncond, fit.measures = TRUE, standardized = TRUE)
+
+# Display unconditional LGM parameter estimates as gt table
+parameterEstimates(fit_lgm_uncond, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "Unconditional LGM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
 ```
 
 ```{r}
@@ -1800,7 +1824,15 @@ lgm_cond <- '
 '
 
 fit_lgm_cond <- growth(lgm_cond, data = lgm_data)
-summary(fit_lgm_cond, fit.measures = TRUE, standardized = TRUE)
+
+# Display conditional LGM parameter estimates as gt table
+parameterEstimates(fit_lgm_cond, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "Conditional LGM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
 ```
 
 ```{r}
@@ -1960,7 +1992,15 @@ lgm_et <- '
 '
 
 fit_et <- growth(lgm_et, data = et_data)
-summary(fit_et, fit.measures = TRUE, standardized = TRUE)
+
+# Display eye-tracking LGM parameter estimates as gt table
+parameterEstimates(fit_et, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "Eye-tracking LGM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
 ```
 
 ```{r}

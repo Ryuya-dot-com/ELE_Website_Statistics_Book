@@ -1,6 +1,8 @@
 project:
   type: book
   output-dir: _book
+  post-render:
+    - python3 _scripts/normalize_nfc.py
 
 book:
   title: "Rによる統計解析実戦ガイド"

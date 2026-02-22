@@ -41,12 +41,33 @@ nocite: |
 5. 「精度が高い」で終わらず、教育実務で使える判断に落とし込める。
 :::
 
+## 分析の流れ（フローチャート）
+
+本章では、2値分類問題に対してシンプルなモデルから段階的に複雑なモデルへと進み、最終的に複数モデルの性能を比較するという流れをとる。まずロジスティック回帰をベースラインとして出発し、次に決定木（CART）で非線形パターンを探索する。単体モデルの予測精度が不十分であれば、ランダムフォレストやXGBoostといったアンサンブル手法に進む。この「シンプルなモデルで始め、必要に応じて複雑なモデルへ拡張する」というアプローチは、教育データ分析において特に重要である。解釈可能性と予測精度のバランスを意識しながら、最終的にはROC曲線の重ね描きとAUC比較によってモデル間の優劣を客観的に評価する。
+
+```{mermaid}
+%%| fig-width: 8
+flowchart TD
+    A["2値分類問題の設定"] --> B["ロジスティック回帰（ベースライン）"]
+    B --> C["決定木（CART）で非線形パターン探索"]
+    C --> D{"予測精度は十分？"}
+    D -->|"Yes"| E["ROC / AUC で評価・報告"]
+    D -->|"No"| F["アンサンブル手法へ"]
+    F --> G["Random Forest"]
+    F --> H["XGBoost"]
+    G --> I["モデル比較（ROC曲線重ね描き + AUC比較）"]
+    H --> I
+    I --> J["最良モデルで予測・報告"]
+
+    style A fill:#e8f4fd
+    style D fill:#fff3cd
+    style E fill:#d4edda
+    style J fill:#d4edda
+```
+
 ::: {.callout-note}
-### Conventions
-- Figure labels are in English.（国際誌への投稿を想定し、図のラベルは英語で統一しています。）
-- All code chunks are R.
-- 数式は最小限にし、実装と解釈を重視します。
-- 専門用語は初出時に定義します。急いでいる場合はcalloutボックスだけ読めば要点がわかります。
+#### どのパスが最も関連するか
+多くの英語教育研究では、まずロジスティック回帰と決定木で十分な予測精度が得られるかを確認することが出発点となる。アンサンブル手法（RF・XGBoost）は予測精度の向上が必要な場合に検討するが、解釈可能性が低下する点に注意が必要である。研究報告を目的とする場合は、まず左側のパス（ベースライン → 評価・報告）を試し、精度が不十分な場合にのみ右側のアンサンブルパスへ進むことを推奨する。
 :::
 
 ```{r}
@@ -351,7 +372,7 @@ CVの手順:
 #| warning: false
 
 pacman::p_load(
-  tidyverse, gt, patchwork,     # データ操作・表・図の結合
+  tidyverse, gt, DT, patchwork,     # データ操作・表・図の結合
   tidymodels, workflowsets,     # モデリングフレームワーク
   rpart.plot, vip, ranger, xgboost,  # ツリーモデル群
   probably, scales, dominanceanalysis # 評価・重要度
@@ -541,7 +562,7 @@ df <- obs |>
   select(correct, proficiency, weekly_study, anxiety, l1_distance,
          word_freq, word_length, cognate, pos, condition, test_time)
 
-glimpse(df)
+DT::datatable(df, caption = "Data Overview")
 ```
 
 ### データの概観
@@ -1594,7 +1615,7 @@ pred_all <- bind_rows(
   collect_binary_preds(xgb_final_fit, test_data, "XGBoost")
 )
 
-glimpse(pred_all)
+DT::datatable(pred_all, caption = "Prediction Results Overview")
 ```
 
 ### 3つの具体ケースで予測値を比べる

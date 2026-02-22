@@ -63,7 +63,7 @@ sfパッケージによる地図作成の入門から、空間自己相関・空
 ### 必要な環境
 
 - **R**（最新版を推奨）：[https://cran.r-project.org/](https://cran.r-project.org/)
-- **RStudio**（推奨）：[https://posit.co/download/rstudio-desktop/](https://posit.co/download/rstudio-desktop/)
+- **RStudio**：[https://posit.co/download/rstudio-desktop/](https://posit.co/download/rstudio-desktop/)
 
 各章で使用するパッケージは章の冒頭で読み込んでいますが、以下のコードで主要なパッケージを一括インストールできます。
 

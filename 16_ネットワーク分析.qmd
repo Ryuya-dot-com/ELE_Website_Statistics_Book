@@ -47,6 +47,31 @@ bibliography: references_network.bib
 - 目的は「多機能なコード集」ではなく、**研究で使える分析思考**を身につけることである。
 :::
 
+### 分析ワークフロー
+
+ネットワーク分析は、記述的なアプローチから統計的モデリングまで段階的に深めることができます。研究目的に応じて、どこまで進むかを判断してください。
+
+```{mermaid}
+%%| fig-width: 8
+flowchart TD
+    A["関係データの取得<br/>（アンケート・観察等）"] --> B["ネットワークの構築と可視化"]
+    B --> C["記述統計<br/>（密度・中心性・推移性）"]
+    C --> D{"統計的モデリングが必要？"}
+    D -->|"Yes"| E["ERGM / QAP / MRQAP"]
+    D -->|"No"| F["記述 + 可視化で報告"]
+    E --> G["ネットワーク指標と<br/>学習成果の関連（回帰分析）"]
+    F --> H["結果報告"]
+    G --> H
+
+    style A fill:#e8f4fd
+    style D fill:#fff3cd
+    style H fill:#d4edda
+```
+
+::: {.callout-note}
+多くの英語教育研究では、まず**記述的分析**（可視化＋中心性指標）で全体構造を把握し、その後に**ERGM**や**QAP回帰**で仮説を検証する流れが一般的です。
+:::
+
 ```{r}
 #| label: setup
 #| include: false
@@ -80,6 +105,8 @@ library(plotly)
 library(patchwork)
 
 set.seed(2024)
+theme_set(theme_bw())
+theme_update(legend.position = "bottom")
 
 scale01 <- function(x) {
   if (length(unique(x)) == 1) return(rep(0.5, length(x)))
@@ -767,7 +794,7 @@ node_stats %>%
 ```
 
 ::: {.callout-important}
-### 解釈の順序（推奨）
+### 解釈の順序
 1. まず `strength` で活動量の大きい学習者を確認する
 2. 次に `betweenness` でクラス間ブリッジを確認する
 3. 最後に `eigen` で「重要ノードとの接続」を確認する
@@ -1313,9 +1340,11 @@ V(g_for_ergm)$proficiency <- as.character(V(g_for_ergm)$proficiency)
 g_net <- intergraph::asNetwork(g_for_ergm)
 
 # ノード属性が正しく変換されたか確認
-cat("ネットワーク概要:\n")
-print(g_net)
-cat("\nノード属性:", network::list.vertex.attributes(g_net), "\n")
+tibble(
+  Property = c("Nodes", "Edges", "Directed", "Bipartite"),
+  Value = c(network::network.size(g_net), network::network.edgecount(g_net),
+            network::is.directed(g_net), network::is.bipartite(g_net))
+) |> gt() |> tab_header(title = "Network Summary")
 ```
 
 ```{r}
@@ -1334,7 +1363,6 @@ ergm_fit <- ergm::ergm(
   )
 )
 
-summary(ergm_fit)
 ```
 
 ```{r}
@@ -1520,8 +1548,6 @@ mrqap_fit <- sna::netlm(
   nullhyp = "qap"
 )
 
-cat("MRQAP回帰結果:\n")
-summary(mrqap_fit)
 ```
 
 ```{r}
@@ -1623,7 +1649,10 @@ analysis_df <- node_stats %>%
   )
 
 m_gain <- lm(gain ~ scale(baseline_score) + scale(strength) + scale(betweenness) + class, data = analysis_df)
-summary(m_gain)
+broom::tidy(m_gain, conf.int = TRUE) |>
+  gt() |>
+  tab_header(title = "OLS: Network Centrality → Learning Gain") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
 ```
 
 ```{r}
@@ -1639,8 +1668,12 @@ par(mfrow = c(1, 1))
 #| label: regression-vif
 # 多重共線性の確認
 if (requireNamespace("car", quietly = TRUE)) {
-  cat("VIF（分散膨張係数）:\n")
-  print(car::vif(m_gain))
+  car::vif(m_gain) |>
+    as.data.frame() |>
+    tibble::rownames_to_column("Term") |>
+    gt() |>
+    tab_header(title = "VIF (Variance Inflation Factor)") |>
+    fmt_number(columns = where(is.numeric), decimals = 2)
 }
 ```
 
@@ -1680,7 +1713,10 @@ ego_data %>%
 
 ```{r}
 #| label: sla-study-abroad-results
-summary(m_abroad)
+broom::tidy(m_abroad, conf.int = TRUE) |>
+  gt() |>
+  tab_header(title = "OLS: Study Abroad Network → L2 Gain") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
 ```
 
 このシミュレーションでは、L2話者との接触割合（`prop_l2_contacts`）が熟達度の伸びの主要な予測子となっている。これは @isbell2024 の知見――ネットワークの次数よりもL2使用の質（特にL2話者との接触比率）が重要である――と整合的な結果である。
@@ -1704,7 +1740,10 @@ wtc_data <- node_stats %>%
   )
 
 m_wtc <- lm(wtc ~ scale(strength) + scale(betweenness) + class, data = wtc_data)
-summary(m_wtc)
+broom::tidy(m_wtc, conf.int = TRUE) |>
+  gt() |>
+  tab_header(title = "OLS: Network Centrality → WTC") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
 ```
 
 ### ピア評価ネットワーク
@@ -1808,7 +1847,10 @@ ggraph(as_tbl_graph(g_pa), layout = "fr") +
 # 受けた評価の平均スコアとライティング事前得点の関連
 m_pa <- lm(mean_score_received ~ scale(writing_pre) + scale(indegree) + proficiency,
            data = pa_stats)
-summary(m_pa)
+broom::tidy(m_pa, conf.int = TRUE) |>
+  gt() |>
+  tab_header(title = "OLS: Peer Assessment Network → Mean Score Received") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
 ```
 
 ::: {.callout-tip}

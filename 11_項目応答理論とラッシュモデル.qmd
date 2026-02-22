@@ -66,14 +66,6 @@ $$
 :::
 
 ::: {.callout-note}
-### Conventions
-
-- 図表タイトルは英語で統一します（文字化け回避）。
-- すべてのコードチャンクは R です。
-- 例は英語語彙テスト（2値項目）を想定します。
-:::
-
-::: {.callout-note}
 ### 公式ドキュメント（2026-02-20確認）
 
 - `mirt`: [CRAN package page](https://CRAN.R-project.org/package=mirt), [reference index](https://philchalmers.github.io/mirt/docs/reference/index.html)
@@ -586,7 +578,15 @@ ggplot(score_df, aes(x = total_score, fill = group)) +
 #| label: rasch-fit
 
 rasch_fit <- eRm::RM(resp_df)
-summary(rasch_fit)
+
+# Display Rasch model item parameters as gt table
+coef(rasch_fit) |>
+  as.data.frame() |>
+  setNames("Estimate") |>
+  tibble::rownames_to_column("Item") |>
+  gt() |>
+  tab_header(title = "Rasch Model: Item Parameters") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
 ```
 
 前節で Rasch 推定を実行しました。次に、推定された項目困難度の意味を確認し、Wright Map で受験者と項目の関係を可視化します。

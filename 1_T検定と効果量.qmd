@@ -1,5 +1,8 @@
 ---
 title: "T検定と効果量"
+bibliography: references_ttest.bib
+nocite: |
+  @cohen1988, @mcgraw1992, @langtest, @campbell_calculator
 ---
 
 ## はじめに
@@ -15,11 +18,6 @@ title: "T検定と効果量"
 - 本書全体で「正=介入有利」を原則とし、符号の扱いを統一します（メタ分析とも整合）。
 :::
 
-::: {.callout-tip}
-### Conventions
-Figures use English labels. All code chunks are R.
-:::
-
 ### データの作成
 データセットは、50人の参加者が2種類の語彙学習方法を用いて比較された架空のデータです。この研究では、目標語彙に集中する学習方法がより効果的であると仮定します。具体的には、注釈付きの読解よりも、目標語彙を使用して文章を作る方が学習効果が高いと考えられます。参加者は15個ずつの目標語を2つの方法で学び、L2からL1への翻訳テスト (recall test) と選択問題 (recognition test) でその知識を評価します。このテストは学習直後と1週間後の遅延で実施しました。この実験設定を前提に、t検定をRで実施してみましょう。
 
@@ -33,7 +31,7 @@ t検定：各学習方法で15語ずつ学習し、15点満点のテストで評
 #| warning: false
 
 # パッケージの読み込み
-pacman::p_load(tidyverse, gt, psych, performance, emmeans, lmerTest, DHARMa, sjPlot, effectsize, car, compute.es, pwr, brunnermunzel, MASS)
+pacman::p_load(tidyverse, gt, DT, psych, performance, emmeans, lmerTest, DHARMa, sjPlot, effectsize, car, compute.es, pwr, brunnermunzel, MASS)
 
 # テーマと乱数種の設定
 theme_set(theme_bw())
@@ -89,8 +87,7 @@ dat$Score <- pmin(dat$Score, 1)
 
 ```{r}
 #| label: show-data
-head(dat) |> 
-  gt()
+DT::datatable(dat)
 ```
 
 ロジスティック回帰分析は目的変数 (Score) が2値のまま実行できるのですが、t検定やMANOVAは実行できません。そこで以下のようにコードで連続値へと足して15点満点にする必要があります。
@@ -131,8 +128,7 @@ dat_summarized |>
 
 ```{r}
 #| label: show-summarized
-head(dat_summarized) |> 
-  gt()
+DT::datatable(dat_summarized)
 ```
 
 ### 可視化
@@ -155,25 +151,37 @@ ggplot(dat_summarized, aes(x = Treatment, y = Score, fill = Time)) +
 
 ## T検定
 
-t検定では目的変数が連続値、説明変数が1つで2水準のカテゴリカル変数である必要があります。そこで、そのようなデータセットを作成するため、以下のコードで直後と遅延ごとにRecallテストの結果をdat_imm、dat_delに格納します。
+t検定では目的変数が連続値、説明変数が1つで2水準のカテゴリカル変数である必要があります。分析に進む前に、以下のフローチャートで全体の流れを確認しましょう。各ステップの判断が最終的な検定手法と効果量の種類を決定するため、正規性と等分散性の確認を省略せずに行うことが重要です。
 
 ::: {.callout-note}
 ### 分析の流れ
 
 ```{mermaid}
+%%| fig-width: 8
 flowchart TD
-    A[データの準備] --> B{正規性の確認}
-    B -->|満たす| C{等分散性の確認}
-    B -->|満たさない| D[ノンパラメトリック検定]
-    C -->|満たす| E[Student's t検定]
-    C -->|満たさない| F[Welch's t検定]
-    E --> G[効果量の計算]
-    F --> G
-    D --> H[効果量の計算<br/>順位相関係数]
-    G --> I[結果の解釈]
-    H --> I
+    A[2群の平均値を比較したい] --> B[データの準備・記述統計]
+    B --> C{正規性の確認<br/>Shapiro-Wilk検定}
+    C -->|満たす| D{等分散性の確認<br/>Levene検定}
+    C -->|満たさない| E[ノンパラメトリック検定<br/>Wilcoxon検定]
+    D -->|等分散| F[Student's t検定]
+    D -->|不等分散| G[Welch's t検定]
+    F --> H[効果量の算出<br/>Cohen's d]
+    G --> H
+    E --> I[効果量の算出<br/>順位相関係数 r]
+    H --> J[検出力分析]
+    I --> J
+    J --> K[結果の報告]
+
+    style A fill:#e8f4fd
+    style C fill:#fff3cd
+    style D fill:#fff3cd
+    style K fill:#d4edda
 ```
+
+正規性を満たさない場合はノンパラメトリック検定（Wilcoxon検定）を、満たす場合は等分散性に応じてStudent's t検定またはWelch's t検定を選択します。どの経路でも効果量の算出と検出力分析を行い、統計的有意性だけでなく実質的な意味を評価します。
 :::
+
+以下のコードで直後と遅延ごとにRecallテストの結果をdat_imm、dat_delに格納します。
 
 ```{r}
 #| label: subset-data
@@ -266,7 +274,7 @@ data.frame(
     locations = cells_column_spanners())
 ```
 
-### 効果量のレポート書式（推奨）
+### 効果量のレポート書式
 
 - 例：Cohen's d = -1.40, 95% CI [-1.84, -0.96]（負値=Writing有利）。
 - 例：Hedges g = -1.39, 95% CI [-1.82, -0.95]。
@@ -1222,15 +1230,10 @@ data.frame(
 ```
 :::
 
-## 参考文献・ウェブサイト
+## 参考文献
 
-Cohen, J. (1988). *Statistical power for the behavioral sciences (2nd ed.)*. Hillsdale, NJ: Erlbaum.
-
-McGraw, K. O. & Wong, S. P. (1992). A common language effect size statistic. *Psychological Bulletin, 111,* 361-365.
-
-langtest (<https://langtest.jp/shiny/tut/>)
-
-Practical Meta Analysis Effect Size Calculator (<https://www.campbellcollaboration.org/calculator/>)
+::: {#refs}
+:::
 
 ## セッション情報
 
