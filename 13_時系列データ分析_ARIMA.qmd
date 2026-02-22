@@ -1662,7 +1662,7 @@ plot(ce, points = TRUE)
 tsibble（整然時系列）＋ fable（モデリング）＋ feasts（特徴量・診断）による、tidyverse スタイルの時系列分析パイプラインです。
 
 ```{r}
-#| label: fable-workflow
+#| label: fable-analysis-sequence
 #| eval: false
 
 # ts -> tsibble へ
@@ -1896,7 +1896,7 @@ plot_spectrum <- function(x, fs, nfft=4096){
   tibble(f=f, amp=amp) |>
     filter(f <= fs/2) |>
     ggplot(aes(f, amp)) + geom_line() +
-    labs(x='Frequency (Hz)', y='Amplitude (dB)') + theme_bw()
+    labs(x='Frequency (Hz)', y='Amplitude (dB)') + theme_bw(base_size = 12) + theme(legend.position = "bottom")
 }
 
 plot_spectrum(vw_i, fs) + labs(title='Spectrum of synthetic /i/')
@@ -2352,7 +2352,7 @@ formant_tbl |>
   stat_ellipse(level = .68, linewidth = .6) +
   scale_x_reverse() + scale_y_reverse() +
   labs(title = 'Vowel space (F1–F2)', x = 'F2 (Hz)', y = 'F1 (Hz)') +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-tip}

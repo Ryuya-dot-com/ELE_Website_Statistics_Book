@@ -734,7 +734,7 @@ ggplot(sim_data, aes(x = score)) +
     title = "Distribution Comparison of Simulated Data",
     x = "Score", y = "Density"
   ) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ### 相関のあるデータの生成
@@ -804,7 +804,7 @@ GGally::ggpairs(
   diag = list(continuous = GGally::wrap("densityDiag", fill = "steelblue", alpha = 0.5))
 ) +
   labs(title = "Correlation Matrix of Simulated Data") +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-tip}
@@ -972,7 +972,7 @@ ggplot(conditions, aes(x = n, y = power, color = d_label, group = d_label)) +
     y = "Power (probability of significance)",
     color = "Effect Size"
   ) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 :::
@@ -1136,7 +1136,7 @@ ggplot(boot_df, aes(x = mean)) +
                        mean(toefl_sample), boot_ci[1], boot_ci[2]),
     x = "Bootstrap Mean", y = "Density"
   ) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-tip}
@@ -1282,7 +1282,7 @@ sim_experiment |>
     x = "CEFR Proficiency", y = "Gain Score (Post - Pre)",
     fill = "Method"
   ) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-tip}
@@ -2740,7 +2740,7 @@ ggplot(iris, aes(x = Petal.Length, y = Petal.Width, color = Species)) +
     color = "Species"
   ) +
   scale_color_brewer(palette = "Dark2") +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "bottom")
 ```
 
@@ -2764,7 +2764,7 @@ ggplot(iris_long, aes(x = value, fill = Species)) +
     fill = "Species"
   ) +
   scale_fill_brewer(palette = "Set2") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-note}
@@ -2789,7 +2789,7 @@ ggplot(iris_long, aes(x = Species, y = value, fill = Species)) +
     title = "Comparison of Measurements Across Species",
     x = "Species", y = "Value (cm)"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 30, hjust = 1))
 ```
@@ -2813,7 +2813,7 @@ iris_long2 |>
     x = "Species", y = "Measurement (cm)"
   ) +
   scale_fill_brewer(palette = "Pastel1") +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 ```
 
@@ -2841,7 +2841,7 @@ iris_cor |>
                        midpoint = 0, limits = c(-1, 1)) +
   labs(title = "Correlation Matrix of Iris Measurements",
        x = "", y = "", fill = "r") +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -2849,7 +2849,7 @@ iris_cor |>
 
 
 ```{r}
-#| label: iris-comprehensive-workflow
+#| label: iris-comprehensive-procedure
 #| fig-width: 9
 #| fig-height: 5
 
@@ -2888,7 +2888,7 @@ ggplot(iris_summary, aes(x = Species, y = mean, fill = dimension)) +
     fill = "Dimension"
   ) +
   scale_fill_brewer(palette = "Set1") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ```{r}
@@ -3024,7 +3024,7 @@ ggplot(ele_data, aes(x = toefl_score, y = vocabulary_test)) +
     color = "CEFR Level",
     caption = "Note. Shaded area = 95% CI."
   ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(
     plot.title = element_text(face = "bold"),
     legend.position = "bottom"

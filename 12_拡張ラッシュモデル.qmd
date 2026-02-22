@@ -676,7 +676,7 @@ ggplot(grm_plot_df, aes(x = b_mean, y = a, label = Item)) +
     x = "Average threshold difficulty (b)",
     y = "Discrimination (a)"
   ) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 この図で、右側ほど高能力帯でカテゴリ遷移が起きる項目、上側ほど弁別力が高い項目を意味します。  
@@ -1183,7 +1183,7 @@ ggplot(loading_df, aes(x = F1, y = F2, color = Dominant, label = Item)) +
     y = "Discrimination on Factor 2",
     color = "Item pattern"
   ) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 因子負荷マップの読み方：F1 軸（横）に近い項目は F1 に主に負荷し、F2 軸（縦）に近い項目は F2 に主に負荷します。対角線付近の項目は両因子にまたがる交差負荷項目です。原点付近の弱負荷項目は、いずれの因子も十分に弁別できていないため、項目の質を再検討する候補です。
@@ -1204,7 +1204,7 @@ ggplot(theta_df, aes(x = F1, y = F2)) +
     x = "Factor 1 ability (theta)",
     y = "Factor 2 ability (theta)"
   ) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 この2図を併読すると、「項目がどの次元を測っているか」と「学習者がどの能力プロファイルに分布しているか」を対応づけて解釈できます。
@@ -1619,7 +1619,7 @@ ggplot(curve_data, aes(x = theta, y = p, color = Model)) +
     y = "P(X = 1)",
     color = NULL
   ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "bottom")
 ```
 
@@ -1836,7 +1836,7 @@ if (length(levels_present)) {
     geom_tile(color = 'white', size = 0.2) +
     scale_fill_manual(values = c('0' = '#f0f0f0', '1' = '#4682b4'), guide = 'none') +
     labs(title = 'Item Membership by Scale (AISP)', x = 'Item', y = 'Scale') +
-    theme_bw() +
+    theme_bw(base_size = 12) + theme(legend.position = "bottom") +
     theme(
       axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
     )
@@ -1950,7 +1950,7 @@ violations_summary |>
     x = NULL,
     y = "Count of detected violations"
   ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "bottom")
 ```
 

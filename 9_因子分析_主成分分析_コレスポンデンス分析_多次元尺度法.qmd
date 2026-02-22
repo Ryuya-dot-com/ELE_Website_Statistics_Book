@@ -193,7 +193,7 @@ ggplot(cor_long, aes(Var2, Var1, fill = r)) +
     subtitle = "Block structure suggests two latent factors (Reading vs. Listening)",
     fill = "r"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -376,7 +376,7 @@ ggplot(scree_tbl, aes(Component, Eigenvalue)) +
     subtitle = "Components above the red line have eigenvalue > 1",
     y = "Eigenvalue"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(plot.title = element_text(face = "bold"))
 ```
 
@@ -444,7 +444,7 @@ ggplot() +
     x = paste0("Dim 1 (", round(res_pca$eig[1,2], 1), "%)"),
     y = paste0("Dim 2 (", round(res_pca$eig[2,2], 1), "%)")
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(plot.title = element_text(face = "bold"))
 ```
 
@@ -772,7 +772,7 @@ ggplot(loadings_long_bar, aes(x = reorder(Item, abs(Loading)), y = abs(Loading),
     subtitle = "L2 Motivation Questionnaire (promax rotation)",
     x = "Item", y = "|Loading|"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   scale_fill_brewer(palette = "Set1")
 ```
 
@@ -794,7 +794,7 @@ ggplot(heat_tbl, aes(Factor, Item, fill = Loading)) +
     title = "EFA Factor Loadings Heatmap",
     subtitle = "L2 Motivation Questionnaire (promax rotation)"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -1525,7 +1525,7 @@ p_cross <- lgm_demo |>
   labs(title = "A: Cross-sectional View",
        subtitle = "Group means hide individual trajectories",
        x = "Semester", y = "Vocabulary Score") +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
 # Panel B: Longitudinal view (spaghetti plot)
 p_long <- lgm_demo |>
@@ -1535,7 +1535,7 @@ p_long <- lgm_demo |>
   labs(title = "B: Longitudinal View",
        subtitle = "Individual growth trajectories vary",
        x = "Semester", y = "Vocabulary Score") +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 
 library(patchwork)
@@ -1698,7 +1698,7 @@ lgm_long |>
   labs(title = "Individual Vocabulary Growth Trajectories",
        subtitle = "Grey = 50 individual trajectories; Red = group mean",
        x = "Semester", y = "Vocabulary Score") +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 #### 無条件成長モデル（Unconditional Growth Model）
@@ -2019,7 +2019,7 @@ et_long |>
        subtitle = "Ribbon = ± 1 SE; L2 readers processing relative clauses",
        x = "Session", y = "Gaze Duration (ms)",
        color = "Proficiency", fill = "Proficiency") +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ### LGM の発展と注意点
@@ -2095,7 +2095,7 @@ cat(lgm_report)
 サンプルサイズが十分にある場合（400名以上）、ランダムに2つのサブサンプルに分割して分析する方法が一般的である。
 
 ```{r}
-#| label: workflow-sample-split
+#| label: sample-split-procedure
 #| eval: false
 
 # Example: random split into exploration and confirmation samples
@@ -2274,8 +2274,8 @@ ggplot(row_cos2_long, aes(Dim, Category, fill = cos2)) +
   geom_tile() +
   geom_text(aes(label = round(cos2, 3)), size = 3.5) +
   scale_fill_gradient(low = "white", high = "#2b8cbe") +
-  labs(title = "Row cos² Heatmap", subtitle = "Quality of representation by L1 group", fill = "cos²") +
-  theme_bw()
+  labs(title = "Row cos² Heatmap", subtitle = "Quality of representation by L1 group", fill = "Cos2") +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 #### 列カテゴリの $\cos^2$ ヒートマップ
@@ -2292,8 +2292,8 @@ ggplot(col_cos2_long, aes(Dim, ErrorType, fill = cos2)) +
   geom_tile() +
   geom_text(aes(label = round(cos2, 3)), size = 3.5) +
   scale_fill_gradient(low = "white", high = "#e6550d") +
-  labs(title = "Column cos² Heatmap", subtitle = "Quality of representation by error type", fill = "cos²") +
-  theme_bw()
+  labs(title = "Column cos² Heatmap", subtitle = "Quality of representation by error type", fill = "Cos2") +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 #### CA バイプロット（tidyverse 版）
@@ -2321,7 +2321,7 @@ ggplot() +
     x = paste0("Dim 1 (", round(res_ca$eig[1, 2], 1), "%)"),
     y = paste0("Dim 2 (", round(res_ca$eig[2, 2], 1), "%)")
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(plot.title = element_text(face = "bold"))
 ```
 
@@ -2454,7 +2454,7 @@ ggplot() +
     y = paste0("Dim 2 (", round(res_mca$eig[2, 2], 1), "%)")
   ) +
   scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07")) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(plot.title = element_text(face = "bold"))
 ```
 
@@ -2572,7 +2572,7 @@ ggplot(cmd_df, aes(Dim1, Dim2, label = Vowel)) +
     subtitle = "2D representation of dissimilarity judgments by Japanese learners",
     x = "Dimension 1 (Front-Back)", y = "Dimension 2 (Height)"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(plot.title = element_text(face = "bold"))
 ```
 
@@ -2605,7 +2605,7 @@ ggplot(mds_df, aes(Dim1, Dim2, label = Vowel)) +
     subtitle = paste("Stress =", round(fit_nmds$stress, 3)),
     x = "Dimension 1", y = "Dimension 2"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(plot.title = element_text(face = "bold"))
 ```
 
@@ -2665,7 +2665,7 @@ ggplot(stress_tbl, aes(Dim, Stress)) +
   geom_hline(yintercept = 0.10, linetype = "dashed", color = "red") +
   annotate("text", x = 4.5, y = 0.12, label = "Good fit threshold", color = "red", size = 3.5) +
   labs(title = "Stress vs. Number of Dimensions", subtitle = "Look for the elbow") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ### シェパード図
@@ -2716,7 +2716,7 @@ ggplot(emb_df, aes(Dim1, Dim2)) +
   geom_point(alpha = 0.5, size = 1.5, color = "#1f77b4") +
   facet_wrap(~ Method, scales = "free") +
   labs(title = "MDS Embeddings by Distance Type", subtitle = "Same data, different distance metrics") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ### マハラノビス距離による MDS
@@ -2753,7 +2753,7 @@ ggplot(cmd_mah_df, aes(Dim1, Dim2)) +
     subtitle = "Whitened by covariance: robust to scale and correlation differences",
     x = "Dimension 1", y = "Dimension 2"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(plot.title = element_text(face = "bold"))
 ```
 

@@ -417,7 +417,7 @@ ggplot(dat, aes(x = duration, y = yi)) +
   scale_size_continuous(name = "Precision (1/SE)") +
   labs(x = "Intervention duration (weeks)", y = "Hedges g",
        title = "Meta-regression: Effect by intervention duration") +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 **図の読み方**: 各点が 1 つの研究に対応し、点の大きさは精度（サンプルサイズ）を反映する。回帰線が右上がりであれば、介入期間が長い研究ほど効果量が大きい傾向を示す。帯は 95% CI である。
@@ -449,7 +449,7 @@ ggplot(df_loo, aes(x = idx, y = estimate)) +
   scale_x_continuous(breaks = df_loo$idx, labels = df_loo$study) +
   labs(x = "Left-out study", y = "Leave-one-out estimate (Hedges g)",
        title = "Sensitivity: Leave-one-out analysis") +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8))
 ```
 
@@ -789,7 +789,7 @@ ggplot(df_rank, aes(x = reorder(treatment, Pscore), y = Pscore)) +
   coord_flip() +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(title = "Treatment ranking (P-score)", x = "Treatment", y = "P-score") +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 **読み方**: P-score は 0〜1（0%〜100%）の指標であり、値が大きいほど有利な介入であることを示す。ただし、P-score の差が小さい場合は実質的な差が存在しない可能性もあるため、効果量と信頼区間を併せて解釈する必要がある。
@@ -862,7 +862,7 @@ if (!is.null(dr) && !is.null(ir)) {
     geom_point(color = "#2c3e50", size = 3, alpha = 0.7) +
     labs(title = "Node-splitting: Direct vs Indirect estimates",
          x = "Direct estimate", y = "Indirect estimate") +
-    theme_bw(base_size = 12)
+    theme_bw(base_size = 12) + theme(legend.position = "bottom")
 }
 ```
 

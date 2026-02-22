@@ -567,7 +567,7 @@ p_deg <- tibble(degree = igraph::degree(g)) %>%
            label = paste0("Mean = ", round(mean(igraph::degree(g)), 1)),
            size = 3.5, family = "sans") +
   labs(title = "Degree Distribution", x = "Degree", y = "Density") +
-  theme_bw(base_family = "sans")
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom")
 
 p_wt <- tibble(weight = E(g)$weight) %>%
   ggplot(aes(x = weight)) +
@@ -582,7 +582,7 @@ p_wt <- tibble(weight = E(g)$weight) %>%
            label = paste0("Mean = ", round(mean(E(g)$weight), 1)),
            size = 3.5, family = "sans") +
   labs(title = "Edge Weight Distribution", x = "Weight (collaboration count)", y = "Density") +
-  theme_bw(base_family = "sans")
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom")
 
 p_deg + p_wt
 ```
@@ -622,7 +622,7 @@ ggplot(adj_long, aes(x = from, y = to, fill = weight)) +
     title = "Adjacency Matrix Heatmap (sorted by class)",
     x = NULL, y = NULL
   ) +
-  theme_bw(base_family = "sans") +
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom") +
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
     axis.text.y = element_text(size = 6),
@@ -653,7 +653,7 @@ tibble(
     title = "Strength Distribution by Class",
     x = "Class", y = "Strength (weighted degree)"
   ) +
-  theme_bw(base_family = "sans") +
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 ```
 
@@ -807,7 +807,7 @@ ggplot(centrality_long, aes(x = Var1, y = Var2, fill = r)) +
   geom_text(aes(label = round(r, 2)), size = 3.5) +
   scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b", midpoint = 0, limits = c(-1, 1)) +
   labs(title = "Centrality Correlation Matrix", fill = "r") +
-  theme_bw(base_family = "sans") +
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.title = element_blank())
 ```
 
@@ -834,7 +834,7 @@ ggplot(top_n_centrality, aes(x = reorder(id, value), y = value, color = class)) 
   coord_flip() +
   facet_wrap(~ metric, scales = "free", ncol = 2) +
   labs(title = "Top 10 Learners by Centrality Metric", x = NULL, y = "Value", color = "Class") +
-  theme_bw(base_family = "sans") +
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom") +
   theme(strip.text = element_text(face = "bold"))
 ```
 
@@ -898,7 +898,7 @@ ggplot(node_stats, aes(x = strength, y = betweenness)) +
     x = "Strength (weighted degree)", y = "Betweenness (normalized)",
     color = "Class", size = "Eigenvector"
   ) +
-  theme_bw(base_family = "sans")
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-note}
@@ -1086,14 +1086,14 @@ p_str_comm <- ggplot(community_centrality, aes(x = community, y = strength, fill
   geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.5) +
   geom_jitter(aes(color = community), width = 0.15, size = 2, alpha = 0.7) +
   labs(title = "Strength by Community", x = "Community", y = "Strength") +
-  theme_bw(base_family = "sans") +
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 
 p_btw_comm <- ggplot(community_centrality, aes(x = community, y = betweenness, fill = community)) +
   geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.5) +
   geom_jitter(aes(color = community), width = 0.15, size = 2, alpha = 0.7) +
   labs(title = "Betweenness by Community", x = "Community", y = "Betweenness") +
-  theme_bw(base_family = "sans") +
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 
 p_str_comm + p_btw_comm
@@ -1261,7 +1261,7 @@ ggplot(dir_stats, aes(x = outdegree, y = indegree)) +
     x = "Out-degree (advice seeking)", y = "In-degree (advice received)",
     color = "Class", size = "PageRank"
   ) +
-  theme_bw(base_family = "sans")
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-note}
@@ -1393,7 +1393,7 @@ ggplot(ergm_forest, aes(x = estimate, y = term)) +
     title = "ERGM Coefficient Forest Plot",
     x = "Estimate (log-odds)", y = NULL
   ) +
-  theme_bw(base_family = "sans") +
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom") +
   theme(axis.text.y = element_text(size = 10))
 ```
 
@@ -1592,7 +1592,7 @@ tibble(permuted = perm_dist_class) %>%
     title = "MRQAP Permutation Distribution: Same Class",
     x = "Permuted Coefficient", y = "Density"
   ) +
-  theme_bw(base_family = "sans")
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom")
 ```
 
 通常のOLS回帰では、ダイアド間の非独立性により標準誤差が過小推定される。QAP回帰は行列の行と列を同時に置換することでこの問題に対処し、より保守的（正確な）p値を提供する[@dekker2007]。
@@ -1926,7 +1926,7 @@ rank_comparison %>%
     title = "Top 10 Learners: Strength Stability Across Thresholds",
     x = NULL, y = "Strength", fill = "Threshold"
   ) +
-  theme_bw(base_family = "sans")
+  theme_bw(base_family = "sans", base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ### 欠測ノードの影響

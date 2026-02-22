@@ -58,6 +58,8 @@ nocite: |
 
 library(tidyverse)
 library(gt)
+theme_set(theme_bw(base_size = 12))
+theme_update(legend.position = "bottom")
 ```
 
 ### 回帰分析から機械学習への橋渡し
@@ -165,14 +167,14 @@ bv_dat |>
   ggplot(aes(x = complexity)) +
   geom_line(aes(y = train_error, color = "Training error"), linewidth = 1) +
   geom_line(aes(y = test_error, color = "Test error"), linewidth = 1) +
-  geom_line(aes(y = bias2, color = "Bias²"), linewidth = 0.8, linetype = "dashed") +
+  geom_line(aes(y = bias2, color = "Bias2"), linewidth = 0.8, linetype = "dashed") +
   geom_line(aes(y = variance, color = "Variance"), linewidth = 0.8, linetype = "dashed") +
   geom_vline(xintercept = 3.5, linetype = "dotted", color = "gray40") +
   annotate("text", x = 3.7, y = 0.42, label = "Optimal complexity", hjust = 0, size = 3.5) +
   scale_color_manual(values = c(
     "Training error" = "#2C7FB8",
     "Test error"     = "#D95F02",
-    "Bias²"          = "#7570B3",
+    "Bias2"          = "#7570B3",
     "Variance"       = "#E7298A"
   )) +
   labs(
@@ -361,8 +363,6 @@ pacman::p_load(
 )
 
 set.seed(2024)
-theme_set(theme_bw(base_size = 12))
-theme_update(legend.position = "bottom")
 options(digits = 3)
 
 tidymodels_prefer()

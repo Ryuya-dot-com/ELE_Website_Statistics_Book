@@ -28,7 +28,7 @@ CTT はこれらすべてを「誤差」として1つにまとめてしまう。
 
 pacman::p_load(
   tidyverse, lmerTest, gt, DT, performance, sjPlot,
-  effectsize, broom.mixed, gridExtra, glue, plotly, psych)
+  effectsize, broom.mixed, gridExtra, glue, psych)
 
 theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
@@ -134,33 +134,35 @@ bind_rows(ctt_plot_data, gt_plot_data) |>
     x = NULL, y = "Variance Proportion (%)"
   ) +
   scale_y_continuous(limits = c(0, 100)) +
-  theme_bw(base_size = 12)
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ```{r}
-#| label: ctt-vs-gtheory-visual-plotly
-#| fig-cap: "CTT vs G-theory: Differences in Error Handling (Interactive)"
+#| label: ctt-vs-gtheory-visual-ggplot
+#| fig-cap: "CTT vs G-theory: Differences in Error Handling"
 
 ctt_gt_combined <- bind_rows(ctt_plot_data, gt_plot_data) |>
-  mutate(Framework = factor(Framework, levels = c("CTT", "G-theory")))
-
-plotly::plot_ly(
-  data = ctt_gt_combined, x = ~Component, y = ~Percent,
-  color = ~Framework,
-  colors = c("CTT" = "#4e79a7", "G-theory" = "#59a14f"),
-  type = "bar",
-  text = ~paste0(round(Percent, 1), "%"),
-  textposition = "outside",
-  hovertext = ~paste0("Framework: ", Framework, "<br>Component: ", Component,
-                       "<br>Percent: ", round(Percent, 1), "%"),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = "CTT = 1つの誤差バケツ  vs  一般化可能性理論 = 複数の誤差バケツ",
-    xaxis = list(title = ""),
-    yaxis = list(title = "分散の割合 (%)", range = c(0, 105)),
-    barmode = "group"
+  mutate(
+    Framework = factor(Framework, levels = c("CTT", "G-theory")),
+    Component = stringr::str_replace_all(Component, "\n", " ")
   )
+
+ggplot(ctt_gt_combined, aes(x = Component, y = Percent, fill = Framework)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_text(
+    aes(label = paste0(round(Percent, 1), "%")),
+    position = position_dodge(width = 0.8),
+    vjust = -0.4,
+    size = 3.3
+  ) +
+  scale_fill_manual(values = c("CTT" = "#4e79a7", "G-theory" = "#59a14f")) +
+  scale_y_continuous(limits = c(0, 105)) +
+  labs(
+    title = "CTT = 1つの誤差バケツ vs 一般化可能性理論 = 複数の誤差バケツ",
+    x = NULL, y = "分散の割合 (%)", fill = "Framework"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme(axis.text.x = element_text(angle = 20, hjust = 1))
 ```
 
 ### CTTから一般化可能性理論へ：概念の橋渡し
@@ -312,7 +314,7 @@ p_crossed <- ggplot(crossed_data, aes(x = Task, y = Rater)) +
   labs(title = "Crossed Design (p × t × r)",
        subtitle = "All raters score all tasks",
        x = NULL, y = NULL) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(panel.grid = element_blank())
 
 # ネスト設計の図
@@ -328,57 +330,46 @@ p_nested <- ggplot(nested_data, aes(x = Task, y = Rater)) +
   labs(title = "Nested Design (p × t × r:t)",
        subtitle = "課題ごとに異なる評価者チーム",
        x = NULL, y = NULL) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(panel.grid = element_blank())
 
 grid.arrange(p_crossed, p_nested, ncol = 2)
 ```
 
 ```{r}
-#| label: design-types-visual-plotly
-#| fig-cap: "Structure of Crossed and Nested Designs (Interactive)"
+#| label: design-types-visual-ggplot
+#| fig-cap: "Structure of Crossed and Nested Designs"
 
 # 交差設計: 全セルが埋まる
-crossed_plotly <- expand.grid(
+crossed_layout <- expand.grid(
   Task = c("Task 1", "Task 2", "Task 3"),
   Rater = c("Rater A", "Rater B")
 ) |>
-  mutate(Value = 1, Design = "交差設計（p × t × r）")
+  mutate(Value = 1, Design = "Crossed design (p x t x r)")
 
 # ネスト設計: 課題ごとに異なる評価者
-nested_plotly <- tibble(
+nested_layout <- tibble(
   Task = c("Task 1", "Task 1", "Task 2", "Task 2", "Task 3", "Task 3"),
   Rater = c("Rater A", "Rater B", "Rater C", "Rater D", "Rater E", "Rater F"),
   Value = 1,
-  Design = "ネスト設計（p × t × r:t）"
+  Design = "Nested design (p x t x r:t)"
 )
 
-plot_crossed <- plotly::plot_ly(
-  data = crossed_plotly, x = ~Task, y = ~Rater, z = ~Value,
-  type = "heatmap", colors = c("#4e79a7"),
-  showscale = FALSE,
-  hovertext = ~paste0("Task: ", Task, "<br>Rater: ", Rater, "<br>（同一評価者が全課題を採点）"),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = "交差設計（全評価者が全課題を採点）",
-    xaxis = list(title = ""), yaxis = list(title = "")
-  )
-
-plot_nested <- plotly::plot_ly(
-  data = nested_plotly, x = ~Task, y = ~Rater, z = ~Value,
-  type = "heatmap", colors = c("#e15759"),
-  showscale = FALSE,
-  hovertext = ~paste0("Task: ", Task, "<br>Rater: ", Rater, "<br>（課題ごとに異なる評価者チーム）"),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = "ネスト設計（課題ごとに異なる評価者）",
-    xaxis = list(title = ""), yaxis = list(title = "")
-  )
-
-plotly::subplot(plot_crossed, plot_nested, nrows = 1, titleX = TRUE, titleY = TRUE, margin = 0.08) |>
-  plotly::layout(title = "Crossed vs Nested Designs")
+bind_rows(crossed_layout, nested_layout) |>
+  ggplot(aes(x = Task, y = Rater, fill = Design)) +
+  geom_tile(color = "white", linewidth = 0.8) +
+  facet_wrap(~Design, nrow = 1, scales = "free_y") +
+  scale_fill_manual(
+    values = c("Crossed design (p x t x r)" = "#4e79a7", "Nested design (p x t x r:t)" = "#e15759"),
+    guide = "none"
+  ) +
+  labs(
+    title = "Crossed vs Nested Designs",
+    subtitle = "交差設計は全セルが埋まり、ネスト設計は課題ごとに評価者が分かれる",
+    x = NULL, y = NULL
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme(panel.grid = element_blank())
 ```
 
 ### 観測得点の分解モデル
@@ -826,7 +817,7 @@ p1 <- ggplot(Brennan.3.2, aes(x = Person, y = Score, color = Rater)) +
     title = "Scores by task",
     x = "Person",
     y = "Score") +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 
 p2 <- Brennan.3.2 |>
@@ -842,23 +833,16 @@ p2 <- Brennan.3.2 |>
     title = "Mean score by person",
     x = "Person",
     y = "Mean score (±SD)") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
 grid.arrange(p1, p2, ncol = 2)
 ```
 
 ```{r}
-#| label: visualize-data-plotly
-#| fig-cap: "Interactive score explorer (plotly)"
+#| label: visualize-data-ggplot
+#| fig-cap: "Score explorer"
 
-plotly::subplot(
-  plotly::ggplotly(p1, tooltip = c("x", "y", "colour")),
-  plotly::ggplotly(p2, tooltip = c("x", "y")),
-  nrows = 1,
-  widths = c(0.6, 0.4),
-  titleX = TRUE,
-  titleY = TRUE
-)
+grid.arrange(p1, p2, ncol = 2, widths = c(0.6, 0.4))
 ```
 
 ### 宇宙得点の推定と観測得点の乖離
@@ -1043,32 +1027,28 @@ ggplot(g_study_results, aes(x = reorder(source, -percent), y = percent, fill = s
     x = "Source",
     y = "Percent of total variance (%)"
   ) +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 ```
 
 ```{r}
-#| label: visualize-variance-components-plotly
-#| fig-cap: "Variance Component Proportions (G-study, Interactive)"
+#| label: visualize-variance-components-ggplot
+#| fig-cap: "Variance Component Proportions (G-study)"
 
-plotly::plot_ly(
-  data = g_study_results |> arrange(desc(percent)),
-  x = ~reorder(source, -percent), y = ~percent,
-  type = "bar",
-  color = ~source, colors = viridisLite::viridis(5),
-  text = ~paste0(round(percent, 1), "%"),
-  textposition = "outside",
-  hovertext = ~paste0("Source: ", source,
-                       "<br>Variance: ", round(var, 4),
-                       "<br>Percent: ", round(percent, 1), "%"),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
+g_study_results |>
+  arrange(desc(percent)) |>
+  mutate(source = forcats::fct_reorder(source, percent, .desc = TRUE)) |>
+  ggplot(aes(x = source, y = percent, fill = source)) +
+  geom_col(alpha = 0.85) +
+  geom_text(aes(label = paste0(round(percent, 1), "%")), vjust = -0.5, size = 3.6) +
+  scale_fill_viridis_d() +
+  scale_y_continuous(limits = c(0, max(g_study_results$percent) * 1.15)) +
+  labs(
     title = "G研究: 分散成分の分解（p × t × r:t 設計）",
-    xaxis = list(title = "Source"),
-    yaxis = list(title = "Percent of total variance (%)", range = c(0, max(g_study_results$percent) * 1.15)),
-    showlegend = FALSE
-  )
+    x = "Source", y = "Percent of total variance (%)"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme(legend.position = "none")
 ```
 
 ```{r}
@@ -1359,35 +1339,32 @@ one_step_design |>
 ```
 
 ```{r}
-#| label: one-step-design-comparison-plotly
-#| fig-cap: "+1 Step Design Comparison (Interactive)"
+#| label: one-step-design-comparison-ggplot
+#| fig-cap: "+1 Step Design Comparison"
 
 one_step_long <- one_step_design |>
   pivot_longer(cols = c(G, Phi), names_to = "Coefficient", values_to = "Value") |>
-  mutate(Coefficient = ifelse(Coefficient == "G", "G coefficient", "Phi coefficient"))
-
-plotly::plot_ly(
-  data = one_step_long,
-  x = ~Scenario, y = ~Value, color = ~Coefficient,
-  type = "bar",
-  colors = c("G coefficient" = "#1f77b4", "Phi coefficient" = "#d62728"),
-  text = ~round(Value, 3),
-  textposition = "outside",
-  hovertext = ~paste0("Scenario: ", Scenario, "<br>", Coefficient, ": ", round(Value, 3),
-                       "<br>Tasks: ", Tasks, ", Raters: ", Raters),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = "+1ステップの設計比較: どの1手が最も効率的か？",
-    xaxis = list(title = "", categoryorder = "array",
-                 categoryarray = c("現行設計", "+1 タスク", "+1 評価者", "+1 タスク & +1 評価者")),
-    yaxis = list(title = "Reliability coefficient", range = c(0, 1.05)),
-    barmode = "group",
-    shapes = list(
-      list(type = "line", x0 = -0.5, x1 = 3.5, y0 = 0.8, y1 = 0.8,
-           line = list(color = "red", dash = "dash", width = 1))
-    )
+  mutate(
+    Coefficient = ifelse(Coefficient == "G", "G coefficient", "Phi coefficient"),
+    Scenario = factor(Scenario, levels = c("現行設計", "+1 タスク", "+1 評価者", "+1 タスク & +1 評価者"))
   )
+
+ggplot(one_step_long, aes(x = Scenario, y = Value, fill = Coefficient)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.65) +
+  geom_text(
+    aes(label = round(Value, 3)),
+    position = position_dodge(width = 0.75),
+    vjust = -0.5,
+    size = 3.3
+  ) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", linewidth = 0.5) +
+  scale_fill_manual(values = c("G coefficient" = "#1f77b4", "Phi coefficient" = "#d62728")) +
+  scale_y_continuous(limits = c(0, 1.05)) +
+  labs(
+    title = "+1ステップの設計比較: どの1手が最も効率的か？",
+    x = NULL, y = "Reliability coefficient", fill = "Coefficient"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ```{r}
@@ -1465,7 +1442,7 @@ p1 <- ggplot(d_results,
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
   scale_color_viridis_d(name = "Number of Raters") +
   labs(title = "G coefficient (relative)", x = "Number of tasks", y = "G coefficient") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
 p2 <- ggplot(d_results,
        aes(x = TaskCount, y = Dependability, group = RaterCount, color = RaterCount)) +
@@ -1474,71 +1451,64 @@ p2 <- ggplot(d_results,
   geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", alpha = 0.5) +
   geom_hline(yintercept = 0.7, linetype = "dotted", color = "orange", alpha = 0.5) +
   scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
-  scale_color_viridis_d(name = "評価者数") +
+  scale_color_viridis_d(name = "Number of Raters") +
   labs(title = "Phi coefficient (absolute)", x = "Number of tasks", y = "Phi coefficient") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
 grid.arrange(p1, p2, ncol = 2)
 ```
 
 ```{r}
-#| label: plot-reliability-coefficients-plotly
-#| fig-cap: "Reliability Coefficient Trends (D-study, Interactive)"
+#| label: plot-reliability-coefficients-ggplot
+#| fig-cap: "Reliability Coefficient Trends (D-study)"
 
 d_results_long <- d_results_numeric |>
   pivot_longer(cols = c(Generalizability, Dependability),
                names_to = "Coefficient", values_to = "Value") |>
   mutate(Coefficient = ifelse(Coefficient == "Generalizability", "G coefficient", "Phi coefficient"))
 
-plotly::plot_ly(
-  data = d_results_long,
-  x = ~TaskCount, y = ~Value,
-  color = ~factor(RaterCount),
-  linetype = ~Coefficient,
-  type = "scatter", mode = "lines+markers",
-  colors = viridisLite::viridis(10),
-  hovertext = ~paste0("Tasks: ", TaskCount, "<br>Raters: ", RaterCount,
-                       "<br>", Coefficient, ": ", round(Value, 3)),
-  hoverinfo = "text",
-  marker = list(size = 6)
-) |>
-  plotly::layout(
-    title = "D研究: タスク数 × 評価者数による信頼性の変化",
-    xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Reliability coefficient", range = c(0, 1)),
-    legend = list(title = list(text = "Raters / Coefficient")),
-    shapes = list(
-      list(type = "line", x0 = 0.5, x1 = 5.5, y0 = 0.8, y1 = 0.8,
-           line = list(color = "red", dash = "dash", width = 1)),
-      list(type = "line", x0 = 0.5, x1 = 5.5, y0 = 0.7, y1 = 0.7,
-           line = list(color = "orange", dash = "dot", width = 1))
-    )
+ggplot(
+  d_results_long,
+  aes(
+    x = TaskCount, y = Value,
+    color = factor(RaterCount),
+    linetype = Coefficient,
+    group = interaction(RaterCount, Coefficient)
   )
+) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", linewidth = 0.5) +
+  geom_hline(yintercept = 0.7, linetype = "dotted", color = "orange", linewidth = 0.5) +
+  scale_color_viridis_d(name = "Number of Raters") +
+  scale_x_continuous(breaks = sort(unique(d_results_long$TaskCount))) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(
+    title = "D研究: タスク数 × 評価者数による信頼性の変化",
+    x = "Number of tasks", y = "Reliability coefficient", linetype = "Coefficient"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ```{r}
-#| label: d-study-plotly-heatmap
-#| fig-cap: "Interactive D-study heatmaps"
+#| label: d-study-heatmap-ggplot
+#| fig-cap: "D-study heatmaps"
 
-plot_g <- plotly::plot_ly(
-  data = d_results_numeric, x = ~TaskCount, y = ~RaterCount, z = ~Generalizability,
-  type = "heatmap", colors = viridisLite::viridis(100),
-  hovertemplate = paste("Tasks: %{x}<br>Raters: %{y}<br>G: %{z:.3f}<extra></extra>")
-) |>
-  plotly::layout(title = "G coefficient",
-    xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Number of raters", dtick = 1))
+plot_g <- ggplot(d_results_numeric, aes(x = TaskCount, y = RaterCount, fill = Generalizability)) +
+  geom_tile(color = "white", linewidth = 0.4) +
+  geom_text(aes(label = sprintf("%.2f", Generalizability)), size = 3) +
+  scale_fill_viridis_c(name = "G") +
+  labs(title = "G coefficient", x = "Number of tasks", y = "Number of raters") +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
-plot_phi <- plotly::plot_ly(
-  data = d_results_numeric, x = ~TaskCount, y = ~RaterCount, z = ~Dependability,
-  type = "heatmap", colors = viridisLite::cividis(100),
-  hovertemplate = paste("Tasks: %{x}<br>Raters: %{y}<br>Phi: %{z:.3f}<extra></extra>")
-) |>
-  plotly::layout(title = "Phi coefficient",
-    xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Number of raters", dtick = 1))
+plot_phi <- ggplot(d_results_numeric, aes(x = TaskCount, y = RaterCount, fill = Dependability)) +
+  geom_tile(color = "white", linewidth = 0.4) +
+  geom_text(aes(label = sprintf("%.2f", Dependability)), size = 3) +
+  scale_fill_viridis_c(option = "C", name = "Phi") +
+  labs(title = "Phi coefficient", x = "Number of tasks", y = "Number of raters") +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
-plotly::subplot(plot_g, plot_phi, nrows = 1, shareY = TRUE, titleX = TRUE, titleY = TRUE)
+grid.arrange(plot_g, plot_phi, ncol = 2)
 ```
 
 ### 英語スピーキング評価への適用
@@ -1590,7 +1560,7 @@ speaking_design_tbl |>
 ```
 
 ```{r}
-#| label: speaking-phi-feasible-plotly
+#| label: speaking-phi-feasible-ggplot
 #| fig-cap: "Design Space for Pass/Fail Decisions (Phi >= 0.80)"
 
 phi_target <- 0.80
@@ -1598,20 +1568,17 @@ phi_feasible <- d_results_numeric |>
   filter(Dependability >= phi_target) |>
   mutate(Design = paste0("T", TaskCount, " × R", RaterCount))
 
-plotly::plot_ly(
-  data = phi_feasible, x = ~TaskCount, y = ~RaterCount,
-  type = "scatter", mode = "markers+text",
-  text = ~Design, textposition = "top center",
-  color = ~Dependability, colors = viridisLite::viridis(100),
-  marker = list(size = 11),
-  hovertext = ~paste0("Design: ", Design, "<br>Phi: ", round(Dependability, 3),
-                       "<br>G: ", round(Generalizability, 3)),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = paste0("Φ ≥ ", phi_target, " を満たす設計（合否判定用）"),
-    xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Number of raters", dtick = 1))
+ggplot(phi_feasible, aes(x = TaskCount, y = RaterCount, color = Dependability)) +
+  geom_point(size = 4) +
+  geom_text(aes(label = Design), vjust = -0.8, size = 3, check_overlap = TRUE) +
+  scale_color_viridis_c(name = "Phi") +
+  scale_x_continuous(breaks = sort(unique(phi_feasible$TaskCount))) +
+  scale_y_continuous(breaks = sort(unique(phi_feasible$RaterCount))) +
+  labs(
+    title = paste0("Phi >= ", phi_target, " を満たす設計（合否判定用）"),
+    x = "Number of tasks", y = "Number of raters"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ### コスト効率分析
@@ -1637,48 +1604,38 @@ d_results |>
   labs(title = "Reliability Trend with 4 Raters Fixed",
        subtitle = "Diminishing returns as number of tasks increases",
        x = "Number of tasks", y = "Reliability coefficient", color = "Coefficient") +
-  theme_bw() +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
   annotate("text", x = 4.5, y = 0.82, label = "Target", color = "red", size = 3.5)
 ```
 
 ```{r}
-#| label: cost-efficiency-analysis-plotly
-#| fig-cap: "Reliability Trend with 4 Raters Fixed (Interactive)"
+#| label: cost-efficiency-analysis-ggplot
+#| fig-cap: "Reliability Trend with 4 Raters Fixed"
 
 cost_data <- d_results |>
   filter(RaterCount == "4") |>
   mutate(TaskCount = as.numeric(as.character(TaskCount)))
 
-plotly::plot_ly(data = cost_data, x = ~TaskCount) |>
-  plotly::add_trace(
-    y = ~Generalizability, name = "G coefficient",
-    type = "scatter", mode = "lines+markers",
-    line = list(color = "#1f77b4", width = 2.5),
-    marker = list(color = "#1f77b4", size = 8),
-    hovertext = ~paste0("Tasks: ", TaskCount, "<br>G: ", round(Generalizability, 3)),
-    hoverinfo = "text"
+cost_data |>
+  pivot_longer(
+    cols = c(Generalizability, Dependability),
+    names_to = "Coefficient",
+    values_to = "Value"
   ) |>
-  plotly::add_trace(
-    y = ~Dependability, name = "Phi coefficient",
-    type = "scatter", mode = "lines+markers",
-    line = list(color = "#d62728", width = 2.5),
-    marker = list(color = "#d62728", size = 8),
-    hovertext = ~paste0("Tasks: ", TaskCount, "<br>Phi: ", round(Dependability, 3)),
-    hoverinfo = "text"
-  ) |>
-  plotly::layout(
+  mutate(Coefficient = ifelse(Coefficient == "Generalizability", "G coefficient", "Phi coefficient")) |>
+  ggplot(aes(x = TaskCount, y = Value, color = Coefficient)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.8) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", linewidth = 0.5) +
+  annotate("text", x = 4.8, y = 0.82, label = "Target", color = "red", size = 3.5) +
+  scale_color_manual(values = c("G coefficient" = "#1f77b4", "Phi coefficient" = "#d62728")) +
+  scale_x_continuous(breaks = sort(unique(cost_data$TaskCount))) +
+  scale_y_continuous(limits = c(0.3, 1.0)) +
+  labs(
     title = "評価者4名固定時: タスク数の増加に伴う収穫逓減",
-    xaxis = list(title = "Number of tasks", dtick = 1),
-    yaxis = list(title = "Reliability coefficient", range = c(0.3, 1.0)),
-    shapes = list(
-      list(type = "line", x0 = 0.5, x1 = 5.5, y0 = 0.8, y1 = 0.8,
-           line = list(color = "red", dash = "dash", width = 1))
-    ),
-    annotations = list(
-      list(x = 4.8, y = 0.82, text = "目標値", showarrow = FALSE,
-           font = list(size = 12, color = "red"))
-    )
-  )
+    x = "Number of tasks", y = "Reliability coefficient", color = "Coefficient"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ### コスト制約つき設計選定
@@ -1727,7 +1684,7 @@ budget_top |>
 ```
 
 ```{r}
-#| label: budget-constrained-plotly
+#| label: budget-constrained-ggplot
 
 budget_plot_data <- select_design_under_budget(
   d_results_numeric, budget_cap = 20,
@@ -1735,19 +1692,22 @@ budget_plot_data <- select_design_under_budget(
 ) |>
   mutate(Design = paste0(TaskCount, "T × ", RaterCount, "R"), IsTop = row_number() <= 10)
 
-plotly::plot_ly(
-  data = budget_plot_data, x = ~TotalCost, y = ~Dependability,
-  type = "scatter", mode = "markers",
-  color = ~Generalizability, colors = viridisLite::viridis(100),
-  text = ~Design,
-  hovertext = ~paste0("Design: ", Design, "<br>Cost: ", TotalCost,
-                       "<br>Phi: ", round(Dependability, 3), "<br>G: ", round(Generalizability, 3)),
-  hoverinfo = "text", marker = list(size = 11)
-) |>
-  plotly::layout(
+ggplot(budget_plot_data, aes(x = TotalCost, y = Dependability, color = Generalizability)) +
+  geom_point(size = 3.2, alpha = 0.85) +
+  geom_text(
+    data = budget_plot_data |> filter(IsTop),
+    aes(label = Design),
+    nudge_y = 0.006,
+    size = 2.8,
+    check_overlap = TRUE,
+    show.legend = FALSE
+  ) +
+  scale_color_viridis_c(name = "G coefficient") +
+  labs(
     title = "予算制約下の設計空間（目的: Phi最大化）",
-    xaxis = list(title = "Total cost"),
-    yaxis = list(title = "Phi coefficient"))
+    x = "Total cost", y = "Phi coefficient"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ## 多変量一般化可能性理論
@@ -1871,29 +1831,28 @@ mv_g_table
 ```
 
 ```{r}
-#| label: multivariate-g-study-plotly
-#| fig-cap: "Multivariate G-study: Variance Components by Subtest (Interactive)"
+#| label: multivariate-g-study-ggplot
+#| fig-cap: "Multivariate G-study: Variance Components by Subtest"
 
-plotly::plot_ly(
-  data = mv_g_combined,
-  x = ~paste0("Subtest ", Subtest), y = ~percent,
-  color = ~source,
-  type = "bar",
-  colors = c("Person" = "#4e79a7", "Item" = "#f28e2b", "Residual" = "#e15759"),
-  text = ~paste0(round(percent, 1), "%"),
-  textposition = "inside",
-  hovertext = ~paste0("Subtest: ", Subtest, "<br>Source: ", source,
-                       "<br>Variance: ", round(var, 4),
-                       "<br>Percent: ", round(percent, 1), "%"),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
+ggplot(
+  mv_g_combined,
+  aes(x = factor(Subtest), y = percent, fill = source)
+) +
+  geom_col() +
+  geom_text(
+    aes(label = paste0(round(percent, 1), "%")),
+    position = position_stack(vjust = 0.5),
+    color = "white",
+    size = 3
+  ) +
+  scale_fill_manual(values = c("Person" = "#4e79a7", "Item" = "#f28e2b", "Residual" = "#e15759")) +
+  scale_x_discrete(labels = function(x) paste0("Subtest ", x)) +
+  scale_y_continuous(limits = c(0, 105)) +
+  labs(
     title = "多変量G研究: サブテスト別の分散成分",
-    xaxis = list(title = ""),
-    yaxis = list(title = "Percent of total variance (%)", range = c(0, 105)),
-    barmode = "stack",
-    legend = list(title = list(text = "Source"))
-  )
+    x = NULL, y = "Percent of total variance (%)", fill = "Source"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ```{r}
@@ -2082,35 +2041,30 @@ mv_d_table
 ```
 
 ```{r}
-#| label: multivariate-d-study-plotly
-#| fig-cap: "Multivariate D-study: Reliability by Weighting Scenario (Interactive)"
+#| label: multivariate-d-study-ggplot
+#| fig-cap: "Multivariate D-study: Reliability by Weighting Scenario"
 
 mv_d_long <- mv_d_table_data |>
   pivot_longer(cols = c(G_coefficient, Phi_coefficient),
                names_to = "Coefficient", values_to = "Value") |>
-  mutate(Coefficient = ifelse(Coefficient == "G_coefficient", "G", "Φ"))
+  mutate(Coefficient = ifelse(Coefficient == "G_coefficient", "G", "Phi"))
 
-plotly::plot_ly(
-  data = mv_d_long,
-  x = ~Scenario, y = ~Value, color = ~Coefficient,
-  type = "bar",
-  colors = c("G" = "#1f77b4", "Φ" = "#d62728"),
-  text = ~round(Value, 3),
-  textposition = "outside",
-  hovertext = ~paste0("Scenario: ", Scenario, "<br>Weights: ", Weights,
-                       "<br>", Coefficient, ": ", round(Value, 3)),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
+ggplot(mv_d_long, aes(x = Scenario, y = Value, fill = Coefficient)) +
+  geom_col(position = position_dodge(width = 0.75), width = 0.65) +
+  geom_text(
+    aes(label = round(Value, 3)),
+    position = position_dodge(width = 0.75),
+    vjust = -0.5,
+    size = 3.3
+  ) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", linewidth = 0.5) +
+  scale_fill_manual(values = c("G" = "#1f77b4", "Phi" = "#d62728")) +
+  scale_y_continuous(limits = c(0, 1.1)) +
+  labs(
     title = "多変量D研究: 重み付けと信頼性",
-    xaxis = list(title = ""),
-    yaxis = list(title = "Reliability coefficient", range = c(0, 1.1)),
-    barmode = "group",
-    shapes = list(
-      list(type = "line", x0 = -0.5, x1 = 2.5, y0 = 0.8, y1 = 0.8,
-           line = list(color = "red", dash = "dash", width = 1))
-    )
-  )
+    x = NULL, y = "Reliability coefficient", fill = "Coefficient"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ```{r}
@@ -2192,27 +2146,27 @@ ggplot(mv_sim_long, aes(x = ItemCount, y = Value, color = Coefficient)) +
   labs(title = "Multivariate D-study: Reliability of Composite Score by Number of Items",
     subtitle = "Equal weights (1/3, 1/3, 1/3)",
     x = "Baseline number of items", y = "Reliability coefficient", color = "Coefficient") +
-  theme_bw()
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ```{r}
-#| label: multivariate-simulation-plotly
+#| label: multivariate-simulation-ggplot
 
-plotly::plot_ly(
-  data = mv_sim_long, x = ~ItemCount, y = ~Value, color = ~Coefficient,
-  type = "scatter", mode = "lines+markers",
-  colors = c("Generalizability" = "#1f77b4", "Dependability" = "#d62728"),
-  hovertext = ~paste0("Items: ", ItemCount, "<br>", ifelse(Coefficient == "Generalizability", "G", "Phi"),
-    ": ", round(Value, 3)),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = "多変量D研究（インタラクティブ）",
-    xaxis = list(title = "Baseline number of items", dtick = 1),
-    yaxis = list(title = "Reliability coefficient", range = c(0.4, 1.0)),
-    shapes = list(
-      list(type = "line", x0 = 1, x1 = 10, y0 = 0.8, y1 = 0.8, line = list(color = "red", dash = "dash")),
-      list(type = "line", x0 = 1, x1 = 10, y0 = 0.7, y1 = 0.7, line = list(color = "orange", dash = "dot"))))
+mv_sim_long |>
+  mutate(Coefficient = recode(Coefficient, Generalizability = "G coefficient", Dependability = "Phi coefficient")) |>
+  ggplot(aes(x = ItemCount, y = Value, color = Coefficient)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 2.7) +
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "red", linewidth = 0.5) +
+  geom_hline(yintercept = 0.7, linetype = "dotted", color = "orange", linewidth = 0.5) +
+  scale_color_manual(values = c("G coefficient" = "#1f77b4", "Phi coefficient" = "#d62728")) +
+  scale_x_continuous(breaks = 1:10) +
+  scale_y_continuous(limits = c(0.4, 1.0)) +
+  labs(
+    title = "多変量D研究（等重み）",
+    x = "Baseline number of items", y = "Reliability coefficient", color = "Coefficient"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ## モデル診断
@@ -2249,8 +2203,8 @@ par(mfrow = c(1, 1))
 ```
 
 ```{r}
-#| label: model-diagnostics-plotly
-#| fig-cap: "Model Diagnostics (Interactive)"
+#| label: model-diagnostics-ggplot
+#| fig-cap: "Model Diagnostics"
 
 diag_data <- tibble(
   Fitted = fitted(g_model),
@@ -2261,64 +2215,19 @@ diag_data <- tibble(
   Rater = Brennan.3.2$Rater
 )
 
-# Residuals vs Fitted (interactive)
-p_resid_fit <- plotly::plot_ly(
-  data = diag_data, x = ~Fitted, y = ~Residuals,
-  type = "scatter", mode = "markers",
-  color = ~Task,
-  marker = list(size = 7, opacity = 0.7),
-  hovertext = ~paste0("Person: ", Person, "<br>Task: ", Task, "<br>Rater: ", Rater,
-                       "<br>Fitted: ", round(Fitted, 2), "<br>Residual: ", round(Residuals, 2)),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = "Residuals vs Fitted",
-    xaxis = list(title = "Fitted values"),
-    yaxis = list(title = "Residuals"),
-    shapes = list(
-      list(type = "line", x0 = min(diag_data$Fitted), x1 = max(diag_data$Fitted),
-           y0 = 0, y1 = 0, line = list(color = "red", dash = "dash"))
-    )
-  )
+p_resid_fit <- ggplot(diag_data, aes(x = Fitted, y = Residuals, color = Task)) +
+  geom_point(size = 2.2, alpha = 0.75) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", linewidth = 0.5) +
+  labs(title = "Residuals vs Fitted", x = "Fitted values", y = "Residuals", color = "Task") +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
-# Q-Q Plot (interactive)
-n_obs <- nrow(diag_data)
-qq_data <- diag_data |>
-  arrange(Std_Residuals) |>
-  mutate(
-    Theoretical = qnorm(ppoints(n_obs)),
-    Person_label = Person, Task_label = Task
-  )
+p_qq <- ggplot(diag_data, aes(sample = Std_Residuals)) +
+  stat_qq(size = 1.8, alpha = 0.75, color = "#4e79a7") +
+  stat_qq_line(color = "red", linetype = "dashed", linewidth = 0.6) +
+  labs(title = "Normal Q-Q Plot", x = "Theoretical quantiles", y = "Standardized residuals") +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 
-qq_line_data <- tibble(
-  Theoretical = c(min(qq_data$Theoretical), max(qq_data$Theoretical)),
-  Std_Residuals = c(min(qq_data$Theoretical), max(qq_data$Theoretical))
-)
-
-p_qq <- plotly::plot_ly() |>
-  plotly::add_trace(
-    data = qq_data, x = ~Theoretical, y = ~Std_Residuals,
-    type = "scatter", mode = "markers",
-    marker = list(size = 6, color = "#4e79a7", opacity = 0.7),
-    hovertext = ~paste0("Person: ", Person_label, "<br>Task: ", Task_label,
-                         "<br>Std Residual: ", round(Std_Residuals, 2)),
-    hoverinfo = "text", showlegend = FALSE
-  ) |>
-  plotly::add_trace(
-    data = qq_line_data, x = ~Theoretical, y = ~Std_Residuals,
-    type = "scatter", mode = "lines",
-    line = list(color = "red", dash = "dash"),
-    showlegend = FALSE, hoverinfo = "none"
-  ) |>
-  plotly::layout(
-    title = "Normal Q-Q Plot",
-    xaxis = list(title = "Theoretical quantiles"),
-    yaxis = list(title = "Standardized residuals"),
-    showlegend = FALSE
-  )
-
-plotly::subplot(p_resid_fit, p_qq, nrows = 1, titleX = TRUE, titleY = TRUE, margin = 0.06) |>
-  plotly::layout(title = "Model Diagnostic Plots (Interactive)")
+grid.arrange(p_resid_fit, p_qq, ncol = 2)
 ```
 
 ```{r}
@@ -2396,26 +2305,20 @@ icc_results |>
 ```
 
 ```{r}
-#| label: icc-calculation-plotly
-#| fig-cap: "ICC: Contribution by Component (Interactive)"
+#| label: icc-calculation-ggplot
+#| fig-cap: "ICC: Contribution by Component"
 
-plotly::plot_ly(
-  data = icc_results |> arrange(desc(ICC)),
-  x = ~reorder(Level, -ICC), y = ~ICC,
-  type = "bar",
-  color = ~Level,
-  colors = c("Person" = "#4e79a7", "Task" = "#f28e2b", "Rater" = "#e15759", "Person:Task" = "#76b7b2"),
-  text = ~round(ICC, 3),
-  textposition = "outside",
-  hovertext = ~paste0("Level: ", Level, "<br>ICC: ", round(ICC, 3)),
-  hoverinfo = "text"
-) |>
-  plotly::layout(
-    title = "ICC: 各成分の寄与度",
-    xaxis = list(title = ""),
-    yaxis = list(title = "ICC", range = c(0, max(icc_results$ICC) * 1.2)),
-    showlegend = FALSE
-  )
+icc_results |>
+  arrange(desc(ICC)) |>
+  mutate(Level = forcats::fct_reorder(Level, ICC, .desc = TRUE)) |>
+  ggplot(aes(x = Level, y = ICC, fill = Level)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = round(ICC, 3)), vjust = -0.5, size = 3.4) +
+  scale_fill_manual(values = c("Person" = "#4e79a7", "Task" = "#f28e2b", "Rater" = "#e15759", "Person:Task" = "#76b7b2")) +
+  scale_y_continuous(limits = c(0, max(icc_results$ICC) * 1.2)) +
+  labs(title = "ICC: 各成分の寄与度", x = NULL, y = "ICC") +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme(legend.position = "none")
 ```
 
 ## 先行研究との接続
@@ -2516,22 +2419,19 @@ recommendations |>
 ```
 
 ```{r}
-#| label: optimization-recommendations-plotly
+#| label: optimization-recommendations-ggplot
 
-plotly::plot_ly(
-  data = recommendations, x = ~Min_Tasks, y = ~Min_Raters,
-  type = "scatter", mode = "markers+text",
-  text = ~Purpose, textposition = "top center",
-  color = ~Target_Phi, colors = viridisLite::viridis(100),
-  marker = list(size = 12),
-  hovertext = ~paste0("Purpose: ", Purpose, "<br>Min tasks: ", Min_Tasks,
-    "<br>Min raters: ", Min_Raters, "<br>Target G: ", round(Target_G, 2),
-    "<br>Target Phi: ", round(Target_Phi, 2)),
-  hoverinfo = "text"
-) |>
-  plotly::layout(title = "Recommended Designs by Purpose (Minimum Requirements)",
-    xaxis = list(title = "Minimum tasks", dtick = 1),
-    yaxis = list(title = "Minimum raters", dtick = 1))
+ggplot(recommendations, aes(x = Min_Tasks, y = Min_Raters, color = Target_Phi, label = Purpose)) +
+  geom_point(size = 4) +
+  geom_text(vjust = -0.8, size = 3.2, check_overlap = TRUE) +
+  scale_color_viridis_c(name = "Target Phi") +
+  scale_x_continuous(breaks = sort(unique(recommendations$Min_Tasks))) +
+  scale_y_continuous(breaks = sort(unique(recommendations$Min_Raters))) +
+  labs(
+    title = "Recommended Designs by Purpose (Minimum Requirements)",
+    x = "Minimum tasks", y = "Minimum raters"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-tip}
