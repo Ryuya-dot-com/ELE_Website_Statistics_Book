@@ -1,25 +1,69 @@
-# ==========================================================
-# Quarto Book のデプロイは quarto publish gh-pages で行います
-# ローカルでレンダリング → gh-pages ブランチに直接 push
-#
-# 手順:
-#   1. quarto render --to html     (ローカルでレンダリング)
-#   2. quarto publish gh-pages     (gh-pages にデプロイ)
-#
-# 自動 CI は無効化しています（R パッケージのインストールが
-# 複雑で CI 環境では不安定なため）
-# ==========================================================
-
-name: Quarto Publish (disabled)
+name: Deploy Quarto Book to GitHub Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
-  placeholder:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Info
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render (using frozen results)
+        run: quarto render --to html
+
+      - name: NFC-normalize filenames
         run: |
-          echo "This workflow is disabled."
-          echo "Deploy locally using: quarto publish gh-pages"
+          python3 -c "
+          import os, shutil, unicodedata, tempfile
+
+          book = '_book'
+          tmp = tempfile.mkdtemp()
+          count = 0
+
+          for root, dirs, files in os.walk(book):
+              rel = os.path.relpath(root, book)
+              nfc_rel = unicodedata.normalize('NFC', rel)
+              dst_dir = os.path.join(tmp, nfc_rel)
+              os.makedirs(dst_dir, exist_ok=True)
+              for f in files:
+                  nfc_name = unicodedata.normalize('NFC', f)
+                  shutil.copy2(os.path.join(root, f), os.path.join(dst_dir, nfc_name))
+                  if f != nfc_name:
+                      count += 1
+
+          shutil.rmtree(book)
+          shutil.move(tmp, book)
+          print(f'Normalized {count} filenames to NFC')
+          "
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _book
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
