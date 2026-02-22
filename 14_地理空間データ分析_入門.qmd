@@ -132,7 +132,7 @@ load_pref_sf <- function(){
   }
 
   # 2) rnaturalearth（Admin-1, medium scale 明示）
-  ne_try <- try({ rnaturalearth::ne_states(country = "Japan", returnclass = "sf", scale = "medium") }, silent = TRUE)
+  ne_try <- try({ rnaturalearth::ne_states(country = "Japan", returnclass = "sf") }, silent = TRUE)
   if (!inherits(ne_try, "try-error") && inherits(ne_try, "sf")) {
     return(ne_try |>
              dplyr::transmute(pref_name = name, geometry = geometry) |>

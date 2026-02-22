@@ -54,6 +54,7 @@ nocite: |
 #| include: false
 
 library(tidyverse)
+library(gt)
 ```
 
 ### 回帰分析から機械学習への橋渡し
