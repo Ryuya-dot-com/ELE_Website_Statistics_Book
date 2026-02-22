@@ -116,6 +116,62 @@ library(DT)
 theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 
+plot_check_model_separate <- function(
+  model,
+  model_name = deparse(substitute(model))
+) {
+  get_plots <- function(checks_arg = NULL) {
+    diagnostic_bundle <- if (is.null(checks_arg)) {
+      performance::check_model(model, panel = FALSE)
+    } else {
+      performance::check_model(model, panel = FALSE, check = checks_arg)
+    }
+    plot(diagnostic_bundle)
+  }
+
+  diagnostic_plots <- tryCatch(
+    get_plots(),
+    error = function(.e) {
+      fallback_sets <- list(
+        c("linearity", "homogeneity", "outliers", "qq", "normality", "vif"),
+        c("linearity", "homogeneity", "outliers", "vif"),
+        c("qq", "normality", "vif")
+      )
+
+      for (fallback_checks in fallback_sets) {
+        p <- tryCatch(
+          get_plots(fallback_checks),
+          error = function(e2) NULL
+        )
+        if (!is.null(p)) {
+          return(p)
+        }
+      }
+
+      list()
+    }
+  )
+
+  if (length(diagnostic_plots) == 0) {
+    return(invisible(NULL))
+  }
+
+  purrr::iwalk(diagnostic_plots, function(p, nm) {
+    p_out <- p +
+      theme_bw(base_size = 12) +
+      theme(
+        legend.position = "bottom",
+        plot.title = element_text(face = "bold", size = 12),
+        axis.title = element_text(size = 11),
+        axis.text = element_text(size = 10)
+      ) +
+      labs(caption = paste("Model:", model_name, "| Check:", nm))
+    print(p_out)
+  })
+
+  invisible(diagnostic_plots)
+}
+
 set.seed(2024)
 
 # 条件設定
@@ -286,7 +342,10 @@ if (requireNamespace("boot", quietly = TRUE)) {
 ### 総合診断
 
 ```{r}
-check_model(m_theory)
+#| fig-width: 10
+#| fig-height: 4.8
+
+plot_check_model_separate(m_theory, model_name = "m_theory")
 ```
 
 ### 等分散性・正規性・独立性
@@ -349,7 +408,15 @@ plot_model(
   m_theory,
   type = "pred",
   terms = c("Proficiency", "Treatment", "Time")
-)
+) +
+  labs(
+    x = "Proficiency (z)",
+    y = "Predicted score",
+    color = "Treatment / Time",
+    fill = "Treatment / Time"
+  ) +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "bottom")
 ```
 
 ## Simple Slope Analysis

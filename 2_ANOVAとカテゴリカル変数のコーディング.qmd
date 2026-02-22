@@ -175,6 +175,62 @@ set.seed(2024)
 afex::set_sum_contrasts()
 theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
+
+plot_check_model_separate <- function(
+  model,
+  model_name = deparse(substitute(model))
+) {
+  get_plots <- function(checks_arg = NULL) {
+    diagnostic_bundle <- if (is.null(checks_arg)) {
+      performance::check_model(model, panel = FALSE)
+    } else {
+      performance::check_model(model, panel = FALSE, check = checks_arg)
+    }
+    plot(diagnostic_bundle)
+  }
+
+  diagnostic_plots <- tryCatch(
+    get_plots(),
+    error = function(.e) {
+      fallback_sets <- list(
+        c("linearity", "homogeneity", "outliers", "qq", "normality", "vif"),
+        c("linearity", "homogeneity", "outliers", "vif"),
+        c("qq", "normality", "vif")
+      )
+
+      for (fallback_checks in fallback_sets) {
+        p <- tryCatch(
+          get_plots(fallback_checks),
+          error = function(e2) NULL
+        )
+        if (!is.null(p)) {
+          return(p)
+        }
+      }
+
+      list()
+    }
+  )
+
+  if (length(diagnostic_plots) == 0) {
+    return(invisible(NULL))
+  }
+
+  purrr::iwalk(diagnostic_plots, function(p, nm) {
+    p_out <- p +
+      theme_bw(base_size = 12) +
+      theme(
+        legend.position = "bottom",
+        plot.title = element_text(face = "bold", size = 12),
+        axis.title = element_text(size = 11),
+        axis.text = element_text(size = 10)
+      ) +
+      labs(caption = paste("Model:", model_name, "| Check:", nm))
+    print(p_out)
+  })
+
+  invisible(diagnostic_plots)
+}
 ```
 
 以下のコードで、先行研究のパターンを模したシミュレーションデータを生成します。パラメータの設計意図は次のとおりです。
@@ -442,12 +498,12 @@ ANOVAの結果を報告する前に、モデルの前提条件が大きく破綻
 
 1. **Shapiro-Wilk検定**: 残差が正規分布から有意にずれているかを検定
 2. **Levene検定**: 群間で残差の分散が等しいかを検定
-3. **`check_model()`**: 残差診断の6パネルプロットを生成
+3. **`check_model()`**: 残差診断を個別プロットとして出力
 
 ```{r}
 #| label: assumptions
 #| fig-width: 10
-#| fig-height: 8
+#| fig-height: 4.8
 
 fit_lm <- lm(Score ~ Instruction * Time + Proficiency, data = dat)
 
@@ -458,7 +514,7 @@ shapiro.test(residuals(fit_lm))
 car::leveneTest(Score ~ Instruction * Time, data = dat)
 
 # 総合診断
-check_model(fit_lm)
+plot_check_model_separate(fit_lm, model_name = "fit_lm")
 ```
 
 ::: {.panel-tabset}
@@ -511,7 +567,7 @@ dat |> group_by(Instruction, Time) |> summarise(SD = sd(Score))
 
 ### 総合診断プロットの読み方
 
-`check_model()`は6つの診断パネルを生成します。各パネルの読み方は以下のとおりです。
+`check_model()`の診断を個別プロットで出力した場合も、読み方は次の6項目で同じです。
 
 | パネル | 確認事項 | OKの基準 | 注意が必要な場合 |
 |-------|---------|---------|---------------|

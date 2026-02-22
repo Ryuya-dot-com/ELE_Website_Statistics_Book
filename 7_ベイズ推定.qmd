@@ -1297,6 +1297,10 @@ fit_pois |>
 plot_model(fit_pois, type = "est",
            show.values = TRUE, value.offset = 0.3,
            title = "Fixed Effects: Incidence Rate Ratios") +
+  labs(
+    x = "Incidence rate ratio (IRR)",
+    y = "Predictor"
+  ) +
   theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
@@ -1309,6 +1313,12 @@ plot_model(fit_pois, type = "est",
 plot_model(fit_pois, type = "pred",
            terms = c("proficiency", "task_type"),
            title = "Predicted Error Counts by Proficiency and Task") +
+  labs(
+    x = "Proficiency (z)",
+    y = "Predicted error count",
+    color = "Task type",
+    fill = "Task type"
+  ) +
   theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
@@ -2017,6 +2027,10 @@ mcmc_intervals(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2",
 plot_model(fit_ord, type = "est",
            show.values = TRUE, value.offset = 0.3,
            title = "Fixed Effects: Odds Ratios") +
+  labs(
+    x = "Odds ratio (OR)",
+    y = "Predictor"
+  ) +
   theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
@@ -2029,6 +2043,12 @@ plot_model(fit_ord, type = "est",
 plot_model(fit_ord, type = "pred",
            terms = c("proficiency", "task_type"),
            title = "Predicted Rating Probabilities by Proficiency and Task") +
+  labs(
+    x = "Proficiency (z)",
+    y = "Predicted probability",
+    color = "Task type",
+    fill = "Task type"
+  ) +
   theme_bw(base_size = 12) + theme(legend.position = "bottom")
 ```
 
