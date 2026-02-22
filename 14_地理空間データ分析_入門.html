@@ -398,72 +398,64 @@ window.Quarto = {
 </li>
     </ul>
     </div>
-    <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">目次</h2>
-   
-  <ul>
-  <li><a href="#はじめに" id="toc-はじめに" class="nav-link active" data-scroll-target="#はじめに"><span class="header-section-number">17</span> はじめに</a></li>
-  <li><a href="#分析の流れ" id="toc-分析の流れ" class="nav-link" data-scroll-target="#分析の流れ"><span class="header-section-number">18</span> 分析の流れ</a></li>
-  <li><a href="#形状データの取得" id="toc-形状データの取得" class="nav-link" data-scroll-target="#形状データの取得"><span class="header-section-number">19</span> 形状データの取得</a>
-  <ul class="collapse">
-  <li><a href="#sf-オブジェクトとは" id="toc-sf-オブジェクトとは" class="nav-link" data-scroll-target="#sf-オブジェクトとは"><span class="header-section-number">19.1</span> sf オブジェクトとは</a></li>
-  <li><a href="#形状データの取得フォールバック付き" id="toc-形状データの取得フォールバック付き" class="nav-link" data-scroll-target="#形状データの取得フォールバック付き"><span class="header-section-number">19.2</span> 形状データの取得（フォールバック付き）</a></li>
-  <li><a href="#隣接の定義queen-と-rook" id="toc-隣接の定義queen-と-rook" class="nav-link" data-scroll-target="#隣接の定義queen-と-rook"><span class="header-section-number">19.3</span> 隣接の定義：Queen と Rook</a></li>
-  </ul></li>
-  <li><a href="#都道府県名の正規化名寄せ" id="toc-都道府県名の正規化名寄せ" class="nav-link" data-scroll-target="#都道府県名の正規化名寄せ"><span class="header-section-number">20</span> 都道府県名の正規化（名寄せ）</a></li>
-  <li><a href="#ダミーデータの作成英語教育指標" id="toc-ダミーデータの作成英語教育指標" class="nav-link" data-scroll-target="#ダミーデータの作成英語教育指標"><span class="header-section-number">21</span> ダミーデータの作成（英語教育指標）</a>
-  <ul class="collapse">
-  <li><a href="#分析シナリオ" id="toc-分析シナリオ" class="nav-link" data-scroll-target="#分析シナリオ"><span class="header-section-number">21.1</span> 分析シナリオ</a></li>
-  <li><a href="#結合前のミスマッチ検出" id="toc-結合前のミスマッチ検出" class="nav-link" data-scroll-target="#結合前のミスマッチ検出"><span class="header-section-number">21.2</span> 結合前のミスマッチ検出</a></li>
-  </ul></li>
-  <li><a href="#結合とコロプレス図" id="toc-結合とコロプレス図" class="nav-link" data-scroll-target="#結合とコロプレス図"><span class="header-section-number">22</span> 結合とコロプレス図</a>
-  <ul class="collapse">
-  <li><a href="#形状最新年指標の結合" id="toc-形状最新年指標の結合" class="nav-link" data-scroll-target="#形状最新年指標の結合"><span class="header-section-number">22.1</span> 形状＋最新年指標の結合</a></li>
-  <li><a href="#コロプレス図塗り分け地図" id="toc-コロプレス図塗り分け地図" class="nav-link" data-scroll-target="#コロプレス図塗り分け地図"><span class="header-section-number">22.2</span> コロプレス図（塗り分け地図）</a></li>
-  <li><a href="#年次比較小さな倍図-small-multiples" id="toc-年次比較小さな倍図-small-multiples" class="nav-link" data-scroll-target="#年次比較小さな倍図-small-multiples"><span class="header-section-number">22.3</span> 年次比較（小さな倍図: small multiples）</a></li>
-  </ul></li>
-  <li><a href="#パネル整形と要約統計" id="toc-パネル整形と要約統計" class="nav-link" data-scroll-target="#パネル整形と要約統計"><span class="header-section-number">23</span> パネル整形と要約統計</a>
-  <ul class="collapse">
-  <li><a href="#年次要約表" id="toc-年次要約表" class="nav-link" data-scroll-target="#年次要約表"><span class="header-section-number">23.1</span> 年次要約表</a></li>
-  <li><a href="#パネルデータの品質チェック" id="toc-パネルデータの品質チェック" class="nav-link" data-scroll-target="#パネルデータの品質チェック"><span class="header-section-number">23.2</span> パネルデータの品質チェック</a>
-  <ul class="collapse">
-  <li><a href="#欠損年の補完" id="toc-欠損年の補完" class="nav-link" data-scroll-target="#欠損年の補完"><span class="header-section-number">23.2.1</span> 1) 欠損年の補完</a></li>
-  <li><a href="#キーの重複チェック" id="toc-キーの重複チェック" class="nav-link" data-scroll-target="#キーの重複チェック"><span class="header-section-number">23.2.2</span> 2) キーの重複チェック</a></li>
-  <li><a href="#伸び率の安全な計算" id="toc-伸び率の安全な計算" class="nav-link" data-scroll-target="#伸び率の安全な計算"><span class="header-section-number">23.2.3</span> 3) 伸び率の安全な計算</a></li>
-  </ul></li>
-  </ul></li>
-  <li><a href="#空間自己相関の初歩morans-i" id="toc-空間自己相関の初歩morans-i" class="nav-link" data-scroll-target="#空間自己相関の初歩morans-i"><span class="header-section-number">24</span> 空間自己相関の初歩（Moran’s I）</a>
-  <ul class="collapse">
-  <li><a href="#なぜ空間自己相関を考える必要があるのか" id="toc-なぜ空間自己相関を考える必要があるのか" class="nav-link" data-scroll-target="#なぜ空間自己相関を考える必要があるのか"><span class="header-section-number">24.1</span> なぜ空間自己相関を考える必要があるのか</a></li>
-  <li><a href="#グローバル-morans-i-の計算" id="toc-グローバル-morans-i-の計算" class="nav-link" data-scroll-target="#グローバル-morans-i-の計算"><span class="header-section-number">24.2</span> グローバル Moran’s I の計算</a></li>
-  <li><a href="#グローバル-moran-の要約表" id="toc-グローバル-moran-の要約表" class="nav-link" data-scroll-target="#グローバル-moran-の要約表"><span class="header-section-number">24.3</span> グローバル Moran の要約表</a></li>
-  <li><a href="#ローカル-moranlisa-クラスタ図" id="toc-ローカル-moranlisa-クラスタ図" class="nav-link" data-scroll-target="#ローカル-moranlisa-クラスタ図"><span class="header-section-number">24.4</span> ローカル Moran（LISA クラスタ図）</a>
-  <ul class="collapse">
-  <li><a href="#lisa-の上位都道府県" id="toc-lisa-の上位都道府県" class="nav-link" data-scroll-target="#lisa-の上位都道府県"><span class="header-section-number">24.4.1</span> LISA の上位都道府県</a></li>
-  </ul></li>
-  <li><a href="#ローカル-moran-の地図local-i-の値" id="toc-ローカル-moran-の地図local-i-の値" class="nav-link" data-scroll-target="#ローカル-moran-の地図local-i-の値"><span class="header-section-number">24.5</span> ローカル Moran の地図（Local I の値）</a></li>
-  </ul></li>
-  <li><a href="#時空間パネル施策前後差分" id="toc-時空間パネル施策前後差分" class="nav-link" data-scroll-target="#時空間パネル施策前後差分"><span class="header-section-number">25</span> 時空間パネル：施策前後差分</a>
-  <ul class="collapse">
-  <li><a href="#伸び率の時系列" id="toc-伸び率の時系列" class="nav-link" data-scroll-target="#伸び率の時系列"><span class="header-section-number">25.1</span> 伸び率の時系列</a></li>
-  <li><a href="#施策前後差分の地図" id="toc-施策前後差分の地図" class="nav-link" data-scroll-target="#施策前後差分の地図"><span class="header-section-number">25.2</span> 施策前後差分の地図</a></li>
-  </ul></li>
-  <li><a href="#インタラクティブ地図leaflet" id="toc-インタラクティブ地図leaflet" class="nav-link" data-scroll-target="#インタラクティブ地図leaflet"><span class="header-section-number">26</span> インタラクティブ地図（leaflet）</a></li>
-  <li><a href="#トラブルシューティング" id="toc-トラブルシューティング" class="nav-link" data-scroll-target="#トラブルシューティング"><span class="header-section-number">27</span> トラブルシューティング</a>
-  <ul class="collapse">
-  <li><a href="#データ結合の問題" id="toc-データ結合の問題" class="nav-link" data-scroll-target="#データ結合の問題"><span class="header-section-number">27.1</span> データ結合の問題</a></li>
-  <li><a href="#形状データと-crs-の問題" id="toc-形状データと-crs-の問題" class="nav-link" data-scroll-target="#形状データと-crs-の問題"><span class="header-section-number">27.2</span> 形状データと CRS の問題</a></li>
-  <li><a href="#可視化の問題" id="toc-可視化の問題" class="nav-link" data-scroll-target="#可視化の問題"><span class="header-section-number">27.3</span> 可視化の問題</a></li>
-  <li><a href="#パネル整形の問題" id="toc-パネル整形の問題" class="nav-link" data-scroll-target="#パネル整形の問題"><span class="header-section-number">27.4</span> パネル整形の問題</a></li>
-  <li><a href="#空間分析の問題" id="toc-空間分析の問題" class="nav-link" data-scroll-target="#空間分析の問題"><span class="header-section-number">27.5</span> 空間分析の問題</a></li>
-  </ul></li>
-  <li><a href="#次の一歩応用編への橋渡し" id="toc-次の一歩応用編への橋渡し" class="nav-link" data-scroll-target="#次の一歩応用編への橋渡し"><span class="header-section-number">28</span> 次の一歩（応用編への橋渡し）</a></li>
-  </ul>
-</nav>
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">目次</h2>
+   
+  <ul>
+  <li><a href="#はじめに" id="toc-はじめに" class="nav-link active" data-scroll-target="#はじめに"><span class="header-section-number">16.1</span> はじめに</a></li>
+  <li><a href="#分析の流れ" id="toc-分析の流れ" class="nav-link" data-scroll-target="#分析の流れ"><span class="header-section-number">16.2</span> 分析の流れ</a></li>
+  <li><a href="#形状データの取得" id="toc-形状データの取得" class="nav-link" data-scroll-target="#形状データの取得"><span class="header-section-number">16.3</span> 形状データの取得</a>
+  <ul class="collapse">
+  <li><a href="#sf-オブジェクトとは" id="toc-sf-オブジェクトとは" class="nav-link" data-scroll-target="#sf-オブジェクトとは"><span class="header-section-number">16.3.1</span> sf オブジェクトとは</a></li>
+  <li><a href="#形状データの取得フォールバック付き" id="toc-形状データの取得フォールバック付き" class="nav-link" data-scroll-target="#形状データの取得フォールバック付き"><span class="header-section-number">16.3.2</span> 形状データの取得（フォールバック付き）</a></li>
+  <li><a href="#隣接の定義queen-と-rook" id="toc-隣接の定義queen-と-rook" class="nav-link" data-scroll-target="#隣接の定義queen-と-rook"><span class="header-section-number">16.3.3</span> 隣接の定義：Queen と Rook</a></li>
+  </ul></li>
+  <li><a href="#都道府県名の正規化名寄せ" id="toc-都道府県名の正規化名寄せ" class="nav-link" data-scroll-target="#都道府県名の正規化名寄せ"><span class="header-section-number">16.4</span> 都道府県名の正規化（名寄せ）</a></li>
+  <li><a href="#ダミーデータの作成英語教育指標" id="toc-ダミーデータの作成英語教育指標" class="nav-link" data-scroll-target="#ダミーデータの作成英語教育指標"><span class="header-section-number">16.5</span> ダミーデータの作成（英語教育指標）</a>
+  <ul class="collapse">
+  <li><a href="#分析シナリオ" id="toc-分析シナリオ" class="nav-link" data-scroll-target="#分析シナリオ"><span class="header-section-number">16.5.1</span> 分析シナリオ</a></li>
+  <li><a href="#結合前のミスマッチ検出" id="toc-結合前のミスマッチ検出" class="nav-link" data-scroll-target="#結合前のミスマッチ検出"><span class="header-section-number">16.5.2</span> 結合前のミスマッチ検出</a></li>
+  </ul></li>
+  <li><a href="#結合とコロプレス図" id="toc-結合とコロプレス図" class="nav-link" data-scroll-target="#結合とコロプレス図"><span class="header-section-number">16.6</span> 結合とコロプレス図</a>
+  <ul class="collapse">
+  <li><a href="#形状最新年指標の結合" id="toc-形状最新年指標の結合" class="nav-link" data-scroll-target="#形状最新年指標の結合"><span class="header-section-number">16.6.1</span> 形状＋最新年指標の結合</a></li>
+  <li><a href="#コロプレス図塗り分け地図" id="toc-コロプレス図塗り分け地図" class="nav-link" data-scroll-target="#コロプレス図塗り分け地図"><span class="header-section-number">16.6.2</span> コロプレス図（塗り分け地図）</a></li>
+  <li><a href="#年次比較小さな倍図-small-multiples" id="toc-年次比較小さな倍図-small-multiples" class="nav-link" data-scroll-target="#年次比較小さな倍図-small-multiples"><span class="header-section-number">16.6.3</span> 年次比較（小さな倍図: small multiples）</a></li>
+  </ul></li>
+  <li><a href="#パネル整形と要約統計" id="toc-パネル整形と要約統計" class="nav-link" data-scroll-target="#パネル整形と要約統計"><span class="header-section-number">16.7</span> パネル整形と要約統計</a>
+  <ul class="collapse">
+  <li><a href="#年次要約表" id="toc-年次要約表" class="nav-link" data-scroll-target="#年次要約表"><span class="header-section-number">16.7.1</span> 年次要約表</a></li>
+  <li><a href="#パネルデータの品質チェック" id="toc-パネルデータの品質チェック" class="nav-link" data-scroll-target="#パネルデータの品質チェック"><span class="header-section-number">16.7.2</span> パネルデータの品質チェック</a></li>
+  </ul></li>
+  <li><a href="#空間自己相関の初歩morans-i" id="toc-空間自己相関の初歩morans-i" class="nav-link" data-scroll-target="#空間自己相関の初歩morans-i"><span class="header-section-number">16.8</span> 空間自己相関の初歩（Moran’s I）</a>
+  <ul class="collapse">
+  <li><a href="#なぜ空間自己相関を考える必要があるのか" id="toc-なぜ空間自己相関を考える必要があるのか" class="nav-link" data-scroll-target="#なぜ空間自己相関を考える必要があるのか"><span class="header-section-number">16.8.1</span> なぜ空間自己相関を考える必要があるのか</a></li>
+  <li><a href="#グローバル-morans-i-の計算" id="toc-グローバル-morans-i-の計算" class="nav-link" data-scroll-target="#グローバル-morans-i-の計算"><span class="header-section-number">16.8.2</span> グローバル Moran’s I の計算</a></li>
+  <li><a href="#グローバル-moran-の要約表" id="toc-グローバル-moran-の要約表" class="nav-link" data-scroll-target="#グローバル-moran-の要約表"><span class="header-section-number">16.8.3</span> グローバル Moran の要約表</a></li>
+  <li><a href="#ローカル-moranlisa-クラスタ図" id="toc-ローカル-moranlisa-クラスタ図" class="nav-link" data-scroll-target="#ローカル-moranlisa-クラスタ図"><span class="header-section-number">16.8.4</span> ローカル Moran（LISA クラスタ図）</a></li>
+  <li><a href="#ローカル-moran-の地図local-i-の値" id="toc-ローカル-moran-の地図local-i-の値" class="nav-link" data-scroll-target="#ローカル-moran-の地図local-i-の値"><span class="header-section-number">16.8.5</span> ローカル Moran の地図（Local I の値）</a></li>
+  </ul></li>
+  <li><a href="#時空間パネル施策前後差分" id="toc-時空間パネル施策前後差分" class="nav-link" data-scroll-target="#時空間パネル施策前後差分"><span class="header-section-number">16.9</span> 時空間パネル：施策前後差分</a>
+  <ul class="collapse">
+  <li><a href="#伸び率の時系列" id="toc-伸び率の時系列" class="nav-link" data-scroll-target="#伸び率の時系列"><span class="header-section-number">16.9.1</span> 伸び率の時系列</a></li>
+  <li><a href="#施策前後差分の地図" id="toc-施策前後差分の地図" class="nav-link" data-scroll-target="#施策前後差分の地図"><span class="header-section-number">16.9.2</span> 施策前後差分の地図</a></li>
+  </ul></li>
+  <li><a href="#インタラクティブ地図leaflet" id="toc-インタラクティブ地図leaflet" class="nav-link" data-scroll-target="#インタラクティブ地図leaflet"><span class="header-section-number">16.10</span> インタラクティブ地図（leaflet）</a></li>
+  <li><a href="#トラブルシューティング" id="toc-トラブルシューティング" class="nav-link" data-scroll-target="#トラブルシューティング"><span class="header-section-number">16.11</span> トラブルシューティング</a>
+  <ul class="collapse">
+  <li><a href="#データ結合の問題" id="toc-データ結合の問題" class="nav-link" data-scroll-target="#データ結合の問題"><span class="header-section-number">16.11.1</span> データ結合の問題</a></li>
+  <li><a href="#形状データと-crs-の問題" id="toc-形状データと-crs-の問題" class="nav-link" data-scroll-target="#形状データと-crs-の問題"><span class="header-section-number">16.11.2</span> 形状データと CRS の問題</a></li>
+  <li><a href="#可視化の問題" id="toc-可視化の問題" class="nav-link" data-scroll-target="#可視化の問題"><span class="header-section-number">16.11.3</span> 可視化の問題</a></li>
+  <li><a href="#パネル整形の問題" id="toc-パネル整形の問題" class="nav-link" data-scroll-target="#パネル整形の問題"><span class="header-section-number">16.11.4</span> パネル整形の問題</a></li>
+  <li><a href="#空間分析の問題" id="toc-空間分析の問題" class="nav-link" data-scroll-target="#空間分析の問題"><span class="header-section-number">16.11.5</span> 空間分析の問題</a></li>
+  </ul></li>
+  <li><a href="#次の一歩応用編への橋渡し" id="toc-次の一歩応用編への橋渡し" class="nav-link" data-scroll-target="#次の一歩応用編への橋渡し"><span class="header-section-number">16.12</span> 次の一歩（応用編への橋渡し）</a></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -487,8 +479,8 @@ window.Quarto = {
 </header>
 
 
-<section id="はじめに" class="level1" data-number="17">
-<h1 data-number="17"><span class="header-section-number">17</span> はじめに</h1>
+<section id="はじめに" class="level2" data-number="16.1">
+<h2 data-number="16.1" class="anchored" data-anchor-id="はじめに"><span class="header-section-number">16.1</span> はじめに</h2>
 <p>英語教育の研究データには、しばしば<strong>地理的な構造</strong>が埋め込まれています。たとえば、以下の場面を考えてみてください。</p>
 <ol type="1">
 <li><strong>全国学力調査の結果を都道府県別に比較したい</strong>。どの地域の英語スコアが高く、どの地域が低いのか。単なる順位表ではなく、地図上に可視化すれば、地理的パターン（例: 都市圏に高スコアが集中、あるいは東西で傾向が異なる）が一目でわかる。</li>
@@ -555,8 +547,8 @@ Conventions
 <li><strong>gt</strong>: 学術論文風の表を作成する。</li>
 </ul>
 </section>
-<section id="分析の流れ" class="level1" data-number="18">
-<h1 data-number="18"><span class="header-section-number">18</span> 分析の流れ</h1>
+<section id="分析の流れ" class="level2" data-number="16.2">
+<h2 data-number="16.2" class="anchored" data-anchor-id="分析の流れ"><span class="header-section-number">16.2</span> 分析の流れ</h2>
 <p>本章の作業は、以下のフローに沿って進みます。各ステップは前のステップの出力に依存しているため、順番に実行してください。</p>
 <div class="cell" data-fig-width="8" data-layout-align="center">
 <details open="" class="code-fold">
@@ -613,10 +605,10 @@ Conventions
 </div>
 </div>
 </section>
-<section id="形状データの取得" class="level1" data-number="19">
-<h1 data-number="19"><span class="header-section-number">19</span> 形状データの取得</h1>
-<section id="sf-オブジェクトとは" class="level2" data-number="19.1">
-<h2 data-number="19.1" class="anchored" data-anchor-id="sf-オブジェクトとは"><span class="header-section-number">19.1</span> sf オブジェクトとは</h2>
+<section id="形状データの取得" class="level2" data-number="16.3">
+<h2 data-number="16.3" class="anchored" data-anchor-id="形状データの取得"><span class="header-section-number">16.3</span> 形状データの取得</h2>
+<section id="sf-オブジェクトとは" class="level3" data-number="16.3.1">
+<h3 data-number="16.3.1" class="anchored" data-anchor-id="sf-オブジェクトとは"><span class="header-section-number">16.3.1</span> sf オブジェクトとは</h3>
 <p><code>sf</code>（Simple Features）パッケージは、地理空間データをRのデータフレームとして扱えるようにする仕組みです。通常のデータフレームに <code>geometry</code> という特殊な列が追加されているだけで、<code>dplyr</code> の関数がそのまま使えます。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -641,8 +633,8 @@ sf を普通のデータフレームとの対比で理解する
 </div>
 </div>
 </section>
-<section id="形状データの取得フォールバック付き" class="level2" data-number="19.2">
-<h2 data-number="19.2" class="anchored" data-anchor-id="形状データの取得フォールバック付き"><span class="header-section-number">19.2</span> 形状データの取得（フォールバック付き）</h2>
+<section id="形状データの取得フォールバック付き" class="level3" data-number="16.3.2">
+<h3 data-number="16.3.2" class="anchored" data-anchor-id="形状データの取得フォールバック付き"><span class="header-section-number">16.3.2</span> 形状データの取得（フォールバック付き）</h3>
 <p>日本の都道府県境界ポリゴンを取得します。パッケージの利用可能性は環境によって異なるため、3段階のフォールバックを設けています。</p>
 <ol type="1">
 <li><strong>jpndistrict</strong>（推奨）: 日本専用パッケージ。高品質な都道府県境界を提供。</li>
@@ -664,7 +656,7 @@ sf を普通のデータフレームとの対比で理解する
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 2) rnaturalearth（Admin-1, medium scale 明示）</span></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  ne_try <span class="ot">&lt;-</span> <span class="fu">try</span>({ rnaturalearth<span class="sc">::</span><span class="fu">ne_states</span>(<span class="at">country =</span> <span class="st">"Japan"</span>, <span class="at">returnclass =</span> <span class="st">"sf"</span>, <span class="at">scale =</span> <span class="st">"medium"</span>) }, <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  ne_try <span class="ot">&lt;-</span> <span class="fu">try</span>({ rnaturalearth<span class="sc">::</span><span class="fu">ne_states</span>(<span class="at">country =</span> <span class="st">"Japan"</span>, <span class="at">returnclass =</span> <span class="st">"sf"</span>) }, <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">inherits</span>(ne_try, <span class="st">"try-error"</span>) <span class="sc">&amp;&amp;</span> <span class="fu">inherits</span>(ne_try, <span class="st">"sf"</span>)) {</span>
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(ne_try <span class="sc">|&gt;</span></span>
 <span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>             dplyr<span class="sc">::</span><span class="fu">transmute</span>(<span class="at">pref_name =</span> name, <span class="at">geometry =</span> geometry) <span class="sc">|&gt;</span></span>
@@ -745,7 +737,7 @@ GEOGCRS["WGS 84",
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># プレビュー：境界線だけの白地図</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(pref_sf) <span class="sc">+</span></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">fill =</span> <span class="st">'gray95'</span>, <span class="at">color =</span> <span class="st">'gray40'</span>, <span class="at">linewidth =</span> .<span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Japan: Prefecture Boundaries'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -777,8 +769,8 @@ CRS（座標参照系）とは
 </div>
 </div>
 </section>
-<section id="隣接の定義queen-と-rook" class="level2" data-number="19.3">
-<h2 data-number="19.3" class="anchored" data-anchor-id="隣接の定義queen-と-rook"><span class="header-section-number">19.3</span> 隣接の定義：Queen と Rook</h2>
+<section id="隣接の定義queen-と-rook" class="level3" data-number="16.3.3">
+<h3 data-number="16.3.3" class="anchored" data-anchor-id="隣接の定義queen-と-rook"><span class="header-section-number">16.3.3</span> 隣接の定義：Queen と Rook</h3>
 <p>地図を描くだけなら「隣接」を考える必要はありませんが、次章以降で空間自己相関や空間回帰を行う際に「誰が誰の隣人か」を定義する必要があります。ここでは3つの代表的な隣接定義を紹介します。</p>
 <ul>
 <li><strong>Queen 型</strong>: <strong>辺または頂点</strong>を共有していれば隣接とみなす。チェスのクイーンが八方向に動けるイメージ。つながりが多く、空間的影響を広く捉える。</li>
@@ -840,8 +832,8 @@ CRS（座標参照系）とは
 </div>
 </section>
 </section>
-<section id="都道府県名の正規化名寄せ" class="level1" data-number="20">
-<h1 data-number="20"><span class="header-section-number">20</span> 都道府県名の正規化（名寄せ）</h1>
+<section id="都道府県名の正規化名寄せ" class="level2" data-number="16.4">
+<h2 data-number="16.4" class="anchored" data-anchor-id="都道府県名の正規化名寄せ"><span class="header-section-number">16.4</span> 都道府県名の正規化（名寄せ）</h2>
 <p>形状データの都道府県名と、分析対象の指標データの都道府県名は、そのままでは一致しないことがあります。全角/半角、余分な空白、末尾の「都・道・府・県」の有無といった表記の揺れが原因です。以下の <code>norm_pref()</code> 関数は、この揺れを吸収して名寄せを可能にします。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -897,10 +889,10 @@ CRS（座標参照系）とは
 </div>
 </div>
 </section>
-<section id="ダミーデータの作成英語教育指標" class="level1" data-number="21">
-<h1 data-number="21"><span class="header-section-number">21</span> ダミーデータの作成（英語教育指標）</h1>
-<section id="分析シナリオ" class="level2" data-number="21.1">
-<h2 data-number="21.1" class="anchored" data-anchor-id="分析シナリオ"><span class="header-section-number">21.1</span> 分析シナリオ</h2>
+<section id="ダミーデータの作成英語教育指標" class="level2" data-number="16.5">
+<h2 data-number="16.5" class="anchored" data-anchor-id="ダミーデータの作成英語教育指標"><span class="header-section-number">16.5</span> ダミーデータの作成（英語教育指標）</h2>
+<section id="分析シナリオ" class="level3" data-number="16.5.1">
+<h3 data-number="16.5.1" class="anchored" data-anchor-id="分析シナリオ"><span class="header-section-number">16.5.1</span> 分析シナリオ</h3>
 <p>本章では以下のシナリオに基づくシミュレーションデータを使用します。</p>
 <blockquote class="blockquote">
 <p><strong>シナリオ</strong>: 2018–2024年の7年間、47都道府県について3つの英語教育指標を追跡する。<code>eng_score</code>（全国英語学力調査の複合スコア）、<code>teacher_toeic</code>（公立学校教員の平均TOEICスコア）、<code>eiken_rate</code>（中学3年生の英検準2級以上取得率）。分析の目的は、これらの指標の地理的分布パターンと年次変化を把握すること。</p>
@@ -921,7 +913,7 @@ CRS（座標参照系）とは
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2024</span>)</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>years <span class="ot">&lt;-</span> <span class="dv">2018</span><span class="sc">:</span><span class="dv">2024</span></span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>pref_panel <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(<span class="at">pref_name =</span> jpn_key<span class="sc">$</span>pref_name, <span class="at">year =</span> years) <span class="sc">|&gt;</span></span>
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>() <span class="sc">|&gt;</span></span>
@@ -935,8 +927,8 @@ CRS（座標参照系）とは
 </details>
 </div>
 </section>
-<section id="結合前のミスマッチ検出" class="level2" data-number="21.2">
-<h2 data-number="21.2" class="anchored" data-anchor-id="結合前のミスマッチ検出"><span class="header-section-number">21.2</span> 結合前のミスマッチ検出</h2>
+<section id="結合前のミスマッチ検出" class="level3" data-number="16.5.2">
+<h3 data-number="16.5.2" class="anchored" data-anchor-id="結合前のミスマッチ検出"><span class="header-section-number">16.5.2</span> 結合前のミスマッチ検出</h3>
 <p>形状データと指標データを結合する前に、<strong>名寄せの成功を検証</strong>します。<code>anti_join()</code> は「一方にあるが他方にない」レコードを抽出する関数で、ミスマッチの発見に威力を発揮します。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -962,10 +954,10 @@ CRS（座標参照系）とは
 <p><strong>確認ポイント</strong>: 両方とも 0 件であれば名寄せ成功です。もし 0 でなければ、<code>norm_pref()</code> に辞書置換を追加するか、元データの都道府県名を修正してください。</p>
 </section>
 </section>
-<section id="結合とコロプレス図" class="level1" data-number="22">
-<h1 data-number="22"><span class="header-section-number">22</span> 結合とコロプレス図</h1>
-<section id="形状最新年指標の結合" class="level2" data-number="22.1">
-<h2 data-number="22.1" class="anchored" data-anchor-id="形状最新年指標の結合"><span class="header-section-number">22.1</span> 形状＋最新年指標の結合</h2>
+<section id="結合とコロプレス図" class="level2" data-number="16.6">
+<h2 data-number="16.6" class="anchored" data-anchor-id="結合とコロプレス図"><span class="header-section-number">16.6</span> 結合とコロプレス図</h2>
+<section id="形状最新年指標の結合" class="level3" data-number="16.6.1">
+<h3 data-number="16.6.1" class="anchored" data-anchor-id="形状最新年指標の結合"><span class="header-section-number">16.6.1</span> 形状＋最新年指標の結合</h3>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -988,8 +980,8 @@ CRS（座標参照系）とは
 </div>
 </div>
 </section>
-<section id="コロプレス図塗り分け地図" class="level2" data-number="22.2">
-<h2 data-number="22.2" class="anchored" data-anchor-id="コロプレス図塗り分け地図"><span class="header-section-number">22.2</span> コロプレス図（塗り分け地図）</h2>
+<section id="コロプレス図塗り分け地図" class="level3" data-number="16.6.2">
+<h3 data-number="16.6.2" class="anchored" data-anchor-id="コロプレス図塗り分け地図"><span class="header-section-number">16.6.2</span> コロプレス図（塗り分け地図）</h3>
 <p>コロプレス図は、各地域を数値の大小に応じた色で塗り分ける地図です。英語教育研究では、全国の指標を俯瞰的に把握するための基本ツールとなります。</p>
 <p>以下では、<code>classInt</code> パッケージの分位点区分（quantile）を用いて5段階に分類し、<code>ggplot2</code> で描画します。</p>
 <div class="cell">
@@ -1003,7 +995,7 @@ CRS（座標参照系）とは
 <span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> cuts), <span class="at">color =</span> <span class="st">'gray40'</span>, <span class="at">size =</span> .<span class="dv">2</span>) <span class="sc">+</span></span>
 <span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_brewer</span>(<span class="at">palette =</span> <span class="st">'Blues'</span>, <span class="at">na.value =</span> <span class="st">'grey90'</span>, <span class="at">name =</span> <span class="st">'Score (Quantile)'</span>) <span class="sc">+</span></span>
 <span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'English Score ('</span>, <span class="fu">max</span>(years), <span class="st">')'</span>), <span class="at">caption =</span> <span class="st">'Simulated data'</span>) <span class="sc">+</span></span>
-<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
 <div>
@@ -1028,12 +1020,12 @@ ggplot2 で地図を描くパターン
 <div class="sourceCode" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(sf_data) <span class="sc">+</span>                         <span class="co"># sf オブジェクトを指定</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> variable)) <span class="sc">+</span>         <span class="co"># fill で色分け変数を指定</span></span>
 <span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_brewer</span>(<span class="at">palette =</span> <span class="st">'Blues'</span>) <span class="sc">+</span>   <span class="co"># カラーパレット（カテゴリ）</span></span>
-<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span>                       <span class="co"># シンプルなテーマ</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span>                       <span class="co"># シンプルなテーマ</span></span>
 <span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'...'</span>, <span class="at">fill =</span> <span class="st">'...'</span>)       <span class="co"># タイトル・凡例ラベル</span></span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <ul>
 <li><strong><code>geom_sf()</code></strong>: <code>sf</code> オブジェクトの <code>geometry</code> 列を自動的に読み取り、地図を描画する。</li>
 <li><strong><code>aes(fill = ...)</code></strong>: 塗り分けに使う変数を指定する。連続値なら <code>scale_fill_viridis_c()</code>、カテゴリなら <code>scale_fill_brewer()</code> や <code>scale_fill_manual()</code> を使う。</li>
-<li><strong><code>theme_minimal()</code></strong>: 背景やグリッドをシンプルにし、データに焦点を当てる。学術論文向き。</li>
+<li><strong><code>theme_bw()</code></strong>: 背景やグリッドをシンプルにし、データに焦点を当てる。学術論文向き。</li>
 </ul>
 </div>
 </div>
@@ -1057,8 +1049,8 @@ ggplot2 で地図を描くパターン
 </div>
 </div>
 </section>
-<section id="年次比較小さな倍図-small-multiples" class="level2" data-number="22.3">
-<h2 data-number="22.3" class="anchored" data-anchor-id="年次比較小さな倍図-small-multiples"><span class="header-section-number">22.3</span> 年次比較（小さな倍図: small multiples）</h2>
+<section id="年次比較小さな倍図-small-multiples" class="level3" data-number="16.6.3">
+<h3 data-number="16.6.3" class="anchored" data-anchor-id="年次比較小さな倍図-small-multiples"><span class="header-section-number">16.6.3</span> 年次比較（小さな倍図: small multiples）</h3>
 <p>複数年のコロプレス図を <code>facet_wrap()</code> で並べ、時間的な変化パターンを視覚的に把握します。<strong>カラースケールは全年で統一</strong>することが鉄則です。年ごとにスケールが異なると、色の比較が不可能になります。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -1074,7 +1066,7 @@ ggplot2 で地図を描くパターン
 <span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>, <span class="at">name =</span> <span class="st">'Score'</span>,</span>
 <span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>                       <span class="at">limits =</span> global_limits, <span class="at">oob =</span> scales<span class="sc">::</span>squish) <span class="sc">+</span></span>
 <span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> year, <span class="at">ncol =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
-<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
 <span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text =</span> <span class="fu">element_blank</span>(), <span class="at">axis.ticks =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
 <span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'English Score: Annual Comparison (Common Scale)'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -1108,10 +1100,10 @@ small multiples の読み方
 <p>ここまでで、「地図を描く」という目標（Part A）を達成しました。次に、パネルデータの品質を整える作業に移ります。</p>
 </section>
 </section>
-<section id="パネル整形と要約統計" class="level1" data-number="23">
-<h1 data-number="23"><span class="header-section-number">23</span> パネル整形と要約統計</h1>
-<section id="年次要約表" class="level2" data-number="23.1">
-<h2 data-number="23.1" class="anchored" data-anchor-id="年次要約表"><span class="header-section-number">23.1</span> 年次要約表</h2>
+<section id="パネル整形と要約統計" class="level2" data-number="16.7">
+<h2 data-number="16.7" class="anchored" data-anchor-id="パネル整形と要約統計"><span class="header-section-number">16.7</span> パネル整形と要約統計</h2>
+<section id="年次要約表" class="level3" data-number="16.7.1">
+<h3 data-number="16.7.1" class="anchored" data-anchor-id="年次要約表"><span class="header-section-number">16.7.1</span> 年次要約表</h3>
 <p>パネルデータ全体の傾向を把握するため、年ごとの要約統計量を表にまとめます。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -1657,11 +1649,11 @@ small multiples の読み方
 </div>
 <p><strong>読み方</strong>: 平均スコアが年々上昇しているか、SDが安定しているか（バラツキの変化がないか）を確認します。急激な変動はデータ品質の問題（尺度変更、測定方法の変更等）を疑う手がかりになります。</p>
 </section>
-<section id="パネルデータの品質チェック" class="level2" data-number="23.2">
-<h2 data-number="23.2" class="anchored" data-anchor-id="パネルデータの品質チェック"><span class="header-section-number">23.2</span> パネルデータの品質チェック</h2>
+<section id="パネルデータの品質チェック" class="level3" data-number="16.7.2">
+<h3 data-number="16.7.2" class="anchored" data-anchor-id="パネルデータの品質チェック"><span class="header-section-number">16.7.2</span> パネルデータの品質チェック</h3>
 <p>パネルデータ（都道府県×年のテーブル）を扱う際に、以下の3つを確認しておくことが重要です。</p>
-<section id="欠損年の補完" class="level3" data-number="23.2.1">
-<h3 data-number="23.2.1" class="anchored" data-anchor-id="欠損年の補完"><span class="header-section-number">23.2.1</span> 1) 欠損年の補完</h3>
+<section id="欠損年の補完" class="level4">
+<h4 class="anchored" data-anchor-id="欠損年の補完">1) 欠損年の補完</h4>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -1678,8 +1670,8 @@ small multiples の読み方
 </div>
 </div>
 </section>
-<section id="キーの重複チェック" class="level3" data-number="23.2.2">
-<h3 data-number="23.2.2" class="anchored" data-anchor-id="キーの重複チェック"><span class="header-section-number">23.2.2</span> 2) キーの重複チェック</h3>
+<section id="キーの重複チェック" class="level4">
+<h4 class="anchored" data-anchor-id="キーの重複チェック">2) キーの重複チェック</h4>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -1695,8 +1687,8 @@ small multiples の読み方
 </div>
 </div>
 </section>
-<section id="伸び率の安全な計算" class="level3" data-number="23.2.3">
-<h3 data-number="23.2.3" class="anchored" data-anchor-id="伸び率の安全な計算"><span class="header-section-number">23.2.3</span> 3) 伸び率の安全な計算</h3>
+<section id="伸び率の安全な計算" class="level4">
+<h4 class="anchored" data-anchor-id="伸び率の安全な計算">3) 伸び率の安全な計算</h4>
 <p>前年比の伸び率を計算する際、前年の値がゼロだと除算エラーが生じます。対数差分は、ゼロ割を回避しつつ対称的な変化率を提供する堅牢な代替手段です。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -2263,10 +2255,10 @@ small multiples の読み方
 </section>
 </section>
 </section>
-<section id="空間自己相関の初歩morans-i" class="level1" data-number="24">
-<h1 data-number="24"><span class="header-section-number">24</span> 空間自己相関の初歩（Moran’s I）</h1>
-<section id="なぜ空間自己相関を考える必要があるのか" class="level2" data-number="24.1">
-<h2 data-number="24.1" class="anchored" data-anchor-id="なぜ空間自己相関を考える必要があるのか"><span class="header-section-number">24.1</span> なぜ空間自己相関を考える必要があるのか</h2>
+<section id="空間自己相関の初歩morans-i" class="level2" data-number="16.8">
+<h2 data-number="16.8" class="anchored" data-anchor-id="空間自己相関の初歩morans-i"><span class="header-section-number">16.8</span> 空間自己相関の初歩（Moran’s I）</h2>
+<section id="なぜ空間自己相関を考える必要があるのか" class="level3" data-number="16.8.1">
+<h3 data-number="16.8.1" class="anchored" data-anchor-id="なぜ空間自己相関を考える必要があるのか"><span class="header-section-number">16.8.1</span> なぜ空間自己相関を考える必要があるのか</h3>
 <p>コロプレス図を眺めて「高スコアの都道府県が集まっているように見える」と感じたとしても、それだけでは科学的な主張にはなりません。ランダムなデータでも、たまたまそう見えるパターンが出現することがあります。<strong>Moran’s I</strong> は、観察された空間パターンが偶然で説明できるかどうかを統計的に検定する指標です。</p>
 <p>直感的には、Moran’s I は<strong>Pearson の相関係数 <span class="math inline">\(r\)</span> の空間版</strong>です。</p>
 <ul>
@@ -2292,8 +2284,8 @@ small multiples の読み方
 </div>
 </div>
 </section>
-<section id="グローバル-morans-i-の計算" class="level2" data-number="24.2">
-<h2 data-number="24.2" class="anchored" data-anchor-id="グローバル-morans-i-の計算"><span class="header-section-number">24.2</span> グローバル Moran’s I の計算</h2>
+<section id="グローバル-morans-i-の計算" class="level3" data-number="16.8.2">
+<h3 data-number="16.8.2" class="anchored" data-anchor-id="グローバル-morans-i-の計算"><span class="header-section-number">16.8.2</span> グローバル Moran’s I の計算</h3>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -2357,8 +2349,8 @@ Moran I statistic       Expectation          Variance
 </div>
 </div>
 </section>
-<section id="グローバル-moran-の要約表" class="level2" data-number="24.3">
-<h2 data-number="24.3" class="anchored" data-anchor-id="グローバル-moran-の要約表"><span class="header-section-number">24.3</span> グローバル Moran の要約表</h2>
+<section id="グローバル-moran-の要約表" class="level3" data-number="16.8.3">
+<h3 data-number="16.8.3" class="anchored" data-anchor-id="グローバル-moran-の要約表"><span class="header-section-number">16.8.3</span> グローバル Moran の要約表</h3>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -2853,8 +2845,8 @@ Moran I statistic       Expectation          Variance
 </div>
 </div>
 </section>
-<section id="ローカル-moranlisa-クラスタ図" class="level2" data-number="24.4">
-<h2 data-number="24.4" class="anchored" data-anchor-id="ローカル-moranlisa-クラスタ図"><span class="header-section-number">24.4</span> ローカル Moran（LISA クラスタ図）</h2>
+<section id="ローカル-moranlisa-クラスタ図" class="level3" data-number="16.8.4">
+<h3 data-number="16.8.4" class="anchored" data-anchor-id="ローカル-moranlisa-クラスタ図"><span class="header-section-number">16.8.4</span> ローカル Moran（LISA クラスタ図）</h3>
 <p>グローバル Moran’s I は「全体として空間自己相関があるか」を教えてくれますが、「<strong>どの都道府県が</strong>クラスタの一部か」は教えてくれません。ローカル Moran’s I（LISA: Local Indicators of Spatial Association）は、各地域を以下の4タイプに分類します。</p>
 <ul>
 <li><strong>High-High（HH）</strong>: 自身も隣接も高い。「ホットスポット」。</li>
@@ -2886,7 +2878,7 @@ Moran I statistic       Expectation          Variance
 <span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">'High-High'</span><span class="ot">=</span><span class="st">'#d73027'</span>,<span class="st">'Low-Low'</span><span class="ot">=</span><span class="st">'#4575b4'</span>,<span class="st">'High-Low'</span><span class="ot">=</span><span class="st">'#fdae61'</span>,<span class="st">'Low-High'</span><span class="ot">=</span><span class="st">'#74add1'</span>,<span class="st">'Not Sig'</span><span class="ot">=</span><span class="st">'grey90'</span>),</span>
 <span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">drop =</span> <span class="cn">FALSE</span></span>
 <span id="cb32-21"><a href="#cb32-21" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb32-23"><a href="#cb32-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"LISA Cluster Map (Queen, p &lt; .05)"</span>, <span class="at">fill =</span> <span class="st">'Cluster'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -2898,8 +2890,8 @@ Moran I statistic       Expectation          Variance
 </div>
 </div>
 <p><strong>読み方</strong>: 赤い地域（HH）は英語力のホットスポット（高スコアの集積地）、青い地域（LL）はコールドスポット（低スコアの集積地）です。オレンジや水色の地域は空間的アウトライヤで、周囲と異なるパターンを示す都道府県です。灰色は統計的に有意でない地域。</p>
-<section id="lisa-の上位都道府県" class="level3" data-number="24.4.1">
-<h3 data-number="24.4.1" class="anchored" data-anchor-id="lisa-の上位都道府県"><span class="header-section-number">24.4.1</span> LISA の上位都道府県</h3>
+<section id="lisa-の上位都道府県" class="level4">
+<h4 class="anchored" data-anchor-id="lisa-の上位都道府県">LISA の上位都道府県</h4>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -3880,8 +3872,8 @@ Moran I statistic       Expectation          Variance
 </div>
 </section>
 </section>
-<section id="ローカル-moran-の地図local-i-の値" class="level2" data-number="24.5">
-<h2 data-number="24.5" class="anchored" data-anchor-id="ローカル-moran-の地図local-i-の値"><span class="header-section-number">24.5</span> ローカル Moran の地図（Local I の値）</h2>
+<section id="ローカル-moran-の地図local-i-の値" class="level3" data-number="16.8.5">
+<h3 data-number="16.8.5" class="anchored" data-anchor-id="ローカル-moran-の地図local-i-の値"><span class="header-section-number">16.8.5</span> ローカル Moran の地図（Local I の値）</h3>
 <p>LISAクラスタ図はカテゴリ（HH/LL/HL/LH）を示しますが、Local I の<strong>値そのもの</strong>を連続的に可視化することで、空間自己相関の強さの勾配を把握できます。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3890,7 +3882,7 @@ Moran I statistic       Expectation          Variance
 <span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> Ii), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">'blue'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'red'</span>, <span class="at">midpoint =</span> <span class="dv">0</span>,</span>
 <span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>                       <span class="at">name =</span> <span class="st">'Local I'</span>) <span class="sc">+</span></span>
-<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Local Moran's I (Continuous)"</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -3904,11 +3896,11 @@ Moran I statistic       Expectation          Variance
 <p>空間自己相関の存在とクラスタの位置を確認しました。次に、施策の前後差分を可視化して、パネルデータの時空間的な特徴を把握します。</p>
 </section>
 </section>
-<section id="時空間パネル施策前後差分" class="level1" data-number="25">
-<h1 data-number="25"><span class="header-section-number">25</span> 時空間パネル：施策前後差分</h1>
+<section id="時空間パネル施策前後差分" class="level2" data-number="16.9">
+<h2 data-number="16.9" class="anchored" data-anchor-id="時空間パネル施策前後差分"><span class="header-section-number">16.9</span> 時空間パネル：施策前後差分</h2>
 <p>この節では、パネルデータ（都道府県×年）を活用して、ある施策の前後で指標がどう変化したかを可視化します。次章で扱うDID（差の差法）の準備として、まず視覚的に変化のパターンを把握することが目的です。</p>
-<section id="伸び率の時系列" class="level2" data-number="25.1">
-<h2 data-number="25.1" class="anchored" data-anchor-id="伸び率の時系列"><span class="header-section-number">25.1</span> 伸び率の時系列</h2>
+<section id="伸び率の時系列" class="level3" data-number="16.9.1">
+<h3 data-number="16.9.1" class="anchored" data-anchor-id="伸び率の時系列"><span class="header-section-number">16.9.1</span> 伸び率の時系列</h3>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -3926,7 +3918,7 @@ Moran I statistic       Expectation          Variance
 <span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">linewidth =</span> <span class="dv">1</span>, <span class="at">color =</span> <span class="st">'#2c3e50'</span>) <span class="sc">+</span></span>
 <span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="fl">2.5</span>, <span class="at">color =</span> <span class="st">'#2c3e50'</span>) <span class="sc">+</span></span>
 <span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">'dashed'</span>, <span class="at">color =</span> <span class="st">'grey60'</span>) <span class="sc">+</span></span>
-<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Mean Year-on-Year Growth Rate (%)'</span>,</span>
 <span id="cb36-17"><a href="#cb36-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">'Year'</span>, <span class="at">y =</span> <span class="st">'Growth Rate (%)'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -3939,8 +3931,8 @@ Moran I statistic       Expectation          Variance
 </div>
 </div>
 </section>
-<section id="施策前後差分の地図" class="level2" data-number="25.2">
-<h2 data-number="25.2" class="anchored" data-anchor-id="施策前後差分の地図"><span class="header-section-number">25.2</span> 施策前後差分の地図</h2>
+<section id="施策前後差分の地図" class="level3" data-number="16.9.2">
+<h3 data-number="16.9.2" class="anchored" data-anchor-id="施策前後差分の地図"><span class="header-section-number">16.9.2</span> 施策前後差分の地図</h3>
 <div class="cell">
 <details open="" class="code-fold">
 <summary>コード</summary>
@@ -3959,7 +3951,7 @@ Moran I statistic       Expectation          Variance
 <span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> diff_post_pre), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">'blue'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'red'</span>, <span class="at">midpoint =</span> <span class="dv">0</span>,</span>
 <span id="cb37-15"><a href="#cb37-15" aria-hidden="true" tabindex="-1"></a>                       <span class="at">name =</span> <span class="st">'Diff (Post - Pre)'</span>) <span class="sc">+</span></span>
-<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb37-16"><a href="#cb37-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb37-17"><a href="#cb37-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Pre-Post Score Difference (Policy Year: '</span>, policy_year, <span class="st">')'</span>))</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -3986,8 +3978,8 @@ Moran I statistic       Expectation          Variance
 </div>
 </section>
 </section>
-<section id="インタラクティブ地図leaflet" class="level1" data-number="26">
-<h1 data-number="26"><span class="header-section-number">26</span> インタラクティブ地図（leaflet）</h1>
+<section id="インタラクティブ地図leaflet" class="level2" data-number="16.10">
+<h2 data-number="16.10" class="anchored" data-anchor-id="インタラクティブ地図leaflet"><span class="header-section-number">16.10</span> インタラクティブ地図（leaflet）</h2>
 <p>ここまでの地図はすべて静的な画像でした。研究発表やデータ探索では、マウス操作で拡大・縮小やホバー情報表示ができるインタラクティブ地図が有用です。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -4027,42 +4019,42 @@ leaflet のコードパターン
 </div>
 </div>
 </section>
-<section id="トラブルシューティング" class="level1" data-number="27">
-<h1 data-number="27"><span class="header-section-number">27</span> トラブルシューティング</h1>
-<section id="データ結合の問題" class="level2" data-number="27.1">
-<h2 data-number="27.1" class="anchored" data-anchor-id="データ結合の問題"><span class="header-section-number">27.1</span> データ結合の問題</h2>
+<section id="トラブルシューティング" class="level2" data-number="16.11">
+<h2 data-number="16.11" class="anchored" data-anchor-id="トラブルシューティング"><span class="header-section-number">16.11</span> トラブルシューティング</h2>
+<section id="データ結合の問題" class="level3" data-number="16.11.1">
+<h3 data-number="16.11.1" class="anchored" data-anchor-id="データ結合の問題"><span class="header-section-number">16.11.1</span> データ結合の問題</h3>
 <ul>
 <li><strong><code>left_join()</code> 後に値が全部 NA</strong>: キー列の表記ゆれが原因。<code>norm_pref()</code> で両側を正規化し、<code>anti_join()</code> でミスマッチを検出する。</li>
 <li><strong>結合後に行数が増えた</strong>: キー列に重複がある。<code>count(pref_name, year)</code> で1行以上のレコードがないか確認する。</li>
 <li><strong>47都道府県に満たない</strong>: 形状データまたは指標データで一部の都道府県が欠損している。<code>n_distinct(pref_name)</code> で確認する。</li>
 </ul>
 </section>
-<section id="形状データと-crs-の問題" class="level2" data-number="27.2">
-<h2 data-number="27.2" class="anchored" data-anchor-id="形状データと-crs-の問題"><span class="header-section-number">27.2</span> 形状データと CRS の問題</h2>
+<section id="形状データと-crs-の問題" class="level3" data-number="16.11.2">
+<h3 data-number="16.11.2" class="anchored" data-anchor-id="形状データと-crs-の問題"><span class="header-section-number">16.11.2</span> 形状データと CRS の問題</h3>
 <ul>
 <li><strong>点とポリゴンの場所が合わない</strong>: CRS が揃っていない。<code>st_crs()</code> で両方を確認し、<code>st_transform()</code> で統一する。</li>
 <li><strong>面積・距離がおかしい</strong>: 測地座標（EPSG:4326）で面積計算をしている。投影座標（例: JGD2011、<code>st_transform(x, 6668)</code>）に変換してから計測する。</li>
 <li><strong>無効ジオメトリ（self-intersection）</strong>: <code>st_is_valid()</code> で検出し、<code>st_make_valid()</code> で修復する。</li>
 </ul>
 </section>
-<section id="可視化の問題" class="level2" data-number="27.3">
-<h2 data-number="27.3" class="anchored" data-anchor-id="可視化の問題"><span class="header-section-number">27.3</span> 可視化の問題</h2>
+<section id="可視化の問題" class="level3" data-number="16.11.3">
+<h3 data-number="16.11.3" class="anchored" data-anchor-id="可視化の問題"><span class="header-section-number">16.11.3</span> 可視化の問題</h3>
 <ul>
 <li><strong>年次比較で色の印象がブレる</strong>: <code>limits</code> を固定していない。<code>scale_fill_viridis_c(limits = global_limits)</code> で全パネル共通のスケールを指定する。</li>
 <li><strong><code>geom_sf()</code> が重い/描画が遅い</strong>: 高解像度の形状データを使用している。試作段階では <code>st_simplify()</code> で簡略化するか、低解像度形状を使う。</li>
 <li><strong>日本語が文字化け（豆腐化）</strong>: YAML の <code>mainfont</code> や R セッションのロケール（<code>Sys.setlocale()</code>）を見直す。Noto Serif JP / Noto Sans JP を推奨。</li>
 </ul>
 </section>
-<section id="パネル整形の問題" class="level2" data-number="27.4">
-<h2 data-number="27.4" class="anchored" data-anchor-id="パネル整形の問題"><span class="header-section-number">27.4</span> パネル整形の問題</h2>
+<section id="パネル整形の問題" class="level3" data-number="16.11.4">
+<h3 data-number="16.11.4" class="anchored" data-anchor-id="パネル整形の問題"><span class="header-section-number">16.11.4</span> パネル整形の問題</h3>
 <ul>
 <li><strong><code>object 'pref_map' not found</code></strong>: チャンクの実行順序が原因。Quarto で上から順に実行されていることを確認する。</li>
 <li><strong><code>Inf</code> や <code>NaN</code> が混入</strong>: 伸び率のゼロ割。<code>if_else(prev == 0, NA, ...)</code> でガードするか、対数差分を使う。</li>
 <li><strong>欠損年が暗黙に無視されている</strong>: <code>complete()</code> で明示的にパネルの格子を作成する。</li>
 </ul>
 </section>
-<section id="空間分析の問題" class="level2" data-number="27.5">
-<h2 data-number="27.5" class="anchored" data-anchor-id="空間分析の問題"><span class="header-section-number">27.5</span> 空間分析の問題</h2>
+<section id="空間分析の問題" class="level3" data-number="16.11.5">
+<h3 data-number="16.11.5" class="anchored" data-anchor-id="空間分析の問題"><span class="header-section-number">16.11.5</span> 空間分析の問題</h3>
 <ul>
 <li><strong><code>regions with no neighbours</code></strong>: 島嶼部で孤立ノードが発生。kNN の k を引き上げるか、距離閾値で接続する。</li>
 <li><strong><code>not a listw object</code></strong>: <code>nb</code> を直接渡している。<code>nb2listw(nb, style = 'W')</code> で変換する。</li>
@@ -4089,8 +4081,8 @@ leaflet のコードパターン
 </div>
 </section>
 </section>
-<section id="次の一歩応用編への橋渡し" class="level1" data-number="28">
-<h1 data-number="28"><span class="header-section-number">28</span> 次の一歩（応用編への橋渡し）</h1>
+<section id="次の一歩応用編への橋渡し" class="level2" data-number="16.12">
+<h2 data-number="16.12" class="anchored" data-anchor-id="次の一歩応用編への橋渡し"><span class="header-section-number">16.12</span> 次の一歩（応用編への橋渡し）</h2>
 <p>本入門では、<strong>形状の取得→名寄せ→結合→コロプレス→パネル整形→Moran’s I の初歩</strong>までを体験しました。データの読み込みから地図描画、パネルの品質管理まで、空間分析の「基礎工事」が完成しています。</p>
 <p>次章（第15章: 応用編）では、この基礎の上に<strong>分析的なツールキット</strong>を構築します。</p>
 <ul>
@@ -4594,7 +4586,7 @@ leaflet のコードパターン
 <span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "地理空間データ分析（入門）：sf・地図作成・パネル整形"</span></span>
 <span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
 <span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a><span class="fu"># はじめに</span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a><span class="fu">## はじめに</span></span>
 <span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>英語教育の研究データには、しばしば**地理的な構造**が埋め込まれています。たとえば、以下の場面を考えてみてください。</span>
 <span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a></span>
@@ -4607,7 +4599,7 @@ leaflet のコードパターン
 <span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a>本章は、そのための**基礎工事**です。Rの <span class="in">`sf`</span> パッケージを使って地理空間データを扱う方法を、都道府県別の英語教育指標データを題材に学びます。具体的には、形状データの取得、属性データとの結合、コロプレス図（塗り分け地図）の作成、パネルデータの整形までを最小限のコードで体験します。</span>
 <span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-17"><a href="#cb40-17" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-18"><a href="#cb40-18" aria-hidden="true" tabindex="-1"></a><span class="fu">## この章の読み方（ロードマップ）</span></span>
+<span id="cb40-18"><a href="#cb40-18" aria-hidden="true" tabindex="-1"></a><span class="fu">### この章の読み方（ロードマップ）</span></span>
 <span id="cb40-19"><a href="#cb40-19" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-20"><a href="#cb40-20" aria-hidden="true" tabindex="-1"></a>本章は以下の3つのパートで構成されています。</span>
 <span id="cb40-21"><a href="#cb40-21" aria-hidden="true" tabindex="-1"></a></span>
@@ -4619,7 +4611,7 @@ leaflet のコードパターン
 <span id="cb40-27"><a href="#cb40-27" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-28"><a href="#cb40-28" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-29"><a href="#cb40-29" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-30"><a href="#cb40-30" aria-hidden="true" tabindex="-1"></a><span class="fu">## Conventions</span></span>
+<span id="cb40-30"><a href="#cb40-30" aria-hidden="true" tabindex="-1"></a><span class="fu">### Conventions</span></span>
 <span id="cb40-31"><a href="#cb40-31" aria-hidden="true" tabindex="-1"></a>Figures use English labels. All code chunks are R.</span>
 <span id="cb40-32"><a href="#cb40-32" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-33"><a href="#cb40-33" aria-hidden="true" tabindex="-1"></a></span>
@@ -4650,7 +4642,7 @@ leaflet のコードパターン
 <span id="cb40-60"><a href="#cb40-60" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**classInt**: コロプレス図の階級区分（分位点、等間隔、自然区分等）を計算する。</span>
 <span id="cb40-61"><a href="#cb40-61" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**gt**: 学術論文風の表を作成する。</span>
 <span id="cb40-62"><a href="#cb40-62" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-63"><a href="#cb40-63" aria-hidden="true" tabindex="-1"></a><span class="fu"># 分析の流れ</span></span>
+<span id="cb40-63"><a href="#cb40-63" aria-hidden="true" tabindex="-1"></a><span class="fu">## 分析の流れ</span></span>
 <span id="cb40-64"><a href="#cb40-64" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-65"><a href="#cb40-65" aria-hidden="true" tabindex="-1"></a>本章の作業は、以下のフローに沿って進みます。各ステップは前のステップの出力に依存しているため、順番に実行してください。</span>
 <span id="cb40-66"><a href="#cb40-66" aria-hidden="true" tabindex="-1"></a></span>
@@ -4670,7 +4662,7 @@ leaflet のコードパターン
 <span id="cb40-82"><a href="#cb40-82" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-83"><a href="#cb40-83" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-84"><a href="#cb40-84" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-85"><a href="#cb40-85" aria-hidden="true" tabindex="-1"></a><span class="fu">### 「形状＋属性」の二重構造</span></span>
+<span id="cb40-85"><a href="#cb40-85" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 「形状＋属性」の二重構造</span></span>
 <span id="cb40-86"><a href="#cb40-86" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-87"><a href="#cb40-87" aria-hidden="true" tabindex="-1"></a>地理空間分析のデータは、常に2つの要素から構成されます。</span>
 <span id="cb40-88"><a href="#cb40-88" aria-hidden="true" tabindex="-1"></a></span>
@@ -4680,14 +4672,14 @@ leaflet のコードパターン
 <span id="cb40-92"><a href="#cb40-92" aria-hidden="true" tabindex="-1"></a>この2つを <span class="in">`left_join()`</span> で結合して初めて「地図上に色を塗る」ことができます。通常の回帰分析では属性データだけを扱いますが、空間分析では形状データが常に伴走する点が特徴です。</span>
 <span id="cb40-93"><a href="#cb40-93" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-94"><a href="#cb40-94" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-95"><a href="#cb40-95" aria-hidden="true" tabindex="-1"></a><span class="fu"># 形状データの取得</span></span>
+<span id="cb40-95"><a href="#cb40-95" aria-hidden="true" tabindex="-1"></a><span class="fu">## 形状データの取得</span></span>
 <span id="cb40-96"><a href="#cb40-96" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-97"><a href="#cb40-97" aria-hidden="true" tabindex="-1"></a><span class="fu">## sf オブジェクトとは</span></span>
+<span id="cb40-97"><a href="#cb40-97" aria-hidden="true" tabindex="-1"></a><span class="fu">### sf オブジェクトとは</span></span>
 <span id="cb40-98"><a href="#cb40-98" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-99"><a href="#cb40-99" aria-hidden="true" tabindex="-1"></a><span class="in">`sf`</span>（Simple Features）パッケージは、地理空間データをRのデータフレームとして扱えるようにする仕組みです。通常のデータフレームに <span class="in">`geometry`</span> という特殊な列が追加されているだけで、<span class="in">`dplyr`</span> の関数がそのまま使えます。</span>
 <span id="cb40-100"><a href="#cb40-100" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-101"><a href="#cb40-101" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-102"><a href="#cb40-102" aria-hidden="true" tabindex="-1"></a><span class="fu">### sf を普通のデータフレームとの対比で理解する</span></span>
+<span id="cb40-102"><a href="#cb40-102" aria-hidden="true" tabindex="-1"></a><span class="fu">#### sf を普通のデータフレームとの対比で理解する</span></span>
 <span id="cb40-103"><a href="#cb40-103" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-104"><a href="#cb40-104" aria-hidden="true" tabindex="-1"></a><span class="in">```r</span></span>
 <span id="cb40-105"><a href="#cb40-105" aria-hidden="true" tabindex="-1"></a><span class="co"># 通常のデータフレーム</span></span>
@@ -4702,7 +4694,7 @@ leaflet のコードパターン
 <span id="cb40-114"><a href="#cb40-114" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>空間操作が不要な場面では <span class="in">`st_drop_geometry()`</span> で <span class="in">`geometry`</span> を外し、軽量なテーブルに戻せる。</span>
 <span id="cb40-115"><a href="#cb40-115" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-116"><a href="#cb40-116" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-117"><a href="#cb40-117" aria-hidden="true" tabindex="-1"></a><span class="fu">## 形状データの取得（フォールバック付き）</span></span>
+<span id="cb40-117"><a href="#cb40-117" aria-hidden="true" tabindex="-1"></a><span class="fu">### 形状データの取得（フォールバック付き）</span></span>
 <span id="cb40-118"><a href="#cb40-118" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-119"><a href="#cb40-119" aria-hidden="true" tabindex="-1"></a>日本の都道府県境界ポリゴンを取得します。パッケージの利用可能性は環境によって異なるため、3段階のフォールバックを設けています。</span>
 <span id="cb40-120"><a href="#cb40-120" aria-hidden="true" tabindex="-1"></a></span>
@@ -4724,7 +4716,7 @@ leaflet のコードパターン
 <span id="cb40-138"><a href="#cb40-138" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb40-139"><a href="#cb40-139" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-140"><a href="#cb40-140" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 2) rnaturalearth（Admin-1, medium scale 明示）</span></span>
-<span id="cb40-141"><a href="#cb40-141" aria-hidden="true" tabindex="-1"></a>  ne_try <span class="ot">&lt;-</span> <span class="fu">try</span>({ rnaturalearth<span class="sc">::</span><span class="fu">ne_states</span>(<span class="at">country =</span> <span class="st">"Japan"</span>, <span class="at">returnclass =</span> <span class="st">"sf"</span>, <span class="at">scale =</span> <span class="st">"medium"</span>) }, <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb40-141"><a href="#cb40-141" aria-hidden="true" tabindex="-1"></a>  ne_try <span class="ot">&lt;-</span> <span class="fu">try</span>({ rnaturalearth<span class="sc">::</span><span class="fu">ne_states</span>(<span class="at">country =</span> <span class="st">"Japan"</span>, <span class="at">returnclass =</span> <span class="st">"sf"</span>) }, <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb40-142"><a href="#cb40-142" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">inherits</span>(ne_try, <span class="st">"try-error"</span>) <span class="sc">&amp;&amp;</span> <span class="fu">inherits</span>(ne_try, <span class="st">"sf"</span>)) {</span>
 <span id="cb40-143"><a href="#cb40-143" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(ne_try <span class="sc">|&gt;</span></span>
 <span id="cb40-144"><a href="#cb40-144" aria-hidden="true" tabindex="-1"></a>             dplyr<span class="sc">::</span><span class="fu">transmute</span>(<span class="at">pref_name =</span> name, <span class="at">geometry =</span> geometry) <span class="sc">|&gt;</span></span>
@@ -4765,14 +4757,14 @@ leaflet のコードパターン
 <span id="cb40-181"><a href="#cb40-181" aria-hidden="true" tabindex="-1"></a><span class="co"># プレビュー：境界線だけの白地図</span></span>
 <span id="cb40-182"><a href="#cb40-182" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(pref_sf) <span class="sc">+</span></span>
 <span id="cb40-183"><a href="#cb40-183" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="at">fill =</span> <span class="st">'gray95'</span>, <span class="at">color =</span> <span class="st">'gray40'</span>, <span class="at">linewidth =</span> .<span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb40-184"><a href="#cb40-184" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb40-184"><a href="#cb40-184" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb40-185"><a href="#cb40-185" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Japan: Prefecture Boundaries'</span>)</span>
 <span id="cb40-186"><a href="#cb40-186" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-187"><a href="#cb40-187" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-188"><a href="#cb40-188" aria-hidden="true" tabindex="-1"></a>**確認ポイント**: 47の都道府県がすべて表示されているか、形状に欠損や歪みがないかを目視で確認してください。このシンプルな白地図が、以降すべての可視化の「ベースレイヤ」になります。</span>
 <span id="cb40-189"><a href="#cb40-189" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-190"><a href="#cb40-190" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-191"><a href="#cb40-191" aria-hidden="true" tabindex="-1"></a><span class="fu">### CRS（座標参照系）とは</span></span>
+<span id="cb40-191"><a href="#cb40-191" aria-hidden="true" tabindex="-1"></a><span class="fu">#### CRS（座標参照系）とは</span></span>
 <span id="cb40-192"><a href="#cb40-192" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-193"><a href="#cb40-193" aria-hidden="true" tabindex="-1"></a>地球は球体ですが、コンピュータの画面は平面です。CRS は「球体上の位置を平面上の座標に変換する方法」を定義する規約です。</span>
 <span id="cb40-194"><a href="#cb40-194" aria-hidden="true" tabindex="-1"></a></span>
@@ -4783,7 +4775,7 @@ leaflet のコードパターン
 <span id="cb40-199"><a href="#cb40-199" aria-hidden="true" tabindex="-1"></a>**実務のルール**: 可視化は EPSG:4326 で行い、面積・距離の計測が必要な場合は投影座標（例: <span class="in">`st_transform(x, 6668)`</span>）に変換してから実施します。<span class="in">`st_crs()`</span> で都度確認する習慣をつけてください。</span>
 <span id="cb40-200"><a href="#cb40-200" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-201"><a href="#cb40-201" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-202"><a href="#cb40-202" aria-hidden="true" tabindex="-1"></a><span class="fu">## 隣接の定義：Queen と Rook</span></span>
+<span id="cb40-202"><a href="#cb40-202" aria-hidden="true" tabindex="-1"></a><span class="fu">### 隣接の定義：Queen と Rook</span></span>
 <span id="cb40-203"><a href="#cb40-203" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-204"><a href="#cb40-204" aria-hidden="true" tabindex="-1"></a>地図を描くだけなら「隣接」を考える必要はありませんが、次章以降で空間自己相関や空間回帰を行う際に「誰が誰の隣人か」を定義する必要があります。ここでは3つの代表的な隣接定義を紹介します。</span>
 <span id="cb40-205"><a href="#cb40-205" aria-hidden="true" tabindex="-1"></a></span>
@@ -4792,7 +4784,7 @@ leaflet のコードパターン
 <span id="cb40-208"><a href="#cb40-208" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**k 近傍（kNN）**: 各地域の重心から**距離が近い順に k 個**を隣接とする。島や飛地でも必ず隣接が定義でき、孤立ノードを回避できる。</span>
 <span id="cb40-209"><a href="#cb40-209" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-210"><a href="#cb40-210" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-211"><a href="#cb40-211" aria-hidden="true" tabindex="-1"></a><span class="fu">### 英語教育研究での選択指針</span></span>
+<span id="cb40-211"><a href="#cb40-211" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 英語教育研究での選択指針</span></span>
 <span id="cb40-212"><a href="#cb40-212" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-213"><a href="#cb40-213" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**都道府県レベルの分析**: Queen が良い出発点。日本の都道府県は比較的整った形状で、辺/頂点の区別は実質的な差を生みにくい。</span>
 <span id="cb40-214"><a href="#cb40-214" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**島嶼部を含む分析**: 沖縄や離島を含む場合は kNN（例: k = 4--6）を併用し、孤立ノードを回避する。</span>
@@ -4819,7 +4811,7 @@ leaflet のコードパターン
 <span id="cb40-237"><a href="#cb40-237" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-238"><a href="#cb40-238" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-239"><a href="#cb40-239" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-240"><a href="#cb40-240" aria-hidden="true" tabindex="-1"></a><span class="fu">### `nb` と `listw` の違い</span></span>
+<span id="cb40-240"><a href="#cb40-240" aria-hidden="true" tabindex="-1"></a><span class="fu">#### `nb` と `listw` の違い</span></span>
 <span id="cb40-241"><a href="#cb40-241" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-242"><a href="#cb40-242" aria-hidden="true" tabindex="-1"></a>上のコードには <span class="in">`nb`</span> と <span class="in">`listw`</span> の2つのオブジェクトが登場します。</span>
 <span id="cb40-243"><a href="#cb40-243" aria-hidden="true" tabindex="-1"></a></span>
@@ -4829,7 +4821,7 @@ leaflet のコードパターン
 <span id="cb40-247"><a href="#cb40-247" aria-hidden="true" tabindex="-1"></a>空間分析の関数（<span class="in">`moran.test()`</span>, <span class="in">`lagsarlm()`</span> 等）は <span class="in">`listw`</span> を入力として要求します。<span class="in">`nb`</span> をそのまま渡すと「not a listw object」というエラーが出るので注意してください。</span>
 <span id="cb40-248"><a href="#cb40-248" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-249"><a href="#cb40-249" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-250"><a href="#cb40-250" aria-hidden="true" tabindex="-1"></a><span class="fu"># 都道府県名の正規化（名寄せ）</span></span>
+<span id="cb40-250"><a href="#cb40-250" aria-hidden="true" tabindex="-1"></a><span class="fu">## 都道府県名の正規化（名寄せ）</span></span>
 <span id="cb40-251"><a href="#cb40-251" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-252"><a href="#cb40-252" aria-hidden="true" tabindex="-1"></a>形状データの都道府県名と、分析対象の指標データの都道府県名は、そのままでは一致しないことがあります。全角/半角、余分な空白、末尾の「都・道・府・県」の有無といった表記の揺れが原因です。以下の <span class="in">`norm_pref()`</span> 関数は、この揺れを吸収して名寄せを可能にします。</span>
 <span id="cb40-253"><a href="#cb40-253" aria-hidden="true" tabindex="-1"></a></span>
@@ -4852,7 +4844,7 @@ leaflet のコードパターン
 <span id="cb40-272"><a href="#cb40-272" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-273"><a href="#cb40-273" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-274"><a href="#cb40-274" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-275"><a href="#cb40-275" aria-hidden="true" tabindex="-1"></a><span class="fu">### コードの読み方（パイプチェーン）</span></span>
+<span id="cb40-275"><a href="#cb40-275" aria-hidden="true" tabindex="-1"></a><span class="fu">#### コードの読み方（パイプチェーン）</span></span>
 <span id="cb40-276"><a href="#cb40-276" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-277"><a href="#cb40-277" aria-hidden="true" tabindex="-1"></a>本章のRコードでは <span class="in">`|&gt;`</span> （ネイティブパイプ）を多用します。これは「左辺の結果を右辺の関数の第1引数に渡す」操作です。</span>
 <span id="cb40-278"><a href="#cb40-278" aria-hidden="true" tabindex="-1"></a></span>
@@ -4866,30 +4858,30 @@ leaflet のコードパターン
 <span id="cb40-286"><a href="#cb40-286" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-287"><a href="#cb40-287" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-288"><a href="#cb40-288" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-289"><a href="#cb40-289" aria-hidden="true" tabindex="-1"></a><span class="fu">### 名寄せのポイント</span></span>
+<span id="cb40-289"><a href="#cb40-289" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 名寄せのポイント</span></span>
 <span id="cb40-290"><a href="#cb40-290" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-291"><a href="#cb40-291" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>全角/半角や余分な空白、末尾の「都・道・府・県」を揃えると結合ミスが激減する。</span>
 <span id="cb40-292"><a href="#cb40-292" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>実データに旧字体表記（例:「鋏」→「挟」）や略称が混ざる場合は、<span class="in">`norm_pref()`</span> に辞書置換を追加する。</span>
 <span id="cb40-293"><a href="#cb40-293" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>名寄せの成功は、次のステップの <span class="in">`anti_join()`</span> でゼロ件になることで検証する。</span>
 <span id="cb40-294"><a href="#cb40-294" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-295"><a href="#cb40-295" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-296"><a href="#cb40-296" aria-hidden="true" tabindex="-1"></a><span class="fu"># ダミーデータの作成（英語教育指標）</span></span>
+<span id="cb40-296"><a href="#cb40-296" aria-hidden="true" tabindex="-1"></a><span class="fu">## ダミーデータの作成（英語教育指標）</span></span>
 <span id="cb40-297"><a href="#cb40-297" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-298"><a href="#cb40-298" aria-hidden="true" tabindex="-1"></a><span class="fu">## 分析シナリオ</span></span>
+<span id="cb40-298"><a href="#cb40-298" aria-hidden="true" tabindex="-1"></a><span class="fu">### 分析シナリオ</span></span>
 <span id="cb40-299"><a href="#cb40-299" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-300"><a href="#cb40-300" aria-hidden="true" tabindex="-1"></a>本章では以下のシナリオに基づくシミュレーションデータを使用します。</span>
 <span id="cb40-301"><a href="#cb40-301" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-302"><a href="#cb40-302" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; **シナリオ**: 2018--2024年の7年間、47都道府県について3つの英語教育指標を追跡する。</span><span class="in">`eng_score`</span><span class="at">（全国英語学力調査の複合スコア）、</span><span class="in">`teacher_toeic`</span><span class="at">（公立学校教員の平均TOEICスコア）、</span><span class="in">`eiken_rate`</span><span class="at">（中学3年生の英検準2級以上取得率）。分析の目的は、これらの指標の地理的分布パターンと年次変化を把握すること。</span></span>
 <span id="cb40-303"><a href="#cb40-303" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-304"><a href="#cb40-304" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-305"><a href="#cb40-305" aria-hidden="true" tabindex="-1"></a><span class="fu">### なぜシミュレーションデータなのか</span></span>
+<span id="cb40-305"><a href="#cb40-305" aria-hidden="true" tabindex="-1"></a><span class="fu">#### なぜシミュレーションデータなのか</span></span>
 <span id="cb40-306"><a href="#cb40-306" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-307"><a href="#cb40-307" aria-hidden="true" tabindex="-1"></a>シミュレーションデータでは**真のパラメータ**（例: トレンドの傾き、地域差の大きさ）が研究者に既知です。分析手法が意図通りに機能しているかを、推定値と真値の比較で検証できます。実データで「おかしな結果」が出たとき、それが手法の誤りなのかデータの特性なのかを判別する力を養うためにも、まずシミュレーションで基本動作を確認することが重要です。</span>
 <span id="cb40-308"><a href="#cb40-308" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-309"><a href="#cb40-309" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-312"><a href="#cb40-312" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-313"><a href="#cb40-313" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: dummy_data</span></span>
-<span id="cb40-314"><a href="#cb40-314" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb40-314"><a href="#cb40-314" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2024</span>)</span>
 <span id="cb40-315"><a href="#cb40-315" aria-hidden="true" tabindex="-1"></a>years <span class="ot">&lt;-</span> <span class="dv">2018</span><span class="sc">:</span><span class="dv">2024</span></span>
 <span id="cb40-316"><a href="#cb40-316" aria-hidden="true" tabindex="-1"></a>pref_panel <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(<span class="at">pref_name =</span> jpn_key<span class="sc">$</span>pref_name, <span class="at">year =</span> years) <span class="sc">|&gt;</span></span>
 <span id="cb40-317"><a href="#cb40-317" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_tibble</span>() <span class="sc">|&gt;</span></span>
@@ -4902,7 +4894,7 @@ leaflet のコードパターン
 <span id="cb40-324"><a href="#cb40-324" aria-hidden="true" tabindex="-1"></a>pref_latest <span class="ot">&lt;-</span> pref_panel <span class="sc">|&gt;</span> <span class="fu">filter</span>(year <span class="sc">==</span> <span class="fu">max</span>(year))</span>
 <span id="cb40-325"><a href="#cb40-325" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-326"><a href="#cb40-326" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-327"><a href="#cb40-327" aria-hidden="true" tabindex="-1"></a><span class="fu">## 結合前のミスマッチ検出</span></span>
+<span id="cb40-327"><a href="#cb40-327" aria-hidden="true" tabindex="-1"></a><span class="fu">### 結合前のミスマッチ検出</span></span>
 <span id="cb40-328"><a href="#cb40-328" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-329"><a href="#cb40-329" aria-hidden="true" tabindex="-1"></a>形状データと指標データを結合する前に、**名寄せの成功を検証**します。<span class="in">`anti_join()`</span> は「一方にあるが他方にない」レコードを抽出する関数で、ミスマッチの発見に威力を発揮します。</span>
 <span id="cb40-330"><a href="#cb40-330" aria-hidden="true" tabindex="-1"></a></span>
@@ -4919,9 +4911,9 @@ leaflet のコードパターン
 <span id="cb40-343"><a href="#cb40-343" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-344"><a href="#cb40-344" aria-hidden="true" tabindex="-1"></a>**確認ポイント**: 両方とも 0 件であれば名寄せ成功です。もし 0 でなければ、<span class="in">`norm_pref()`</span> に辞書置換を追加するか、元データの都道府県名を修正してください。</span>
 <span id="cb40-345"><a href="#cb40-345" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-346"><a href="#cb40-346" aria-hidden="true" tabindex="-1"></a><span class="fu"># 結合とコロプレス図</span></span>
+<span id="cb40-346"><a href="#cb40-346" aria-hidden="true" tabindex="-1"></a><span class="fu">## 結合とコロプレス図</span></span>
 <span id="cb40-347"><a href="#cb40-347" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-348"><a href="#cb40-348" aria-hidden="true" tabindex="-1"></a><span class="fu">## 形状＋最新年指標の結合</span></span>
+<span id="cb40-348"><a href="#cb40-348" aria-hidden="true" tabindex="-1"></a><span class="fu">### 形状＋最新年指標の結合</span></span>
 <span id="cb40-349"><a href="#cb40-349" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-352"><a href="#cb40-352" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-353"><a href="#cb40-353" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: join_latest</span></span>
@@ -4930,14 +4922,14 @@ leaflet のコードパターン
 <span id="cb40-356"><a href="#cb40-356" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-357"><a href="#cb40-357" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-358"><a href="#cb40-358" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-359"><a href="#cb40-359" aria-hidden="true" tabindex="-1"></a><span class="fu">### `left_join()` の役割</span></span>
+<span id="cb40-359"><a href="#cb40-359" aria-hidden="true" tabindex="-1"></a><span class="fu">#### `left_join()` の役割</span></span>
 <span id="cb40-360"><a href="#cb40-360" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-361"><a href="#cb40-361" aria-hidden="true" tabindex="-1"></a><span class="in">`left_join(A, B, by = 'key')`</span> は「Aのすべての行を保持し、Bの中でキーが一致する列を追加する」操作です。ここでは形状データ（<span class="in">`pref_sf`</span>）を左側に置くことで、**47都道府県のポリゴンがすべて保持**されます。もし指標データ側に該当する都道府県がなければ <span class="in">`NA`</span> が入ります。</span>
 <span id="cb40-362"><a href="#cb40-362" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-363"><a href="#cb40-363" aria-hidden="true" tabindex="-1"></a>一致しない行がないことを先ほどの <span class="in">`anti_join()`</span> で確認済みなので、安心して結合できます。</span>
 <span id="cb40-364"><a href="#cb40-364" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-365"><a href="#cb40-365" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-366"><a href="#cb40-366" aria-hidden="true" tabindex="-1"></a><span class="fu">## コロプレス図（塗り分け地図）</span></span>
+<span id="cb40-366"><a href="#cb40-366" aria-hidden="true" tabindex="-1"></a><span class="fu">### コロプレス図（塗り分け地図）</span></span>
 <span id="cb40-367"><a href="#cb40-367" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-368"><a href="#cb40-368" aria-hidden="true" tabindex="-1"></a>コロプレス図は、各地域を数値の大小に応じた色で塗り分ける地図です。英語教育研究では、全国の指標を俯瞰的に把握するための基本ツールとなります。</span>
 <span id="cb40-369"><a href="#cb40-369" aria-hidden="true" tabindex="-1"></a></span>
@@ -4953,13 +4945,13 @@ leaflet のコードパターン
 <span id="cb40-381"><a href="#cb40-381" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> cuts), <span class="at">color =</span> <span class="st">'gray40'</span>, <span class="at">size =</span> .<span class="dv">2</span>) <span class="sc">+</span></span>
 <span id="cb40-382"><a href="#cb40-382" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_brewer</span>(<span class="at">palette =</span> <span class="st">'Blues'</span>, <span class="at">na.value =</span> <span class="st">'grey90'</span>, <span class="at">name =</span> <span class="st">'Score (Quantile)'</span>) <span class="sc">+</span></span>
 <span id="cb40-383"><a href="#cb40-383" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'English Score ('</span>, <span class="fu">max</span>(years), <span class="st">')'</span>), <span class="at">caption =</span> <span class="st">'Simulated data'</span>) <span class="sc">+</span></span>
-<span id="cb40-384"><a href="#cb40-384" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span>
+<span id="cb40-384"><a href="#cb40-384" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span>
 <span id="cb40-385"><a href="#cb40-385" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-386"><a href="#cb40-386" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-387"><a href="#cb40-387" aria-hidden="true" tabindex="-1"></a>**地図の読み方**: 濃い青が高スコア、薄い青が低スコアの地域です。高スコアの都道府県が地理的にまとまっているか（クラスタ）、それともランダムに散在しているかを観察してください。もしクラスタが見えるなら、それが次章で検定する**空間自己相関**の視覚的な手がかりです。</span>
 <span id="cb40-388"><a href="#cb40-388" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-389"><a href="#cb40-389" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-390"><a href="#cb40-390" aria-hidden="true" tabindex="-1"></a><span class="fu">### ggplot2 で地図を描くパターン</span></span>
+<span id="cb40-390"><a href="#cb40-390" aria-hidden="true" tabindex="-1"></a><span class="fu">#### ggplot2 で地図を描くパターン</span></span>
 <span id="cb40-391"><a href="#cb40-391" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-392"><a href="#cb40-392" aria-hidden="true" tabindex="-1"></a>本章で繰り返し登場する <span class="in">`ggplot2`</span> のパターンを整理します。</span>
 <span id="cb40-393"><a href="#cb40-393" aria-hidden="true" tabindex="-1"></a></span>
@@ -4967,17 +4959,17 @@ leaflet のコードパターン
 <span id="cb40-395"><a href="#cb40-395" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(sf_data) <span class="sc">+</span>                         <span class="co"># sf オブジェクトを指定</span></span>
 <span id="cb40-396"><a href="#cb40-396" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> variable)) <span class="sc">+</span>         <span class="co"># fill で色分け変数を指定</span></span>
 <span id="cb40-397"><a href="#cb40-397" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_brewer</span>(<span class="at">palette =</span> <span class="st">'Blues'</span>) <span class="sc">+</span>   <span class="co"># カラーパレット（カテゴリ）</span></span>
-<span id="cb40-398"><a href="#cb40-398" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span>                       <span class="co"># シンプルなテーマ</span></span>
+<span id="cb40-398"><a href="#cb40-398" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span>                       <span class="co"># シンプルなテーマ</span></span>
 <span id="cb40-399"><a href="#cb40-399" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'...'</span>, <span class="at">fill =</span> <span class="st">'...'</span>)       <span class="co"># タイトル・凡例ラベル</span></span>
 <span id="cb40-400"><a href="#cb40-400" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-401"><a href="#cb40-401" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-402"><a href="#cb40-402" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`geom_sf()`**: <span class="in">`sf`</span> オブジェクトの <span class="in">`geometry`</span> 列を自動的に読み取り、地図を描画する。</span>
 <span id="cb40-403"><a href="#cb40-403" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`aes(fill = ...)`**: 塗り分けに使う変数を指定する。連続値なら <span class="in">`scale_fill_viridis_c()`</span>、カテゴリなら <span class="in">`scale_fill_brewer()`</span> や <span class="in">`scale_fill_manual()`</span> を使う。</span>
-<span id="cb40-404"><a href="#cb40-404" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`theme_minimal()`**: 背景やグリッドをシンプルにし、データに焦点を当てる。学術論文向き。</span>
+<span id="cb40-404"><a href="#cb40-404" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`theme_bw()`**: 背景やグリッドをシンプルにし、データに焦点を当てる。学術論文向き。</span>
 <span id="cb40-405"><a href="#cb40-405" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-406"><a href="#cb40-406" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-407"><a href="#cb40-407" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-408"><a href="#cb40-408" aria-hidden="true" tabindex="-1"></a><span class="fu">### 階級区分の選び方</span></span>
+<span id="cb40-408"><a href="#cb40-408" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 階級区分の選び方</span></span>
 <span id="cb40-409"><a href="#cb40-409" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-410"><a href="#cb40-410" aria-hidden="true" tabindex="-1"></a>コロプレス図の印象は、階級区分の方法に大きく左右されます。同じデータでも区分を変えると全く異なる印象の地図になり得るため、選択には注意が必要です。</span>
 <span id="cb40-411"><a href="#cb40-411" aria-hidden="true" tabindex="-1"></a></span>
@@ -4988,7 +4980,7 @@ leaflet のコードパターン
 <span id="cb40-416"><a href="#cb40-416" aria-hidden="true" tabindex="-1"></a>**推奨**: まずは quantile で全体像を把握し、必要に応じて jenks や equal と比較して解釈の頑健性を確認する。</span>
 <span id="cb40-417"><a href="#cb40-417" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-418"><a href="#cb40-418" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-419"><a href="#cb40-419" aria-hidden="true" tabindex="-1"></a><span class="fu">## 年次比較（小さな倍図: small multiples）</span></span>
+<span id="cb40-419"><a href="#cb40-419" aria-hidden="true" tabindex="-1"></a><span class="fu">### 年次比較（小さな倍図: small multiples）</span></span>
 <span id="cb40-420"><a href="#cb40-420" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-421"><a href="#cb40-421" aria-hidden="true" tabindex="-1"></a>複数年のコロプレス図を <span class="in">`facet_wrap()`</span> で並べ、時間的な変化パターンを視覚的に把握します。**カラースケールは全年で統一**することが鉄則です。年ごとにスケールが異なると、色の比較が不可能になります。</span>
 <span id="cb40-422"><a href="#cb40-422" aria-hidden="true" tabindex="-1"></a></span>
@@ -5007,13 +4999,13 @@ leaflet のコードパターン
 <span id="cb40-437"><a href="#cb40-437" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>, <span class="at">name =</span> <span class="st">'Score'</span>,</span>
 <span id="cb40-438"><a href="#cb40-438" aria-hidden="true" tabindex="-1"></a>                       <span class="at">limits =</span> global_limits, <span class="at">oob =</span> scales<span class="sc">::</span>squish) <span class="sc">+</span></span>
 <span id="cb40-439"><a href="#cb40-439" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> year, <span class="at">ncol =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
-<span id="cb40-440"><a href="#cb40-440" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb40-440"><a href="#cb40-440" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
 <span id="cb40-441"><a href="#cb40-441" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text =</span> <span class="fu">element_blank</span>(), <span class="at">axis.ticks =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
 <span id="cb40-442"><a href="#cb40-442" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'English Score: Annual Comparison (Common Scale)'</span>)</span>
 <span id="cb40-443"><a href="#cb40-443" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-444"><a href="#cb40-444" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-445"><a href="#cb40-445" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-446"><a href="#cb40-446" aria-hidden="true" tabindex="-1"></a><span class="fu">### small multiples の読み方</span></span>
+<span id="cb40-446"><a href="#cb40-446" aria-hidden="true" tabindex="-1"></a><span class="fu">#### small multiples の読み方</span></span>
 <span id="cb40-447"><a href="#cb40-447" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-448"><a href="#cb40-448" aria-hidden="true" tabindex="-1"></a>年次比較の小地図（small multiples）を効果的に読むポイント:</span>
 <span id="cb40-449"><a href="#cb40-449" aria-hidden="true" tabindex="-1"></a></span>
@@ -5025,9 +5017,9 @@ leaflet のコードパターン
 <span id="cb40-455"><a href="#cb40-455" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-456"><a href="#cb40-456" aria-hidden="true" tabindex="-1"></a>ここまでで、「地図を描く」という目標（Part A）を達成しました。次に、パネルデータの品質を整える作業に移ります。</span>
 <span id="cb40-457"><a href="#cb40-457" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-458"><a href="#cb40-458" aria-hidden="true" tabindex="-1"></a><span class="fu"># パネル整形と要約統計</span></span>
+<span id="cb40-458"><a href="#cb40-458" aria-hidden="true" tabindex="-1"></a><span class="fu">## パネル整形と要約統計</span></span>
 <span id="cb40-459"><a href="#cb40-459" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-460"><a href="#cb40-460" aria-hidden="true" tabindex="-1"></a><span class="fu">## 年次要約表</span></span>
+<span id="cb40-460"><a href="#cb40-460" aria-hidden="true" tabindex="-1"></a><span class="fu">### 年次要約表</span></span>
 <span id="cb40-461"><a href="#cb40-461" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-462"><a href="#cb40-462" aria-hidden="true" tabindex="-1"></a>パネルデータ全体の傾向を把握するため、年ごとの要約統計量を表にまとめます。</span>
 <span id="cb40-463"><a href="#cb40-463" aria-hidden="true" tabindex="-1"></a></span>
@@ -5067,11 +5059,11 @@ leaflet のコードパターン
 <span id="cb40-499"><a href="#cb40-499" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-500"><a href="#cb40-500" aria-hidden="true" tabindex="-1"></a>**読み方**: 平均スコアが年々上昇しているか、SDが安定しているか（バラツキの変化がないか）を確認します。急激な変動はデータ品質の問題（尺度変更、測定方法の変更等）を疑う手がかりになります。</span>
 <span id="cb40-501"><a href="#cb40-501" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-502"><a href="#cb40-502" aria-hidden="true" tabindex="-1"></a><span class="fu">## パネルデータの品質チェック</span></span>
+<span id="cb40-502"><a href="#cb40-502" aria-hidden="true" tabindex="-1"></a><span class="fu">### パネルデータの品質チェック</span></span>
 <span id="cb40-503"><a href="#cb40-503" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-504"><a href="#cb40-504" aria-hidden="true" tabindex="-1"></a>パネルデータ（都道府県×年のテーブル）を扱う際に、以下の3つを確認しておくことが重要です。</span>
 <span id="cb40-505"><a href="#cb40-505" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-506"><a href="#cb40-506" aria-hidden="true" tabindex="-1"></a><span class="fu">### 1) 欠損年の補完</span></span>
+<span id="cb40-506"><a href="#cb40-506" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 1) 欠損年の補完</span></span>
 <span id="cb40-507"><a href="#cb40-507" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-510"><a href="#cb40-510" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-511"><a href="#cb40-511" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: panel_complete</span></span>
@@ -5084,7 +5076,7 @@ leaflet のコードパターン
 <span id="cb40-518"><a href="#cb40-518" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"元の行数:"</span>, <span class="fu">nrow</span>(pref_panel), <span class="st">" → 補完後:"</span>, <span class="fu">nrow</span>(pref_panel_complete), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
 <span id="cb40-519"><a href="#cb40-519" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-520"><a href="#cb40-520" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-521"><a href="#cb40-521" aria-hidden="true" tabindex="-1"></a><span class="fu">### 2) キーの重複チェック</span></span>
+<span id="cb40-521"><a href="#cb40-521" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 2) キーの重複チェック</span></span>
 <span id="cb40-522"><a href="#cb40-522" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-525"><a href="#cb40-525" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-526"><a href="#cb40-526" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: dup_check</span></span>
@@ -5096,7 +5088,7 @@ leaflet のコードパターン
 <span id="cb40-532"><a href="#cb40-532" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"重複行:"</span>, <span class="fu">nrow</span>(dup_check), <span class="st">"件</span><span class="sc">\n</span><span class="st">"</span>)</span>
 <span id="cb40-533"><a href="#cb40-533" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-534"><a href="#cb40-534" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-535"><a href="#cb40-535" aria-hidden="true" tabindex="-1"></a><span class="fu">### 3) 伸び率の安全な計算</span></span>
+<span id="cb40-535"><a href="#cb40-535" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 3) 伸び率の安全な計算</span></span>
 <span id="cb40-536"><a href="#cb40-536" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-537"><a href="#cb40-537" aria-hidden="true" tabindex="-1"></a>前年比の伸び率を計算する際、前年の値がゼロだと除算エラーが生じます。対数差分は、ゼロ割を回避しつつ対称的な変化率を提供する堅牢な代替手段です。</span>
 <span id="cb40-538"><a href="#cb40-538" aria-hidden="true" tabindex="-1"></a></span>
@@ -5123,7 +5115,7 @@ leaflet のコードパターン
 <span id="cb40-561"><a href="#cb40-561" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-562"><a href="#cb40-562" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-563"><a href="#cb40-563" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-564"><a href="#cb40-564" aria-hidden="true" tabindex="-1"></a><span class="fu">### パネル整形でよくある落とし穴</span></span>
+<span id="cb40-564"><a href="#cb40-564" aria-hidden="true" tabindex="-1"></a><span class="fu">#### パネル整形でよくある落とし穴</span></span>
 <span id="cb40-565"><a href="#cb40-565" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-566"><a href="#cb40-566" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**欠損年の見落とし**: <span class="in">`complete()`</span> で明示的に格子を作らないと、単に「行がない＝0」と誤解される。</span>
 <span id="cb40-567"><a href="#cb40-567" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**キーの重複**: 同一都道府県が2行ある場合、<span class="in">`left_join()`</span> で行が膨張する。<span class="in">`count()`</span> で事前に確認する。</span>
@@ -5133,9 +5125,9 @@ leaflet のコードパターン
 <span id="cb40-571"><a href="#cb40-571" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-572"><a href="#cb40-572" aria-hidden="true" tabindex="-1"></a>パネルデータの品質が確認できました。次に、このデータを使って空間的パターンの初歩的な分析に進みます。</span>
 <span id="cb40-573"><a href="#cb40-573" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-574"><a href="#cb40-574" aria-hidden="true" tabindex="-1"></a><span class="fu"># 空間自己相関の初歩（Moran's I）</span></span>
+<span id="cb40-574"><a href="#cb40-574" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間自己相関の初歩（Moran's I）</span></span>
 <span id="cb40-575"><a href="#cb40-575" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-576"><a href="#cb40-576" aria-hidden="true" tabindex="-1"></a><span class="fu">## なぜ空間自己相関を考える必要があるのか</span></span>
+<span id="cb40-576"><a href="#cb40-576" aria-hidden="true" tabindex="-1"></a><span class="fu">### なぜ空間自己相関を考える必要があるのか</span></span>
 <span id="cb40-577"><a href="#cb40-577" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-578"><a href="#cb40-578" aria-hidden="true" tabindex="-1"></a>コロプレス図を眺めて「高スコアの都道府県が集まっているように見える」と感じたとしても、それだけでは科学的な主張にはなりません。ランダムなデータでも、たまたまそう見えるパターンが出現することがあります。**Moran's I** は、観察された空間パターンが偶然で説明できるかどうかを統計的に検定する指標です。</span>
 <span id="cb40-579"><a href="#cb40-579" aria-hidden="true" tabindex="-1"></a></span>
@@ -5147,7 +5139,7 @@ leaflet のコードパターン
 <span id="cb40-585"><a href="#cb40-585" aria-hidden="true" tabindex="-1"></a>$I &gt; 0$ ならば、似た値が近接に集まる傾向（正の空間自己相関）。$I &lt; 0$ ならば、異なる値が隣り合う傾向。$I \approx 0$ ならば、空間的にランダムな分布です。</span>
 <span id="cb40-586"><a href="#cb40-586" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-587"><a href="#cb40-587" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-588"><a href="#cb40-588" aria-hidden="true" tabindex="-1"></a><span class="fu">### 英語教育研究にとっての意味</span></span>
+<span id="cb40-588"><a href="#cb40-588" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 英語教育研究にとっての意味</span></span>
 <span id="cb40-589"><a href="#cb40-589" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-590"><a href="#cb40-590" aria-hidden="true" tabindex="-1"></a>空間自己相関が存在する場合、以下の2つの含意があります。</span>
 <span id="cb40-591"><a href="#cb40-591" aria-hidden="true" tabindex="-1"></a></span>
@@ -5155,7 +5147,7 @@ leaflet のコードパターン
 <span id="cb40-593"><a href="#cb40-593" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**実質的な関心**: 高い英語力が地理的にクラスタしているなら、何がそのパターンを生んでいるのか。地域経済？教育投資の歴史？教員の流動性？空間パターンの存在自体が、新たな研究課題を提起する。</span>
 <span id="cb40-594"><a href="#cb40-594" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-595"><a href="#cb40-595" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-596"><a href="#cb40-596" aria-hidden="true" tabindex="-1"></a><span class="fu">## グローバル Moran's I の計算</span></span>
+<span id="cb40-596"><a href="#cb40-596" aria-hidden="true" tabindex="-1"></a><span class="fu">### グローバル Moran's I の計算</span></span>
 <span id="cb40-597"><a href="#cb40-597" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-600"><a href="#cb40-600" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-601"><a href="#cb40-601" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: moran_global</span></span>
@@ -5187,14 +5179,14 @@ leaflet のコードパターン
 <span id="cb40-627"><a href="#cb40-627" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-628"><a href="#cb40-628" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-629"><a href="#cb40-629" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-630"><a href="#cb40-630" aria-hidden="true" tabindex="-1"></a><span class="fu">### 出力の読み方</span></span>
+<span id="cb40-630"><a href="#cb40-630" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 出力の読み方</span></span>
 <span id="cb40-631"><a href="#cb40-631" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-632"><a href="#cb40-632" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Moran I statistic**: I の値。0 に近ければ空間自己相関なし、正に大きければ正の自己相関。</span>
 <span id="cb40-633"><a href="#cb40-633" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Expectation**: ランダムな配置の場合に期待される I の値（$-1/(n-1)$）。</span>
 <span id="cb40-634"><a href="#cb40-634" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**p-value**: 帰無仮説「空間自己相関なし」の下での有意確率。p &lt; .05 ならば空間自己相関が統計的に有意。</span>
 <span id="cb40-635"><a href="#cb40-635" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-636"><a href="#cb40-636" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-637"><a href="#cb40-637" aria-hidden="true" tabindex="-1"></a><span class="fu">## グローバル Moran の要約表</span></span>
+<span id="cb40-637"><a href="#cb40-637" aria-hidden="true" tabindex="-1"></a><span class="fu">### グローバル Moran の要約表</span></span>
 <span id="cb40-638"><a href="#cb40-638" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-641"><a href="#cb40-641" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-642"><a href="#cb40-642" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: gt_moran</span></span>
@@ -5213,7 +5205,7 @@ leaflet のコードパターン
 <span id="cb40-655"><a href="#cb40-655" aria-hidden="true" tabindex="-1"></a>  gt<span class="sc">::</span><span class="fu">fmt_number</span>(<span class="at">columns =</span> <span class="fu">c</span>(<span class="st">`</span><span class="at">p-value</span><span class="st">`</span>), <span class="at">decimals =</span> <span class="dv">4</span>)</span>
 <span id="cb40-656"><a href="#cb40-656" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-657"><a href="#cb40-657" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-658"><a href="#cb40-658" aria-hidden="true" tabindex="-1"></a><span class="fu">## ローカル Moran（LISA クラスタ図）</span></span>
+<span id="cb40-658"><a href="#cb40-658" aria-hidden="true" tabindex="-1"></a><span class="fu">### ローカル Moran（LISA クラスタ図）</span></span>
 <span id="cb40-659"><a href="#cb40-659" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-660"><a href="#cb40-660" aria-hidden="true" tabindex="-1"></a>グローバル Moran's I は「全体として空間自己相関があるか」を教えてくれますが、「**どの都道府県が**クラスタの一部か」は教えてくれません。ローカル Moran's I（LISA: Local Indicators of Spatial Association）は、各地域を以下の4タイプに分類します。</span>
 <span id="cb40-661"><a href="#cb40-661" aria-hidden="true" tabindex="-1"></a></span>
@@ -5245,13 +5237,13 @@ leaflet のコードパターン
 <span id="cb40-689"><a href="#cb40-689" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">'High-High'</span><span class="ot">=</span><span class="st">'#d73027'</span>,<span class="st">'Low-Low'</span><span class="ot">=</span><span class="st">'#4575b4'</span>,<span class="st">'High-Low'</span><span class="ot">=</span><span class="st">'#fdae61'</span>,<span class="st">'Low-High'</span><span class="ot">=</span><span class="st">'#74add1'</span>,<span class="st">'Not Sig'</span><span class="ot">=</span><span class="st">'grey90'</span>),</span>
 <span id="cb40-690"><a href="#cb40-690" aria-hidden="true" tabindex="-1"></a>    <span class="at">drop =</span> <span class="cn">FALSE</span></span>
 <span id="cb40-691"><a href="#cb40-691" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb40-692"><a href="#cb40-692" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb40-692"><a href="#cb40-692" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb40-693"><a href="#cb40-693" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"LISA Cluster Map (Queen, p &lt; .05)"</span>, <span class="at">fill =</span> <span class="st">'Cluster'</span>)</span>
 <span id="cb40-694"><a href="#cb40-694" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-695"><a href="#cb40-695" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-696"><a href="#cb40-696" aria-hidden="true" tabindex="-1"></a>**読み方**: 赤い地域（HH）は英語力のホットスポット（高スコアの集積地）、青い地域（LL）はコールドスポット（低スコアの集積地）です。オレンジや水色の地域は空間的アウトライヤで、周囲と異なるパターンを示す都道府県です。灰色は統計的に有意でない地域。</span>
 <span id="cb40-697"><a href="#cb40-697" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-698"><a href="#cb40-698" aria-hidden="true" tabindex="-1"></a><span class="fu">### LISA の上位都道府県</span></span>
+<span id="cb40-698"><a href="#cb40-698" aria-hidden="true" tabindex="-1"></a><span class="fu">#### LISA の上位都道府県</span></span>
 <span id="cb40-699"><a href="#cb40-699" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-702"><a href="#cb40-702" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-703"><a href="#cb40-703" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: lisa_table</span></span>
@@ -5289,7 +5281,7 @@ leaflet のコードパターン
 <span id="cb40-735"><a href="#cb40-735" aria-hidden="true" tabindex="-1"></a><span class="fu">list</span>(hot_tbl, cold_tbl)</span>
 <span id="cb40-736"><a href="#cb40-736" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-737"><a href="#cb40-737" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-738"><a href="#cb40-738" aria-hidden="true" tabindex="-1"></a><span class="fu">## ローカル Moran の地図（Local I の値）</span></span>
+<span id="cb40-738"><a href="#cb40-738" aria-hidden="true" tabindex="-1"></a><span class="fu">### ローカル Moran の地図（Local I の値）</span></span>
 <span id="cb40-739"><a href="#cb40-739" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-740"><a href="#cb40-740" aria-hidden="true" tabindex="-1"></a>LISAクラスタ図はカテゴリ（HH/LL/HL/LH）を示しますが、Local I の**値そのもの**を連続的に可視化することで、空間自己相関の強さの勾配を把握できます。</span>
 <span id="cb40-741"><a href="#cb40-741" aria-hidden="true" tabindex="-1"></a></span>
@@ -5299,17 +5291,17 @@ leaflet のコードパターン
 <span id="cb40-747"><a href="#cb40-747" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> Ii), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb40-748"><a href="#cb40-748" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">'blue'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'red'</span>, <span class="at">midpoint =</span> <span class="dv">0</span>,</span>
 <span id="cb40-749"><a href="#cb40-749" aria-hidden="true" tabindex="-1"></a>                       <span class="at">name =</span> <span class="st">'Local I'</span>) <span class="sc">+</span></span>
-<span id="cb40-750"><a href="#cb40-750" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb40-750"><a href="#cb40-750" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb40-751"><a href="#cb40-751" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Local Moran's I (Continuous)"</span>)</span>
 <span id="cb40-752"><a href="#cb40-752" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-753"><a href="#cb40-753" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-754"><a href="#cb40-754" aria-hidden="true" tabindex="-1"></a>空間自己相関の存在とクラスタの位置を確認しました。次に、施策の前後差分を可視化して、パネルデータの時空間的な特徴を把握します。</span>
 <span id="cb40-755"><a href="#cb40-755" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-756"><a href="#cb40-756" aria-hidden="true" tabindex="-1"></a><span class="fu"># 時空間パネル：施策前後差分</span></span>
+<span id="cb40-756"><a href="#cb40-756" aria-hidden="true" tabindex="-1"></a><span class="fu">## 時空間パネル：施策前後差分</span></span>
 <span id="cb40-757"><a href="#cb40-757" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-758"><a href="#cb40-758" aria-hidden="true" tabindex="-1"></a>この節では、パネルデータ（都道府県×年）を活用して、ある施策の前後で指標がどう変化したかを可視化します。次章で扱うDID（差の差法）の準備として、まず視覚的に変化のパターンを把握することが目的です。</span>
 <span id="cb40-759"><a href="#cb40-759" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-760"><a href="#cb40-760" aria-hidden="true" tabindex="-1"></a><span class="fu">## 伸び率の時系列</span></span>
+<span id="cb40-760"><a href="#cb40-760" aria-hidden="true" tabindex="-1"></a><span class="fu">### 伸び率の時系列</span></span>
 <span id="cb40-761"><a href="#cb40-761" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-764"><a href="#cb40-764" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-765"><a href="#cb40-765" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: growth_trend</span></span>
@@ -5327,12 +5319,12 @@ leaflet のコードパターン
 <span id="cb40-777"><a href="#cb40-777" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">linewidth =</span> <span class="dv">1</span>, <span class="at">color =</span> <span class="st">'#2c3e50'</span>) <span class="sc">+</span></span>
 <span id="cb40-778"><a href="#cb40-778" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="fl">2.5</span>, <span class="at">color =</span> <span class="st">'#2c3e50'</span>) <span class="sc">+</span></span>
 <span id="cb40-779"><a href="#cb40-779" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">'dashed'</span>, <span class="at">color =</span> <span class="st">'grey60'</span>) <span class="sc">+</span></span>
-<span id="cb40-780"><a href="#cb40-780" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb40-780"><a href="#cb40-780" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb40-781"><a href="#cb40-781" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Mean Year-on-Year Growth Rate (%)'</span>,</span>
 <span id="cb40-782"><a href="#cb40-782" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">'Year'</span>, <span class="at">y =</span> <span class="st">'Growth Rate (%)'</span>)</span>
 <span id="cb40-783"><a href="#cb40-783" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-784"><a href="#cb40-784" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-785"><a href="#cb40-785" aria-hidden="true" tabindex="-1"></a><span class="fu">## 施策前後差分の地図</span></span>
+<span id="cb40-785"><a href="#cb40-785" aria-hidden="true" tabindex="-1"></a><span class="fu">### 施策前後差分の地図</span></span>
 <span id="cb40-786"><a href="#cb40-786" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-789"><a href="#cb40-789" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
 <span id="cb40-790"><a href="#cb40-790" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: prepost_map</span></span>
@@ -5351,19 +5343,19 @@ leaflet のコードパターン
 <span id="cb40-803"><a href="#cb40-803" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> diff_post_pre), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb40-804"><a href="#cb40-804" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">'blue'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'red'</span>, <span class="at">midpoint =</span> <span class="dv">0</span>,</span>
 <span id="cb40-805"><a href="#cb40-805" aria-hidden="true" tabindex="-1"></a>                       <span class="at">name =</span> <span class="st">'Diff (Post - Pre)'</span>) <span class="sc">+</span></span>
-<span id="cb40-806"><a href="#cb40-806" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb40-806"><a href="#cb40-806" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb40-807"><a href="#cb40-807" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Pre-Post Score Difference (Policy Year: '</span>, policy_year, <span class="st">')'</span>))</span>
 <span id="cb40-808"><a href="#cb40-808" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-809"><a href="#cb40-809" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-810"><a href="#cb40-810" aria-hidden="true" tabindex="-1"></a>**読み方**: 赤い地域は施策後にスコアが上昇、青い地域は低下した都道府県です。ただし、この地図だけでは施策の効果は判定できません。全国的なトレンド（時間固定効果）や各都道府県固有の特性（都道府県固定効果）を統制した上での比較が必要です。次章で DID の枠組みを使ってこの問題に取り組みます。</span>
 <span id="cb40-811"><a href="#cb40-811" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-812"><a href="#cb40-812" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
-<span id="cb40-813"><a href="#cb40-813" aria-hidden="true" tabindex="-1"></a><span class="fu">### 前後差分≠因果効果</span></span>
+<span id="cb40-813"><a href="#cb40-813" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 前後差分≠因果効果</span></span>
 <span id="cb40-814"><a href="#cb40-814" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-815"><a href="#cb40-815" aria-hidden="true" tabindex="-1"></a>施策前後の差分は「相関」であって「因果」ではありません。施策の有無に関わらず全国的にスコアが上昇していれば、施策導入地域の差分も正になります。因果効果の推定には、対照群との比較（DID）や、時間/地域の固定効果による交絡の統制が必要です。次章の Section 7 で詳述します。</span>
 <span id="cb40-816"><a href="#cb40-816" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-817"><a href="#cb40-817" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-818"><a href="#cb40-818" aria-hidden="true" tabindex="-1"></a><span class="fu"># インタラクティブ地図（leaflet）</span></span>
+<span id="cb40-818"><a href="#cb40-818" aria-hidden="true" tabindex="-1"></a><span class="fu">## インタラクティブ地図（leaflet）</span></span>
 <span id="cb40-819"><a href="#cb40-819" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-820"><a href="#cb40-820" aria-hidden="true" tabindex="-1"></a>ここまでの地図はすべて静的な画像でした。研究発表やデータ探索では、マウス操作で拡大・縮小やホバー情報表示ができるインタラクティブ地図が有用です。</span>
 <span id="cb40-821"><a href="#cb40-821" aria-hidden="true" tabindex="-1"></a></span>
@@ -5380,7 +5372,7 @@ leaflet のコードパターン
 <span id="cb40-834"><a href="#cb40-834" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb40-835"><a href="#cb40-835" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-836"><a href="#cb40-836" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-837"><a href="#cb40-837" aria-hidden="true" tabindex="-1"></a><span class="fu">### leaflet のコードパターン</span></span>
+<span id="cb40-837"><a href="#cb40-837" aria-hidden="true" tabindex="-1"></a><span class="fu">#### leaflet のコードパターン</span></span>
 <span id="cb40-838"><a href="#cb40-838" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-839"><a href="#cb40-839" aria-hidden="true" tabindex="-1"></a><span class="in">```r</span></span>
 <span id="cb40-840"><a href="#cb40-840" aria-hidden="true" tabindex="-1"></a><span class="fu">leaflet</span>(sf_data) <span class="sc">|&gt;</span>                   <span class="co"># leaflet オブジェクトを作成</span></span>
@@ -5398,40 +5390,40 @@ leaflet のコードパターン
 <span id="cb40-852"><a href="#cb40-852" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>このコードは <span class="in">`eval: false`</span> になっています。実行するには <span class="in">`eval: true`</span> に変更してください（インターネット接続が必要）。</span>
 <span id="cb40-853"><a href="#cb40-853" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-854"><a href="#cb40-854" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-855"><a href="#cb40-855" aria-hidden="true" tabindex="-1"></a><span class="fu"># トラブルシューティング</span></span>
+<span id="cb40-855"><a href="#cb40-855" aria-hidden="true" tabindex="-1"></a><span class="fu">## トラブルシューティング</span></span>
 <span id="cb40-856"><a href="#cb40-856" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-857"><a href="#cb40-857" aria-hidden="true" tabindex="-1"></a><span class="fu">## データ結合の問題</span></span>
+<span id="cb40-857"><a href="#cb40-857" aria-hidden="true" tabindex="-1"></a><span class="fu">### データ結合の問題</span></span>
 <span id="cb40-858"><a href="#cb40-858" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-859"><a href="#cb40-859" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`left_join()` 後に値が全部 NA**: キー列の表記ゆれが原因。<span class="in">`norm_pref()`</span> で両側を正規化し、<span class="in">`anti_join()`</span> でミスマッチを検出する。</span>
 <span id="cb40-860"><a href="#cb40-860" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**結合後に行数が増えた**: キー列に重複がある。<span class="in">`count(pref_name, year)`</span> で1行以上のレコードがないか確認する。</span>
 <span id="cb40-861"><a href="#cb40-861" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**47都道府県に満たない**: 形状データまたは指標データで一部の都道府県が欠損している。<span class="in">`n_distinct(pref_name)`</span> で確認する。</span>
 <span id="cb40-862"><a href="#cb40-862" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-863"><a href="#cb40-863" aria-hidden="true" tabindex="-1"></a><span class="fu">## 形状データと CRS の問題</span></span>
+<span id="cb40-863"><a href="#cb40-863" aria-hidden="true" tabindex="-1"></a><span class="fu">### 形状データと CRS の問題</span></span>
 <span id="cb40-864"><a href="#cb40-864" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-865"><a href="#cb40-865" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**点とポリゴンの場所が合わない**: CRS が揃っていない。<span class="in">`st_crs()`</span> で両方を確認し、<span class="in">`st_transform()`</span> で統一する。</span>
 <span id="cb40-866"><a href="#cb40-866" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**面積・距離がおかしい**: 測地座標（EPSG:4326）で面積計算をしている。投影座標（例: JGD2011、<span class="in">`st_transform(x, 6668)`</span>）に変換してから計測する。</span>
 <span id="cb40-867"><a href="#cb40-867" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**無効ジオメトリ（self-intersection）**: <span class="in">`st_is_valid()`</span> で検出し、<span class="in">`st_make_valid()`</span> で修復する。</span>
 <span id="cb40-868"><a href="#cb40-868" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-869"><a href="#cb40-869" aria-hidden="true" tabindex="-1"></a><span class="fu">## 可視化の問題</span></span>
+<span id="cb40-869"><a href="#cb40-869" aria-hidden="true" tabindex="-1"></a><span class="fu">### 可視化の問題</span></span>
 <span id="cb40-870"><a href="#cb40-870" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-871"><a href="#cb40-871" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**年次比較で色の印象がブレる**: <span class="in">`limits`</span> を固定していない。<span class="in">`scale_fill_viridis_c(limits = global_limits)`</span> で全パネル共通のスケールを指定する。</span>
 <span id="cb40-872"><a href="#cb40-872" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`geom_sf()` が重い/描画が遅い**: 高解像度の形状データを使用している。試作段階では <span class="in">`st_simplify()`</span> で簡略化するか、低解像度形状を使う。</span>
 <span id="cb40-873"><a href="#cb40-873" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**日本語が文字化け（豆腐化）**: YAML の <span class="in">`mainfont`</span> や R セッションのロケール（<span class="in">`Sys.setlocale()`</span>）を見直す。Noto Serif JP / Noto Sans JP を推奨。</span>
 <span id="cb40-874"><a href="#cb40-874" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-875"><a href="#cb40-875" aria-hidden="true" tabindex="-1"></a><span class="fu">## パネル整形の問題</span></span>
+<span id="cb40-875"><a href="#cb40-875" aria-hidden="true" tabindex="-1"></a><span class="fu">### パネル整形の問題</span></span>
 <span id="cb40-876"><a href="#cb40-876" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-877"><a href="#cb40-877" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`object 'pref_map' not found`**: チャンクの実行順序が原因。Quarto で上から順に実行されていることを確認する。</span>
 <span id="cb40-878"><a href="#cb40-878" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`Inf` や `NaN` が混入**: 伸び率のゼロ割。<span class="in">`if_else(prev == 0, NA, ...)`</span> でガードするか、対数差分を使う。</span>
 <span id="cb40-879"><a href="#cb40-879" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**欠損年が暗黙に無視されている**: <span class="in">`complete()`</span> で明示的にパネルの格子を作成する。</span>
 <span id="cb40-880"><a href="#cb40-880" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-881"><a href="#cb40-881" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間分析の問題</span></span>
+<span id="cb40-881"><a href="#cb40-881" aria-hidden="true" tabindex="-1"></a><span class="fu">### 空間分析の問題</span></span>
 <span id="cb40-882"><a href="#cb40-882" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-883"><a href="#cb40-883" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`regions with no neighbours`**: 島嶼部で孤立ノードが発生。kNN の k を引き上げるか、距離閾値で接続する。</span>
 <span id="cb40-884"><a href="#cb40-884" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`not a listw object`**: <span class="in">`nb`</span> を直接渡している。<span class="in">`nb2listw(nb, style = 'W')`</span> で変換する。</span>
 <span id="cb40-885"><a href="#cb40-885" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`sfdep` と `spdep` の関数名の違いで混乱**: 本書では <span class="in">`spdep`</span> を基本パッケージとして使用。<span class="in">`sfdep::local_moran_perm`</span> 等を使いたい場合は別途インストールが必要。</span>
 <span id="cb40-886"><a href="#cb40-886" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-887"><a href="#cb40-887" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb40-888"><a href="#cb40-888" aria-hidden="true" tabindex="-1"></a><span class="fu">### 提出前チェックリスト</span></span>
+<span id="cb40-888"><a href="#cb40-888" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 提出前チェックリスト</span></span>
 <span id="cb40-889"><a href="#cb40-889" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-890"><a href="#cb40-890" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`anti_join()`</span> の結果が 0 件か（名寄せ成功の確認）</span>
 <span id="cb40-891"><a href="#cb40-891" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`st_crs()`</span> が揃っているか（CRS の統一）</span>
@@ -5440,7 +5432,7 @@ leaflet のコードパターン
 <span id="cb40-894"><a href="#cb40-894" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>パネルの行数 = 都道府県数 × 年数 であるか</span>
 <span id="cb40-895"><a href="#cb40-895" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb40-896"><a href="#cb40-896" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-897"><a href="#cb40-897" aria-hidden="true" tabindex="-1"></a><span class="fu"># 次の一歩（応用編への橋渡し）</span></span>
+<span id="cb40-897"><a href="#cb40-897" aria-hidden="true" tabindex="-1"></a><span class="fu">## 次の一歩（応用編への橋渡し）</span></span>
 <span id="cb40-898"><a href="#cb40-898" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-899"><a href="#cb40-899" aria-hidden="true" tabindex="-1"></a>本入門では、**形状の取得→名寄せ→結合→コロプレス→パネル整形→Moran's I の初歩**までを体験しました。データの読み込みから地図描画、パネルの品質管理まで、空間分析の「基礎工事」が完成しています。</span>
 <span id="cb40-900"><a href="#cb40-900" aria-hidden="true" tabindex="-1"></a></span>
@@ -5455,7 +5447,7 @@ leaflet のコードパターン
 <span id="cb40-909"><a href="#cb40-909" aria-hidden="true" tabindex="-1"></a>本章でデータの準備と基礎的な可視化を習得したことで、応用編の分析手法にスムーズに進む準備が整っています。</span>
 <span id="cb40-910"><a href="#cb40-910" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-911"><a href="#cb40-911" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb40-912"><a href="#cb40-912" aria-hidden="true" tabindex="-1"></a><span class="fu">### 実データに置き換えるとき</span></span>
+<span id="cb40-912"><a href="#cb40-912" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 実データに置き換えるとき</span></span>
 <span id="cb40-913"><a href="#cb40-913" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb40-914"><a href="#cb40-914" aria-hidden="true" tabindex="-1"></a>本章のダミーデータを実データに差し替える際の注意点:</span>
 <span id="cb40-915"><a href="#cb40-915" aria-hidden="true" tabindex="-1"></a></span>

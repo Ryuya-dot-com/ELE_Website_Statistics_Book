@@ -366,7 +366,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
     </ul>
     </div>
-    <nav id="TOC" role="doc-toc" class="toc-active">
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
     <h2 id="toc-title">目次</h2>
    
   <ul>
@@ -379,10 +383,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </ul></li>
   </ul>
 </nav>
-</nav>
-<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
-<!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -421,8 +421,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="はじめに" class="level1 unnumbered">
 <h1 class="unnumbered">はじめに</h1>
 <p>本書は、英語教育および第二言語習得（SLA）研究に携わる大学院生・研究者を対象に、統計解析の理論と実践をRで学ぶためのガイドです。研究論文で頻出する手法を体系的に取り上げ、すべてのコードを実行可能な形で提供しています。</p>
-<section id="本書の特徴" class="level2">
-<h2 class="anchored" data-anchor-id="本書の特徴">本書の特徴</h2>
+<section id="本書の特徴" class="level3">
+<h3 class="anchored" data-anchor-id="本書の特徴">本書の特徴</h3>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 50%">
@@ -448,8 +448,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
-<section id="対象読者" class="level2">
-<h2 class="anchored" data-anchor-id="対象読者">対象読者</h2>
+<section id="対象読者" class="level3">
+<h3 class="anchored" data-anchor-id="対象読者">対象読者</h3>
 <ul>
 <li>英語教育・第二言語習得研究に携わる大学院生・研究者</li>
 <li>Rを用いた統計解析を基礎から学びたい方</li>
@@ -457,8 +457,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>時系列データや地理空間データの分析手法を知りたい方</li>
 </ul>
 </section>
-<section id="構成" class="level2">
-<h2 class="anchored" data-anchor-id="構成">構成</h2>
+<section id="構成" class="level3">
+<h3 class="anchored" data-anchor-id="構成">構成</h3>
 <div class="callout callout-style-simple callout-note no-icon callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -564,8 +564,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="必要な環境" class="level2">
-<h2 class="anchored" data-anchor-id="必要な環境">必要な環境</h2>
+<section id="必要な環境" class="level3">
+<h3 class="anchored" data-anchor-id="必要な環境">必要な環境</h3>
 <ul>
 <li><strong>R</strong>（最新版を推奨）：<a href="https://cran.r-project.org/">https://cran.r-project.org/</a></li>
 <li><strong>RStudio</strong>（推奨）：<a href="https://posit.co/download/rstudio-desktop/">https://posit.co/download/rstudio-desktop/</a></li>
@@ -1085,7 +1085,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>本書は、英語教育および第二言語習得（SLA）研究に携わる大学院生・研究者を対象に、統計解析の理論と実践をRで学ぶためのガイドです。研究論文で頻出する手法を体系的に取り上げ、すべてのコードを実行可能な形で提供しています。</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">## 本書の特徴</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">### 本書の特徴</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="pp">|</span> <span class="pp">|</span></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|</span></span>
@@ -1094,56 +1094,56 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> **体系的** <span class="pp">|</span> t検定からメタ分析まで、基礎から応用へ段階的に構成 <span class="pp">|</span></span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> **幅広い** <span class="pp">|</span> 回帰分析、IRT、ベイズ推定、時系列、空間分析、ネットワーク分析まで網羅 <span class="pp">|</span></span>
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="fu">## 対象読者</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="fu">### 対象読者</span></span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>英語教育・第二言語習得研究に携わる大学院生・研究者</span>
 <span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>Rを用いた統計解析を基礎から学びたい方</span>
 <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>言語テスト理論（IRT・ラッシュモデル・一般化可能性理論）に関心のある方</span>
 <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>時系列データや地理空間データの分析手法を知りたい方</span>
 <span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="fu">## 構成</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="fu">### 構成</span></span>
 <span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第I部：統計モデルの基礎</span></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第I部：統計モデルの基礎</span></span>
 <span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>t検定、効果量、分散分析（ANOVA）、MANOVA、判別分析を扱います。カテゴリカル変数のコーディング方法についても詳しく解説します。</span>
 <span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第II部：回帰分析</span></span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第II部：回帰分析</span></span>
 <span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>重回帰分析、交互作用の解釈（simple slope analysis）、一般化線形モデル（GLM）、一般化加法モデル（GAM）、混合効果モデル、2値ロジスティック回帰を扱います。</span>
 <span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第III部：ベイズ統計と機械学習</span></span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第III部：ベイズ統計と機械学習</span></span>
 <span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>brmsを用いたベイズ推定の基礎と、決定木・ランダムフォレスト・XGBoostによる予測分析、ROC曲線を用いたモデル評価を扱います。</span>
 <span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第IV部：多変量解析</span></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第IV部：多変量解析</span></span>
 <span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a>因子分析、主成分分析、コレスポンデンス分析、多次元尺度法、一般化可能性理論（G理論）、項目応答理論（IRT）、ラッシュモデル、拡張ラッシュモデルを扱います。</span>
 <span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第V部：時系列解析</span></span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第V部：時系列解析</span></span>
 <span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a>ARIMA、介入時系列分析（ITS）、音声波形の時系列処理を扱います。</span>
 <span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第VI部：地理空間データ</span></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第VI部：地理空間データ</span></span>
 <span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a>sfパッケージによる地図作成の入門から、空間自己相関・空間回帰・施策評価の応用まで扱います。</span>
 <span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第VII部：ネットワーク分析</span></span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第VII部：ネットワーク分析</span></span>
 <span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a>学習者間・変数間の関係構造を可視化し、中心性指標やコミュニティ検出の手法を扱います。</span>
 <span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a>::: {.callout-note appearance="minimal"}</span>
-<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a><span class="fu">### 第VIII部：メタ分析</span></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 第VIII部：メタ分析</span></span>
 <span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a>研究成果の統合、異質性の評価、出版バイアスの検出、メタ回帰を扱います。</span>
 <span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a><span class="fu">## 必要な環境</span></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a><span class="fu">### 必要な環境</span></span>
 <span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**R**（最新版を推奨）：<span class="co">[</span><span class="ot">https://cran.r-project.org/</span><span class="co">](https://cran.r-project.org/)</span></span>
 <span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**RStudio**（推奨）：<span class="co">[</span><span class="ot">https://posit.co/download/rstudio-desktop/</span><span class="co">](https://posit.co/download/rstudio-desktop/)</span></span>
@@ -1182,7 +1182,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-101"><a href="#cb2-101" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-103"><a href="#cb2-103" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a><span class="fu">### 図表の言語について</span></span>
+<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 図表の言語について</span></span>
 <span id="cb2-105"><a href="#cb2-105" aria-hidden="true" tabindex="-1"></a>本書では、OSやフォント環境による文字化けを防ぐため、図のラベル・タイトルは英語で統一し、本文で日本語の解説を添えています。</span>
 <span id="cb2-106"><a href="#cb2-106" aria-hidden="true" tabindex="-1"></a>:::</span>
 </code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>

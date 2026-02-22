@@ -410,67 +410,63 @@ window.Quarto = {
 </li>
     </ul>
     </div>
-    <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">目次</h2>
-   
-  <ul>
-  <li><a href="#はじめに" id="toc-はじめに" class="nav-link active" data-scroll-target="#はじめに"><span class="header-section-number">18</span> はじめに</a></li>
-  <li><a href="#分析の流れ" id="toc-分析の流れ" class="nav-link" data-scroll-target="#分析の流れ"><span class="header-section-number">19</span> 分析の流れ</a></li>
-  <li><a href="#データの準備再現性重視" id="toc-データの準備再現性重視" class="nav-link" data-scroll-target="#データの準備再現性重視"><span class="header-section-number">20</span> データの準備（再現性重視）</a>
-  <ul class="collapse">
-  <li><a href="#分析シナリオ" id="toc-分析シナリオ" class="nav-link" data-scroll-target="#分析シナリオ"><span class="header-section-number">20.1</span> 分析シナリオ</a></li>
-  </ul></li>
-  <li><a href="#空間重みの構築と点検" id="toc-空間重みの構築と点検" class="nav-link" data-scroll-target="#空間重みの構築と点検"><span class="header-section-number">21</span> 空間重みの構築と点検</a>
-  <ul class="collapse">
-  <li><a href="#隣接ネットワークの可視化" id="toc-隣接ネットワークの可視化" class="nav-link" data-scroll-target="#隣接ネットワークの可視化"><span class="header-section-number">21.0.1</span> 隣接ネットワークの可視化</a></li>
-  <li><a href="#重み感度の簡易比較" id="toc-重み感度の簡易比較" class="nav-link" data-scroll-target="#重み感度の簡易比較"><span class="header-section-number">21.1</span> 重み感度の簡易比較</a></li>
-  </ul></li>
-  <li><a href="#空間自己相関厳密化" id="toc-空間自己相関厳密化" class="nav-link" data-scroll-target="#空間自己相関厳密化"><span class="header-section-number">22</span> 空間自己相関（厳密化）</a>
-  <ul class="collapse">
-  <li><a href="#グローバル-morans-iモンテカルロ検定" id="toc-グローバル-morans-iモンテカルロ検定" class="nav-link" data-scroll-target="#グローバル-morans-iモンテカルロ検定"><span class="header-section-number">22.1</span> グローバル Moran’s I（モンテカルロ検定）</a></li>
-  <li><a href="#ローカル-moran-と-lisa-クラスタ図" id="toc-ローカル-moran-と-lisa-クラスタ図" class="nav-link" data-scroll-target="#ローカル-moran-と-lisa-クラスタ図"><span class="header-section-number">22.2</span> ローカル Moran と LISA クラスタ図</a></li>
-  <li><a href="#lisa-の多重比較調整fdr" id="toc-lisa-の多重比較調整fdr" class="nav-link" data-scroll-target="#lisa-の多重比較調整fdr"><span class="header-section-number">22.3</span> LISA の多重比較調整（FDR）</a></li>
-  <li><a href="#moran-散布図標準化値と空間ラグ" id="toc-moran-散布図標準化値と空間ラグ" class="nav-link" data-scroll-target="#moran-散布図標準化値と空間ラグ"><span class="header-section-number">22.4</span> Moran 散布図（標準化値と空間ラグ）</a></li>
-  </ul></li>
-  <li><a href="#空間回帰モデルols-から空間モデルへ" id="toc-空間回帰モデルols-から空間モデルへ" class="nav-link" data-scroll-target="#空間回帰モデルols-から空間モデルへ"><span class="header-section-number">23</span> 空間回帰モデル：OLS から空間モデルへ</a>
-  <ul class="collapse">
-  <li><a href="#ols-の残差診断と-lm-検定" id="toc-ols-の残差診断と-lm-検定" class="nav-link" data-scroll-target="#ols-の残差診断と-lm-検定"><span class="header-section-number">23.1</span> OLS の残差診断と LM 検定</a>
-  <ul class="collapse">
-  <li><a href="#ols-残差の空間分布" id="toc-ols-残差の空間分布" class="nav-link" data-scroll-target="#ols-残差の空間分布"><span class="header-section-number">23.1.1</span> OLS 残差の空間分布</a></li>
-  </ul></li>
-  <li><a href="#sar-sem-の推定" id="toc-sar-sem-の推定" class="nav-link" data-scroll-target="#sar-sem-の推定"><span class="header-section-number">23.2</span> SAR / SEM の推定</a></li>
-  <li><a href="#sdm-と-sarar拡張モデル" id="toc-sdm-と-sarar拡張モデル" class="nav-link" data-scroll-target="#sdm-と-sarar拡張モデル"><span class="header-section-number">23.3</span> SDM と SARAR（拡張モデル）</a></li>
-  <li><a href="#インパクト分解直接間接総効果" id="toc-インパクト分解直接間接総効果" class="nav-link" data-scroll-target="#インパクト分解直接間接総効果"><span class="header-section-number">23.4</span> インパクト分解（直接・間接・総効果）</a></li>
-  <li><a href="#モデル選択の判断フロー" id="toc-モデル選択の判断フロー" class="nav-link" data-scroll-target="#モデル選択の判断フロー"><span class="header-section-number">23.5</span> モデル選択の判断フロー</a></li>
-  </ul></li>
-  <li><a href="#施策評価と-did時空間パネル" id="toc-施策評価と-did時空間パネル" class="nav-link" data-scroll-target="#施策評価と-did時空間パネル"><span class="header-section-number">24</span> 施策評価と DID（時空間パネル）</a>
-  <ul class="collapse">
-  <li><a href="#施策前後差分の可視化" id="toc-施策前後差分の可視化" class="nav-link" data-scroll-target="#施策前後差分の可視化"><span class="header-section-number">24.1</span> 施策前後差分の可視化</a></li>
-  <li><a href="#年次ファセットマップsmall-multiples" id="toc-年次ファセットマップsmall-multiples" class="nav-link" data-scroll-target="#年次ファセットマップsmall-multiples"><span class="header-section-number">24.2</span> 年次ファセットマップ（small multiples）</a></li>
-  <li><a href="#並行トレンドの可視化" id="toc-並行トレンドの可視化" class="nav-link" data-scroll-target="#並行トレンドの可視化"><span class="header-section-number">24.3</span> 並行トレンドの可視化</a></li>
-  <li><a href="#固定効果-did" id="toc-固定効果-did" class="nav-link" data-scroll-target="#固定効果-did"><span class="header-section-number">24.4</span> 固定効果 DID</a></li>
-  <li><a href="#did-の標準誤差クラスタ二方向" id="toc-did-の標準誤差クラスタ二方向" class="nav-link" data-scroll-target="#did-の標準誤差クラスタ二方向"><span class="header-section-number">24.5</span> DID の標準誤差（クラスタ・二方向）</a></li>
-  <li><a href="#空間スピルオーバーと-sutva" id="toc-空間スピルオーバーと-sutva" class="nav-link" data-scroll-target="#空間スピルオーバーと-sutva"><span class="header-section-number">24.6</span> 空間スピルオーバーと SUTVA</a></li>
-  </ul></li>
-  <li><a href="#空間平滑化ノイズ処理の位置づけ" id="toc-空間平滑化ノイズ処理の位置づけ" class="nav-link" data-scroll-target="#空間平滑化ノイズ処理の位置づけ"><span class="header-section-number">25</span> 空間平滑化：ノイズ処理の位置づけ</a></li>
-  <li><a href="#インタラクティブ地図leaflet" id="toc-インタラクティブ地図leaflet" class="nav-link" data-scroll-target="#インタラクティブ地図leaflet"><span class="header-section-number">26</span> インタラクティブ地図（leaflet）</a></li>
-  <li><a href="#発展トピック雛形" id="toc-発展トピック雛形" class="nav-link" data-scroll-target="#発展トピック雛形"><span class="header-section-number">27</span> 発展トピック（雛形）</a>
-  <ul class="collapse">
-  <li><a href="#空間パネルwithin-two-ways" id="toc-空間パネルwithin-two-ways" class="nav-link" data-scroll-target="#空間パネルwithin-two-ways"><span class="header-section-number">27.1</span> 空間パネル（within, two-ways）</a></li>
-  <li><a href="#ベイズ階層-inla-gwr雛形" id="toc-ベイズ階層-inla-gwr雛形" class="nav-link" data-scroll-target="#ベイズ階層-inla-gwr雛形"><span class="header-section-number">27.2</span> ベイズ階層 / INLA / GWR（雛形）</a></li>
-  </ul></li>
-  <li><a href="#演習" id="toc-演習" class="nav-link" data-scroll-target="#演習"><span class="header-section-number">28</span> 演習</a></li>
-  <li><a href="#トラブルシューティング" id="toc-トラブルシューティング" class="nav-link" data-scroll-target="#トラブルシューティング"><span class="header-section-number">29</span> トラブルシューティング</a>
-  <ul class="collapse">
-  <li><a href="#技術的なエラー" id="toc-技術的なエラー" class="nav-link" data-scroll-target="#技術的なエラー"><span class="header-section-number">29.1</span> 技術的なエラー</a></li>
-  <li><a href="#概念的な誤り" id="toc-概念的な誤り" class="nav-link" data-scroll-target="#概念的な誤り"><span class="header-section-number">29.2</span> 概念的な誤り</a></li>
-  </ul></li>
-  </ul>
-</nav>
 </nav>
 <div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">目次</h2>
+   
+  <ul>
+  <li><a href="#はじめに" id="toc-はじめに" class="nav-link active" data-scroll-target="#はじめに"><span class="header-section-number">17.1</span> はじめに</a></li>
+  <li><a href="#分析の流れ" id="toc-分析の流れ" class="nav-link" data-scroll-target="#分析の流れ"><span class="header-section-number">17.2</span> 分析の流れ</a></li>
+  <li><a href="#データの準備再現性重視" id="toc-データの準備再現性重視" class="nav-link" data-scroll-target="#データの準備再現性重視"><span class="header-section-number">17.3</span> データの準備（再現性重視）</a>
+  <ul class="collapse">
+  <li><a href="#分析シナリオ" id="toc-分析シナリオ" class="nav-link" data-scroll-target="#分析シナリオ"><span class="header-section-number">17.3.1</span> 分析シナリオ</a></li>
+  </ul></li>
+  <li><a href="#空間重みの構築と点検" id="toc-空間重みの構築と点検" class="nav-link" data-scroll-target="#空間重みの構築と点検"><span class="header-section-number">17.4</span> 空間重みの構築と点検</a>
+  <ul class="collapse">
+  <li><a href="#重み感度の簡易比較" id="toc-重み感度の簡易比較" class="nav-link" data-scroll-target="#重み感度の簡易比較"><span class="header-section-number">17.4.1</span> 重み感度の簡易比較</a></li>
+  </ul></li>
+  <li><a href="#空間自己相関厳密化" id="toc-空間自己相関厳密化" class="nav-link" data-scroll-target="#空間自己相関厳密化"><span class="header-section-number">17.5</span> 空間自己相関（厳密化）</a>
+  <ul class="collapse">
+  <li><a href="#グローバル-morans-iモンテカルロ検定" id="toc-グローバル-morans-iモンテカルロ検定" class="nav-link" data-scroll-target="#グローバル-morans-iモンテカルロ検定"><span class="header-section-number">17.5.1</span> グローバル Moran’s I（モンテカルロ検定）</a></li>
+  <li><a href="#ローカル-moran-と-lisa-クラスタ図" id="toc-ローカル-moran-と-lisa-クラスタ図" class="nav-link" data-scroll-target="#ローカル-moran-と-lisa-クラスタ図"><span class="header-section-number">17.5.2</span> ローカル Moran と LISA クラスタ図</a></li>
+  <li><a href="#lisa-の多重比較調整fdr" id="toc-lisa-の多重比較調整fdr" class="nav-link" data-scroll-target="#lisa-の多重比較調整fdr"><span class="header-section-number">17.5.3</span> LISA の多重比較調整（FDR）</a></li>
+  <li><a href="#moran-散布図標準化値と空間ラグ" id="toc-moran-散布図標準化値と空間ラグ" class="nav-link" data-scroll-target="#moran-散布図標準化値と空間ラグ"><span class="header-section-number">17.5.4</span> Moran 散布図（標準化値と空間ラグ）</a></li>
+  </ul></li>
+  <li><a href="#空間回帰モデルols-から空間モデルへ" id="toc-空間回帰モデルols-から空間モデルへ" class="nav-link" data-scroll-target="#空間回帰モデルols-から空間モデルへ"><span class="header-section-number">17.6</span> 空間回帰モデル：OLS から空間モデルへ</a>
+  <ul class="collapse">
+  <li><a href="#ols-の残差診断と-lm-検定" id="toc-ols-の残差診断と-lm-検定" class="nav-link" data-scroll-target="#ols-の残差診断と-lm-検定"><span class="header-section-number">17.6.1</span> OLS の残差診断と LM 検定</a></li>
+  <li><a href="#sar-sem-の推定" id="toc-sar-sem-の推定" class="nav-link" data-scroll-target="#sar-sem-の推定"><span class="header-section-number">17.6.2</span> SAR / SEM の推定</a></li>
+  <li><a href="#sdm-と-sarar拡張モデル" id="toc-sdm-と-sarar拡張モデル" class="nav-link" data-scroll-target="#sdm-と-sarar拡張モデル"><span class="header-section-number">17.6.3</span> SDM と SARAR（拡張モデル）</a></li>
+  <li><a href="#インパクト分解直接間接総効果" id="toc-インパクト分解直接間接総効果" class="nav-link" data-scroll-target="#インパクト分解直接間接総効果"><span class="header-section-number">17.6.4</span> インパクト分解（直接・間接・総効果）</a></li>
+  <li><a href="#モデル選択の判断フロー" id="toc-モデル選択の判断フロー" class="nav-link" data-scroll-target="#モデル選択の判断フロー"><span class="header-section-number">17.6.5</span> モデル選択の判断フロー</a></li>
+  </ul></li>
+  <li><a href="#施策評価と-did時空間パネル" id="toc-施策評価と-did時空間パネル" class="nav-link" data-scroll-target="#施策評価と-did時空間パネル"><span class="header-section-number">17.7</span> 施策評価と DID（時空間パネル）</a>
+  <ul class="collapse">
+  <li><a href="#施策前後差分の可視化" id="toc-施策前後差分の可視化" class="nav-link" data-scroll-target="#施策前後差分の可視化"><span class="header-section-number">17.7.1</span> 施策前後差分の可視化</a></li>
+  <li><a href="#年次ファセットマップsmall-multiples" id="toc-年次ファセットマップsmall-multiples" class="nav-link" data-scroll-target="#年次ファセットマップsmall-multiples"><span class="header-section-number">17.7.2</span> 年次ファセットマップ（small multiples）</a></li>
+  <li><a href="#並行トレンドの可視化" id="toc-並行トレンドの可視化" class="nav-link" data-scroll-target="#並行トレンドの可視化"><span class="header-section-number">17.7.3</span> 並行トレンドの可視化</a></li>
+  <li><a href="#固定効果-did" id="toc-固定効果-did" class="nav-link" data-scroll-target="#固定効果-did"><span class="header-section-number">17.7.4</span> 固定効果 DID</a></li>
+  <li><a href="#did-の標準誤差クラスタ二方向" id="toc-did-の標準誤差クラスタ二方向" class="nav-link" data-scroll-target="#did-の標準誤差クラスタ二方向"><span class="header-section-number">17.7.5</span> DID の標準誤差（クラスタ・二方向）</a></li>
+  <li><a href="#空間スピルオーバーと-sutva" id="toc-空間スピルオーバーと-sutva" class="nav-link" data-scroll-target="#空間スピルオーバーと-sutva"><span class="header-section-number">17.7.6</span> 空間スピルオーバーと SUTVA</a></li>
+  </ul></li>
+  <li><a href="#空間平滑化ノイズ処理の位置づけ" id="toc-空間平滑化ノイズ処理の位置づけ" class="nav-link" data-scroll-target="#空間平滑化ノイズ処理の位置づけ"><span class="header-section-number">17.8</span> 空間平滑化：ノイズ処理の位置づけ</a></li>
+  <li><a href="#インタラクティブ地図leaflet" id="toc-インタラクティブ地図leaflet" class="nav-link" data-scroll-target="#インタラクティブ地図leaflet"><span class="header-section-number">17.9</span> インタラクティブ地図（leaflet）</a></li>
+  <li><a href="#発展トピック雛形" id="toc-発展トピック雛形" class="nav-link" data-scroll-target="#発展トピック雛形"><span class="header-section-number">17.10</span> 発展トピック（雛形）</a>
+  <ul class="collapse">
+  <li><a href="#空間パネルwithin-two-ways" id="toc-空間パネルwithin-two-ways" class="nav-link" data-scroll-target="#空間パネルwithin-two-ways"><span class="header-section-number">17.10.1</span> 空間パネル（within, two-ways）</a></li>
+  <li><a href="#ベイズ階層-inla-gwr雛形" id="toc-ベイズ階層-inla-gwr雛形" class="nav-link" data-scroll-target="#ベイズ階層-inla-gwr雛形"><span class="header-section-number">17.10.2</span> ベイズ階層 / INLA / GWR（雛形）</a></li>
+  </ul></li>
+  <li><a href="#演習" id="toc-演習" class="nav-link" data-scroll-target="#演習"><span class="header-section-number">17.11</span> 演習</a></li>
+  <li><a href="#トラブルシューティング" id="toc-トラブルシューティング" class="nav-link" data-scroll-target="#トラブルシューティング"><span class="header-section-number">17.12</span> トラブルシューティング</a>
+  <ul class="collapse">
+  <li><a href="#技術的なエラー" id="toc-技術的なエラー" class="nav-link" data-scroll-target="#技術的なエラー"><span class="header-section-number">17.12.1</span> 技術的なエラー</a></li>
+  <li><a href="#概念的な誤り" id="toc-概念的な誤り" class="nav-link" data-scroll-target="#概念的な誤り"><span class="header-section-number">17.12.2</span> 概念的な誤り</a></li>
+  </ul></li>
+  </ul>
+</nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -494,8 +490,8 @@ window.Quarto = {
 </header>
 
 
-<section id="はじめに" class="level1" data-number="18">
-<h1 data-number="18"><span class="header-section-number">18</span> はじめに</h1>
+<section id="はじめに" class="level2" data-number="17.1">
+<h2 data-number="17.1" class="anchored" data-anchor-id="はじめに"><span class="header-section-number">17.1</span> はじめに</h2>
 <p>英語教育の研究や政策分析において、地理空間的なパターンは避けて通れない問題です。たとえば、以下のような状況を想像してみてください。</p>
 <ol type="1">
 <li><strong>施策の波及効果</strong>: ある都道府県が2021年にALT（外国語指導助手）の配置時間を増加させた。隣接する都道府県でも英語スコアが改善しているが、これは真のスピルオーバー効果なのか、それとも地理的な交絡要因（共通の経済基盤や都市圏構造など）によるものなのか。</li>
@@ -556,8 +552,8 @@ Conventions
 <li><strong>ggplot2 / gt</strong>: 可視化と表形式の整形</li>
 </ul>
 </section>
-<section id="分析の流れ" class="level1" data-number="19">
-<h1 data-number="19"><span class="header-section-number">19</span> 分析の流れ</h1>
+<section id="分析の流れ" class="level2" data-number="17.2">
+<h2 data-number="17.2" class="anchored" data-anchor-id="分析の流れ"><span class="header-section-number">17.2</span> 分析の流れ</h2>
 <p>本章の分析は、以下の意思決定フローに沿って進みます。各ステップで「何を検証し、結果に応じて何を選択するか」を明示することが、空間分析の要諦です。常に検証し、決して仮定しないこと（test, never assume）が基本姿勢です。</p>
 <div class="cell" data-fig-width="8" data-layout-align="center">
 <details open="" class="code-fold">
@@ -617,10 +613,10 @@ Conventions
 </div>
 </div>
 </section>
-<section id="データの準備再現性重視" class="level1" data-number="20">
-<h1 data-number="20"><span class="header-section-number">20</span> データの準備（再現性重視）</h1>
-<section id="分析シナリオ" class="level2" data-number="20.1">
-<h2 data-number="20.1" class="anchored" data-anchor-id="分析シナリオ"><span class="header-section-number">20.1</span> 分析シナリオ</h2>
+<section id="データの準備再現性重視" class="level2" data-number="17.3">
+<h2 data-number="17.3" class="anchored" data-anchor-id="データの準備再現性重視"><span class="header-section-number">17.3</span> データの準備（再現性重視）</h2>
+<section id="分析シナリオ" class="level3" data-number="17.3.1">
+<h3 data-number="17.3.1" class="anchored" data-anchor-id="分析シナリオ"><span class="header-section-number">17.3.1</span> 分析シナリオ</h3>
 <p>本章では以下のシナリオに基づくシミュレーションデータを使用します。</p>
 <blockquote class="blockquote">
 <p><strong>シナリオ</strong>: 2021年度に一部の都道府県（処置群）がALT配置時間の拡充施策を導入した。研究者は、この施策が都道府県レベルの英語学力スコア（<code>eng_score</code>）に与えた効果を推定したい。統制変数として、教員の平均TOEICスコア（<code>teacher_toeic</code>: 教員の英語力の代理指標）と英検準2級以上取得率（<code>eiken_rate</code>: 地域の英語学習文化の代理指標）を用いる。観測期間は2015–2024年の10年間である。</p>
@@ -663,7 +659,7 @@ Conventions
 <span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2024</span>)</span>
 <span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>years <span class="ot">&lt;-</span> <span class="dv">2015</span><span class="sc">:</span><span class="dv">2024</span></span>
 <span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="co"># ID と処置割当（例：5の倍数IDを treated=1）</span></span>
@@ -694,7 +690,7 @@ Conventions
 <span id="cb3-50"><a href="#cb3-50" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(map_df) <span class="sc">+</span></span>
 <span id="cb3-51"><a href="#cb3-51" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> eng_score), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb3-52"><a href="#cb3-52" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span></span>
-<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb3-53"><a href="#cb3-53" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb3-54"><a href="#cb3-54" aria-hidden="true" tabindex="-1"></a> <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'English Score ('</span>, latest_year, <span class="st">', Simulated)'</span>))</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -727,8 +723,8 @@ Conventions
 </div>
 </section>
 </section>
-<section id="空間重みの構築と点検" class="level1" data-number="21">
-<h1 data-number="21"><span class="header-section-number">21</span> 空間重みの構築と点検</h1>
+<section id="空間重みの構築と点検" class="level2" data-number="17.4">
+<h2 data-number="17.4" class="anchored" data-anchor-id="空間重みの構築と点検"><span class="header-section-number">17.4</span> 空間重みの構築と点検</h2>
 <p>通常の回帰分析（OLS）では、各観測値は互いに独立であると仮定します。空間分析では、この仮定を緩め、<strong>空間重み行列</strong> <span class="math inline">\(\mathbf{W}\)</span> を通じて「誰が誰の隣人か」を明示的に定義します。これは、回帰モデルにおける共変量の選択に似ています。共変量の選択がモデルの推定結果を左右するように、<span class="math inline">\(\mathbf{W}\)</span> の選択もまた、空間自己相関の検定結果や空間回帰モデルの推定値に影響を及ぼします。つまり、<span class="math inline">\(\mathbf{W}\)</span> の構築は<strong>分析者のモデリング判断</strong>であり、データから自動的に決まるものではありません。</p>
 <p>第14章で紹介したように、代表的な隣接定義には3種類があります。</p>
 <ul>
@@ -1235,8 +1231,8 @@ Conventions
 </div>
 </div>
 <p><strong>読み方</strong>: 平均次数（1地域あたりの平均隣接数）を確認してください。極端に小さい場合は孤立ノードの存在が疑われ、多くの空間統計手法が失敗します。逆に大きすぎると、空間的な「局所性」が薄れ、検定の感度が低下します。</p>
-<section id="隣接ネットワークの可視化" class="level3" data-number="21.0.1">
-<h3 data-number="21.0.1" class="anchored" data-anchor-id="隣接ネットワークの可視化"><span class="header-section-number">21.0.1</span> 隣接ネットワークの可視化</h3>
+<section id="隣接ネットワークの可視化" class="level4">
+<h4 class="anchored" data-anchor-id="隣接ネットワークの可視化">隣接ネットワークの可視化</h4>
 <p>空間重み行列 <span class="math inline">\(\mathbf{W}\)</span> は数値の行列ですが、それだけでは「どの都道府県が誰と繋がっているか」を直感的に理解しにくいです。以下のコードでは、各都道府県の重心同士を線で結ぶことで、Queen と kNN の隣接構造をネットワーク図として可視化します。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -1293,7 +1289,7 @@ Conventions
 <span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> coords_df, <span class="fu">aes</span>(<span class="at">x =</span> x, <span class="at">y =</span> y),</span>
 <span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>             <span class="at">color =</span> <span class="st">'#2c3e50'</span>, <span class="at">size =</span> <span class="fl">1.5</span>) <span class="sc">+</span></span>
 <span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> type, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Adjacency Network: Queen vs kNN (k=4)'</span>,</span>
 <span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">'Longitude'</span>, <span class="at">y =</span> <span class="st">'Latitude'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -1320,13 +1316,13 @@ ggplot2 の読み方ガイド
 <div class="sourceCode" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(data) <span class="sc">+</span>                          <span class="co"># データを指定</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> variable)) <span class="sc">+</span>       <span class="co"># 地図を描画（fill で色分け）</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span>  <span class="co"># カラーパレット（連続値）</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span>                     <span class="co"># テーマ（背景・グリッド）</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span>                     <span class="co"># テーマ（背景・グリッド）</span></span>
 <span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'...'</span>, <span class="at">fill =</span> <span class="st">'...'</span>)     <span class="co"># タイトル・凡例ラベル</span></span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <ul>
 <li><strong><code>geom_sf()</code></strong>: <code>sf</code> オブジェクトをそのまま地図として描画する。<code>aes(fill = ...)</code> で塗り分け変数を指定する。</li>
 <li><strong><code>scale_fill_*</code></strong>: 色の対応関係を制御する。<code>viridis_c</code>（連続値）、<code>manual</code>（カテゴリ）、<code>gradient2</code>（発散型、中央値あり）が頻出。</li>
 <li><strong><code>facet_wrap(~ variable)</code></strong>: 1つの変数でグループ分けし、小さな図（パネル）を並べる。年次比較や条件比較に有効。</li>
-<li><strong><code>theme_minimal()</code></strong>: 背景をシンプルにし、データに焦点を当てる。学術論文向きのテーマ。</li>
+<li><strong><code>theme_bw()</code></strong>: 背景をシンプルにし、データに焦点を当てる。学術論文向きのテーマ。</li>
 </ul>
 </div>
 </div>
@@ -1348,8 +1344,8 @@ ggplot2 の読み方ガイド
 </div>
 </div>
 </section>
-<section id="重み感度の簡易比較" class="level2" data-number="21.1">
-<h2 data-number="21.1" class="anchored" data-anchor-id="重み感度の簡易比較"><span class="header-section-number">21.1</span> 重み感度の簡易比較</h2>
+<section id="重み感度の簡易比較" class="level3" data-number="17.4.1">
+<h3 data-number="17.4.1" class="anchored" data-anchor-id="重み感度の簡易比較"><span class="header-section-number">17.4.1</span> 重み感度の簡易比較</h3>
 <p><span class="math inline">\(\mathbf{W}\)</span> の選択はモデリングの仮定であるため、分析結果が <span class="math inline">\(\mathbf{W}\)</span> の定義に敏感かどうかを常に確認すべきです。以下では、3種の重みで Moran’s I と空間回帰モデルの AIC を比較します。もし Moran’s I がいずれの重みでも正で有意であれば、空間自己相関はデータの頑健な特徴であり、隣接定義の選択の人工物ではないと判断できます。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -1877,8 +1873,8 @@ ggplot2 の読み方ガイド
 <p>空間重みの構築と検証が完了しました。次に、このデータにおいて英語スコアが空間的にクラスタしているかどうかを、統計的に厳密に検定します。</p>
 </section>
 </section>
-<section id="空間自己相関厳密化" class="level1" data-number="22">
-<h1 data-number="22"><span class="header-section-number">22</span> 空間自己相関（厳密化）</h1>
+<section id="空間自己相関厳密化" class="level2" data-number="17.5">
+<h2 data-number="17.5" class="anchored" data-anchor-id="空間自己相関厳密化"><span class="header-section-number">17.5</span> 空間自己相関（厳密化）</h2>
 <p>第13章で学んだ時間的自己相関を思い出してください。時系列データでは、ある時点の観測値は時間的に近い過去の観測値と相関する傾向がありました（ACFプロットで可視化）。空間的自己相関はこの概念の空間版です。「ある地域の値は、地理的に近い地域の値と相関するか？」を問います。</p>
 <p>この問いに答える指標が <strong>Moran’s I</strong> です。Moran’s I は、Pearson の相関係数 <span class="math inline">\(r\)</span> と類似した役割を果たします。Pearson の <span class="math inline">\(r\)</span> が2つの変数間の線形関連の強さと方向を測るのに対し、Moran’s I は<strong>ある地点の値とその隣接地域の加重平均値との線形関連</strong>を測ります。</p>
 <ul>
@@ -1886,8 +1882,8 @@ ggplot2 の読み方ガイド
 <li><span class="math inline">\(I &lt; 0\)</span>: 負の空間自己相関。異なる値が隣り合う傾向（チェッカーボード状のパターン）。</li>
 <li><span class="math inline">\(I \approx E[I] = -1/(n-1)\)</span>: 空間的にランダムな分布（空間自己相関なし）。</li>
 </ul>
-<section id="グローバル-morans-iモンテカルロ検定" class="level2" data-number="22.1">
-<h2 data-number="22.1" class="anchored" data-anchor-id="グローバル-morans-iモンテカルロ検定"><span class="header-section-number">22.1</span> グローバル Moran’s I（モンテカルロ検定）</h2>
+<section id="グローバル-morans-iモンテカルロ検定" class="level3" data-number="17.5.1">
+<h3 data-number="17.5.1" class="anchored" data-anchor-id="グローバル-morans-iモンテカルロ検定"><span class="header-section-number">17.5.1</span> グローバル Moran’s I（モンテカルロ検定）</h3>
 <p>グローバル Moran’s I はデータ全体の空間自己相関の傾向を1つの数値で要約します。統計的有意性はモンテカルロ置換検定で評価します。これは、観測値を地域にランダムに再配置する操作を多数回（ここでは999回）繰り返し、「ランダムな配置から得られる I の分布」と実際の I を比較する方法です。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -1955,8 +1951,8 @@ alternative hypothesis: greater</code></pre>
 </div>
 </div>
 </section>
-<section id="ローカル-moran-と-lisa-クラスタ図" class="level2" data-number="22.2">
-<h2 data-number="22.2" class="anchored" data-anchor-id="ローカル-moran-と-lisa-クラスタ図"><span class="header-section-number">22.2</span> ローカル Moran と LISA クラスタ図</h2>
+<section id="ローカル-moran-と-lisa-クラスタ図" class="level3" data-number="17.5.2">
+<h3 data-number="17.5.2" class="anchored" data-anchor-id="ローカル-moran-と-lisa-クラスタ図"><span class="header-section-number">17.5.2</span> ローカル Moran と LISA クラスタ図</h3>
 <p>グローバル Moran’s I は「全体として空間自己相関があるか」を教えてくれますが、「<strong>どこに</strong>クラスタがあるか」は教えてくれません。ローカル Moran’s I（Local Indicators of Spatial Association: LISA）は、各地域を以下の4タイプに分類します。</p>
 <ul>
 <li><strong>High-High（HH）</strong>: 自身のスコアが高く、隣接地域のスコアも高い。いわゆる「ホットスポット」。英語教育の文脈では、高い英語力が地理的に集中する地域（例: 首都圏、京阪神など）を検出する可能性がある。</li>
@@ -1988,7 +1984,7 @@ alternative hypothesis: greater</code></pre>
 <span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">'High-High'</span><span class="ot">=</span><span class="st">'#d73027'</span>,<span class="st">'Low-Low'</span><span class="ot">=</span><span class="st">'#4575b4'</span>,<span class="st">'High-Low'</span><span class="ot">=</span><span class="st">'#fdae61'</span>,<span class="st">'Low-High'</span><span class="ot">=</span><span class="st">'#74add1'</span>,<span class="st">'Not Sig'</span><span class="ot">=</span><span class="st">'grey90'</span>),</span>
 <span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">drop =</span> <span class="cn">FALSE</span></span>
 <span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'LISA Cluster (Queen, p &lt; .05)'</span>, <span class="at">fill =</span> <span class="st">'Cluster'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -2000,8 +1996,8 @@ alternative hypothesis: greater</code></pre>
 </div>
 </div>
 </section>
-<section id="lisa-の多重比較調整fdr" class="level2" data-number="22.3">
-<h2 data-number="22.3" class="anchored" data-anchor-id="lisa-の多重比較調整fdr"><span class="header-section-number">22.3</span> LISA の多重比較調整（FDR）</h2>
+<section id="lisa-の多重比較調整fdr" class="level3" data-number="17.5.3">
+<h3 data-number="17.5.3" class="anchored" data-anchor-id="lisa-の多重比較調整fdr"><span class="header-section-number">17.5.3</span> LISA の多重比較調整（FDR）</h3>
 <p>LISAでは47都道府県それぞれについて仮説検定を行うため、<strong>多重比較</strong>の問題が生じます。有意水準 <span class="math inline">\(\alpha = .05\)</span> で47回の検定を行うと、空間自己相関が全くなくても、偶然だけで約2–3個の「有意」な地域が検出されてしまいます。</p>
 <p>Benjamini-Hochberg（BH）法によるFDR（False Discovery Rate）補正は、「有意と判定された地域のうち、偽陽性が占める割合」を制御します。BH法はBonferroni法より緩やかで、探索的分析に適しています。</p>
 <div class="callout callout-style-default callout-warning callout-titled">
@@ -2044,7 +2040,7 @@ alternative hypothesis: greater</code></pre>
 <span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">'High-High'</span><span class="ot">=</span><span class="st">'#d73027'</span>,<span class="st">'Low-Low'</span><span class="ot">=</span><span class="st">'#4575b4'</span>,<span class="st">'High-Low'</span><span class="ot">=</span><span class="st">'#fdae61'</span>,<span class="st">'Low-High'</span><span class="ot">=</span><span class="st">'#74add1'</span>,<span class="st">'Not Sig (FDR)'</span><span class="ot">=</span><span class="st">'grey85'</span>),</span>
 <span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">drop =</span> <span class="cn">FALSE</span></span>
 <span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'LISA Cluster (BH-corrected, p &lt; .05)'</span>, <span class="at">fill =</span> <span class="st">'Cluster'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -2056,8 +2052,8 @@ alternative hypothesis: greater</code></pre>
 </div>
 </div>
 </section>
-<section id="moran-散布図標準化値と空間ラグ" class="level2" data-number="22.4">
-<h2 data-number="22.4" class="anchored" data-anchor-id="moran-散布図標準化値と空間ラグ"><span class="header-section-number">22.4</span> Moran 散布図（標準化値と空間ラグ）</h2>
+<section id="moran-散布図標準化値と空間ラグ" class="level3" data-number="17.5.4">
+<h3 data-number="17.5.4" class="anchored" data-anchor-id="moran-散布図標準化値と空間ラグ"><span class="header-section-number">17.5.4</span> Moran 散布図（標準化値と空間ラグ）</h3>
 <p>Moran 散布図は、各地域の標準化スコア <span class="math inline">\(z\)</span> を横軸に、その空間ラグ <span class="math inline">\(\mathbf{W}z\)</span>（隣接地域の加重平均値）を縦軸にプロットしたものです。行標準化 <span class="math inline">\(\mathbf{W}\)</span> を用いた場合、この散布図に当てはめた回帰直線の傾きが Moran’s I に近似します。</p>
 <p>散布図の4象限は LISA クラスタの4タイプに対応しています。</p>
 <ul>
@@ -2077,7 +2073,7 @@ alternative hypothesis: greater</code></pre>
 <span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">'lm'</span>, <span class="at">se =</span> <span class="cn">FALSE</span>, <span class="at">color =</span> <span class="st">'steelblue'</span>) <span class="sc">+</span></span>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">color =</span> <span class="st">'grey60'</span>) <span class="sc">+</span></span>
 <span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>, <span class="at">color =</span> <span class="st">'grey60'</span>) <span class="sc">+</span></span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Moran's I Scatter Plot"</span>, <span class="at">x =</span> <span class="st">'Standardized Score (z)'</span>, <span class="at">y =</span> <span class="st">'Spatial Lag (Wz)'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -2091,8 +2087,8 @@ alternative hypothesis: greater</code></pre>
 <p>ここまでで、空間自己相関の存在を確認し、クラスタの位置を特定しました。次の問いは、<strong>この空間依存性を回帰モデルでどのように扱うか</strong>です。</p>
 </section>
 </section>
-<section id="空間回帰モデルols-から空間モデルへ" class="level1" data-number="23">
-<h1 data-number="23"><span class="header-section-number">23</span> 空間回帰モデル：OLS から空間モデルへ</h1>
+<section id="空間回帰モデルols-から空間モデルへ" class="level2" data-number="17.6">
+<h2 data-number="17.6" class="anchored" data-anchor-id="空間回帰モデルols-から空間モデルへ"><span class="header-section-number">17.6</span> 空間回帰モデル：OLS から空間モデルへ</h2>
 <p>通常のOLS回帰（第4章で詳述）では、誤差項 <span class="math inline">\(\varepsilon\)</span> が互いに独立であると仮定します。しかし、前節で空間的自己相関の存在が確認されたデータでは、この仮定が破れている可能性があります。時系列分析（第13章）で時間的自己相関がOLSの標準誤差を歪めたのと全く同じ構造の問題です。残差に空間自己相関が残っていると、<strong>標準誤差が過小推定され、p値が不当に小さくなり、第一種の過誤率が膨張</strong>します。</p>
 <p>空間依存性が生じるメカニズムには、根本的に異なる2つの「物語」（ストーリー）があります。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
@@ -2116,8 +2112,8 @@ alternative hypothesis: greater</code></pre>
 <p><strong>選択の指針</strong>: SARは「隣人の結果が自分に影響する」という因果的仮説を、SEMは「共通の未測定要因が隣人間で類似する」という相関的仮説を反映する。どちらが妥当かは、理論的考察とデータの診断（次節のLM検定）の両面から判断する。</p>
 </div>
 </div>
-<section id="ols-の残差診断と-lm-検定" class="level2" data-number="23.1">
-<h2 data-number="23.1" class="anchored" data-anchor-id="ols-の残差診断と-lm-検定"><span class="header-section-number">23.1</span> OLS の残差診断と LM 検定</h2>
+<section id="ols-の残差診断と-lm-検定" class="level3" data-number="17.6.1">
+<h3 data-number="17.6.1" class="anchored" data-anchor-id="ols-の残差診断と-lm-検定"><span class="header-section-number">17.6.1</span> OLS の残差診断と LM 検定</h3>
 <p>空間回帰モデルの推定に進む前に、まず OLS を基準モデルとして適合し、その残差に空間自己相関が残っているかどうかを診断します。そして、<strong>ラグランジュ乗数（LM）検定</strong>で、ラグモデル（SAR）と誤差モデル（SEM）のどちらの方向にOLSを改善すべきかの手がかりを得ます。この手順は、OLSを出発点として空間モデルを選択する標準的なワークフローです。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -2143,8 +2139,8 @@ Observed Moran I      Expectation         Variance
 </div>
 </div>
 <p>残差の Moran 検定が有意であれば、OLS の誤差項に空間自己相関が残っていることが確認されます。</p>
-<section id="ols-残差の空間分布" class="level3" data-number="23.1.1">
-<h3 data-number="23.1.1" class="anchored" data-anchor-id="ols-残差の空間分布"><span class="header-section-number">23.1.1</span> OLS 残差の空間分布</h3>
+<section id="ols-残差の空間分布" class="level4">
+<h4 class="anchored" data-anchor-id="ols-残差の空間分布">OLS 残差の空間分布</h4>
 <p>冒頭の研究課題3で触れた「残差が地理的にパターンを持つ」問題を、地図上で確認します。もし残差が空間的にランダムに分布していれば、地図上で赤（過大推定）と青（過小推定）がまんべんなく混在するはずです。逆に、特定の地域に赤や青が集中していれば、空間自己相関の視覚的な証拠です。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -2157,7 +2153,7 @@ Observed Moran I      Expectation         Variance
 <span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">low =</span> <span class="st">'#4575b4'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'#d73027'</span>,</span>
 <span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">name =</span> <span class="st">'Residual'</span></span>
 <span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'OLS Residuals: Spatial Distribution'</span>,</span>
 <span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">'Red = overestimation, Blue = underestimation'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -2244,8 +2240,8 @@ LM 検定の読み方
 </div>
 </section>
 </section>
-<section id="sar-sem-の推定" class="level2" data-number="23.2">
-<h2 data-number="23.2" class="anchored" data-anchor-id="sar-sem-の推定"><span class="header-section-number">23.2</span> SAR / SEM の推定</h2>
+<section id="sar-sem-の推定" class="level3" data-number="17.6.2">
+<h3 data-number="17.6.2" class="anchored" data-anchor-id="sar-sem-の推定"><span class="header-section-number">17.6.2</span> SAR / SEM の推定</h3>
 <p>LM 検定の結果に基づき、空間ラグモデル（SAR）と空間誤差モデル（SEM）を推定します。AIC の比較と、残差の空間相関の解消を確認することで、モデルを選択します。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -2294,8 +2290,8 @@ SAR の係数はOLSと異なる意味を持つ
 </div>
 </div>
 </section>
-<section id="sdm-と-sarar拡張モデル" class="level2" data-number="23.3">
-<h2 data-number="23.3" class="anchored" data-anchor-id="sdm-と-sarar拡張モデル"><span class="header-section-number">23.3</span> SDM と SARAR（拡張モデル）</h2>
+<section id="sdm-と-sarar拡張モデル" class="level3" data-number="17.6.3">
+<h3 data-number="17.6.3" class="anchored" data-anchor-id="sdm-と-sarar拡張モデル"><span class="header-section-number">17.6.3</span> SDM と SARAR（拡張モデル）</h3>
 <p>LM 検定でラグと誤差の両方が有意な場合、あるいは理論的に説明変数の空間的波及も考慮したい場合には、以下の拡張モデルを検討します。</p>
 <ul>
 <li><strong>空間ダービンモデル（SDM）</strong>: 説明変数の空間ラグ <span class="math inline">\(\mathbf{W}X\)</span> も含め、<strong>間接効果</strong>（隣接地域の教員TOEICスコアが自地域の英語スコアに影響するか）を明示的にモデル化する。</li>
@@ -2810,8 +2806,8 @@ SDM の注意点
 </div>
 </div>
 </section>
-<section id="インパクト分解直接間接総効果" class="level2" data-number="23.4">
-<h2 data-number="23.4" class="anchored" data-anchor-id="インパクト分解直接間接総効果"><span class="header-section-number">23.4</span> インパクト分解（直接・間接・総効果）</h2>
+<section id="インパクト分解直接間接総効果" class="level3" data-number="17.6.4">
+<h3 data-number="17.6.4" class="anchored" data-anchor-id="インパクト分解直接間接総効果"><span class="header-section-number">17.6.4</span> インパクト分解（直接・間接・総効果）</h3>
 <p>空間ラグモデル（SAR/SDM）では、ある都道府県における説明変数の変化が、空間フィードバック <span class="math inline">\(\rho\)</span> を通じて隣接都道府県に「波及」し、さらにその波及が戻ってくるという連鎖が生じます。このため、<strong>係数の値をそのまま「効果の大きさ」と解釈することはできません</strong>。</p>
 <p><code>impacts()</code> 関数は、この波及の連鎖を以下の3つに分解します。</p>
 <ul>
@@ -3005,8 +3001,8 @@ eiken_rate dy/dx    0.53724 0.92166  0.71289</code></pre>
 </div>
 </div>
 </section>
-<section id="モデル選択の判断フロー" class="level2" data-number="23.5">
-<h2 data-number="23.5" class="anchored" data-anchor-id="モデル選択の判断フロー"><span class="header-section-number">23.5</span> モデル選択の判断フロー</h2>
+<section id="モデル選択の判断フロー" class="level3" data-number="17.6.5">
+<h3 data-number="17.6.5" class="anchored" data-anchor-id="モデル選択の判断フロー"><span class="header-section-number">17.6.5</span> モデル選択の判断フロー</h3>
 <p>ここまでの分析をまとめると、空間回帰モデルの選択は以下のチェックリストに沿って行います。</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -3032,13 +3028,13 @@ eiken_rate dy/dx    0.53724 0.92166  0.71289</code></pre>
 <p>空間回帰モデルの枠組みを習得したところで、次は政策評価という応用場面に移ります。空間構造を考慮したDID（差の差法）の推定と、その限界について検討します。</p>
 </section>
 </section>
-<section id="施策評価と-did時空間パネル" class="level1" data-number="24">
-<h1 data-number="24"><span class="header-section-number">24</span> 施策評価と DID（時空間パネル）</h1>
+<section id="施策評価と-did時空間パネル" class="level2" data-number="17.7">
+<h2 data-number="17.7" class="anchored" data-anchor-id="施策評価と-did時空間パネル"><span class="header-section-number">17.7</span> 施策評価と DID（時空間パネル）</h2>
 <p>英語教育の政策研究において、最も実践的な問いの一つは「ある施策は本当に効果があったのか」です。日本では、都道府県ごとに英語教育改革の導入時期や内容が異なることがあり、この変異を利用して因果効果を推定する手法が<strong>差の差法（Difference-in-Differences: DID）</strong>です。</p>
 <p>DIDの基本的なアイデアは単純です。施策を導入した都道府県（処置群）と導入しなかった都道府県（対照群）の差を、施策の前後で比較します。施策前の差を「事前からの差」として差し引くことで、時間に不変な交絡要因を除去します。</p>
 <p>しかし、前節で確認したように英語スコアには空間自己相関があります。このことは、DID分析に固有の課題をもたらします。もし施策を導入した都道府県の「効果」が隣接する未導入都道府県にも波及（スピルオーバー）しているなら、標準的なDIDの推定量にバイアスが生じる可能性があります。この問題については Section 7.4 で詳述します。</p>
-<section id="施策前後差分の可視化" class="level2" data-number="24.1">
-<h2 data-number="24.1" class="anchored" data-anchor-id="施策前後差分の可視化"><span class="header-section-number">24.1</span> 施策前後差分の可視化</h2>
+<section id="施策前後差分の可視化" class="level3" data-number="17.7.1">
+<h3 data-number="17.7.1" class="anchored" data-anchor-id="施策前後差分の可視化"><span class="header-section-number">17.7.1</span> 施策前後差分の可視化</h3>
 <p>まず、施策境界（2021年）の前後で各都道府県の平均英語スコアの差分を計算し、地図上に可視化します。この地図は、施策効果の空間分布についての直感を得るための探索的なステップです。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3056,7 +3052,7 @@ eiken_rate dy/dx    0.53724 0.92166  0.71289</code></pre>
 <span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(map_diff) <span class="sc">+</span></span>
 <span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> diff_post_pre), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">'#4575b4'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'#d73027'</span>, <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">name =</span> <span class="st">'Diff'</span>) <span class="sc">+</span></span>
-<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Pre-Post Difference (Policy Year: '</span>, policy_year, <span class="st">')'</span>))</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output-display">
@@ -3068,8 +3064,8 @@ eiken_rate dy/dx    0.53724 0.92166  0.71289</code></pre>
 </div>
 </div>
 </section>
-<section id="年次ファセットマップsmall-multiples" class="level2" data-number="24.2">
-<h2 data-number="24.2" class="anchored" data-anchor-id="年次ファセットマップsmall-multiples"><span class="header-section-number">24.2</span> 年次ファセットマップ（small multiples）</h2>
+<section id="年次ファセットマップsmall-multiples" class="level3" data-number="17.7.2">
+<h3 data-number="17.7.2" class="anchored" data-anchor-id="年次ファセットマップsmall-multiples"><span class="header-section-number">17.7.2</span> 年次ファセットマップ（small multiples）</h3>
 <p>施策の前後でスコアの空間分布がどのように変化したかを、年次別の小地図（small multiples）で確認します。<code>facet_wrap()</code> は1つの変数でデータを分割し、各グループを独立したパネルとして並べる ggplot2 の機能です。空間データの時間変化を俯瞰するのに最適な手法です。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3090,7 +3086,7 @@ eiken_rate dy/dx    0.53724 0.92166  0.71289</code></pre>
 <span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>, <span class="at">limits =</span> global_limits,</span>
 <span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>                       <span class="at">oob =</span> scales<span class="sc">::</span>squish, <span class="at">name =</span> <span class="st">'Score'</span>) <span class="sc">+</span></span>
 <span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> year, <span class="at">ncol =</span> <span class="dv">5</span>) <span class="sc">+</span></span>
-<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb27-17"><a href="#cb27-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
 <span id="cb27-18"><a href="#cb27-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text =</span> <span class="fu">element_blank</span>(), <span class="at">axis.ticks =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
 <span id="cb27-19"><a href="#cb27-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'English Score by Prefecture: Annual Comparison'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -3120,8 +3116,8 @@ small multiples のポイント
 </div>
 </div>
 </section>
-<section id="並行トレンドの可視化" class="level2" data-number="24.3">
-<h2 data-number="24.3" class="anchored" data-anchor-id="並行トレンドの可視化"><span class="header-section-number">24.3</span> 並行トレンドの可視化</h2>
+<section id="並行トレンドの可視化" class="level3" data-number="17.7.3">
+<h3 data-number="17.7.3" class="anchored" data-anchor-id="並行トレンドの可視化"><span class="header-section-number">17.7.3</span> 並行トレンドの可視化</h3>
 <p>DIDの核心的な仮定である<strong>並行トレンド</strong>を視覚的に確認します。施策導入前の期間において、処置群と対照群のスコアが同じ傾向（平行な軌跡）をたどっているかどうかを確認します。もし事前期間でトレンドが交差したり大きく乖離したりしている場合、DIDの前提が崩れている可能性があります。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3139,7 +3135,7 @@ small multiples のポイント
 <span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">'text'</span>, <span class="at">x =</span> policy_year <span class="sc">+</span> <span class="fl">0.3</span>, <span class="at">y =</span> <span class="fu">max</span>(trend_df<span class="sc">$</span>mean_score),</span>
 <span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>           <span class="at">label =</span> <span class="st">'Policy Year'</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">color =</span> <span class="st">'grey40'</span>, <span class="at">size =</span> <span class="fl">3.5</span>) <span class="sc">+</span></span>
 <span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">'Control'</span> <span class="ot">=</span> <span class="st">'#4575b4'</span>, <span class="st">'Treated'</span> <span class="ot">=</span> <span class="st">'#d73027'</span>)) <span class="sc">+</span></span>
-<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Parallel Trends Check: Treated vs Control'</span>,</span>
 <span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">'Year'</span>, <span class="at">y =</span> <span class="st">'Mean English Score'</span>, <span class="at">color =</span> <span class="st">'Group'</span>)</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -3179,8 +3175,8 @@ small multiples のポイント
 </div>
 </div>
 </section>
-<section id="固定効果-did" class="level2" data-number="24.4">
-<h2 data-number="24.4" class="anchored" data-anchor-id="固定効果-did"><span class="header-section-number">24.4</span> 固定効果 DID</h2>
+<section id="固定効果-did" class="level3" data-number="17.7.4">
+<h3 data-number="17.7.4" class="anchored" data-anchor-id="固定効果-did"><span class="header-section-number">17.7.4</span> 固定効果 DID</h3>
 <p>固定効果DIDでは、都道府県固定効果（各都道府県の時間不変な特性を吸収）と年固定効果（全都道府県に共通の時間トレンドを吸収）を含めることで、交絡要因を統制します。<code>fixest::feols</code> は高速な固定効果推定とロバスト標準誤差の計算に対応しています。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3226,8 +3222,8 @@ DID の前提条件
 </div>
 </div>
 </section>
-<section id="did-の標準誤差クラスタ二方向" class="level2" data-number="24.5">
-<h2 data-number="24.5" class="anchored" data-anchor-id="did-の標準誤差クラスタ二方向"><span class="header-section-number">24.5</span> DID の標準誤差（クラスタ・二方向）</h2>
+<section id="did-の標準誤差クラスタ二方向" class="level3" data-number="17.7.5">
+<h3 data-number="17.7.5" class="anchored" data-anchor-id="did-の標準誤差クラスタ二方向"><span class="header-section-number">17.7.5</span> DID の標準誤差（クラスタ・二方向）</h3>
 <p>DID推定において、標準誤差の扱いは推論の信頼性に直結します。空間相関のある誤差構造の下では、通常のOLS標準誤差は過小推定される傾向があります。最低限、都道府県レベルでのクラスタ化が必要です。さらに保守的な推定が必要な場合は、都道府県と年の二方向クラスタも検討できます。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3271,8 +3267,8 @@ RMSE: 4.73902     Adj. R2: 0.313126
 </div>
 <p><strong>比較のポイント</strong>: クラスタ化により標準誤差が大きくなり、信頼区間が広がることが一般的です。もし通常の標準誤差では有意だった結果がクラスタ化後に非有意になる場合、その結果の頑健性には疑問が残ります。二方向クラスタはより保守的（自由度が低下）ですが、時間的・空間的な相関の両方を考慮できます。</p>
 </section>
-<section id="空間スピルオーバーと-sutva" class="level2" data-number="24.6">
-<h2 data-number="24.6" class="anchored" data-anchor-id="空間スピルオーバーと-sutva"><span class="header-section-number">24.6</span> 空間スピルオーバーと SUTVA</h2>
+<section id="空間スピルオーバーと-sutva" class="level3" data-number="17.7.6">
+<h3 data-number="17.7.6" class="anchored" data-anchor-id="空間スピルオーバーと-sutva"><span class="header-section-number">17.7.6</span> 空間スピルオーバーと SUTVA</h3>
 <p>DIDの因果推論としての妥当性は、<strong>SUTVA（Stable Unit Treatment Value Assumption）</strong>に依存しています。SUTVAとは、ある都道府県への処置（施策導入）が、他の都道府県の結果に影響しないという仮定です。</p>
 <p>空間的な文脈では、この仮定がしばしば危うくなります。たとえば、以下のようなシナリオを考えてみてください。</p>
 <ul>
@@ -3304,8 +3300,8 @@ SUTVA 違反の診断と対処
 </div>
 </section>
 </section>
-<section id="空間平滑化ノイズ処理の位置づけ" class="level1" data-number="25">
-<h1 data-number="25"><span class="header-section-number">25</span> 空間平滑化：ノイズ処理の位置づけ</h1>
+<section id="空間平滑化ノイズ処理の位置づけ" class="level2" data-number="17.8">
+<h2 data-number="17.8" class="anchored" data-anchor-id="空間平滑化ノイズ処理の位置づけ"><span class="header-section-number">17.8</span> 空間平滑化：ノイズ処理の位置づけ</h2>
 <p>第13章で時系列データに対する移動平均（moving average）を学んだように、空間データにも類似の平滑化手法があります。基本的なアイデアは、各地域の値を「自身の値と隣接地域の平均値のブレンド」で置き換えることです。混合比率 <span class="math inline">\(\alpha\)</span> はこのブレンドの強さを制御します。<span class="math inline">\(\alpha = 0\)</span> は元データそのまま、<span class="math inline">\(\alpha = 1\)</span> は隣接平均のみを使用します。</p>
 <p>空間平滑化は、市区町村レベルなどの小地域データでサンプルサイズが小さく、個々の値のノイズが大きい場合に、広域的なパターンを視覚的に浮かび上がらせるのに有効です。政策立案者への報告では、ノイズの多い生データより平滑化地図のほうが都市-農村格差などの構造的パターンを明確に伝達できます。</p>
 <div class="callout callout-style-default callout-warning callout-titled">
@@ -3330,9 +3326,9 @@ SUTVA 違反の診断と対処
 <span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">smooth_score =</span> (<span class="dv">1</span> <span class="sc">-</span> alpha) <span class="sc">*</span> eng_score <span class="sc">+</span> alpha <span class="sc">*</span> lag_y)</span>
 <span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>g1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(map_df) <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> eng_score), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
-<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Raw Score'</span>)</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Raw Score'</span>)</span>
 <span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>g2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(map_df) <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> smooth_score), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
-<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Smoothed (alpha = '</span>, alpha, <span class="st">')'</span>))</span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Smoothed (alpha = '</span>, alpha, <span class="st">')'</span>))</span>
 <span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a>g1; g2</span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
@@ -3353,8 +3349,8 @@ SUTVA 違反の診断と対処
 </div>
 <p><strong>2つの地図の比較</strong>: 生データの地図（左）は都道府県間のバラツキが大きく、隣接する都道府県でも値が大きく異なる箇所があります。平滑化後の地図（右）では、そうした局所的なノイズが抑制され、より広域的な空間パターンが浮かび上がります。ただし、<span class="math inline">\(\alpha = 0.5\)</span> は例示的な値であり、分析目的に応じて調整が必要です。</p>
 </section>
-<section id="インタラクティブ地図leaflet" class="level1" data-number="26">
-<h1 data-number="26"><span class="header-section-number">26</span> インタラクティブ地図（leaflet）</h1>
+<section id="インタラクティブ地図leaflet" class="level2" data-number="17.9">
+<h2 data-number="17.9" class="anchored" data-anchor-id="インタラクティブ地図leaflet"><span class="header-section-number">17.9</span> インタラクティブ地図（leaflet）</h2>
 <p>ここまでの地図はすべて静的な画像でした。研究発表やデータ探索では、マウス操作で拡大・縮小やホバー情報表示ができる<strong>インタラクティブ地図</strong>が有用です。<code>leaflet</code> パッケージは、Webブラウザ上で動作するインタラクティブ地図を数行のコードで作成できます。</p>
 <div class="callout callout-style-default callout-note callout-titled">
 <div class="callout-header d-flex align-content-center">
@@ -3428,11 +3424,11 @@ leaflet のコードパターン
 </div>
 <p><strong>操作方法</strong>: マウスホイールで拡大・縮小、ドラッグで移動、都道府県をクリックするとポップアップで数値と LISA クラスタの分類が表示されます。この種のインタラクティブ地図は、探索的分析やプレゼンテーションに特に有効です。</p>
 </section>
-<section id="発展トピック雛形" class="level1" data-number="27">
-<h1 data-number="27"><span class="header-section-number">27</span> 発展トピック（雛形）</h1>
+<section id="発展トピック雛形" class="level2" data-number="17.10">
+<h2 data-number="17.10" class="anchored" data-anchor-id="発展トピック雛形"><span class="header-section-number">17.10</span> 発展トピック（雛形）</h2>
 <p>以下のトピックは、本章の主要分析をさらに拡張するための参考資料です。いずれも追加的なパッケージのインストールや計算資源を必要とするため、コードテンプレート（一部は <code>eval = FALSE</code> 相当）として提供します。実データへの適用時に参照してください。</p>
-<section id="空間パネルwithin-two-ways" class="level2" data-number="27.1">
-<h2 data-number="27.1" class="anchored" data-anchor-id="空間パネルwithin-two-ways"><span class="header-section-number">27.1</span> 空間パネル（within, two-ways）</h2>
+<section id="空間パネルwithin-two-ways" class="level3" data-number="17.10.1">
+<h3 data-number="17.10.1" class="anchored" data-anchor-id="空間パネルwithin-two-ways"><span class="header-section-number">17.10.1</span> 空間パネル（within, two-ways）</h3>
 <p>空間パネルモデル（<code>splm::spml</code>）は、「固定効果 × 空間ラグ/誤差」を同時に推定します。Section 7 のDIDでは <code>fixest</code> で固定効果を処理しましたが、<code>splm</code> は空間重みを明示的に組み込んだパネル推定を提供します。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3482,8 +3478,8 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 </div>
 </div>
 </section>
-<section id="ベイズ階層-inla-gwr雛形" class="level2" data-number="27.2">
-<h2 data-number="27.2" class="anchored" data-anchor-id="ベイズ階層-inla-gwr雛形"><span class="header-section-number">27.2</span> ベイズ階層 / INLA / GWR（雛形）</h2>
+<section id="ベイズ階層-inla-gwr雛形" class="level3" data-number="17.10.2">
+<h3 data-number="17.10.2" class="anchored" data-anchor-id="ベイズ階層-inla-gwr雛形"><span class="header-section-number">17.10.2</span> ベイズ階層 / INLA / GWR（雛形）</h3>
 <p>ベイズ階層モデル（INLA/brms）は事前分布を通じた正則化や不確実性の完全な定量化を提供します。GWR（Geographically Weighted Regression）は係数の空間的変異を探索的に可視化します。いずれもモデル設計と計算資源への配慮が必要です。</p>
 <div class="cell">
 <details open="" class="code-fold">
@@ -3528,8 +3524,8 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 </div>
 </section>
 </section>
-<section id="演習" class="level1" data-number="28">
-<h1 data-number="28"><span class="header-section-number">28</span> 演習</h1>
+<section id="演習" class="level2" data-number="17.11">
+<h2 data-number="17.11" class="anchored" data-anchor-id="演習"><span class="header-section-number">17.11</span> 演習</h2>
 <p>以下の演習は、本章で学んだ概念と手法の理解を深めるために設計されています。単にコードを動かすだけでなく、<strong>結果の解釈と研究上の含意</strong>を論述することを重視してください。</p>
 <ol type="1">
 <li><p><strong>重み感度と研究結論</strong>: 重み行列を Queen から Rook および <span class="math inline">\(k = 6\)</span> の kNN に変更し、LISA クラスタ図と SAR/SEM のモデル選択がどのように変化するかを比較しなさい。結果が重みの選択に頑健であるか、それとも敏感であるかを1段落で論じなさい。</p></li>
@@ -3539,10 +3535,10 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <li><p><strong>批判的読解</strong>: ある同僚が「Moran’s I が有意ではなかったので、空間モデルは必要ない」と主張している。本章で学んだ内容に基づき、この主張の少なくとも2つの問題点を指摘しなさい。</p></li>
 </ol>
 </section>
-<section id="トラブルシューティング" class="level1" data-number="29">
-<h1 data-number="29"><span class="header-section-number">29</span> トラブルシューティング</h1>
-<section id="技術的なエラー" class="level2" data-number="29.1">
-<h2 data-number="29.1" class="anchored" data-anchor-id="技術的なエラー"><span class="header-section-number">29.1</span> 技術的なエラー</h2>
+<section id="トラブルシューティング" class="level2" data-number="17.12">
+<h2 data-number="17.12" class="anchored" data-anchor-id="トラブルシューティング"><span class="header-section-number">17.12</span> トラブルシューティング</h2>
+<section id="技術的なエラー" class="level3" data-number="17.12.1">
+<h3 data-number="17.12.1" class="anchored" data-anchor-id="技術的なエラー"><span class="header-section-number">17.12.1</span> 技術的なエラー</h3>
 <ul>
 <li><strong>パッケージが入らない</strong>: <code>install.packages('spatialreg')</code> など個別に導入。Mac で C/C++ のビルドが必要な場合は Xcode Command Line Tools を先に導入する。</li>
 <li><strong>日本語フォントが出ない</strong>: Quarto/PDF の場合は <code>_quarto.yml</code> のフォント設定を確認（本プロジェクトは Noto 系を使用）。</li>
@@ -3551,8 +3547,8 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <li><strong>DID の効果が不安定</strong>: 並行トレンドの破れやアウトライヤの影響。前処理（トリム）やロバスト標準誤差、感度分析を検討する。</li>
 </ul>
 </section>
-<section id="概念的な誤り" class="level2" data-number="29.2">
-<h2 data-number="29.2" class="anchored" data-anchor-id="概念的な誤り"><span class="header-section-number">29.2</span> 概念的な誤り</h2>
+<section id="概念的な誤り" class="level3" data-number="17.12.2">
+<h3 data-number="17.12.2" class="anchored" data-anchor-id="概念的な誤り"><span class="header-section-number">17.12.2</span> 概念的な誤り</h3>
 <ul>
 <li><strong>SAR の係数を OLS の係数と同じに解釈する</strong>: SAR では空間フィードバックがあるため、係数は直接効果のみを反映する。総効果を知るには <code>impacts()</code> を使用する。</li>
 <li><strong>単一の重み行列のみで感度分析を省略する</strong>: 結論が <span class="math inline">\(\mathbf{W}\)</span> の選択に敏感である場合、その結果の信頼性は低い。複数の <span class="math inline">\(\mathbf{W}\)</span> で頑健性を確認する。</li>
@@ -4033,7 +4029,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "地理空間データ分析（応用）：空間自己相関・空間回帰・施策評価"</span></span>
 <span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
 <span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a><span class="fu"># はじめに</span></span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a><span class="fu">## はじめに</span></span>
 <span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>英語教育の研究や政策分析において、地理空間的なパターンは避けて通れない問題です。たとえば、以下のような状況を想像してみてください。</span>
 <span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a></span>
@@ -4046,7 +4042,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-15"><a href="#cb43-15" aria-hidden="true" tabindex="-1"></a>第14章（入門編）では、<span class="in">`sf`</span> オブジェクトの構築、形状データとの結合、コロプレス図の作成、パネルデータの整形といった**機械的な基礎**を学びました。本章では、その基礎の上に**分析的なツールキット**を構築します。具体的には、空間自己相関の厳密な検定、空間回帰モデル（SAR/SEM）によるモデリング、そして差の差法（DID）を用いた施策評価を、英語教育研究の文脈に即して展開します。</span>
 <span id="cb43-16"><a href="#cb43-16" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-17"><a href="#cb43-17" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-18"><a href="#cb43-18" aria-hidden="true" tabindex="-1"></a><span class="fu">## この章の読み方（ロードマップ）</span></span>
+<span id="cb43-18"><a href="#cb43-18" aria-hidden="true" tabindex="-1"></a><span class="fu">### この章の読み方（ロードマップ）</span></span>
 <span id="cb43-19"><a href="#cb43-19" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-20"><a href="#cb43-20" aria-hidden="true" tabindex="-1"></a>本章は以下の4つのパートで構成されています。</span>
 <span id="cb43-21"><a href="#cb43-21" aria-hidden="true" tabindex="-1"></a></span>
@@ -4059,7 +4055,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-28"><a href="#cb43-28" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-29"><a href="#cb43-29" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-30"><a href="#cb43-30" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-31"><a href="#cb43-31" aria-hidden="true" tabindex="-1"></a><span class="fu">## Conventions</span></span>
+<span id="cb43-31"><a href="#cb43-31" aria-hidden="true" tabindex="-1"></a><span class="fu">### Conventions</span></span>
 <span id="cb43-32"><a href="#cb43-32" aria-hidden="true" tabindex="-1"></a>Figures use English labels. All code chunks are R.</span>
 <span id="cb43-33"><a href="#cb43-33" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-34"><a href="#cb43-34" aria-hidden="true" tabindex="-1"></a></span>
@@ -4083,7 +4079,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-54"><a href="#cb43-54" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**fixest**: DID を含む高機能な線形モデル（固定効果・ロバスト標準誤差に対応）</span>
 <span id="cb43-55"><a href="#cb43-55" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**ggplot2 / gt**: 可視化と表形式の整形</span>
 <span id="cb43-56"><a href="#cb43-56" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-57"><a href="#cb43-57" aria-hidden="true" tabindex="-1"></a><span class="fu"># 分析の流れ</span></span>
+<span id="cb43-57"><a href="#cb43-57" aria-hidden="true" tabindex="-1"></a><span class="fu">## 分析の流れ</span></span>
 <span id="cb43-58"><a href="#cb43-58" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-59"><a href="#cb43-59" aria-hidden="true" tabindex="-1"></a>本章の分析は、以下の意思決定フローに沿って進みます。各ステップで「何を検証し、結果に応じて何を選択するか」を明示することが、空間分析の要諦です。常に検証し、決して仮定しないこと（test, never assume）が基本姿勢です。</span>
 <span id="cb43-60"><a href="#cb43-60" aria-hidden="true" tabindex="-1"></a></span>
@@ -4107,21 +4103,21 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-80"><a href="#cb43-80" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-81"><a href="#cb43-81" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-82"><a href="#cb43-82" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-83"><a href="#cb43-83" aria-hidden="true" tabindex="-1"></a><span class="fu">### 診断文化（diagnostic culture）の重要性</span></span>
+<span id="cb43-83"><a href="#cb43-83" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 診断文化（diagnostic culture）の重要性</span></span>
 <span id="cb43-84"><a href="#cb43-84" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-85"><a href="#cb43-85" aria-hidden="true" tabindex="-1"></a>空間分析では「空間モデルを使えば常に良い」わけではありません。上のフローチャートが示すように、各段階で検定結果を確認し、データが求めるモデルを選択します。空間自己相関が存在しないデータに空間モデルを適用しても、推定の効率が悪くなるだけです。逆に、空間自己相関が存在するのにOLSを使い続けると、推論が不正確になります。</span>
 <span id="cb43-86"><a href="#cb43-86" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-87"><a href="#cb43-87" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-88"><a href="#cb43-88" aria-hidden="true" tabindex="-1"></a><span class="fu"># データの準備（再現性重視）</span></span>
+<span id="cb43-88"><a href="#cb43-88" aria-hidden="true" tabindex="-1"></a><span class="fu">## データの準備（再現性重視）</span></span>
 <span id="cb43-89"><a href="#cb43-89" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-90"><a href="#cb43-90" aria-hidden="true" tabindex="-1"></a><span class="fu">## 分析シナリオ</span></span>
+<span id="cb43-90"><a href="#cb43-90" aria-hidden="true" tabindex="-1"></a><span class="fu">### 分析シナリオ</span></span>
 <span id="cb43-91"><a href="#cb43-91" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-92"><a href="#cb43-92" aria-hidden="true" tabindex="-1"></a>本章では以下のシナリオに基づくシミュレーションデータを使用します。</span>
 <span id="cb43-93"><a href="#cb43-93" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-94"><a href="#cb43-94" aria-hidden="true" tabindex="-1"></a><span class="at">&gt; **シナリオ**: 2021年度に一部の都道府県（処置群）がALT配置時間の拡充施策を導入した。研究者は、この施策が都道府県レベルの英語学力スコア（</span><span class="in">`eng_score`</span><span class="at">）に与えた効果を推定したい。統制変数として、教員の平均TOEICスコア（</span><span class="in">`teacher_toeic`</span><span class="at">: 教員の英語力の代理指標）と英検準2級以上取得率（</span><span class="in">`eiken_rate`</span><span class="at">: 地域の英語学習文化の代理指標）を用いる。観測期間は2015--2024年の10年間である。</span></span>
 <span id="cb43-95"><a href="#cb43-95" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-96"><a href="#cb43-96" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-97"><a href="#cb43-97" aria-hidden="true" tabindex="-1"></a><span class="fu">### なぜシミュレーションデータなのか</span></span>
+<span id="cb43-97"><a href="#cb43-97" aria-hidden="true" tabindex="-1"></a><span class="fu">#### なぜシミュレーションデータなのか</span></span>
 <span id="cb43-98"><a href="#cb43-98" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-99"><a href="#cb43-99" aria-hidden="true" tabindex="-1"></a>シミュレーションデータには「真の効果」（ここでは $\tau = 3.0$）が研究者に既知であるという利点があります。分析手法が正しく機能しているかどうかを、推定値と真値の比較によって検証できます。実データ分析に進む前に、まずシミュレーションで手法の振る舞いを理解することは、方法論的リテラシーの重要な一部です。</span>
 <span id="cb43-100"><a href="#cb43-100" aria-hidden="true" tabindex="-1"></a>:::</span>
@@ -4151,7 +4147,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-126"><a href="#cb43-126" aria-hidden="true" tabindex="-1"></a>  }</span>
 <span id="cb43-127"><a href="#cb43-127" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb43-128"><a href="#cb43-128" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-129"><a href="#cb43-129" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb43-129"><a href="#cb43-129" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2024</span>)</span>
 <span id="cb43-130"><a href="#cb43-130" aria-hidden="true" tabindex="-1"></a>years <span class="ot">&lt;-</span> <span class="dv">2015</span><span class="sc">:</span><span class="dv">2024</span></span>
 <span id="cb43-131"><a href="#cb43-131" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-132"><a href="#cb43-132" aria-hidden="true" tabindex="-1"></a><span class="co"># ID と処置割当（例：5の倍数IDを treated=1）</span></span>
@@ -4182,14 +4178,14 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-157"><a href="#cb43-157" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(map_df) <span class="sc">+</span></span>
 <span id="cb43-158"><a href="#cb43-158" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> eng_score), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb43-159"><a href="#cb43-159" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span></span>
-<span id="cb43-160"><a href="#cb43-160" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-160"><a href="#cb43-160" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-161"><a href="#cb43-161" aria-hidden="true" tabindex="-1"></a> <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'English Score ('</span>, latest_year, <span class="st">', Simulated)'</span>))</span>
 <span id="cb43-162"><a href="#cb43-162" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-163"><a href="#cb43-163" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-164"><a href="#cb43-164" aria-hidden="true" tabindex="-1"></a>**地図の読み方**: この地図を観察してみてください。高いスコアを示す都道府県（暖色）が空間的にまとまって現れているでしょうか、それとも全国にランダムに散らばっているでしょうか。もし前者であれば、それは空間的自己相関の視覚的な証拠です。次節以降で、この直感を統計的に検証します。</span>
 <span id="cb43-165"><a href="#cb43-165" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-166"><a href="#cb43-166" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-167"><a href="#cb43-167" aria-hidden="true" tabindex="-1"></a><span class="fu">### 用語ミニ辞典</span></span>
+<span id="cb43-167"><a href="#cb43-167" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 用語ミニ辞典</span></span>
 <span id="cb43-168"><a href="#cb43-168" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-169"><a href="#cb43-169" aria-hidden="true" tabindex="-1"></a>本章の分析で繰り返し登場する主要な概念を整理します。</span>
 <span id="cb43-170"><a href="#cb43-170" aria-hidden="true" tabindex="-1"></a></span>
@@ -4199,7 +4195,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-174"><a href="#cb43-174" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**Queen / Rook**: 隣接の定義方法。Queen は辺または頂点を共有する地域を隣接とみなし（チェスのクイーンの動き）、Rook は辺を共有する場合のみ隣接とする（チェスのルークの動き）。第14章で詳述。</span>
 <span id="cb43-175"><a href="#cb43-175" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-176"><a href="#cb43-176" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-177"><a href="#cb43-177" aria-hidden="true" tabindex="-1"></a><span class="fu"># 空間重みの構築と点検</span></span>
+<span id="cb43-177"><a href="#cb43-177" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間重みの構築と点検</span></span>
 <span id="cb43-178"><a href="#cb43-178" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-179"><a href="#cb43-179" aria-hidden="true" tabindex="-1"></a>通常の回帰分析（OLS）では、各観測値は互いに独立であると仮定します。空間分析では、この仮定を緩め、**空間重み行列** $\mathbf{W}$ を通じて「誰が誰の隣人か」を明示的に定義します。これは、回帰モデルにおける共変量の選択に似ています。共変量の選択がモデルの推定結果を左右するように、$\mathbf{W}$ の選択もまた、空間自己相関の検定結果や空間回帰モデルの推定値に影響を及ぼします。つまり、$\mathbf{W}$ の構築は**分析者のモデリング判断**であり、データから自動的に決まるものではありません。</span>
 <span id="cb43-180"><a href="#cb43-180" aria-hidden="true" tabindex="-1"></a></span>
@@ -4237,12 +4233,12 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-214"><a href="#cb43-214" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-215"><a href="#cb43-215" aria-hidden="true" tabindex="-1"></a>**読み方**: 平均次数（1地域あたりの平均隣接数）を確認してください。極端に小さい場合は孤立ノードの存在が疑われ、多くの空間統計手法が失敗します。逆に大きすぎると、空間的な「局所性」が薄れ、検定の感度が低下します。</span>
 <span id="cb43-216"><a href="#cb43-216" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-217"><a href="#cb43-217" aria-hidden="true" tabindex="-1"></a><span class="fu">### 隣接ネットワークの可視化</span></span>
+<span id="cb43-217"><a href="#cb43-217" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 隣接ネットワークの可視化</span></span>
 <span id="cb43-218"><a href="#cb43-218" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-219"><a href="#cb43-219" aria-hidden="true" tabindex="-1"></a>空間重み行列 $\mathbf{W}$ は数値の行列ですが、それだけでは「どの都道府県が誰と繋がっているか」を直感的に理解しにくいです。以下のコードでは、各都道府県の重心同士を線で結ぶことで、Queen と kNN の隣接構造をネットワーク図として可視化します。</span>
 <span id="cb43-220"><a href="#cb43-220" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-221"><a href="#cb43-221" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-222"><a href="#cb43-222" aria-hidden="true" tabindex="-1"></a><span class="fu">### コードの読み方（パイプチェーン）</span></span>
+<span id="cb43-222"><a href="#cb43-222" aria-hidden="true" tabindex="-1"></a><span class="fu">#### コードの読み方（パイプチェーン）</span></span>
 <span id="cb43-223"><a href="#cb43-223" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-224"><a href="#cb43-224" aria-hidden="true" tabindex="-1"></a>本章のRコードでは <span class="in">`|&gt;`</span> （ネイティブパイプ）を多用します。これは「左辺の結果を右辺の関数の第1引数に渡す」操作です。</span>
 <span id="cb43-225"><a href="#cb43-225" aria-hidden="true" tabindex="-1"></a></span>
@@ -4294,7 +4290,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-273"><a href="#cb43-273" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">data =</span> coords_df, <span class="fu">aes</span>(<span class="at">x =</span> x, <span class="at">y =</span> y),</span>
 <span id="cb43-274"><a href="#cb43-274" aria-hidden="true" tabindex="-1"></a>             <span class="at">color =</span> <span class="st">'#2c3e50'</span>, <span class="at">size =</span> <span class="fl">1.5</span>) <span class="sc">+</span></span>
 <span id="cb43-275"><a href="#cb43-275" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> type, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb43-276"><a href="#cb43-276" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-276"><a href="#cb43-276" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-277"><a href="#cb43-277" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Adjacency Network: Queen vs kNN (k=4)'</span>,</span>
 <span id="cb43-278"><a href="#cb43-278" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">'Longitude'</span>, <span class="at">y =</span> <span class="st">'Latitude'</span>)</span>
 <span id="cb43-279"><a href="#cb43-279" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
@@ -4302,7 +4298,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-281"><a href="#cb43-281" aria-hidden="true" tabindex="-1"></a>この図では、赤い線が「隣接」として定義されたペアを示しています。<span class="in">`facet_wrap()`</span> を用いて Queen と kNN の2つの定義を**並列比較（small multiples）**しています。</span>
 <span id="cb43-282"><a href="#cb43-282" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-283"><a href="#cb43-283" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-284"><a href="#cb43-284" aria-hidden="true" tabindex="-1"></a><span class="fu">### ggplot2 の読み方ガイド</span></span>
+<span id="cb43-284"><a href="#cb43-284" aria-hidden="true" tabindex="-1"></a><span class="fu">#### ggplot2 の読み方ガイド</span></span>
 <span id="cb43-285"><a href="#cb43-285" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-286"><a href="#cb43-286" aria-hidden="true" tabindex="-1"></a>本章で繰り返し登場する <span class="in">`ggplot2`</span> のパターンを整理します。</span>
 <span id="cb43-287"><a href="#cb43-287" aria-hidden="true" tabindex="-1"></a></span>
@@ -4310,24 +4306,24 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-289"><a href="#cb43-289" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(data) <span class="sc">+</span>                          <span class="co"># データを指定</span></span>
 <span id="cb43-290"><a href="#cb43-290" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> variable)) <span class="sc">+</span>       <span class="co"># 地図を描画（fill で色分け）</span></span>
 <span id="cb43-291"><a href="#cb43-291" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span>  <span class="co"># カラーパレット（連続値）</span></span>
-<span id="cb43-292"><a href="#cb43-292" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span>                     <span class="co"># テーマ（背景・グリッド）</span></span>
+<span id="cb43-292"><a href="#cb43-292" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span>                     <span class="co"># テーマ（背景・グリッド）</span></span>
 <span id="cb43-293"><a href="#cb43-293" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'...'</span>, <span class="at">fill =</span> <span class="st">'...'</span>)     <span class="co"># タイトル・凡例ラベル</span></span>
 <span id="cb43-294"><a href="#cb43-294" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-295"><a href="#cb43-295" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-296"><a href="#cb43-296" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`geom_sf()`**: <span class="in">`sf`</span> オブジェクトをそのまま地図として描画する。<span class="in">`aes(fill = ...)`</span> で塗り分け変数を指定する。</span>
 <span id="cb43-297"><a href="#cb43-297" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`scale_fill_*`**: 色の対応関係を制御する。<span class="in">`viridis_c`</span>（連続値）、<span class="in">`manual`</span>（カテゴリ）、<span class="in">`gradient2`</span>（発散型、中央値あり）が頻出。</span>
 <span id="cb43-298"><a href="#cb43-298" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`facet_wrap(~ variable)`**: 1つの変数でグループ分けし、小さな図（パネル）を並べる。年次比較や条件比較に有効。</span>
-<span id="cb43-299"><a href="#cb43-299" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`theme_minimal()`**: 背景をシンプルにし、データに焦点を当てる。学術論文向きのテーマ。</span>
+<span id="cb43-299"><a href="#cb43-299" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`theme_bw()`**: 背景をシンプルにし、データに焦点を当てる。学術論文向きのテーマ。</span>
 <span id="cb43-300"><a href="#cb43-300" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-301"><a href="#cb43-301" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-302"><a href="#cb43-302" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-303"><a href="#cb43-303" aria-hidden="true" tabindex="-1"></a><span class="fu">### よくあるエラーと対処</span></span>
+<span id="cb43-303"><a href="#cb43-303" aria-hidden="true" tabindex="-1"></a><span class="fu">#### よくあるエラーと対処</span></span>
 <span id="cb43-304"><a href="#cb43-304" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`regions with no neighbours`**: 孤立ノードが発生している。kNNの $k$ を引き上げるか、距離閾値で接続する。</span>
 <span id="cb43-305"><a href="#cb43-305" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**`not a listw object`**: <span class="in">`nb`</span> オブジェクトをそのまま渡している。<span class="in">`nb2listw(nb, style = 'W')`</span> で変換してから渡す。</span>
 <span id="cb43-306"><a href="#cb43-306" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**CRS の不一致**: 形状を結合する前に <span class="in">`st_crs()`</span> で座標参照系を確認し、<span class="in">`st_transform()`</span> で統一する。</span>
 <span id="cb43-307"><a href="#cb43-307" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-308"><a href="#cb43-308" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-309"><a href="#cb43-309" aria-hidden="true" tabindex="-1"></a><span class="fu">## 重み感度の簡易比較</span></span>
+<span id="cb43-309"><a href="#cb43-309" aria-hidden="true" tabindex="-1"></a><span class="fu">### 重み感度の簡易比較</span></span>
 <span id="cb43-310"><a href="#cb43-310" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-311"><a href="#cb43-311" aria-hidden="true" tabindex="-1"></a>$\mathbf{W}$ の選択はモデリングの仮定であるため、分析結果が $\mathbf{W}$ の定義に敏感かどうかを常に確認すべきです。以下では、3種の重みで Moran's I と空間回帰モデルの AIC を比較します。もし Moran's I がいずれの重みでも正で有意であれば、空間自己相関はデータの頑健な特徴であり、隣接定義の選択の人工物ではないと判断できます。</span>
 <span id="cb43-312"><a href="#cb43-312" aria-hidden="true" tabindex="-1"></a></span>
@@ -4356,7 +4352,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-337"><a href="#cb43-337" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-338"><a href="#cb43-338" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-339"><a href="#cb43-339" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-340"><a href="#cb43-340" aria-hidden="true" tabindex="-1"></a><span class="fu">### 重み行列の選択指針</span></span>
+<span id="cb43-340"><a href="#cb43-340" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 重み行列の選択指針</span></span>
 <span id="cb43-341"><a href="#cb43-341" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-342"><a href="#cb43-342" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>結果が $\mathbf{W}$ の選択に**頑健**であれば（いずれの重みでも結論が同じ）、主要分析に理論的に最も妥当な $\mathbf{W}$ を使い、付録で感度分析を報告する。</span>
 <span id="cb43-343"><a href="#cb43-343" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>結果が $\mathbf{W}$ に**敏感**であれば、その結果の解釈には慎重を要する。空間プロセスの仮定自体を再検討する必要がある。</span>
@@ -4365,7 +4361,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-346"><a href="#cb43-346" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-347"><a href="#cb43-347" aria-hidden="true" tabindex="-1"></a>空間重みの構築と検証が完了しました。次に、このデータにおいて英語スコアが空間的にクラスタしているかどうかを、統計的に厳密に検定します。</span>
 <span id="cb43-348"><a href="#cb43-348" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-349"><a href="#cb43-349" aria-hidden="true" tabindex="-1"></a><span class="fu"># 空間自己相関（厳密化）</span></span>
+<span id="cb43-349"><a href="#cb43-349" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間自己相関（厳密化）</span></span>
 <span id="cb43-350"><a href="#cb43-350" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-351"><a href="#cb43-351" aria-hidden="true" tabindex="-1"></a>第13章で学んだ時間的自己相関を思い出してください。時系列データでは、ある時点の観測値は時間的に近い過去の観測値と相関する傾向がありました（ACFプロットで可視化）。空間的自己相関はこの概念の空間版です。「ある地域の値は、地理的に近い地域の値と相関するか？」を問います。</span>
 <span id="cb43-352"><a href="#cb43-352" aria-hidden="true" tabindex="-1"></a></span>
@@ -4375,7 +4371,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-356"><a href="#cb43-356" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$I &lt; 0$: 負の空間自己相関。異なる値が隣り合う傾向（チェッカーボード状のパターン）。</span>
 <span id="cb43-357"><a href="#cb43-357" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>$I \approx E<span class="co">[</span><span class="ot">I</span><span class="co">]</span> = -1/(n-1)$: 空間的にランダムな分布（空間自己相関なし）。</span>
 <span id="cb43-358"><a href="#cb43-358" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-359"><a href="#cb43-359" aria-hidden="true" tabindex="-1"></a><span class="fu">## グローバル Moran's I（モンテカルロ検定）</span></span>
+<span id="cb43-359"><a href="#cb43-359" aria-hidden="true" tabindex="-1"></a><span class="fu">### グローバル Moran's I（モンテカルロ検定）</span></span>
 <span id="cb43-360"><a href="#cb43-360" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-361"><a href="#cb43-361" aria-hidden="true" tabindex="-1"></a>グローバル Moran's I はデータ全体の空間自己相関の傾向を1つの数値で要約します。統計的有意性はモンテカルロ置換検定で評価します。これは、観測値を地域にランダムに再配置する操作を多数回（ここでは999回）繰り返し、「ランダムな配置から得られる I の分布」と実際の I を比較する方法です。</span>
 <span id="cb43-362"><a href="#cb43-362" aria-hidden="true" tabindex="-1"></a></span>
@@ -4391,14 +4387,14 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-374"><a href="#cb43-374" aria-hidden="true" tabindex="-1"></a>**英語教育研究にとっての意味**: Moran's I が正で有意であれば、都道府県別の英語スコアは地理的にランダムに分布しているわけではなく、高スコアの地域は高スコアの地域の近くに、低スコアの地域は低スコアの地域の近くに集まる傾向があることを意味します。これは2つの重要な含意を持ちます。第一に、OLS回帰の残差にも空間的相関が残っている可能性があり、標準誤差の信頼性に疑問が生じます（Section 6 で検証）。第二に、政策拡散や共通の地域経済条件など、実質的に興味深い空間プロセスが存在する可能性を示唆します。</span>
 <span id="cb43-375"><a href="#cb43-375" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-376"><a href="#cb43-376" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-377"><a href="#cb43-377" aria-hidden="true" tabindex="-1"></a><span class="fu">### 出力の見方（spdep）</span></span>
+<span id="cb43-377"><a href="#cb43-377" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 出力の見方（spdep）</span></span>
 <span id="cb43-378"><a href="#cb43-378" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**statistic / estimate**: Moran's I の値。</span>
 <span id="cb43-379"><a href="#cb43-379" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**p-value**: 置換検定に基づく有意確率。<span class="in">`moran.mc`</span> では反復数（nsim）が十分に大きければ安定する。</span>
 <span id="cb43-380"><a href="#cb43-380" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**alternative**: 片側・両側の仮説。通常は「greater」（正の自己相関の検出）。</span>
 <span id="cb43-381"><a href="#cb43-381" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>結果は $\mathbf{W}$ の選択によって変わりうる。前節の感度分析で確認済みの頑健性を踏まえて解釈すること。</span>
 <span id="cb43-382"><a href="#cb43-382" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-383"><a href="#cb43-383" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-384"><a href="#cb43-384" aria-hidden="true" tabindex="-1"></a><span class="fu">## ローカル Moran と LISA クラスタ図</span></span>
+<span id="cb43-384"><a href="#cb43-384" aria-hidden="true" tabindex="-1"></a><span class="fu">### ローカル Moran と LISA クラスタ図</span></span>
 <span id="cb43-385"><a href="#cb43-385" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-386"><a href="#cb43-386" aria-hidden="true" tabindex="-1"></a>グローバル Moran's I は「全体として空間自己相関があるか」を教えてくれますが、「**どこに**クラスタがあるか」は教えてくれません。ローカル Moran's I（Local Indicators of Spatial Association: LISA）は、各地域を以下の4タイプに分類します。</span>
 <span id="cb43-387"><a href="#cb43-387" aria-hidden="true" tabindex="-1"></a></span>
@@ -4430,18 +4426,18 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-415"><a href="#cb43-415" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">'High-High'</span><span class="ot">=</span><span class="st">'#d73027'</span>,<span class="st">'Low-Low'</span><span class="ot">=</span><span class="st">'#4575b4'</span>,<span class="st">'High-Low'</span><span class="ot">=</span><span class="st">'#fdae61'</span>,<span class="st">'Low-High'</span><span class="ot">=</span><span class="st">'#74add1'</span>,<span class="st">'Not Sig'</span><span class="ot">=</span><span class="st">'grey90'</span>),</span>
 <span id="cb43-416"><a href="#cb43-416" aria-hidden="true" tabindex="-1"></a>    <span class="at">drop =</span> <span class="cn">FALSE</span></span>
 <span id="cb43-417"><a href="#cb43-417" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb43-418"><a href="#cb43-418" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-418"><a href="#cb43-418" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-419"><a href="#cb43-419" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'LISA Cluster (Queen, p &lt; .05)'</span>, <span class="at">fill =</span> <span class="st">'Cluster'</span>)</span>
 <span id="cb43-420"><a href="#cb43-420" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-421"><a href="#cb43-421" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-422"><a href="#cb43-422" aria-hidden="true" tabindex="-1"></a><span class="fu">## LISA の多重比較調整（FDR）</span></span>
+<span id="cb43-422"><a href="#cb43-422" aria-hidden="true" tabindex="-1"></a><span class="fu">### LISA の多重比較調整（FDR）</span></span>
 <span id="cb43-423"><a href="#cb43-423" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-424"><a href="#cb43-424" aria-hidden="true" tabindex="-1"></a>LISAでは47都道府県それぞれについて仮説検定を行うため、**多重比較**の問題が生じます。有意水準 $\alpha = .05$ で47回の検定を行うと、空間自己相関が全くなくても、偶然だけで約2--3個の「有意」な地域が検出されてしまいます。</span>
 <span id="cb43-425"><a href="#cb43-425" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-426"><a href="#cb43-426" aria-hidden="true" tabindex="-1"></a>Benjamini-Hochberg（BH）法によるFDR（False Discovery Rate）補正は、「有意と判定された地域のうち、偽陽性が占める割合」を制御します。BH法はBonferroni法より緩やかで、探索的分析に適しています。</span>
 <span id="cb43-427"><a href="#cb43-427" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-428"><a href="#cb43-428" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
-<span id="cb43-429"><a href="#cb43-429" aria-hidden="true" tabindex="-1"></a><span class="fu">### 多重比較の落とし穴</span></span>
+<span id="cb43-429"><a href="#cb43-429" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 多重比較の落とし穴</span></span>
 <span id="cb43-430"><a href="#cb43-430" aria-hidden="true" tabindex="-1"></a>LISA分析では、**補正前と補正後の両方の地図を報告**してください。補正前に「有意」だったクラスタが補正後に消失した場合、それは偶然による偽陽性である可能性が高いです。補正後も残るクラスタは、より信頼性の高い空間パターンと判断できます。</span>
 <span id="cb43-431"><a href="#cb43-431" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-432"><a href="#cb43-432" aria-hidden="true" tabindex="-1"></a></span>
@@ -4471,11 +4467,11 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-458"><a href="#cb43-458" aria-hidden="true" tabindex="-1"></a>    <span class="at">values =</span> <span class="fu">c</span>(<span class="st">'High-High'</span><span class="ot">=</span><span class="st">'#d73027'</span>,<span class="st">'Low-Low'</span><span class="ot">=</span><span class="st">'#4575b4'</span>,<span class="st">'High-Low'</span><span class="ot">=</span><span class="st">'#fdae61'</span>,<span class="st">'Low-High'</span><span class="ot">=</span><span class="st">'#74add1'</span>,<span class="st">'Not Sig (FDR)'</span><span class="ot">=</span><span class="st">'grey85'</span>),</span>
 <span id="cb43-459"><a href="#cb43-459" aria-hidden="true" tabindex="-1"></a>    <span class="at">drop =</span> <span class="cn">FALSE</span></span>
 <span id="cb43-460"><a href="#cb43-460" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb43-461"><a href="#cb43-461" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-461"><a href="#cb43-461" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-462"><a href="#cb43-462" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'LISA Cluster (BH-corrected, p &lt; .05)'</span>, <span class="at">fill =</span> <span class="st">'Cluster'</span>)</span>
 <span id="cb43-463"><a href="#cb43-463" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-464"><a href="#cb43-464" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-465"><a href="#cb43-465" aria-hidden="true" tabindex="-1"></a><span class="fu">## Moran 散布図（標準化値と空間ラグ）</span></span>
+<span id="cb43-465"><a href="#cb43-465" aria-hidden="true" tabindex="-1"></a><span class="fu">### Moran 散布図（標準化値と空間ラグ）</span></span>
 <span id="cb43-466"><a href="#cb43-466" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-467"><a href="#cb43-467" aria-hidden="true" tabindex="-1"></a>Moran 散布図は、各地域の標準化スコア $z$ を横軸に、その空間ラグ $\mathbf{W}z$（隣接地域の加重平均値）を縦軸にプロットしたものです。行標準化 $\mathbf{W}$ を用いた場合、この散布図に当てはめた回帰直線の傾きが Moran's I に近似します。</span>
 <span id="cb43-468"><a href="#cb43-468" aria-hidden="true" tabindex="-1"></a></span>
@@ -4497,20 +4493,20 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-486"><a href="#cb43-486" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">'lm'</span>, <span class="at">se =</span> <span class="cn">FALSE</span>, <span class="at">color =</span> <span class="st">'steelblue'</span>) <span class="sc">+</span></span>
 <span id="cb43-487"><a href="#cb43-487" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">color =</span> <span class="st">'grey60'</span>) <span class="sc">+</span></span>
 <span id="cb43-488"><a href="#cb43-488" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>, <span class="at">color =</span> <span class="st">'grey60'</span>) <span class="sc">+</span></span>
-<span id="cb43-489"><a href="#cb43-489" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-489"><a href="#cb43-489" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-490"><a href="#cb43-490" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Moran's I Scatter Plot"</span>, <span class="at">x =</span> <span class="st">'Standardized Score (z)'</span>, <span class="at">y =</span> <span class="st">'Spatial Lag (Wz)'</span>)</span>
 <span id="cb43-491"><a href="#cb43-491" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-492"><a href="#cb43-492" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-493"><a href="#cb43-493" aria-hidden="true" tabindex="-1"></a>ここまでで、空間自己相関の存在を確認し、クラスタの位置を特定しました。次の問いは、**この空間依存性を回帰モデルでどのように扱うか**です。</span>
 <span id="cb43-494"><a href="#cb43-494" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-495"><a href="#cb43-495" aria-hidden="true" tabindex="-1"></a><span class="fu"># 空間回帰モデル：OLS から空間モデルへ</span></span>
+<span id="cb43-495"><a href="#cb43-495" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間回帰モデル：OLS から空間モデルへ</span></span>
 <span id="cb43-496"><a href="#cb43-496" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-497"><a href="#cb43-497" aria-hidden="true" tabindex="-1"></a>通常のOLS回帰（第4章で詳述）では、誤差項 $\varepsilon$ が互いに独立であると仮定します。しかし、前節で空間的自己相関の存在が確認されたデータでは、この仮定が破れている可能性があります。時系列分析（第13章）で時間的自己相関がOLSの標準誤差を歪めたのと全く同じ構造の問題です。残差に空間自己相関が残っていると、**標準誤差が過小推定され、p値が不当に小さくなり、第一種の過誤率が膨張**します。</span>
 <span id="cb43-498"><a href="#cb43-498" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-499"><a href="#cb43-499" aria-hidden="true" tabindex="-1"></a>空間依存性が生じるメカニズムには、根本的に異なる2つの「物語」（ストーリー）があります。</span>
 <span id="cb43-500"><a href="#cb43-500" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-501"><a href="#cb43-501" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-502"><a href="#cb43-502" aria-hidden="true" tabindex="-1"></a><span class="fu">### 空間依存性の2つの物語</span></span>
+<span id="cb43-502"><a href="#cb43-502" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 空間依存性の2つの物語</span></span>
 <span id="cb43-503"><a href="#cb43-503" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-504"><a href="#cb43-504" aria-hidden="true" tabindex="-1"></a>**物語1: 空間ラグ（SAR: Spatial Autoregressive Model）**</span>
 <span id="cb43-505"><a href="#cb43-505" aria-hidden="true" tabindex="-1"></a></span>
@@ -4531,7 +4527,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-520"><a href="#cb43-520" aria-hidden="true" tabindex="-1"></a>**選択の指針**: SARは「隣人の結果が自分に影響する」という因果的仮説を、SEMは「共通の未測定要因が隣人間で類似する」という相関的仮説を反映する。どちらが妥当かは、理論的考察とデータの診断（次節のLM検定）の両面から判断する。</span>
 <span id="cb43-521"><a href="#cb43-521" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-522"><a href="#cb43-522" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-523"><a href="#cb43-523" aria-hidden="true" tabindex="-1"></a><span class="fu">## OLS の残差診断と LM 検定</span></span>
+<span id="cb43-523"><a href="#cb43-523" aria-hidden="true" tabindex="-1"></a><span class="fu">### OLS の残差診断と LM 検定</span></span>
 <span id="cb43-524"><a href="#cb43-524" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-525"><a href="#cb43-525" aria-hidden="true" tabindex="-1"></a>空間回帰モデルの推定に進む前に、まず OLS を基準モデルとして適合し、その残差に空間自己相関が残っているかどうかを診断します。そして、**ラグランジュ乗数（LM）検定**で、ラグモデル（SAR）と誤差モデル（SEM）のどちらの方向にOLSを改善すべきかの手がかりを得ます。この手順は、OLSを出発点として空間モデルを選択する標準的なワークフローです。</span>
 <span id="cb43-526"><a href="#cb43-526" aria-hidden="true" tabindex="-1"></a></span>
@@ -4544,7 +4540,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-535"><a href="#cb43-535" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-536"><a href="#cb43-536" aria-hidden="true" tabindex="-1"></a>残差の Moran 検定が有意であれば、OLS の誤差項に空間自己相関が残っていることが確認されます。</span>
 <span id="cb43-537"><a href="#cb43-537" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-538"><a href="#cb43-538" aria-hidden="true" tabindex="-1"></a><span class="fu">### OLS 残差の空間分布</span></span>
+<span id="cb43-538"><a href="#cb43-538" aria-hidden="true" tabindex="-1"></a><span class="fu">#### OLS 残差の空間分布</span></span>
 <span id="cb43-539"><a href="#cb43-539" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-540"><a href="#cb43-540" aria-hidden="true" tabindex="-1"></a>冒頭の研究課題3で触れた「残差が地理的にパターンを持つ」問題を、地図上で確認します。もし残差が空間的にランダムに分布していれば、地図上で赤（過大推定）と青（過小推定）がまんべんなく混在するはずです。逆に、特定の地域に赤や青が集中していれば、空間自己相関の視覚的な証拠です。</span>
 <span id="cb43-541"><a href="#cb43-541" aria-hidden="true" tabindex="-1"></a></span>
@@ -4559,7 +4555,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-552"><a href="#cb43-552" aria-hidden="true" tabindex="-1"></a>    <span class="at">low =</span> <span class="st">'#4575b4'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'#d73027'</span>,</span>
 <span id="cb43-553"><a href="#cb43-553" aria-hidden="true" tabindex="-1"></a>    <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">name =</span> <span class="st">'Residual'</span></span>
 <span id="cb43-554"><a href="#cb43-554" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
-<span id="cb43-555"><a href="#cb43-555" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-555"><a href="#cb43-555" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-556"><a href="#cb43-556" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'OLS Residuals: Spatial Distribution'</span>,</span>
 <span id="cb43-557"><a href="#cb43-557" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">'Red = overestimation, Blue = underestimation'</span>)</span>
 <span id="cb43-558"><a href="#cb43-558" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
@@ -4574,7 +4570,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-569"><a href="#cb43-569" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-570"><a href="#cb43-570" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-571"><a href="#cb43-571" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-572"><a href="#cb43-572" aria-hidden="true" tabindex="-1"></a><span class="fu">### LM 検定の読み方</span></span>
+<span id="cb43-572"><a href="#cb43-572" aria-hidden="true" tabindex="-1"></a><span class="fu">#### LM 検定の読み方</span></span>
 <span id="cb43-573"><a href="#cb43-573" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-574"><a href="#cb43-574" aria-hidden="true" tabindex="-1"></a>LM 検定は「OLS に対して、空間ラグまたは空間誤差を追加することで有意に適合が改善するか」を問う検定です。ロバスト版（RLM）は、もう一方の空間効果が同時に存在する場合でも頑健な判定を提供します。</span>
 <span id="cb43-575"><a href="#cb43-575" aria-hidden="true" tabindex="-1"></a></span>
@@ -4584,7 +4580,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-579"><a href="#cb43-579" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**いずれも非有意** → OLS で十分な可能性がある（ただし検出力不足の可能性も考慮）。</span>
 <span id="cb43-580"><a href="#cb43-580" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-581"><a href="#cb43-581" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-582"><a href="#cb43-582" aria-hidden="true" tabindex="-1"></a><span class="fu">## SAR / SEM の推定</span></span>
+<span id="cb43-582"><a href="#cb43-582" aria-hidden="true" tabindex="-1"></a><span class="fu">### SAR / SEM の推定</span></span>
 <span id="cb43-583"><a href="#cb43-583" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-584"><a href="#cb43-584" aria-hidden="true" tabindex="-1"></a>LM 検定の結果に基づき、空間ラグモデル（SAR）と空間誤差モデル（SEM）を推定します。AIC の比較と、残差の空間相関の解消を確認することで、モデルを選択します。</span>
 <span id="cb43-585"><a href="#cb43-585" aria-hidden="true" tabindex="-1"></a></span>
@@ -4608,11 +4604,11 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-605"><a href="#cb43-605" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**$\lambda$（SEM）**: 空間誤差相関の強さ。$\lambda &gt; 0$ は欠落変数が空間的にクラスタしていることを示す。</span>
 <span id="cb43-606"><a href="#cb43-606" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-607"><a href="#cb43-607" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
-<span id="cb43-608"><a href="#cb43-608" aria-hidden="true" tabindex="-1"></a><span class="fu">### SAR の係数はOLSと異なる意味を持つ</span></span>
+<span id="cb43-608"><a href="#cb43-608" aria-hidden="true" tabindex="-1"></a><span class="fu">#### SAR の係数はOLSと異なる意味を持つ</span></span>
 <span id="cb43-609"><a href="#cb43-609" aria-hidden="true" tabindex="-1"></a>SAR モデルでは、$\rho \mathbf{W} Y$ の項があるため、説明変数 $X$ の係数はOLSのそれとは異なる解釈になります。SAR の係数は「直接効果」のみを反映し、空間フィードバック（間接効果）を含みません。正確な効果の大きさを知るには、Section 6.4 のインパクト分解を使用してください。</span>
 <span id="cb43-610"><a href="#cb43-610" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-611"><a href="#cb43-611" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-612"><a href="#cb43-612" aria-hidden="true" tabindex="-1"></a><span class="fu">## SDM と SARAR（拡張モデル）</span></span>
+<span id="cb43-612"><a href="#cb43-612" aria-hidden="true" tabindex="-1"></a><span class="fu">### SDM と SARAR（拡張モデル）</span></span>
 <span id="cb43-613"><a href="#cb43-613" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-614"><a href="#cb43-614" aria-hidden="true" tabindex="-1"></a>LM 検定でラグと誤差の両方が有意な場合、あるいは理論的に説明変数の空間的波及も考慮したい場合には、以下の拡張モデルを検討します。</span>
 <span id="cb43-615"><a href="#cb43-615" aria-hidden="true" tabindex="-1"></a></span>
@@ -4637,11 +4633,11 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-636"><a href="#cb43-636" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-637"><a href="#cb43-637" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-638"><a href="#cb43-638" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-639"><a href="#cb43-639" aria-hidden="true" tabindex="-1"></a><span class="fu">### SDM の注意点</span></span>
+<span id="cb43-639"><a href="#cb43-639" aria-hidden="true" tabindex="-1"></a><span class="fu">#### SDM の注意点</span></span>
 <span id="cb43-640"><a href="#cb43-640" aria-hidden="true" tabindex="-1"></a>SDM は説明変数 $X$ とその空間ラグ $\mathbf{W}X$ の間に強い多重共線性が生じやすく、推定が不安定になることがあります。理論的根拠がある場合は、特定の変数のみ空間ラグを導入する「部分ダービン」（例: <span class="in">`Durbin = ~ eiken_rate`</span>）も検討してください。</span>
 <span id="cb43-641"><a href="#cb43-641" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-642"><a href="#cb43-642" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-643"><a href="#cb43-643" aria-hidden="true" tabindex="-1"></a><span class="fu">## インパクト分解（直接・間接・総効果）</span></span>
+<span id="cb43-643"><a href="#cb43-643" aria-hidden="true" tabindex="-1"></a><span class="fu">### インパクト分解（直接・間接・総効果）</span></span>
 <span id="cb43-644"><a href="#cb43-644" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-645"><a href="#cb43-645" aria-hidden="true" tabindex="-1"></a>空間ラグモデル（SAR/SDM）では、ある都道府県における説明変数の変化が、空間フィードバック $\rho$ を通じて隣接都道府県に「波及」し、さらにその波及が戻ってくるという連鎖が生じます。このため、**係数の値をそのまま「効果の大きさ」と解釈することはできません**。</span>
 <span id="cb43-646"><a href="#cb43-646" aria-hidden="true" tabindex="-1"></a></span>
@@ -4663,12 +4659,12 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-664"><a href="#cb43-664" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(imp_sdm, <span class="at">zstats =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb43-665"><a href="#cb43-665" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-666"><a href="#cb43-666" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-667"><a href="#cb43-667" aria-hidden="true" tabindex="-1"></a><span class="fu">## モデル選択の判断フロー</span></span>
+<span id="cb43-667"><a href="#cb43-667" aria-hidden="true" tabindex="-1"></a><span class="fu">### モデル選択の判断フロー</span></span>
 <span id="cb43-668"><a href="#cb43-668" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-669"><a href="#cb43-669" aria-hidden="true" tabindex="-1"></a>ここまでの分析をまとめると、空間回帰モデルの選択は以下のチェックリストに沿って行います。</span>
 <span id="cb43-670"><a href="#cb43-670" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-671"><a href="#cb43-671" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-672"><a href="#cb43-672" aria-hidden="true" tabindex="-1"></a><span class="fu">### モデル選択のチェックリスト</span></span>
+<span id="cb43-672"><a href="#cb43-672" aria-hidden="true" tabindex="-1"></a><span class="fu">#### モデル選択のチェックリスト</span></span>
 <span id="cb43-673"><a href="#cb43-673" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-674"><a href="#cb43-674" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**OLS を基準モデルとして適合**し、残差の空間自己相関を Moran 検定で確認する。</span>
 <span id="cb43-675"><a href="#cb43-675" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**LM 検定**で、ラグ方向（SAR）か誤差方向（SEM）かの手がかりを得る。</span>
@@ -4681,7 +4677,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-682"><a href="#cb43-682" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-683"><a href="#cb43-683" aria-hidden="true" tabindex="-1"></a>空間回帰モデルの枠組みを習得したところで、次は政策評価という応用場面に移ります。空間構造を考慮したDID（差の差法）の推定と、その限界について検討します。</span>
 <span id="cb43-684"><a href="#cb43-684" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-685"><a href="#cb43-685" aria-hidden="true" tabindex="-1"></a><span class="fu"># 施策評価と DID（時空間パネル）</span></span>
+<span id="cb43-685"><a href="#cb43-685" aria-hidden="true" tabindex="-1"></a><span class="fu">## 施策評価と DID（時空間パネル）</span></span>
 <span id="cb43-686"><a href="#cb43-686" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-687"><a href="#cb43-687" aria-hidden="true" tabindex="-1"></a>英語教育の政策研究において、最も実践的な問いの一つは「ある施策は本当に効果があったのか」です。日本では、都道府県ごとに英語教育改革の導入時期や内容が異なることがあり、この変異を利用して因果効果を推定する手法が**差の差法（Difference-in-Differences: DID）**です。</span>
 <span id="cb43-688"><a href="#cb43-688" aria-hidden="true" tabindex="-1"></a></span>
@@ -4689,7 +4685,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-690"><a href="#cb43-690" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-691"><a href="#cb43-691" aria-hidden="true" tabindex="-1"></a>しかし、前節で確認したように英語スコアには空間自己相関があります。このことは、DID分析に固有の課題をもたらします。もし施策を導入した都道府県の「効果」が隣接する未導入都道府県にも波及（スピルオーバー）しているなら、標準的なDIDの推定量にバイアスが生じる可能性があります。この問題については Section 7.4 で詳述します。</span>
 <span id="cb43-692"><a href="#cb43-692" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-693"><a href="#cb43-693" aria-hidden="true" tabindex="-1"></a><span class="fu">## 施策前後差分の可視化</span></span>
+<span id="cb43-693"><a href="#cb43-693" aria-hidden="true" tabindex="-1"></a><span class="fu">### 施策前後差分の可視化</span></span>
 <span id="cb43-694"><a href="#cb43-694" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-695"><a href="#cb43-695" aria-hidden="true" tabindex="-1"></a>まず、施策境界（2021年）の前後で各都道府県の平均英語スコアの差分を計算し、地図上に可視化します。この地図は、施策効果の空間分布についての直感を得るための探索的なステップです。</span>
 <span id="cb43-696"><a href="#cb43-696" aria-hidden="true" tabindex="-1"></a></span>
@@ -4708,11 +4704,11 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-711"><a href="#cb43-711" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(map_diff) <span class="sc">+</span></span>
 <span id="cb43-712"><a href="#cb43-712" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> diff_post_pre), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
 <span id="cb43-713"><a href="#cb43-713" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">'#4575b4'</span>, <span class="at">mid =</span> <span class="st">'white'</span>, <span class="at">high =</span> <span class="st">'#d73027'</span>, <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">name =</span> <span class="st">'Diff'</span>) <span class="sc">+</span></span>
-<span id="cb43-714"><a href="#cb43-714" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-714"><a href="#cb43-714" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-715"><a href="#cb43-715" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Pre-Post Difference (Policy Year: '</span>, policy_year, <span class="st">')'</span>))</span>
 <span id="cb43-716"><a href="#cb43-716" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-717"><a href="#cb43-717" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-718"><a href="#cb43-718" aria-hidden="true" tabindex="-1"></a><span class="fu">## 年次ファセットマップ（small multiples）</span></span>
+<span id="cb43-718"><a href="#cb43-718" aria-hidden="true" tabindex="-1"></a><span class="fu">### 年次ファセットマップ（small multiples）</span></span>
 <span id="cb43-719"><a href="#cb43-719" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-720"><a href="#cb43-720" aria-hidden="true" tabindex="-1"></a>施策の前後でスコアの空間分布がどのように変化したかを、年次別の小地図（small multiples）で確認します。<span class="in">`facet_wrap()`</span> は1つの変数でデータを分割し、各グループを独立したパネルとして並べる ggplot2 の機能です。空間データの時間変化を俯瞰するのに最適な手法です。</span>
 <span id="cb43-721"><a href="#cb43-721" aria-hidden="true" tabindex="-1"></a></span>
@@ -4736,20 +4732,20 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-741"><a href="#cb43-741" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>, <span class="at">limits =</span> global_limits,</span>
 <span id="cb43-742"><a href="#cb43-742" aria-hidden="true" tabindex="-1"></a>                       <span class="at">oob =</span> scales<span class="sc">::</span>squish, <span class="at">name =</span> <span class="st">'Score'</span>) <span class="sc">+</span></span>
 <span id="cb43-743"><a href="#cb43-743" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> year, <span class="at">ncol =</span> <span class="dv">5</span>) <span class="sc">+</span></span>
-<span id="cb43-744"><a href="#cb43-744" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb43-744"><a href="#cb43-744" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
 <span id="cb43-745"><a href="#cb43-745" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text =</span> <span class="fu">element_blank</span>(), <span class="at">axis.ticks =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
 <span id="cb43-746"><a href="#cb43-746" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'English Score by Prefecture: Annual Comparison'</span>)</span>
 <span id="cb43-747"><a href="#cb43-747" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-748"><a href="#cb43-748" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-749"><a href="#cb43-749" aria-hidden="true" tabindex="-1"></a>::: {.callout-tip}</span>
-<span id="cb43-750"><a href="#cb43-750" aria-hidden="true" tabindex="-1"></a><span class="fu">### small multiples のポイント</span></span>
+<span id="cb43-750"><a href="#cb43-750" aria-hidden="true" tabindex="-1"></a><span class="fu">#### small multiples のポイント</span></span>
 <span id="cb43-751"><a href="#cb43-751" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-752"><a href="#cb43-752" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`limits = global_limits`</span> で全パネルのカラースケールを**統一**しています。これを省略すると各パネルが独自のスケールを持ち、色の比較が不可能になります。</span>
 <span id="cb43-753"><a href="#cb43-753" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`oob = scales::squish`</span> は範囲外の値を端に押し込む処理です。外れ値がある場合に有用です。</span>
 <span id="cb43-754"><a href="#cb43-754" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>施策導入年（2021年）の前後で、処置群の都道府県（<span class="in">`treated = 1`</span>）の色が変化しているかどうかに注目してください。</span>
 <span id="cb43-755"><a href="#cb43-755" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-756"><a href="#cb43-756" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-757"><a href="#cb43-757" aria-hidden="true" tabindex="-1"></a><span class="fu">## 並行トレンドの可視化</span></span>
+<span id="cb43-757"><a href="#cb43-757" aria-hidden="true" tabindex="-1"></a><span class="fu">### 並行トレンドの可視化</span></span>
 <span id="cb43-758"><a href="#cb43-758" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-759"><a href="#cb43-759" aria-hidden="true" tabindex="-1"></a>DIDの核心的な仮定である**並行トレンド**を視覚的に確認します。施策導入前の期間において、処置群と対照群のスコアが同じ傾向（平行な軌跡）をたどっているかどうかを確認します。もし事前期間でトレンドが交差したり大きく乖離したりしている場合、DIDの前提が崩れている可能性があります。</span>
 <span id="cb43-760"><a href="#cb43-760" aria-hidden="true" tabindex="-1"></a></span>
@@ -4770,7 +4766,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-777"><a href="#cb43-777" aria-hidden="true" tabindex="-1"></a>  <span class="fu">annotate</span>(<span class="st">'text'</span>, <span class="at">x =</span> policy_year <span class="sc">+</span> <span class="fl">0.3</span>, <span class="at">y =</span> <span class="fu">max</span>(trend_df<span class="sc">$</span>mean_score),</span>
 <span id="cb43-778"><a href="#cb43-778" aria-hidden="true" tabindex="-1"></a>           <span class="at">label =</span> <span class="st">'Policy Year'</span>, <span class="at">hjust =</span> <span class="dv">0</span>, <span class="at">color =</span> <span class="st">'grey40'</span>, <span class="at">size =</span> <span class="fl">3.5</span>) <span class="sc">+</span></span>
 <span id="cb43-779"><a href="#cb43-779" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">'Control'</span> <span class="ot">=</span> <span class="st">'#4575b4'</span>, <span class="st">'Treated'</span> <span class="ot">=</span> <span class="st">'#d73027'</span>)) <span class="sc">+</span></span>
-<span id="cb43-780"><a href="#cb43-780" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb43-780"><a href="#cb43-780" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
 <span id="cb43-781"><a href="#cb43-781" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Parallel Trends Check: Treated vs Control'</span>,</span>
 <span id="cb43-782"><a href="#cb43-782" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">'Year'</span>, <span class="at">y =</span> <span class="st">'Mean English Score'</span>, <span class="at">color =</span> <span class="st">'Group'</span>)</span>
 <span id="cb43-783"><a href="#cb43-783" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
@@ -4778,7 +4774,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-785"><a href="#cb43-785" aria-hidden="true" tabindex="-1"></a>**読み方**: 破線の左側（施策導入前）で2本の線がほぼ平行であれば、並行トレンド仮定は視覚的に支持されます。破線の右側（施策導入後）で処置群の線が対照群より上方に乖離していれば、施策の効果を示唆します。</span>
 <span id="cb43-786"><a href="#cb43-786" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-787"><a href="#cb43-787" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-788"><a href="#cb43-788" aria-hidden="true" tabindex="-1"></a><span class="fu">### 関数定義パターンの読み方</span></span>
+<span id="cb43-788"><a href="#cb43-788" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 関数定義パターンの読み方</span></span>
 <span id="cb43-789"><a href="#cb43-789" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-790"><a href="#cb43-790" aria-hidden="true" tabindex="-1"></a>本章のコードには、データ処理を一般化するために自前の関数を定義する箇所があります。基本パターンは以下の通りです。</span>
 <span id="cb43-791"><a href="#cb43-791" aria-hidden="true" tabindex="-1"></a></span>
@@ -4798,7 +4794,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-805"><a href="#cb43-805" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>先に定義した <span class="in">`nb_to_lines()`</span> や <span class="in">`summarize_w()`</span> もこのパターンに従っている。</span>
 <span id="cb43-806"><a href="#cb43-806" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-807"><a href="#cb43-807" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-808"><a href="#cb43-808" aria-hidden="true" tabindex="-1"></a><span class="fu">## 固定効果 DID</span></span>
+<span id="cb43-808"><a href="#cb43-808" aria-hidden="true" tabindex="-1"></a><span class="fu">### 固定効果 DID</span></span>
 <span id="cb43-809"><a href="#cb43-809" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-810"><a href="#cb43-810" aria-hidden="true" tabindex="-1"></a>固定効果DIDでは、都道府県固定効果（各都道府県の時間不変な特性を吸収）と年固定効果（全都道府県に共通の時間トレンドを吸収）を含めることで、交絡要因を統制します。<span class="in">`fixest::feols`</span> は高速な固定効果推定とロバスト標準誤差の計算に対応しています。</span>
 <span id="cb43-811"><a href="#cb43-811" aria-hidden="true" tabindex="-1"></a></span>
@@ -4814,7 +4810,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-823"><a href="#cb43-823" aria-hidden="true" tabindex="-1"></a>**読み方**: <span class="in">`treated:post`</span> の係数が平均処置効果（ATT: Average Treatment Effect on the Treated）の推定量です。本シミュレーションでは真の効果 $\tau = 3.0$ を設定しているため、推定値がこの値に近いかどうかで手法の妥当性を検証できます。</span>
 <span id="cb43-824"><a href="#cb43-824" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-825"><a href="#cb43-825" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-826"><a href="#cb43-826" aria-hidden="true" tabindex="-1"></a><span class="fu">### DID の前提条件</span></span>
+<span id="cb43-826"><a href="#cb43-826" aria-hidden="true" tabindex="-1"></a><span class="fu">#### DID の前提条件</span></span>
 <span id="cb43-827"><a href="#cb43-827" aria-hidden="true" tabindex="-1"></a>DIDの識別の核心は**並行トレンド仮定**（parallel trends assumption）です。施策が導入されなかったと仮定した場合、処置群と対照群は同じトレンドをたどったであろうという仮定です。</span>
 <span id="cb43-828"><a href="#cb43-828" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-829"><a href="#cb43-829" aria-hidden="true" tabindex="-1"></a>前提を確認するには:</span>
@@ -4823,7 +4819,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-832"><a href="#cb43-832" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**プラセボテスト**: 架空の施策導入年（例: 2019年）で DID を推定し、有意な「効果」が検出されないことを確認する。</span>
 <span id="cb43-833"><a href="#cb43-833" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-834"><a href="#cb43-834" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-835"><a href="#cb43-835" aria-hidden="true" tabindex="-1"></a><span class="fu">## DID の標準誤差（クラスタ・二方向）</span></span>
+<span id="cb43-835"><a href="#cb43-835" aria-hidden="true" tabindex="-1"></a><span class="fu">### DID の標準誤差（クラスタ・二方向）</span></span>
 <span id="cb43-836"><a href="#cb43-836" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-837"><a href="#cb43-837" aria-hidden="true" tabindex="-1"></a>DID推定において、標準誤差の扱いは推論の信頼性に直結します。空間相関のある誤差構造の下では、通常のOLS標準誤差は過小推定される傾向があります。最低限、都道府県レベルでのクラスタ化が必要です。さらに保守的な推定が必要な場合は、都道府県と年の二方向クラスタも検討できます。</span>
 <span id="cb43-838"><a href="#cb43-838" aria-hidden="true" tabindex="-1"></a></span>
@@ -4838,7 +4834,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-849"><a href="#cb43-849" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-850"><a href="#cb43-850" aria-hidden="true" tabindex="-1"></a>**比較のポイント**: クラスタ化により標準誤差が大きくなり、信頼区間が広がることが一般的です。もし通常の標準誤差では有意だった結果がクラスタ化後に非有意になる場合、その結果の頑健性には疑問が残ります。二方向クラスタはより保守的（自由度が低下）ですが、時間的・空間的な相関の両方を考慮できます。</span>
 <span id="cb43-851"><a href="#cb43-851" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-852"><a href="#cb43-852" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間スピルオーバーと SUTVA</span></span>
+<span id="cb43-852"><a href="#cb43-852" aria-hidden="true" tabindex="-1"></a><span class="fu">### 空間スピルオーバーと SUTVA</span></span>
 <span id="cb43-853"><a href="#cb43-853" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-854"><a href="#cb43-854" aria-hidden="true" tabindex="-1"></a>DIDの因果推論としての妥当性は、**SUTVA（Stable Unit Treatment Value Assumption）**に依存しています。SUTVAとは、ある都道府県への処置（施策導入）が、他の都道府県の結果に影響しないという仮定です。</span>
 <span id="cb43-855"><a href="#cb43-855" aria-hidden="true" tabindex="-1"></a></span>
@@ -4848,7 +4844,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-859"><a href="#cb43-859" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>このとき、Bは「対照群」として扱われているが、実際には処置の波及を受けている。標準的なDIDでは、対照群のスコアが部分的に「底上げ」されるため、処置効果 $\tau$ が**過小推定**される。</span>
 <span id="cb43-860"><a href="#cb43-860" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-861"><a href="#cb43-861" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
-<span id="cb43-862"><a href="#cb43-862" aria-hidden="true" tabindex="-1"></a><span class="fu">### SUTVA 違反の診断と対処</span></span>
+<span id="cb43-862"><a href="#cb43-862" aria-hidden="true" tabindex="-1"></a><span class="fu">#### SUTVA 違反の診断と対処</span></span>
 <span id="cb43-863"><a href="#cb43-863" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-864"><a href="#cb43-864" aria-hidden="true" tabindex="-1"></a>**診断方法**:</span>
 <span id="cb43-865"><a href="#cb43-865" aria-hidden="true" tabindex="-1"></a></span>
@@ -4862,14 +4858,14 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-873"><a href="#cb43-873" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>いずれにしても、論文ではSUTVA違反の可能性を**明示的に議論し、限界として報告**すること。</span>
 <span id="cb43-874"><a href="#cb43-874" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-875"><a href="#cb43-875" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-876"><a href="#cb43-876" aria-hidden="true" tabindex="-1"></a><span class="fu"># 空間平滑化：ノイズ処理の位置づけ</span></span>
+<span id="cb43-876"><a href="#cb43-876" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間平滑化：ノイズ処理の位置づけ</span></span>
 <span id="cb43-877"><a href="#cb43-877" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-878"><a href="#cb43-878" aria-hidden="true" tabindex="-1"></a>第13章で時系列データに対する移動平均（moving average）を学んだように、空間データにも類似の平滑化手法があります。基本的なアイデアは、各地域の値を「自身の値と隣接地域の平均値のブレンド」で置き換えることです。混合比率 $\alpha$ はこのブレンドの強さを制御します。$\alpha = 0$ は元データそのまま、$\alpha = 1$ は隣接平均のみを使用します。</span>
 <span id="cb43-879"><a href="#cb43-879" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-880"><a href="#cb43-880" aria-hidden="true" tabindex="-1"></a>空間平滑化は、市区町村レベルなどの小地域データでサンプルサイズが小さく、個々の値のノイズが大きい場合に、広域的なパターンを視覚的に浮かび上がらせるのに有効です。政策立案者への報告では、ノイズの多い生データより平滑化地図のほうが都市-農村格差などの構造的パターンを明確に伝達できます。</span>
 <span id="cb43-881"><a href="#cb43-881" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-882"><a href="#cb43-882" aria-hidden="true" tabindex="-1"></a>::: {.callout-warning}</span>
-<span id="cb43-883"><a href="#cb43-883" aria-hidden="true" tabindex="-1"></a><span class="fu">### 平滑化の落とし穴</span></span>
+<span id="cb43-883"><a href="#cb43-883" aria-hidden="true" tabindex="-1"></a><span class="fu">#### 平滑化の落とし穴</span></span>
 <span id="cb43-884"><a href="#cb43-884" aria-hidden="true" tabindex="-1"></a>空間平滑化は**探索的な可視化ツール**であり、推定手法ではありません。平滑化した従属変数に回帰分析を適用すると、バイアスが導入されます。推論には空間回帰モデル（Section 6）を使用してください。また、$\alpha$ が大きすぎると地域間の真の差異が潰され、有益な情報が失われる点にも注意してください。</span>
 <span id="cb43-885"><a href="#cb43-885" aria-hidden="true" tabindex="-1"></a>:::</span>
 <span id="cb43-886"><a href="#cb43-886" aria-hidden="true" tabindex="-1"></a></span>
@@ -4881,21 +4877,21 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-894"><a href="#cb43-894" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">smooth_score =</span> (<span class="dv">1</span> <span class="sc">-</span> alpha) <span class="sc">*</span> eng_score <span class="sc">+</span> alpha <span class="sc">*</span> lag_y)</span>
 <span id="cb43-895"><a href="#cb43-895" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-896"><a href="#cb43-896" aria-hidden="true" tabindex="-1"></a>g1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(map_df) <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> eng_score), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
-<span id="cb43-897"><a href="#cb43-897" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Raw Score'</span>)</span>
+<span id="cb43-897"><a href="#cb43-897" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">'Raw Score'</span>)</span>
 <span id="cb43-898"><a href="#cb43-898" aria-hidden="true" tabindex="-1"></a>g2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(map_df) <span class="sc">+</span> <span class="fu">geom_sf</span>(<span class="fu">aes</span>(<span class="at">fill =</span> smooth_score), <span class="at">color =</span> <span class="st">'white'</span>) <span class="sc">+</span></span>
-<span id="cb43-899"><a href="#cb43-899" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_minimal</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Smoothed (alpha = '</span>, alpha, <span class="st">')'</span>))</span>
+<span id="cb43-899"><a href="#cb43-899" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_c</span>(<span class="at">option =</span> <span class="st">'C'</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>() <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">'Smoothed (alpha = '</span>, alpha, <span class="st">')'</span>))</span>
 <span id="cb43-900"><a href="#cb43-900" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-901"><a href="#cb43-901" aria-hidden="true" tabindex="-1"></a>g1; g2</span>
 <span id="cb43-902"><a href="#cb43-902" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-903"><a href="#cb43-903" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-904"><a href="#cb43-904" aria-hidden="true" tabindex="-1"></a>**2つの地図の比較**: 生データの地図（左）は都道府県間のバラツキが大きく、隣接する都道府県でも値が大きく異なる箇所があります。平滑化後の地図（右）では、そうした局所的なノイズが抑制され、より広域的な空間パターンが浮かび上がります。ただし、$\alpha = 0.5$ は例示的な値であり、分析目的に応じて調整が必要です。</span>
 <span id="cb43-905"><a href="#cb43-905" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-906"><a href="#cb43-906" aria-hidden="true" tabindex="-1"></a><span class="fu"># インタラクティブ地図（leaflet）</span></span>
+<span id="cb43-906"><a href="#cb43-906" aria-hidden="true" tabindex="-1"></a><span class="fu">## インタラクティブ地図（leaflet）</span></span>
 <span id="cb43-907"><a href="#cb43-907" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-908"><a href="#cb43-908" aria-hidden="true" tabindex="-1"></a>ここまでの地図はすべて静的な画像でした。研究発表やデータ探索では、マウス操作で拡大・縮小やホバー情報表示ができる**インタラクティブ地図**が有用です。<span class="in">`leaflet`</span> パッケージは、Webブラウザ上で動作するインタラクティブ地図を数行のコードで作成できます。</span>
 <span id="cb43-909"><a href="#cb43-909" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-910"><a href="#cb43-910" aria-hidden="true" tabindex="-1"></a>::: {.callout-note}</span>
-<span id="cb43-911"><a href="#cb43-911" aria-hidden="true" tabindex="-1"></a><span class="fu">### leaflet のコードパターン</span></span>
+<span id="cb43-911"><a href="#cb43-911" aria-hidden="true" tabindex="-1"></a><span class="fu">#### leaflet のコードパターン</span></span>
 <span id="cb43-912"><a href="#cb43-912" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-913"><a href="#cb43-913" aria-hidden="true" tabindex="-1"></a><span class="in">```r</span></span>
 <span id="cb43-914"><a href="#cb43-914" aria-hidden="true" tabindex="-1"></a><span class="fu">leaflet</span>(data) <span class="sc">|&gt;</span>                    <span class="co"># leaflet オブジェクトを作成</span></span>
@@ -4956,11 +4952,11 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-971"><a href="#cb43-971" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-972"><a href="#cb43-972" aria-hidden="true" tabindex="-1"></a>**操作方法**: マウスホイールで拡大・縮小、ドラッグで移動、都道府県をクリックするとポップアップで数値と LISA クラスタの分類が表示されます。この種のインタラクティブ地図は、探索的分析やプレゼンテーションに特に有効です。</span>
 <span id="cb43-973"><a href="#cb43-973" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-974"><a href="#cb43-974" aria-hidden="true" tabindex="-1"></a><span class="fu"># 発展トピック（雛形）</span></span>
+<span id="cb43-974"><a href="#cb43-974" aria-hidden="true" tabindex="-1"></a><span class="fu">## 発展トピック（雛形）</span></span>
 <span id="cb43-975"><a href="#cb43-975" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-976"><a href="#cb43-976" aria-hidden="true" tabindex="-1"></a>以下のトピックは、本章の主要分析をさらに拡張するための参考資料です。いずれも追加的なパッケージのインストールや計算資源を必要とするため、コードテンプレート（一部は <span class="in">`eval = FALSE`</span> 相当）として提供します。実データへの適用時に参照してください。</span>
 <span id="cb43-977"><a href="#cb43-977" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-978"><a href="#cb43-978" aria-hidden="true" tabindex="-1"></a><span class="fu">## 空間パネル（within, two-ways）</span></span>
+<span id="cb43-978"><a href="#cb43-978" aria-hidden="true" tabindex="-1"></a><span class="fu">### 空間パネル（within, two-ways）</span></span>
 <span id="cb43-979"><a href="#cb43-979" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-980"><a href="#cb43-980" aria-hidden="true" tabindex="-1"></a>空間パネルモデル（<span class="in">`splm::spml`</span>）は、「固定効果 × 空間ラグ/誤差」を同時に推定します。Section 7 のDIDでは <span class="in">`fixest`</span> で固定効果を処理しましたが、<span class="in">`splm`</span> は空間重みを明示的に組み込んだパネル推定を提供します。</span>
 <span id="cb43-981"><a href="#cb43-981" aria-hidden="true" tabindex="-1"></a></span>
@@ -4980,7 +4976,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-997"><a href="#cb43-997" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb43-998"><a href="#cb43-998" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-999"><a href="#cb43-999" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-1000"><a href="#cb43-1000" aria-hidden="true" tabindex="-1"></a><span class="fu">## ベイズ階層 / INLA / GWR（雛形）</span></span>
+<span id="cb43-1000"><a href="#cb43-1000" aria-hidden="true" tabindex="-1"></a><span class="fu">### ベイズ階層 / INLA / GWR（雛形）</span></span>
 <span id="cb43-1001"><a href="#cb43-1001" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-1002"><a href="#cb43-1002" aria-hidden="true" tabindex="-1"></a>ベイズ階層モデル（INLA/brms）は事前分布を通じた正則化や不確実性の完全な定量化を提供します。GWR（Geographically Weighted Regression）は係数の空間的変異を探索的に可視化します。いずれもモデル設計と計算資源への配慮が必要です。</span>
 <span id="cb43-1003"><a href="#cb43-1003" aria-hidden="true" tabindex="-1"></a></span>
@@ -5016,7 +5012,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-1035"><a href="#cb43-1035" aria-hidden="true" tabindex="-1"></a>}</span>
 <span id="cb43-1036"><a href="#cb43-1036" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb43-1037"><a href="#cb43-1037" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-1038"><a href="#cb43-1038" aria-hidden="true" tabindex="-1"></a><span class="fu"># 演習</span></span>
+<span id="cb43-1038"><a href="#cb43-1038" aria-hidden="true" tabindex="-1"></a><span class="fu">## 演習</span></span>
 <span id="cb43-1039"><a href="#cb43-1039" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-1040"><a href="#cb43-1040" aria-hidden="true" tabindex="-1"></a>以下の演習は、本章で学んだ概念と手法の理解を深めるために設計されています。単にコードを動かすだけでなく、**結果の解釈と研究上の含意**を論述することを重視してください。</span>
 <span id="cb43-1041"><a href="#cb43-1041" aria-hidden="true" tabindex="-1"></a></span>
@@ -5030,9 +5026,9 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-1049"><a href="#cb43-1049" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-1050"><a href="#cb43-1050" aria-hidden="true" tabindex="-1"></a><span class="ss">5. </span>**批判的読解**: ある同僚が「Moran's I が有意ではなかったので、空間モデルは必要ない」と主張している。本章で学んだ内容に基づき、この主張の少なくとも2つの問題点を指摘しなさい。</span>
 <span id="cb43-1051"><a href="#cb43-1051" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-1052"><a href="#cb43-1052" aria-hidden="true" tabindex="-1"></a><span class="fu"># トラブルシューティング</span></span>
+<span id="cb43-1052"><a href="#cb43-1052" aria-hidden="true" tabindex="-1"></a><span class="fu">## トラブルシューティング</span></span>
 <span id="cb43-1053"><a href="#cb43-1053" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-1054"><a href="#cb43-1054" aria-hidden="true" tabindex="-1"></a><span class="fu">## 技術的なエラー</span></span>
+<span id="cb43-1054"><a href="#cb43-1054" aria-hidden="true" tabindex="-1"></a><span class="fu">### 技術的なエラー</span></span>
 <span id="cb43-1055"><a href="#cb43-1055" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-1056"><a href="#cb43-1056" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**パッケージが入らない**: <span class="in">`install.packages('spatialreg')`</span> など個別に導入。Mac で C/C++ のビルドが必要な場合は Xcode Command Line Tools を先に導入する。</span>
 <span id="cb43-1057"><a href="#cb43-1057" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**日本語フォントが出ない**: Quarto/PDF の場合は <span class="in">`_quarto.yml`</span> のフォント設定を確認（本プロジェクトは Noto 系を使用）。</span>
@@ -5040,7 +5036,7 @@ Adaptive bandwidth (number of nearest neighbours): 40 AICc value: 292.5891 </cod
 <span id="cb43-1059"><a href="#cb43-1059" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**検定がエラー**: <span class="in">`nb`</span> と <span class="in">`listw`</span> の取り違えが最も多い。<span class="in">`nb2listw()`</span> を挟むこと。</span>
 <span id="cb43-1060"><a href="#cb43-1060" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**DID の効果が不安定**: 並行トレンドの破れやアウトライヤの影響。前処理（トリム）やロバスト標準誤差、感度分析を検討する。</span>
 <span id="cb43-1061"><a href="#cb43-1061" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb43-1062"><a href="#cb43-1062" aria-hidden="true" tabindex="-1"></a><span class="fu">## 概念的な誤り</span></span>
+<span id="cb43-1062"><a href="#cb43-1062" aria-hidden="true" tabindex="-1"></a><span class="fu">### 概念的な誤り</span></span>
 <span id="cb43-1063"><a href="#cb43-1063" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb43-1064"><a href="#cb43-1064" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**SAR の係数を OLS の係数と同じに解釈する**: SAR では空間フィードバックがあるため、係数は直接効果のみを反映する。総効果を知るには <span class="in">`impacts()`</span> を使用する。</span>
 <span id="cb43-1065"><a href="#cb43-1065" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>**単一の重み行列のみで感度分析を省略する**: 結論が $\mathbf{W}$ の選択に敏感である場合、その結果の信頼性は低い。複数の $\mathbf{W}$ で頑健性を確認する。</span>
