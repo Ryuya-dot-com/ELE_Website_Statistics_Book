@@ -804,7 +804,7 @@ GGally::ggpairs(
   diag = list(continuous = GGally::wrap("densityDiag", fill = "steelblue", alpha = 0.5))
 ) +
   labs(title = "Correlation Matrix of Simulated Data") +
-  theme_bw(base_size = 11)
+  theme_bw(base_size = 12)
 ```
 
 ::: {.callout-tip}
@@ -1354,7 +1354,7 @@ toefl_scores[toefl_scores > 85]  # 85点より高いスコアを抽出
 pacman::p_load(tidyverse, gt, DT, psych, effectsize, GGally, broom)
 
 # テーマの設定
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 ```
 
@@ -2847,7 +2847,6 @@ iris_cor |>
 
 ### データハンドリングの総合演習
 
-最後に、irisデータを使って「データ読み込み → 整形 → 集計 → 可視化 → テーブル出力」の一連の流れを通しで実行します。これは英語教育研究でも同様のワークフローになります。
 
 ```{r}
 #| label: iris-comprehensive-workflow
@@ -2914,7 +2913,6 @@ iris_summary |>
 ```
 
 ::: {.callout-tip}
-### このワークフローを英語教育研究に応用する
 上の一連の流れは、英語教育研究のデータにそのまま適用できます。
 
 - `iris` → テストスコアのデータフレーム
@@ -2924,7 +2922,6 @@ iris_summary |>
 - `group_by() |> summarize()` → 群別の記述統計
 - `gt()` + `tab_spanner()` → 論文に掲載するテーブル
 
-この「整形 → 集計 → 可視化 → テーブル」のパイプラインは、データ分析の基本的なワークフローとして身につけておくと、あらゆる分析場面で応用できます。
 :::
 
 ## データの可視化
@@ -3412,7 +3409,6 @@ conflicts_prefer(
 `conflicts_prefer()` は複数の関数を一度に宣言できるため、分析スクリプトの冒頭（パッケージ読み込み直後）に記述しておくことを推奨します。
 :::
 
-## プロジェクト管理とワークフロー
 
 ### RStudioプロジェクト
 

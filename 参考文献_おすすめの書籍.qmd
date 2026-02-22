@@ -3,6 +3,15 @@ title: "参考文献・おすすめの書籍"
 bibliography: references_recommended.bib
 ---
 
+```{r}
+#| label: setup-theme
+#| include: false
+
+library(ggplot2)
+theme_set(theme_bw(base_size = 12))
+```
+
+
 こちらのページではRを使った統計モデリングでおすすめの書籍や参考となるwebサイトを紹介していきます。
 
 ### 初心者向け

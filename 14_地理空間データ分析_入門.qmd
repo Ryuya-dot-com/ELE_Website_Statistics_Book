@@ -18,7 +18,6 @@ nocite: |
 本章は、そのための**基礎工事**です。Rの `sf` パッケージを使って地理空間データを扱う方法を、都道府県別の英語教育指標データを題材に学びます。具体的には、形状データの取得、属性データとの結合、コロプレス図（塗り分け地図）の作成、パネルデータの整形までを最小限のコードで体験します。
 
 ::: {.callout-tip}
-### この章の読み方（ロードマップ）
 
 本章は以下の3つのパートで構成されています。
 
@@ -46,7 +45,7 @@ options(encoding = "UTF-8")
 
 # knitr の表示を日本語フォントに合わせて控えめに（任意）
 knitr::opts_chunk$set(dev = 'png')
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 ```
 
@@ -78,7 +77,7 @@ flowchart TD
 ```
 
 ::: {.callout-note}
-#### 「形状＋属性」の二重構造
+### 「形状＋属性」の二重構造
 
 地理空間分析のデータは、常に2つの要素から構成されます。
 
@@ -260,7 +259,7 @@ jpn_key <- pref_sf |>
 ```
 
 ::: {.callout-tip}
-#### コードの読み方（パイプチェーン）
+### コードの読み方（パイプチェーン）
 
 本章のRコードでは `|>` （ネイティブパイプ）を多用します。これは「左辺の結果を右辺の関数の第1引数に渡す」操作です。
 
@@ -274,7 +273,7 @@ result <- x |> h() |> g() |> f()  # パイプ（左から右へ順に読む）
 :::
 
 ::: {.callout-note}
-#### 名寄せのポイント
+### 名寄せのポイント
 
 - 全角/半角や余分な空白、末尾の「都・道・府・県」を揃えると結合ミスが激減する。
 - 実データに旧字体表記（例:「鋏」→「挟」）や略称が混ざる場合は、`norm_pref()` に辞書置換を追加する。
@@ -415,7 +414,7 @@ ggplot(pref_panel_map) +
   scale_fill_viridis_c(option = 'C', name = 'Score',
                        limits = global_limits, oob = scales::squish) +
   facet_wrap(~ year, ncol = 4) +
-  theme_bw(base_size = 10) +
+  theme_bw(base_size = 12) +
   theme(axis.text = element_blank(), axis.ticks = element_blank()) +
   labs(title = 'English Score: Annual Comparison (Common Scale)')
 ```
@@ -788,7 +787,7 @@ leaflet::leaflet(pref_map) |>
 ```
 
 ::: {.callout-note}
-#### leaflet のコードパターン
+### leaflet のコードパターン
 
 ```r
 leaflet(sf_data) |>                   # leaflet オブジェクトを作成
@@ -863,7 +862,7 @@ leaflet(sf_data) |>                   # leaflet オブジェクトを作成
 本章でデータの準備と基礎的な可視化を習得したことで、応用編の分析手法にスムーズに進む準備が整っています。
 
 ::: {.callout-note}
-#### 実データに置き換えるとき
+### 実データに置き換えるとき
 
 本章のダミーデータを実データに差し替える際の注意点:
 

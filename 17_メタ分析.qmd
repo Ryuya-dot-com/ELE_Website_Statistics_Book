@@ -18,16 +18,15 @@ nocite: |
 - **モデレーター分析**: 「どのような条件下で効果が大きい（あるいは小さい）か」を体系的に探索できる
 
 ::: {.callout-note}
-#### 本章の位置づけ
+### 本章の位置づけ
 本章は、メタ分析の実施手順を R の `metafor` パッケージを中心に解説する実践的なガイドである。効果量の基礎概念については「`1_T検定と効果量.qmd`」を参照されたい。本章では、複数の研究から得られた効果量を統合する手続きに焦点を当てる。
 :::
 
 ::: {.callout-tip}
-#### Plot labels
+### Plot labels
 文字化け（mojibake）を防ぐため、本章のすべての図は英語ラベルで描画している。各図の読み方は本文中で日本語により解説する。
 :::
 
-### 分析ワークフロー
 
 メタ分析は、効果量の算出から異質性の評価、モデレーター分析、出版バイアスの検討まで、段階的に進めていきます。異質性の大きさによって次のステップが分岐します。
 
@@ -85,7 +84,7 @@ library(tidyr)
 library(gt)
 library(DT)
 set.seed(2024)
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 
 # メタ分析結果をgt表に変換するヘルパー関数
@@ -433,7 +432,7 @@ ggplot(dat, aes(x = duration, y = yi)) +
   scale_size_continuous(name = "Precision (1/SE)") +
   labs(x = "Intervention duration (weeks)", y = "Hedges g",
        title = "Meta-regression: Effect by intervention duration") +
-  theme_bw(base_size = 13)
+  theme_bw(base_size = 12)
 ```
 
 **図の読み方**: 各点が 1 つの研究に対応し、点の大きさは精度（サンプルサイズ）を反映する。回帰線が右上がりであれば、介入期間が長い研究ほど効果量が大きい傾向を示す。帯は 95% CI である。
@@ -805,7 +804,7 @@ ggplot(df_rank, aes(x = reorder(treatment, Pscore), y = Pscore)) +
   coord_flip() +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(title = "Treatment ranking (P-score)", x = "Treatment", y = "P-score") +
-  theme_bw(base_size = 13)
+  theme_bw(base_size = 12)
 ```
 
 **読み方**: P-score は 0〜1（0%〜100%）の指標であり、値が大きいほど有利な介入であることを示す。ただし、P-score の差が小さい場合は実質的な差が存在しない可能性もあるため、効果量と信頼区間を併せて解釈する必要がある。
@@ -878,7 +877,7 @@ if (!is.null(dr) && !is.null(ir)) {
     geom_point(color = "#2c3e50", size = 3, alpha = 0.7) +
     labs(title = "Node-splitting: Direct vs Indirect estimates",
          x = "Direct estimate", y = "Indirect estimate") +
-    theme_bw(base_size = 13)
+    theme_bw(base_size = 12)
 }
 ```
 
@@ -991,7 +990,7 @@ if (!is.null(rkdf)) {
 PART I・II ではシミュレーションデータを用いて分析手順を解説してきたが、実際の公開データに基づく再分析を行うことで、より実践的な理解が得られる。本セクションでは、OSF（Open Science Framework）で公開されている 2 つの SLA 語彙学習メタ分析のデータセットを用い、再分析と高度な可視化手法を紹介する。
 
 ::: {.callout-note}
-#### データの出典
+### データの出典
 
 1. **偶発的語彙学習のメタ分析**（*Language Teaching*, 2022）: OSF [osf.io/92r3t](https://osf.io/92r3t/)
 2. **@uchihara2019** "The Effects of Repetition on Incidental Vocabulary Learning": OSF [osf.io/rmnk2](https://osf.io/rmnk2)

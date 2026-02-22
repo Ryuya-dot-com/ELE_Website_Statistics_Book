@@ -113,7 +113,7 @@ library(sjPlot)
 library(broom)
 library(gt)
 library(DT)
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 
 set.seed(2024)
@@ -170,7 +170,7 @@ DT::datatable(wide_scores, caption = "Data Overview: First 8 Rows")
 
 ::: {.panel-tabset}
 
-#### z変換（連続変数）
+### z変換（連続変数）
 
 z変換は、係数を「**1 SD 増加あたりの変化量**」として読めるようにし、
 交互作用の解釈を安定化します[@aiken1991; @cohen2003]。
@@ -185,7 +185,7 @@ wide_scores <- wide_scores |>
   )
 ```
 
-#### コントラスト（カテゴリカル）
+### コントラスト（カテゴリカル）
 
 2水準要因を sum coding（-1, +1）にすると、
 主効果は「他変数平均化後の平均差」として読みやすくなります。
@@ -195,7 +195,7 @@ contrasts(wide_scores$Treatment) <- contr.sum(2)
 contrasts(wide_scores$Time) <- contr.sum(2)
 ```
 
-#### モデル式
+### モデル式
 
 本章の主モデルは次式です。
 
@@ -283,13 +283,13 @@ if (requireNamespace("boot", quietly = TRUE)) {
 
 ::: {.panel-tabset}
 
-#### 総合診断
+### 総合診断
 
 ```{r}
 check_model(m_theory)
 ```
 
-#### 等分散性・正規性・独立性
+### 等分散性・正規性・独立性
 
 ```{r}
 performance::check_heteroscedasticity(m_theory)
@@ -297,14 +297,14 @@ performance::check_normality(m_theory)
 performance::check_autocorrelation(m_theory)
 ```
 
-#### 多重共線性
+### 多重共線性
 
 ```{r}
 performance::check_collinearity(m_theory)
 model_performance(m_theory)
 ```
 
-#### ロバスト標準誤差（HC3）
+### ロバスト標準誤差（HC3）
 
 ```{r}
 if (requireNamespace("sandwich", quietly = TRUE) && requireNamespace("lmtest", quietly = TRUE)) {
@@ -364,7 +364,7 @@ plot_model(
 
 ::: {.panel-tabset}
 
-#### 1) Proficiency の simple slope（Treatment × Time 別）
+### 1) Proficiency の simple slope（Treatment × Time 別）
 
 ```{r}
 slopes_prof <- emtrends(
@@ -378,7 +378,7 @@ slopes_prof
 - `emtrends` 部分: 各条件での Proficiency 傾き
 - `contrasts` 部分: 条件間の傾き差（交互作用の実質的検定）
 
-#### 2) Proficiency 水準ごとの群差（-1SD, 平均, +1SD）
+### 2) Proficiency 水準ごとの群差（-1SD, 平均, +1SD）
 
 ```{r}
 rg_prof <- ref_grid(m_theory, at = list(Proficiency = c(-1, 0, 1)))
@@ -386,7 +386,7 @@ emm_treat_prof <- emmeans(rg_prof, pairwise ~ Treatment | Proficiency)
 emm_treat_prof
 ```
 
-#### 3) 図示（条件付き平均）
+### 3) 図示（条件付き平均）
 
 ```{r}
 emmip(rg_prof, Treatment ~ Proficiency, CIs = TRUE)

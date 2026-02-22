@@ -66,7 +66,7 @@ flowchart TD
 ```
 
 ::: {.callout-note}
-#### どのパスが最も関連するか
+### どのパスが最も関連するか
 多くの英語教育研究では、まずロジスティック回帰と決定木で十分な予測精度が得られるかを確認することが出発点となる。アンサンブル手法（RF・XGBoost）は予測精度の向上が必要な場合に検討するが、解釈可能性が低下する点に注意が必要である。研究報告を目的とする場合は、まず左側のパス（ベースライン → 評価・報告）を試し、精度が不十分な場合にのみ右側のアンサンブルパスへ進むことを推奨する。
 :::
 
@@ -379,7 +379,7 @@ pacman::p_load(
 )
 
 set.seed(2024)
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 options(digits = 3)
 
@@ -1086,7 +1086,6 @@ rf_best <- select_best(rf_res, metric = "roc_auc")
 rf_best
 ```
 
-CVで最適と判断されたハイパーパラメータを`finalize_workflow`でワークフローに組み込み、訓練データ全体で最終モデルを学習します。
 
 ```{r}
 #| label: finalize-rf
@@ -2100,7 +2099,7 @@ tibble::tribble(
   "本章の概念説明（バイアスバリアンス・バギング・ブースティング）の理論的基盤",
   "教科書",
   "Kuhn & Silge (2022)",
-  "Tidy Modeling with R: tidymodelsワークフロー参照",
+  "Tidy Modeling with R: tidymodels の実装体系を整理した教科書",
   "本章のtidymodels実装パターン全体に対応"
 ) |>
   gt() |>

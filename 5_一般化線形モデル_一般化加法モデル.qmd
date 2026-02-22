@@ -273,7 +273,7 @@ pacman::p_load(
   gt
 )
 
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 set.seed(2024)
 
@@ -1622,7 +1622,7 @@ performance::check_model(m_pos_gamma_gam)
 ## 6章への接続: モデル比較とランダム効果選択（最短実装）
 
 ::: {.callout-important}
-#### この節は分析パイプラインで最も重要な判断を含む
+### この節は分析パイプラインで最も重要な判断を含む
 
 5章で GLM/GAM の適合と分布選択が決まった後、**データ構造が独立性を崩しているか**を判断します。
 助言ネットワークデータでは、同じ学習者が送信者として 29 回、受信者として 29 回登場します。
@@ -1718,7 +1718,7 @@ lme4::isSingular(m_bridge_rs)
 performance::check_model(m_bridge_ri)
 ```
 
-#### この出力をどう判断するか
+### この出力をどう判断するか
 
 **`compare_performance()` テーブル**:
 
@@ -1736,7 +1736,7 @@ performance::check_model(m_bridge_ri)
 - `TRUE` ならそのモデルのランダ効果は過剰。シンプルなモデルに戻してください。
 
 ::: {.callout-tip}
-#### 5章での判断を6章へつなぐポイント
+### 5章での判断を6章へつなぐポイント
 
 - 非線形が主課題なら GAM、依存構造が主課題なら GLMM。
 - どちらも疑われる場合は、まず GLMM で依存構造を処理してから GAMM を検討する。
@@ -1893,7 +1893,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 ## トラブルシューティング（実務で詰まりやすい点）
 
 ::: {.callout-warning}
-#### `family` の不一致
+### `family` の不一致
 
 **症状**: モデルは収束するが、診断プロットが全面的に破綻。予測値が理論上ありえない範囲に出る。
 
@@ -1909,7 +1909,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 :::
 
 ::: {.callout-warning}
-#### 過分散の見落とし
+### 過分散の見落とし
 
 **症状**: Poisson GLM の係数が有意だが、NB に切り替えると非有意になる。
 
@@ -1919,7 +1919,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 :::
 
 ::: {.callout-warning}
-#### GAM の `k` が不足
+### GAM の `k` が不足
 
 **症状**: `gam.check()` で k-index が 0.8 未満、p 値が有意。
 
@@ -1929,7 +1929,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 :::
 
 ::: {.callout-warning}
-#### 係数の解釈を混同する
+### 係数の解釈を混同する
 
 **症状**: 「OR = 2 だから確率が2倍」と誤解する。
 
@@ -1939,7 +1939,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 :::
 
 ::: {.callout-warning}
-#### 完全分離・準完全分離（binary GLM）
+### 完全分離・準完全分離（binary GLM）
 
 **症状**: 一部の係数が極端に大きい（例: 15〜20以上）。SE が非常に大きいか `Inf`。収束警告が出る。
 
@@ -1949,7 +1949,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 :::
 
 ::: {.callout-warning}
-#### Gamma GLM でゼロ値エラー
+### Gamma GLM でゼロ値エラー
 
 **症状**: `Error in eval(family$initialize): y values must be > 0`
 
@@ -1959,7 +1959,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 :::
 
 ::: {.callout-warning}
-#### GAM の edf が k-1 に張り付く
+### GAM の edf が k-1 に張り付く
 
 **症状**: `gam.check()` で edf がほぼ k-1 と一致。
 

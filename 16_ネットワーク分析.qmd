@@ -47,7 +47,6 @@ bibliography: references_network.bib
 - 目的は「多機能なコード集」ではなく、**研究で使える分析思考**を身につけることである。
 :::
 
-### 分析ワークフロー
 
 ネットワーク分析は、記述的なアプローチから統計的モデリングまで段階的に深めることができます。研究目的に応じて、どこまで進むかを判断してください。
 
@@ -105,7 +104,7 @@ library(plotly)
 library(patchwork)
 
 set.seed(2024)
-theme_set(theme_bw())
+theme_set(theme_bw(base_size = 12))
 theme_update(legend.position = "bottom")
 
 scale01 <- function(x) {
@@ -2058,37 +2057,37 @@ cat(report_ergm)
 ## FAQ（よくある質問）
 
 ::: {.callout-note collapse="true"}
-#### Q: ネットワーク分析に最低何名の参加者が必要か？
+### Q: ネットワーク分析に最低何名の参加者が必要か？
 
 明確な下限はないが、一般にノード数20名未満では中心性指標の安定性が低下する。ERGMの推定にはノード数50以上が推奨される[@lusher2013]。小規模データではQAPやエゴネットワーク分析を検討すると良い。
 :::
 
 ::: {.callout-note collapse="true"}
-#### Q: 縦断データ（複数時点）はどう扱うか？
+### Q: 縦断データ（複数時点）はどう扱うか？
 
 各時点のネットワークを個別に分析し、指標の変化を追跡する方法が最も単純である。時点間のネットワーク変化を統計的にモデル化するには、TERGM（temporal ERGM）やREM（relational event model）が適しているが、本章の範囲外である。
 :::
 
 ::: {.callout-note collapse="true"}
-#### Q: 二部ネットワーク（学習者 × 活動）はどう扱うか？
+### Q: 二部ネットワーク（学習者 × 活動）はどう扱うか？
 
 `igraph` の `bipartite` 属性を使用して二部グラフとして表現する。分析時には、一方のモードへの射影（projection）を行い、「同じ活動に参加した学習者同士」のネットワークに変換してから中心性やコミュニティ検出を適用するのが一般的である。
 :::
 
 ::: {.callout-note collapse="true"}
-#### Q: igraph と statnet は同じ結果を返すか？
+### Q: igraph と statnet は同じ結果を返すか？
 
 基本的な指標（次数、密度、推移性など）は同じ結果を返す。ただし、ERGMは `statnet` / `ergm` パッケージ専用であるため、ERGMを使う場合は `intergraph::asNetwork()` で変換が必要である[@handcock2008]。
 :::
 
 ::: {.callout-note collapse="true"}
-#### Q: 中心性が高い学習者 = 優秀な学習者か？
+### Q: 中心性が高い学習者 = 優秀な学習者か？
 
 いいえ。中心性は構造的位置の指標であり、能力や成績の指標ではない。betweennessが高い学習者は異なるグループ間の橋渡し役であるが、それが学習成果に正の影響を与えるかは別の検証が必要である。因果推論には実験デザインや適切な統計モデリングが求められる。
 :::
 
 ::: {.callout-note collapse="true"}
-#### Q: ERGMが収束しない場合はどうするか？
+### Q: ERGMが収束しない場合はどうするか？
 
 (1) `triangle` を `gwesp` に置き換える、(2) `control.ergm()` で反復回数やバーンイン期間を増やす、(3) モデルを簡略化する（項を減らす）、の順に対処する。ノード数が少なすぎる場合（< 30）は、ERGMの適用自体を再検討する。
 :::

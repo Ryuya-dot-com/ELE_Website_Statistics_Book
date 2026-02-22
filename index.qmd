@@ -1,3 +1,11 @@
+```{r}
+#| label: setup-theme
+#| include: false
+
+library(ggplot2)
+theme_set(theme_bw(base_size = 12))
+```
+
 # はじめに {.unnumbered}
 
 本書は、英語教育および第二言語習得（SLA）研究に携わる大学院生・研究者を対象に、統計解析の理論と実践をRで学ぶためのガイドです。研究論文で頻出する手法を体系的に取り上げ、すべてのコードを実行可能な形で提供しています。
