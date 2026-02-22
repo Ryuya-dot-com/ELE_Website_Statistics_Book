@@ -26,6 +26,8 @@ jobs:
 
       - name: Render (using frozen results)
         run: quarto render --to html
+        env:
+          QUARTO_PROFILE: ci
 
       - name: NFC-normalize filenames
         run: |
