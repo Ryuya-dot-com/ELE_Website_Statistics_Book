@@ -111,3 +111,8 @@ pre {
   font-weight: 600;
   border-bottom: 3px solid #007bff;
 }
+
+/* 参考文献リストを表示（Quarto Bookのインラインdisplay:noneを上書き） */
+#refs {
+  display: block !important;
+}
