@@ -91,7 +91,7 @@ pacman::p_load(
 )
 
 set.seed(2024)
-theme_set(theme_bw(base_size = 12))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 theme_update(legend.position = "bottom")
 ```
 

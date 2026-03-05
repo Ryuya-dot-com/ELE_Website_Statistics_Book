@@ -56,6 +56,15 @@ book:
       chapters:
         - 17_メタ分析.qmd
 
+    - part: "第IX部：因果推論とクラスタリング"
+      chapters:
+        - 18_統計的因果推論.qmd
+        - 19_クラスタリング.qmd
+
+    - part: "第X部：欠測データ解析とロバスト統計"
+      chapters:
+        - 20_欠測データ解析とロバスト統計.qmd
+
     - 参考文献_おすすめの書籍.qmd
 
 csl: apa-7th-edition.csl
@@ -124,6 +133,10 @@ execute:
   fig-width: 7
   fig-height: 5
   fig-dpi: 300
+
+knitr:
+  opts_chunk:
+    dev: ragg_png
 
 editor: visual
 

@@ -153,6 +153,7 @@ ANOVAが妥当な推論を行うためには、いくつかの前提条件（仮
 | `performance` | モデル診断とR² | セクション5 |
 | `car` | Levene検定 | セクション5 |
 | `broom` | モデル出力の整形 | セクション6 |
+| `faux` | コントラスト列の可視化・因子コーディング補助 | セクション6 |
 | `gt` | テーブル出力 | 全体 |
 :::
 
@@ -168,12 +169,13 @@ library(effectsize)
 library(performance)
 library(car)
 library(broom)
+library(faux)
 library(gt)
 library(MASS)
 
 set.seed(2024)
 afex::set_sum_contrasts()
-theme_set(theme_bw(base_size = 12))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 theme_update(legend.position = "bottom")
 
 plot_check_model_separate <- function(
@@ -218,7 +220,7 @@ plot_check_model_separate <- function(
 
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
-      theme_bw(base_size = 12) +
+      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),
@@ -675,6 +677,312 @@ dat_c |>
 
 **読み方のポイント**: 記述統計表の群平均を確認してください。Control < Glossing < Keyword の順で得点が上昇しています。この「Controlからの差がどの程度か」「全体平均からの偏差はどの程度か」「段階的な伸びがあるか」——これらを4通りのコーディングで異なる角度から数値化していきます。
 
+### `faux`で設計行列を可視化する
+
+以降の4種類の解説では、R標準の `contr.*` 関数を使ってコーディングを示します。加えて、教育・教材用途では `faux` の `add_contrast()` / `contr_code_*()` を使うと、設計行列の列をデータフレーム上で直接確認できるため、学習者に「どの比較をしているか」を示しやすくなります（@debruine2020faux）。
+
+```{r}
+#| label: faux-coding-visualization
+
+mini_faux_treat <- dat_c |>
+  group_by(Group) |>
+  slice_head(n = 3) |>
+  ungroup() |>
+  faux::add_contrast(
+    col = "Group",
+    contrast = "treatment",
+    add_cols = TRUE,
+    colnames = c("Glossing_vs_Control", "Keyword_vs_Control")
+  )
+
+mini_faux_treat |>
+  distinct(Group, Glossing_vs_Control, Keyword_vs_Control) |>
+  arrange(Group) |>
+  gt() |>
+  tab_header(title = "faux::add_contrast() で作る Treatment Coding")
+```
+
+`add_cols = TRUE` を指定すると、コントラスト列がデータフレームに直接追加されます。これにより、0/1（あるいは-1/0/1）の重みづけを「表」として確認できます。次の例では、同じ `Group` 因子に対して3種類のコーディング行列を並べます。
+
+```{r}
+#| label: faux-coding-matrix
+
+faux_contrast_mats <- list(
+  Treatment = contrasts(faux::contr_code_treatment(dat_c$Group, base = 1)),
+  Sum = contrasts(faux::contr_code_sum(dat_c$Group)),
+  Helmert = contrasts(faux::contr_code_helmert(dat_c$Group))
+)
+
+purrr::imap_dfr(faux_contrast_mats, function(mat, coding_name) {
+  as.data.frame(mat) |>
+    tibble::rownames_to_column("Level") |>
+    pivot_longer(-Level, names_to = "Contrast", values_to = "Weight") |>
+    mutate(Coding = coding_name, .before = 1)
+}) |>
+  gt() |>
+  tab_header(title = "faux で作る各コーディングの重み行列")
+```
+
+**実務上の使い分け**:
+
+- 解析実行だけなら `contrasts(x) <- contr.*(...)` で十分
+- 「設計行列の列そのもの」を説明したいときは `faux::add_contrast()` が便利
+- `faux::contr_code_helmert()` は `stats::contr.helmert()` とスケーリングが異なるため、係数の符号と比較方向を中心に解釈する
+
+### `model.matrix()` で設計行列 $\mathbf{X}$ を読む（公式ドキュメント準拠）
+
+Rの `model.matrix()` は、式（formula）と因子コントラスト指定から設計行列 $\mathbf{X}$ を構成する関数です（@rstatsmodelmatrix）。カテゴリカル変数の数値化自体は `contrasts()` と `contr.*` 系関数で定義されます（@rstatscontrasts; @rstatscontrast）。
+
+以下では、同じ `Group` 因子に対して Treatment と Sum の設計行列を作り、`model.matrix()` が返す列の意味を確認します。
+
+```{r}
+#| label: model-matrix-official
+
+X_treat <- model.matrix(
+  ~ Group,
+  data = dat_c,
+  contrasts.arg = list(Group = contr.treatment(3))
+)
+
+X_sum <- model.matrix(
+  ~ Group,
+  data = dat_c,
+  contrasts.arg = list(Group = contr.sum(3))
+)
+
+as_tibble(X_treat) |>
+  mutate(Group = dat_c$Group, .before = 1) |>
+  distinct(Group, .keep_all = TRUE) |>
+  gt() |>
+  tab_header(title = "model.matrix() が返す設計行列（Treatment）")
+
+tibble(
+  Attribute = c("assign", "contrasts"),
+  Treatment = c(
+    paste(attr(X_treat, "assign"), collapse = ", "),
+    paste(names(attr(X_treat, "contrasts")), unname(attr(X_treat, "contrasts")), sep = " = ")
+  ),
+  Sum = c(
+    paste(attr(X_sum, "assign"), collapse = ", "),
+    paste(names(attr(X_sum, "contrasts")), unname(attr(X_sum, "contrasts")), sep = " = ")
+  )
+) |>
+  gt() |>
+  tab_header(title = "model.matrix() の属性情報")
+```
+
+**解釈のポイント**:
+
+- `assign` は「どの列がどの項（term）に対応するか」を示す。`~ Group` では切片が0、`Group`由来の列が1になる
+- `contrasts` は各因子にどのコントラスト関数が適用されたかを記録する
+- `contrast` の公式ドキュメントが示す通り、**Treatment codingは切片に直交しない**一方で、Sum/Helmertは（均衡デザインなら）切片に直交する（@rstatscontrast）
+
+```{r}
+#| label: contrast-column-sums
+
+tibble(
+  Coding = c("Treatment", "Sum", "Helmert"),
+  `Column sums` = c(
+    paste(colSums(contr.treatment(3)), collapse = ", "),
+    paste(colSums(contr.sum(3)), collapse = ", "),
+    paste(colSums(contr.helmert(3)), collapse = ", ")
+  ),
+  `Orthogonal to intercept?` = c("No", "Yes", "Yes")
+) |>
+  gt() |>
+  tab_header(title = "コントラスト列の和（切片との直交性チェック）")
+```
+
+### 仮説行列 $\mathbf{H}$ と係数 $\boldsymbol{\beta}$ の対応（Schad et al., 2020）
+
+Schad et al.（2020）は、「言語化された研究仮説を**重みつき比較（contrast weights）**として明示し、そこから回帰係数の解釈を一貫させる」ことを強調しています（@schad2020）。3群のTreatment codingでは、群平均ベクトル $\boldsymbol{\mu}$ と係数ベクトル $\boldsymbol{\beta}$ の関係を次のように書けます。
+
+$$
+\boldsymbol{\beta} = \mathbf{H}\boldsymbol{\mu}, \quad
+\boldsymbol{\mu} = \mathbf{S}\boldsymbol{\beta}
+$$
+
+ここで $\mathbf{H}$ は「どの平均差を係数として取り出すか」を定義する仮説行列、$\mathbf{S}$ はその逆変換（一般化逆行列）です。
+
+```{r}
+#| label: hypothesis-matrix-demo
+
+cell_means <- dat_c |>
+  group_by(Group) |>
+  summarise(mu = mean(Score), .groups = "drop") |>
+  pull(mu)
+names(cell_means) <- levels(dat_c$Group)
+
+H_treat <- rbind(
+  `(Intercept)` = c(1, 0, 0),
+  Glossing_vs_Control = c(-1, 1, 0),
+  Keyword_vs_Control = c(-1, 0, 1)
+)
+colnames(H_treat) <- levels(dat_c$Group)
+
+fit_treat_check <- lm(
+  Score ~ Group,
+  data = dat_c |>
+    mutate(Group = faux::contr_code_treatment(Group, base = 1))
+)
+
+beta_from_H <- as.vector(H_treat %*% cell_means)
+
+tibble(
+  Term = c("(Intercept)", "Glossing - Control", "Keyword - Control"),
+  `H %*% mu` = round(beta_from_H, 6),
+  `lm estimate` = round(unname(coef(fit_treat_check)), 6),
+  Match = abs(`H %*% mu` - `lm estimate`) < 1e-8
+) |>
+  gt() |>
+  tab_header(title = "仮説行列 H と回帰係数の一致（Treatment）")
+```
+
+この表の `Match = TRUE` は、係数が「モデルが偶然出した数値」ではなく、**事前に定めた比較（重み）から論理的に導かれる量**であることを示しています。Schad et al.（2020）の実務的メッセージは、ここにあります。
+
+### 研究質問をコントラスト重みに翻訳する4ステップ
+
+Schad et al.（2020）の実務的な核は、「まず研究質問を重みに変換し、その後にモデルを当てる」ことです（@schad2020）。実装の手順は次の4段階です。
+
+1. 比較対象の群平均ベクトル $\boldsymbol{\mu}$ を定義する
+2. 研究質問を「群平均の線形結合」として重みで書く
+3. 差を問う仮説では重み和を0にする（位置ではなく差を評価）
+4. 複数の比較を仮説行列 $\mathbf{H}$ として積み、係数との対応を確認する
+
+```{r}
+#| label: question-to-weights-setup
+
+cell_means_q <- dat_c |>
+  group_by(Group) |>
+  summarise(mu = mean(Score), .groups = "drop")
+
+mu_vec_q <- cell_means_q$mu
+names(mu_vec_q) <- cell_means_q$Group
+
+contrast_recipe <- tribble(
+  ~Question, ~Control, ~Glossing, ~Keyword,
+  "Glossing - Control", -1, 1, 0,
+  "Keyword - Control", -1, 0, 1,
+  "Keyword - Glossing", 0, -1, 1,
+  "Treatment mean - Control", -1, 0.5, 0.5
+)
+
+invisible(NULL)
+```
+
+::: {.panel-tabset}
+#### 重みテーブル
+
+```{r}
+#| label: question-weights-table
+
+contrast_recipe |>
+  mutate(Weight_Sum = Control + Glossing + Keyword) |>
+  gt() |>
+  tab_header(title = "研究質問を重みに落とし込んだ例")
+```
+
+#### 推定値テーブル
+
+```{r}
+#| label: question-estimate-table
+
+contrast_recipe |>
+  rowwise() |>
+  mutate(
+    Estimate = Control * mu_vec_q["Control"] +
+      Glossing * mu_vec_q["Glossing"] +
+      Keyword * mu_vec_q["Keyword"]
+  ) |>
+  ungroup() |>
+  dplyr::select(Question, Estimate) |>
+  mutate(Estimate = round(Estimate, 3)) |>
+  gt() |>
+  tab_header(title = "重みつき比較から得られる推定値")
+```
+:::
+
+**読み方**:
+
+- 重み和が0の行は「純粋な群間差」を表す
+- `Treatment mean - Control` は「処遇群平均と統制群の差」を1本で表せる
+- この表を先に作ると、あとで係数の符号や大きさを迷わず解釈できる
+
+### 交互作用の設計行列を読む（2×2 と 2×3）
+
+交互作用は「差の差（difference-in-differences）」として理解すると明確です。`model.matrix()` を使って列を直接見ると、どの列がどの比較を担っているかが確認できます（@rstatsmodelmatrix）。
+
+```{r}
+#| label: interaction-design-setup
+
+design_2x2 <- tidyr::crossing(
+  Method = factor(c("Control", "Glossing"), levels = c("Control", "Glossing")),
+  Time = factor(c("Immediate", "Delayed"), levels = c("Immediate", "Delayed"))
+)
+
+X_2x2 <- model.matrix(
+  ~ Method * Time,
+  data = design_2x2,
+  contrasts.arg = list(
+    Method = contr.treatment(2),
+    Time = contr.treatment(2)
+  )
+)
+
+design_2x3 <- tidyr::crossing(
+  Method = factor(c("Control", "Glossing"), levels = c("Control", "Glossing")),
+  Session = factor(c("Pre", "Post", "Delayed"),
+                   levels = c("Pre", "Post", "Delayed"))
+)
+
+X_2x3 <- model.matrix(
+  ~ Method * Session,
+  data = design_2x3,
+  contrasts.arg = list(
+    Method = contr.treatment(2),
+    Session = contr.treatment(3)
+  )
+)
+
+invisible(NULL)
+```
+
+::: {.panel-tabset}
+#### 2x2 設計行列
+
+```{r}
+#| label: interaction-design-2x2
+
+as_tibble(X_2x2) |>
+  mutate(Method = design_2x2$Method, Time = design_2x2$Time, .before = 1) |>
+  gt() |>
+  tab_header(title = "2x2: Method * Time の設計行列（Treatment）")
+```
+
+#### 2x3 設計行列
+
+```{r}
+#| label: interaction-design-2x3
+
+as_tibble(X_2x3) |>
+  mutate(Method = design_2x3$Method, Session = design_2x3$Session, .before = 1) |>
+  gt() |>
+  tab_header(title = "2x3: Method * Session の設計行列（Treatment）")
+```
+:::
+
+**2×2の係数解釈**:
+
+- `(Intercept)` は Control-Immediate の平均
+- `Method2` は Immediate時点での Glossing − Control
+- `Time2` は Control群での Delayed − Immediate
+- `Method2:Time2` は「時間差の群間差」（差の差）
+
+**2×3で追加される点**:
+
+- `Method2:Session2`, `Method2:Session3` は、それぞれ Post基準・Delayed基準での追加的な群間差
+- 交互作用列が複数になるのは、反復測定因子が2水準を超えるため
+
 ### Treatment coding（ダミーコーディング）
 
 **最も直感的で、介入研究において最も広く使われるコーディングです。**参照群（reference group）を基準に、他の群がそこからどれだけ離れているかを回帰係数として推定します。
@@ -904,6 +1212,338 @@ all.equal(unname(fitted(fit_treat)), unname(fitted(fit_helm)))
 
 **実務的な含意**: コーディング選択に「正解」や「不正解」はありません。係数の意味が変わるだけで、モデルの適合そのものは同じです。したがって、**研究質問に対して最も直接的に答えを与えるコーディングを選ぶ**ことが合理的です。
 
+### 係数表と `emmeans` の役割分担（実務ルール）
+
+係数表と `emmeans` は競合ではなく、役割が異なります。実務では次のように使い分けると解釈の齟齬が減ります。
+
+| 読みたい問い | 主に使う出力 | 理由 |
+|---|---|---|
+| 「参照群との差」など、コーディングで定義した比較 | `summary()` / `tidy()` の係数 | 係数そのものが仮説比較を表す |
+| 任意の全ペア比較（例: Glossing vs Keyword） | `emmeans()` + `pairs()` | コーディング非依存で比較可能 |
+| 交互作用が有意なときの単純主効果 | `emmeans()` + `by` 引数 | 条件付き比較を直接計算できる |
+
+```{r}
+#| label: coef-vs-emmeans-setup
+
+fit_role <- lm(
+  Score ~ Group,
+  data = dat_c |>
+    mutate(Group = faux::contr_code_treatment(Group, base = 1))
+)
+
+invisible(NULL)
+```
+
+::: {.panel-tabset}
+#### 係数表（事前比較）
+
+```{r}
+#| label: coef-vs-emmeans-coef
+
+tidy(fit_role) |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(title = "係数表（Treatment: 参照群との差）")
+```
+
+#### `emmeans`（全ペア比較）
+
+```{r}
+#| label: coef-vs-emmeans-emm
+
+emmeans(fit_role, ~ Group) |>
+  pairs(adjust = "holm") |>
+  as.data.frame() |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  gt() |>
+  tab_header(title = "emmeansによる全ペア比較（Holm補正）")
+```
+:::
+
+**実務上の原則**: 係数は「事前に定義した比較」の確認に使い、`emmeans` は「報告に必要な比較を漏れなく出す」ために使います。
+
+### 不均衡デザインでの Type I / II / III SS（群サイズ不等）
+
+群サイズが不均衡になると、平方和タイプの違いが結果に影響します。`car::Anova()` のType II/IIIと通常のANOVA（Type I）を並べると、差が明確に確認できます（@fox2026car）。`afex` が混合計画で Type III を標準化している背景もここにあります（@singmann2025afex）。
+
+```{r}
+#| label: unbalanced-design-data
+
+set.seed(2025)
+
+cell_plan_unbal <- tribble(
+  ~Group, ~Time, ~n, ~mu,
+  "Control", "Immediate", 90, 50,
+  "Control", "Delayed", 35, 45,
+  "Glossing", "Immediate", 30, 58,
+  "Glossing", "Delayed", 80, 54,
+  "Keyword", "Immediate", 65, 63,
+  "Keyword", "Delayed", 25, 57
+)
+
+dat_unbal <- purrr::pmap_dfr(
+  cell_plan_unbal,
+  function(Group, Time, n, mu) {
+    tibble(
+      Group = Group,
+      Time = Time,
+      Score = rnorm(n, mean = mu, sd = 8)
+    )
+  }
+) |>
+  mutate(
+    Group = factor(Group, levels = c("Control", "Glossing", "Keyword")),
+    Time = factor(Time, levels = c("Immediate", "Delayed"))
+  )
+
+cell_size_tbl <- cell_plan_unbal
+
+invisible(NULL)
+```
+
+```{r}
+#| label: unbalanced-ss-setup
+
+fit_unbal_treat <- lm(
+  Score ~ Group * Time,
+  data = dat_unbal |>
+    mutate(
+      Group = faux::contr_code_treatment(Group, base = 1),
+      Time = faux::contr_code_treatment(Time, base = 1)
+    )
+)
+
+fit_unbal_sum <- lm(
+  Score ~ Group * Time,
+  data = dat_unbal |>
+    mutate(
+      Group = faux::contr_code_sum(Group),
+      Time = faux::contr_code_sum(Time)
+    )
+)
+
+extract_ss <- function(fit, coding, ss_type = c("I", "II", "III")) {
+  ss_type <- match.arg(ss_type)
+  tab <- switch(
+    ss_type,
+    I = anova(fit),
+    II = car::Anova(fit, type = 2),
+    III = car::Anova(fit, type = 3)
+  )
+  as.data.frame(tab) |>
+    tibble::rownames_to_column("Effect") |>
+    filter(!Effect %in% c("Residuals", "(Intercept)")) |>
+    transmute(
+      Coding = coding,
+      SS_Type = paste0("Type ", ss_type),
+      Effect,
+      Df = Df,
+      F = `F value`,
+      p = `Pr(>F)`
+    )
+}
+
+ss_compare_tbl <- bind_rows(
+  extract_ss(fit_unbal_treat, "Treatment", "I"),
+  extract_ss(fit_unbal_treat, "Treatment", "II"),
+  extract_ss(fit_unbal_treat, "Treatment", "III"),
+  extract_ss(fit_unbal_sum, "Sum", "I"),
+  extract_ss(fit_unbal_sum, "Sum", "II"),
+  extract_ss(fit_unbal_sum, "Sum", "III")
+) |>
+  mutate(
+    Df = round(Df, 0),
+    F = round(F, 3),
+    p = if_else(p < .001, "< .001", sprintf("%.3f", p))
+  )
+
+fit_unbal_sum_reordered <- lm(
+  Score ~ Time * Group,
+  data = dat_unbal |>
+    mutate(
+      Group = faux::contr_code_sum(Group),
+      Time = faux::contr_code_sum(Time)
+    )
+)
+
+type1_order_tbl <- tibble(
+  Formula_Order = c("Score ~ Group * Time", "Score ~ Time * Group"),
+  TypeI_F_Group = c(
+    anova(fit_unbal_sum)$`F value`[1],
+    anova(fit_unbal_sum_reordered)$`F value`[2]
+  ),
+  TypeI_F_Time = c(
+    anova(fit_unbal_sum)$`F value`[2],
+    anova(fit_unbal_sum_reordered)$`F value`[1]
+  )
+) |>
+  mutate(across(where(is.numeric), ~ round(., 3)))
+
+invisible(NULL)
+```
+
+::: {.panel-tabset}
+#### セルサイズ
+
+```{r}
+#| label: unbalanced-cellsize-table
+
+cell_size_tbl |>
+  gt() |>
+  tab_header(title = "不均衡デザインのセルサイズ")
+```
+
+#### Type I/II/III SS
+
+```{r}
+#| label: unbalanced-ss-compare
+
+ss_compare_tbl |>
+  gt() |>
+  tab_header(title = "Type I/II/III SS の比較（3x2不均衡デザイン）")
+```
+
+#### Type I の順序依存
+
+```{r}
+#| label: type1-order-dependence
+
+type1_order_tbl |>
+  gt() |>
+  tab_header(title = "Type I SS は項の順序に依存する")
+```
+:::
+
+**解釈のポイント**:
+
+- Type I は逐次平方和のため、式中の項順序でF値が変わる
+- Type II は交互作用を除いた主効果評価（交互作用が小さい場面で有用）
+- Type III は全効果を同時調整して検定するが、**コーディング依存**があるため、通常は Sum coding とセットで解釈する
+
+### 反復シミュレーションで「不変」と「可変」を分けて確認する
+
+単一データでの確認に加えて、反復シミュレーションで同じ性質が安定して成り立つかを見ます。
+
+```{r}
+#| label: invariance-monte-carlo-setup
+
+simulate_invariance_once <- function(seed) {
+  set.seed(seed)
+  dat_sim <- tibble(
+    Group = factor(rep(c("Control", "Glossing", "Keyword"), each = 40),
+                   levels = c("Control", "Glossing", "Keyword")),
+    Score = c(
+      rnorm(40, mean = 50, sd = 8),
+      rnorm(40, mean = 58, sd = 8),
+      rnorm(40, mean = 62, sd = 8)
+    )
+  )
+
+  fit_t <- lm(
+    Score ~ Group,
+    data = dat_sim |>
+      mutate(Group = faux::contr_code_treatment(Group, base = 1))
+  )
+  fit_s <- lm(
+    Score ~ Group,
+    data = dat_sim |>
+      mutate(Group = faux::contr_code_sum(Group))
+  )
+  fit_h <- lm(
+    Score ~ Group,
+    data = dat_sim |>
+      mutate(Group = faux::contr_code_helmert(Group))
+  )
+
+  tibble(
+    pred_equal_ts = max(abs(fitted(fit_t) - fitted(fit_s))) < 1e-10,
+    pred_equal_th = max(abs(fitted(fit_t) - fitted(fit_h))) < 1e-10,
+    F_equal_ts = abs(anova(fit_t)$`F value`[1] - anova(fit_s)$`F value`[1]) < 1e-10,
+    F_equal_th = abs(anova(fit_t)$`F value`[1] - anova(fit_h)$`F value`[1]) < 1e-10,
+    beta1_t = coef(fit_t)[2],
+    beta1_s = coef(fit_s)[2],
+    beta1_h = coef(fit_h)[2]
+  )
+}
+
+sim_invariance <- purrr::map_dfr(1:200, ~ simulate_invariance_once(3000 + .x))
+
+invariance_summary_tbl <- tibble(
+  Metric = c(
+    "P(predictions identical: Treatment vs Sum)",
+    "P(predictions identical: Treatment vs Helmert)",
+    "P(F identical: Treatment vs Sum)",
+    "P(F identical: Treatment vs Helmert)",
+    "Mean first coefficient (Treatment)",
+    "Mean first coefficient (Sum)",
+    "Mean first coefficient (Helmert)"
+  ),
+  Value = c(
+    mean(sim_invariance$pred_equal_ts),
+    mean(sim_invariance$pred_equal_th),
+    mean(sim_invariance$F_equal_ts),
+    mean(sim_invariance$F_equal_th),
+    mean(sim_invariance$beta1_t),
+    mean(sim_invariance$beta1_s),
+    mean(sim_invariance$beta1_h)
+  )
+) |>
+  mutate(Value = round(Value, 3))
+
+coef_dist_tbl <- sim_invariance |>
+  pivot_longer(
+    cols = c(beta1_t, beta1_s, beta1_h),
+    names_to = "Coding",
+    values_to = "Coefficient"
+  ) |>
+  mutate(
+    Coding = dplyr::recode(
+      Coding,
+      beta1_t = "Treatment",
+      beta1_s = "Sum",
+      beta1_h = "Helmert"
+    )
+  )
+
+invisible(NULL)
+```
+
+::: {.panel-tabset}
+#### 不変性サマリ
+
+```{r}
+#| label: invariance-monte-carlo-summary
+
+invariance_summary_tbl |>
+  gt() |>
+  tab_header(title = "200回シミュレーションでみる不変性と可変性")
+```
+
+#### 係数分布（可変性）
+
+```{r}
+#| label: invariance-monte-carlo-plot
+#| fig-width: 7
+#| fig-height: 4.6
+
+ggplot(coef_dist_tbl, aes(x = Coding, y = Coefficient, fill = Coding)) +
+  geom_boxplot(width = 0.55, alpha = 0.75, outlier.shape = NA) +
+  geom_jitter(width = 0.12, alpha = 0.2, size = 0.9) +
+  labs(
+    title = "First Coefficient Distribution Across Coding Schemes",
+    x = NULL,
+    y = "Coefficient value"
+  ) +
+  theme(legend.position = "none")
+```
+:::
+
+**読み方**:
+
+- 予測値とF値の一致率は1.000に近づく（モデル適合は不変）
+- 係数平均はコーディングで異なる（パラメータの意味は可変）
+- したがって、コーディングは「どの質問を係数として直接読むか」を決める設計作業である
+
 ## 7. 研究質問に基づくコーディング選択
 
 ここまで4つのコーディング方式を見てきました。実際の研究でどれを選ぶかは、**あなたのリサーチクエスチョンが何を問うているか**によって決まります。
@@ -1105,7 +1745,9 @@ standard ANOVA interpretation.
 
 - @schad2020 — コントラストコーディングの理論と実装を網羅した必読チュートリアル。本章のコーディング解説はこの論文に基づいています
 - @uclaoarc — RにおけるTreatment / Sum / Helmert / Polynomial codingの実装例を豊富に掲載したオンラインリソース
-- @rcorecontrasts — Rの`stats::contrasts`関数の公式ドキュメント
+- @rstatsmodelmatrix — `model.matrix()` の公式ドキュメント（設計行列の生成ルール）
+- @rstatscontrasts — `contrasts()` の公式ドキュメント（因子コーディングの設定）
+- @rstatscontrast — `contr.treatment()` / `contr.sum()` / `contr.helmert()` / `contr.poly()` の公式ドキュメント
 
 ### 効果量の計算と報告
 
@@ -1127,8 +1769,10 @@ standard ANOVA interpretation.
 ### Rパッケージ
 
 - @singmann2025afex — `afex`: 要因実験の分析。Type III SS、球面性補正、効果量を統合的に扱う
+- @fox2026car — `car`: Type II/III平方和（`Anova()`）を実行する標準パッケージ
 - @lenth2023emmeans — `emmeans`: 推定周辺平均と事後比較。ANOVAの解釈に不可欠
 - @benshachar2020 — `effectsize`: 効果量指標と標準化パラメータの算出
+- @debruine2020faux — `faux`: 因子計画データのシミュレーションとコントラストコーディング補助
 
 ## 参考文献
 

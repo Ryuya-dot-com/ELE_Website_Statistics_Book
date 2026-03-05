@@ -1,25 +1,48 @@
 # Quarto build and cache
 /.quarto/
 /_book/
-/_freeze/
 /*_cache/
 /*_files/
 /site_libs*/
-/search.json
+
+# _freeze/: CI needs frozen results for HTML deployment
+# Only track HTML-related freeze outputs (figure-html/, html.json, site_libs/)
+# Exclude epub/tex freeze outputs (not needed for GitHub Pages)
+_freeze/**/figure-epub/
+_freeze/**/figure-tex/
+_freeze/**/figure-pdf/
+_freeze/**/epub.json
+_freeze/**/tex.json
+_freeze/**/pdf.json
+_freeze/**/figure-latex/
+_freeze/**/libs/
 
 # OS / Editor
-/.DS_Store
+.DS_Store
 /.Rhistory
 /.Rproj.user/
 
-# Large artifacts
+# Large binary artifacts (local only)
 *.html
 *.pdf
 *.rds
 *.rda
+/models/
 
 # Local data artifacts (keep raw CSVs)
 data/**/*.rds
 data/**/*.RDS
 data/**/*.rda
 data/**/*.RData
+
+# Development / temporary files
+/prompts/
+/output/
+/figure/
+/trash/
+/_book_ci_clean/
+/.claude/
+audio_summary.csv
+Rplots.pdf
+search.json
+script.js

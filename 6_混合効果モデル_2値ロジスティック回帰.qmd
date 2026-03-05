@@ -165,7 +165,7 @@ pacman::p_load(
 )
 
 # --- 共通設定 ---
-theme_set(theme_bw(base_size = 12))   # ggplot2 のデフォルトテーマ
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))   # ggplot2 のデフォルトテーマ（日本語フォント指定）
 theme_update(legend.position = "bottom")
 set.seed(2024)      # 乱数の再現性を確保
 
@@ -229,7 +229,7 @@ plot_check_model_separate <- function(
 
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
-      theme_bw(base_size = 12) +
+      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),
@@ -818,7 +818,7 @@ sjPlot::plot_model(
   type = "re",
   title = "Random effects by sender and receiver"
 ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(legend.position = "bottom")
 ```
 
@@ -1119,7 +1119,7 @@ sjPlot::plot_model(
     color = "Same class",
     fill = "Same class"
   ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(legend.position = "bottom")
 ```
 

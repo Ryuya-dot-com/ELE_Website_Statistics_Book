@@ -40,7 +40,7 @@ pacman::p_load(
   jpndistrict, stringi, sfdep, spdep, spatialreg, units,
   lubridate, fixest
 )
-theme_set(theme_bw(base_size = 12))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 theme_update(legend.position = "bottom")
 ```
 
@@ -133,7 +133,7 @@ map_df <- pref_sf |>
 ggplot(map_df) +
   geom_sf(aes(fill = eng_score), color = 'white') +
   scale_fill_viridis_c(option = 'C') +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
  labs(title = paste0('English Score (', latest_year, ', Simulated)'))
 ```
 
@@ -245,7 +245,7 @@ ggplot() +
   geom_point(data = coords_df, aes(x = x, y = y),
              color = '#2c3e50', size = 1.5) +
   facet_wrap(~ type, ncol = 2) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = 'Adjacency Network: Queen vs kNN (k=4)',
        x = 'Longitude', y = 'Latitude')
 ```
@@ -261,14 +261,14 @@ ggplot() +
 ggplot(data) +                          # データを指定
   geom_sf(aes(fill = variable)) +       # 地図を描画（fill で色分け）
   scale_fill_viridis_c(option = 'C') +  # カラーパレット（連続値）
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +  # テーマ（背景・グリッド）+ 凡例下配置
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +  # テーマ（背景・グリッド）+ 凡例下配置
   labs(title = '...', fill = '...')     # タイトル・凡例ラベル
 ```
 
 - **`geom_sf()`**: `sf` オブジェクトをそのまま地図として描画する。`aes(fill = ...)` で塗り分け変数を指定する。
 - **`scale_fill_*`**: 色の対応関係を制御する。`viridis_c`（連続値）、`manual`（カテゴリ）、`gradient2`（発散型、中央値あり）が頻出。
 - **`facet_wrap(~ variable)`**: 1つの変数でグループ分けし、小さな図（パネル）を並べる。年次比較や条件比較に有効。
-- **`theme_bw(base_size = 12) + theme(legend.position = "bottom")`**: 背景をシンプルにし、凡例を下に配置する。
+- **`theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")`**: 背景をシンプルにし、凡例を下に配置する。
 :::
 
 ::: {.callout-note}
@@ -381,7 +381,7 @@ ggplot(map_df) +
     values = c('High-High'='#d73027','Low-Low'='#4575b4','High-Low'='#fdae61','Low-High'='#74add1','Not Sig'='grey90'),
     drop = FALSE
   ) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = 'LISA Cluster (Queen, p < .05)', fill = 'Cluster')
 ```
 
@@ -422,7 +422,7 @@ ggplot(map_df) +
     values = c('High-High'='#d73027','Low-Low'='#4575b4','High-Low'='#fdae61','Low-High'='#74add1','Not Sig (FDR)'='grey85'),
     drop = FALSE
   ) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = 'LISA Cluster (BH-corrected, p < .05)', fill = 'Cluster')
 ```
 
@@ -448,7 +448,7 @@ ggplot(df_moran, aes(x = z, y = lag_z)) +
   geom_smooth(method = 'lm', se = FALSE, color = 'steelblue') +
   geom_hline(yintercept = 0, color = 'grey60') +
   geom_vline(xintercept = 0, color = 'grey60') +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = "Moran's I Scatter Plot", x = 'Standardized Score (z)', y = 'Spatial Lag (Wz)')
 ```
 
@@ -509,7 +509,7 @@ ggplot(map_df) +
     low = '#4575b4', mid = 'white', high = '#d73027',
     midpoint = 0, name = 'Residual'
   ) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = 'OLS Residuals: Spatial Distribution',
        subtitle = 'Red = overestimation, Blue = underestimation')
 ```
@@ -671,7 +671,7 @@ map_diff <- pref_sf |>
 ggplot(map_diff) +
   geom_sf(aes(fill = diff_post_pre), color = 'white') +
   scale_fill_gradient2(low = '#4575b4', mid = 'white', high = '#d73027', midpoint = 0, name = 'Diff') +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = paste0('Pre-Post Difference (Policy Year: ', policy_year, ')'))
 ```
 
@@ -699,7 +699,7 @@ ggplot(facet_df) +
   scale_fill_viridis_c(option = 'C', limits = global_limits,
                        oob = scales::squish, name = 'Score') +
   facet_wrap(~ year, ncol = 5) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   theme(axis.text = element_blank(), axis.ticks = element_blank()) +
   labs(title = 'English Score by Prefecture: Annual Comparison')
 ```
@@ -733,7 +733,7 @@ ggplot(trend_df, aes(x = year, y = mean_score, color = group)) +
   annotate('text', x = policy_year + 0.3, y = max(trend_df$mean_score),
            label = 'Policy Year', hjust = 0, color = 'grey40', size = 3.5) +
   scale_color_manual(values = c('Control' = '#4575b4', 'Treated' = '#d73027')) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = 'Parallel Trends Check: Treated vs Control',
        x = 'Year', y = 'Mean English Score', color = 'Group')
 ```
@@ -853,9 +853,9 @@ map_df <- map_df |>
   mutate(smooth_score = (1 - alpha) * eng_score + alpha * lag_y)
 
 g1 <- ggplot(map_df) + geom_sf(aes(fill = eng_score), color = 'white') +
-  scale_fill_viridis_c(option = 'C') + theme_bw(base_size = 12) + theme(legend.position = "bottom") + labs(title = 'Raw Score')
+  scale_fill_viridis_c(option = 'C') + theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") + labs(title = 'Raw Score')
 g2 <- ggplot(map_df) + geom_sf(aes(fill = smooth_score), color = 'white') +
-  scale_fill_viridis_c(option = 'C') + theme_bw(base_size = 12) + theme(legend.position = "bottom") + labs(title = paste0('Smoothed (alpha = ', alpha, ')'))
+  scale_fill_viridis_c(option = 'C') + theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") + labs(title = paste0('Smoothed (alpha = ', alpha, ')'))
 
 g1; g2
 ```

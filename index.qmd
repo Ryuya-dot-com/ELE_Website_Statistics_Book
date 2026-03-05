@@ -3,7 +3,7 @@
 #| include: false
 
 library(ggplot2)
-theme_set(theme_bw(base_size = 12))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 ```
 
 # はじめに {.unnumbered}
@@ -68,6 +68,16 @@ sfパッケージによる地図作成の入門から、空間自己相関・空
 研究成果の統合、異質性の評価、出版バイアスの検出、メタ回帰を扱います。
 :::
 
+::: {.callout-note appearance="minimal"}
+#### 第IX部：因果推論とクラスタリング
+統計的因果推論（潜在アウトカム、交絡調整、傾向スコア、DID）と、クラスタリング（k-means、階層クラスタリング、クラスタ解釈）を扱います。
+:::
+
+::: {.callout-note appearance="minimal"}
+#### 第X部：欠測データ解析とロバスト統計
+欠測メカニズム（MCAR/MAR/MNAR）に応じた処理、多重代入（MI）・FIML、そして外れ値や前提違反に対するロバスト統計を統合的に扱います。
+:::
+
 ### 必要な環境
 
 - **R**（最新版を推奨）：[https://cran.r-project.org/](https://cran.r-project.org/)
@@ -89,6 +99,9 @@ required_packages <- c(
 
   # 回帰・混合効果モデル
   "lme4", "lmerTest", "lavaan",
+
+  # 欠測データ・ロバスト統計
+  "mice", "naniar", "sandwich", "lmtest", "quantreg", "vegan", "clubSandwich",
 
   # IRT・ラッシュモデル
   "mirt", "eRm", "TAM", "mokken",

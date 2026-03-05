@@ -8,7 +8,7 @@ bibliography: references_recommended.bib
 #| include: false
 
 library(ggplot2)
-theme_set(theme_bw(base_size = 12))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 ```
 
 

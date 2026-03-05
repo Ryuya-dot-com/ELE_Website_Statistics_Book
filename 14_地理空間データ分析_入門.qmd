@@ -45,7 +45,7 @@ options(encoding = "UTF-8")
 
 # knitr の表示を日本語フォントに合わせて控えめに（任意）
 knitr::opts_chunk$set(dev = 'png')
-theme_set(theme_bw(base_size = 12))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 theme_update(legend.position = "bottom")
 ```
 
@@ -159,7 +159,7 @@ st_crs(pref_sf)
 # プレビュー：境界線だけの白地図
 ggplot(pref_sf) +
   geom_sf(fill = 'gray95', color = 'gray40', linewidth = .2) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = 'Japan: Prefecture Boundaries')
 ```
 
@@ -347,7 +347,7 @@ ggplot(pref_map) +
   geom_sf(aes(fill = cuts), color = 'gray40', size = .2) +
   scale_fill_brewer(palette = 'Blues', na.value = 'grey90', name = 'Score (Quantile)') +
   labs(title = paste0('English Score (', max(years), ')'), caption = 'Simulated data') +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
 ```
 
 **地図の読み方**: 濃い青が高スコア、薄い青が低スコアの地域です。高スコアの都道府県が地理的にまとまっているか（クラスタ）、それともランダムに散在しているかを観察してください。もしクラスタが見えるなら、それが次章で検定する**空間自己相関**の視覚的な手がかりです。
@@ -361,13 +361,13 @@ ggplot(pref_map) +
 ggplot(sf_data) +                         # sf オブジェクトを指定
   geom_sf(aes(fill = variable)) +         # fill で色分け変数を指定
   scale_fill_brewer(palette = 'Blues') +   # カラーパレット（カテゴリ）
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +  # シンプルなテーマ + 凡例下配置
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +  # シンプルなテーマ + 凡例下配置
   labs(title = '...', fill = '...')       # タイトル・凡例ラベル
 ```
 
 - **`geom_sf()`**: `sf` オブジェクトの `geometry` 列を自動的に読み取り、地図を描画する。
 - **`aes(fill = ...)`**: 塗り分けに使う変数を指定する。連続値なら `scale_fill_viridis_c()`、カテゴリなら `scale_fill_brewer()` や `scale_fill_manual()` を使う。
-- **`theme_bw(base_size = 12) + theme(legend.position = "bottom")`**: 背景やグリッドをシンプルにし、凡例を下に配置する。
+- **`theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")`**: 背景やグリッドをシンプルにし、凡例を下に配置する。
 :::
 
 ::: {.callout-note}
@@ -401,7 +401,7 @@ ggplot(pref_panel_map) +
   scale_fill_viridis_c(option = 'C', name = 'Score',
                        limits = global_limits, oob = scales::squish) +
   facet_wrap(~ year, ncol = 4) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   theme(axis.text = element_blank(), axis.ticks = element_blank()) +
   labs(title = 'English Score: Annual Comparison (Common Scale)')
 ```
@@ -639,7 +639,7 @@ ggplot(dat_moran) +
     values = c('High-High'='#d73027','Low-Low'='#4575b4','High-Low'='#fdae61','Low-High'='#74add1','Not Sig'='grey90'),
     drop = FALSE
   ) +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = "LISA Cluster Map (Queen, p < .05)", fill = 'Cluster')
 ```
 
@@ -693,7 +693,7 @@ ggplot(dat_moran) +
   geom_sf(aes(fill = Ii), color = 'white') +
   scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red', midpoint = 0,
                        name = 'Local I') +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = "Local Moran's I (Continuous)")
 ```
 
@@ -721,7 +721,7 @@ growth |>
   geom_line(linewidth = 1, color = '#2c3e50') +
   geom_point(size = 2.5, color = '#2c3e50') +
   geom_hline(yintercept = 0, linetype = 'dashed', color = 'grey60') +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = 'Mean Year-on-Year Growth Rate (%)',
        x = 'Year', y = 'Growth Rate (%)')
 ```
@@ -745,7 +745,7 @@ ggplot(map_diff) +
   geom_sf(aes(fill = diff_post_pre), color = 'white') +
   scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red', midpoint = 0,
                        name = 'Diff (Post - Pre)') +
-  theme_bw(base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   labs(title = paste0('Pre-Post Score Difference (Policy Year: ', policy_year, ')'))
 ```
 

@@ -1,0 +1,2366 @@
+---
+title: "欠測データ解析とロバスト統計"
+bibliography: references_missing_robust.bib
+nocite: |
+  @little2019, @rubin1987, @vanbuuren2018, @vanbuuren2011, @enders2010,
+  @carpenter2013, @rosseel2012, @white1980, @mackinnon1985, @huber1964,
+  @koenker1978, @efron1993, @yuen1974, @wilcox2012, @steegen2016,
+  @simonsohn2020, @fay2010, @hothorn2008coin, @noguchi2012,
+  @konietschke2023, @anderson2001, @kruskal1964, @maaten2008,
+  @mcinnes2018, @cleveland1979, @wood2017, @hardle1990,
+  @cameron2015, @zeileis2020
+---
+
+```{r}
+#| label: setup-missing-robust
+#| include: false
+
+pacman::p_load(
+  tidyverse,
+  mice,
+  naniar,
+  quantreg,
+  sandwich,
+  lmtest,
+  boot,
+  lavaan,
+  broom,
+  vegan,
+  KernSmooth,
+  clubSandwich,
+  Rtsne,
+  uwot
+)
+
+set.seed(20260302)
+theme_book <- theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    legend.position = "bottom",
+    panel.background = element_rect(fill = "white", color = "black"),
+    plot.background = element_rect(fill = "white", color = NA),
+    legend.background = element_rect(fill = "white", color = NA)
+  )
+theme_set(theme_book)
+
+# Rubin rules helper for pooled point estimates and SEs
+pool_rubin <- function(q, u, conf_level = 0.95) {
+  m <- length(q)
+  q_bar <- mean(q)
+  u_bar <- mean(u)
+  b <- if (m > 1) var(q) else 0
+  total_var <- u_bar + (1 + 1 / m) * b
+
+  # Barnard-Rubin style df approximation
+  if (b <= .Machine$double.eps) {
+    df <- 1e6
+  } else {
+    df <- (m - 1) * (1 + u_bar / ((1 + 1 / m) * b))^2
+  }
+
+  alpha <- 1 - conf_level
+  crit <- qt(1 - alpha / 2, df = df)
+
+  tibble(
+    estimate = q_bar,
+    se = sqrt(total_var),
+    conf.low = q_bar - crit * sqrt(total_var),
+    conf.high = q_bar + crit * sqrt(total_var),
+    df = df
+  )
+}
+
+pool_term <- function(model_list, term, vcov_fun = stats::vcov) {
+  q <- vapply(model_list, function(mod) coef(mod)[term], numeric(1))
+  u <- vapply(model_list, function(mod) vcov_fun(mod)[term, term], numeric(1))
+  pool_rubin(q, u) |>
+    mutate(term = term, .before = 1)
+}
+```
+
+## はじめに
+
+欠測データと前提違反（外れ値・非正規・不均一分散）は、英語教育・SLA 研究で同時に起きることが多い。例えば、学習継続が難しい参加者ほど事後テストが欠測しやすく、同時に得点分布の裾も重くなりやすい。ここで「欠測には欠測処理だけ」「外れ値にはロバスト統計だけ」と分けて考えると、推定の一貫性が崩れやすい[@little2019; @wilcox2012]。
+
+本章では、**欠測処理（MI/FIML）**と**ロバスト推定（HC3・M 推定・分位点回帰・置換/ブートストラップ）**を同じ分析パイプラインで扱う。
+
+::: {.callout-important}
+### この章の到達目標
+
+1. 欠測メカニズム（MCAR/MAR/MNAR）を識別し、方法選択を説明できる
+2. `mice` による多重代入（MI）を実行し、`pool()` で結果を統合できる
+3. FIML の考え方を理解し、MI と使い分けできる
+4. ロバスト統計（trimmed mean, M 推定, 分位点回帰, HC3）を実装できる
+5. 「完全ケース vs MI vs MI+ロバスト」で頑健性を比較し、報告できる
+6. 外れ値処理の仕様依存性を Multiverse Analysis で可視化できる
+:::
+
+### なぜ「欠測」と「ロバスト」を同時に扱うのか
+
+欠測処理が適切でも、外れ値に強く引っ張られるモデルを使えば結論が不安定になる。逆にロバスト推定を使っても、欠測を完全ケースのまま放置すると選択バイアスが残る。したがって実務上は、
+
+- 欠測メカニズムを診断し、MI/FIML で情報損失を抑える
+- 同時に、推定・標準誤差・検定をロバスト化する
+
+という二段構えが基本になる[@enders2010; @white1980]。
+
+### 最初にここだけ（20分ルート）
+
+時間がない場合は次の順で読む。
+
+1. 「クイックリファレンス」
+2. 「多重代入の実装（mice）」
+3. 「ロバスト標準誤差（HC3, クラスタロバスト）」
+4. 「Multiverse Analysis（外れ値除外仕様の頑健性）」
+5. 「統合パイプライン」
+
+## SLA・心理言語学の先行研究と本章の接続
+
+本章のコード例は再現可能性を重視したシミュレーション中心だが、設計思想は実際の SLA・心理言語学研究で使われている。以下は、欠測処理とロバスト推定を実データ研究に接続するための最小セットである。
+
+```{r}
+#| label: tbl-sla-psycholing-prior-work
+#| echo: false
+
+tibble::tribble(
+  ~研究, ~領域, ~実際に使われた手法, ~本章での接続先,
+  "Pichette et al. (2015)[@pichette2015]", "SLA方法論", "言語研究で生じる二値欠測データ処理の比較と推奨整理", "MCAR/MAR/MNAR整理, MI導入の根拠",
+  "Preusler et al. (2025)[@preusler2025]", "二言語イマージョン教育", "SES欠測に対するmultilevel MI（mice + 2l.pan）, Rubin統合", "『多重代入の実装』と『縦断・階層データでの注意点』",
+  "Lachaud & Renaud (2011)[@lachaud2011]", "心理言語学（RT解析）", "RTデータでの欠測処理・外れ値処理・モデル選択のチュートリアル", "『データ診断』と『RT変換比較』",
+  "Jaeger (2008)[@jaeger2008]", "心理言語学（カテゴリ応答）", "ANOVA中心の慣習からlogit mixed modelへの転換提案", "ロバスト/適切な分布族へのモデル化",
+  "Freeman et al. (2021)[@freeman2021]", "L2音声知覚", "log変換RTを用いた線形混合効果モデル", "『RT変換比較』の実装判断に対応"
+) |>
+  knitr::kable(caption = "Examples of missing-data and robust modeling practices in SLA/psycholinguistics.")
+```
+
+### 読み替えガイド（研究デザイン別）
+
+- **縦断SLAデータ（学校・クラス階層あり）**: `mice` の多層代入（`2l.pan` など）を優先し、推定後は Rubin 則で統合する[@preusler2025]
+- **RT中心の心理言語学課題**: 変換（`log(RT)`, `1/RT`）と分布族（Gamma など）を比較し、共通尺度で報告する[@lachaud2011; @lo2015]
+- **カテゴリ応答（正誤・選択）**: 線形モデルの近似より、リンク関数を持つ混合モデルを第一候補にする[@jaeger2008]
+- **分析報告**: 欠測仮定（MAR/MNAR）、外れ値仕様、モデル族の選択理由をセットで明記する[@pichette2015; @freeman2021]
+
+## クイックリファレンス
+
+### 欠測メカニズム（MCAR/MAR/MNAR）と推奨手法
+
+```{r}
+#| label: tbl-missing-mechanism-map
+#| echo: false
+
+tibble::tribble(
+  ~Mechanism, ~概要, ~典型例, ~推奨アプローチ,
+  "MCAR", "欠測が観測/未観測と独立", "システム障害でランダム欠落", "完全ケースでも不偏だが、MI推奨",
+  "MAR", "欠測が観測変数には依存", "低意欲の学習者ほど事後テスト欠測", "MI/FIML + 感度分析",
+  "MNAR", "欠測が未観測値そのものに依存", "低得点ほど無回答", "パターンミクスチャ/デルタ法で感度分析"
+) |>
+  knitr::kable(caption = "Missing-data mechanism and practical strategy.")
+```
+
+MAR は検証不能であり、「仮定として妥当か」を設計と文脈で説明する必要がある[@little2019; @rubin1987]。
+
+### 前提違反（外れ値・非正規・不均一分散）と推奨手法
+
+```{r}
+#| label: tbl-robust-map
+#| echo: false
+
+tibble::tribble(
+  ~Issue, ~症状, ~推奨手法,
+  "Heavy tails / outliers", "平均が少数点に引っ張られる", "trimmed mean, M-estimation, median regression",
+  "Heteroskedasticity", "残差分散が群・予測子で変化", "HC3 / cluster-robust SE",
+  "Small-sample uncertainty", "正規近似が不安定", "Permutation test, bootstrap CI"
+) |>
+  knitr::kable(caption = "Robust methods by assumption violation.")
+```
+
+### 分析判断フロー（欠測 × ロバスト）
+
+1. 欠測率・欠測パターン・外れ値を同時診断する
+2. 完全ケースを基準線として記録する（最終結論にはしない）
+3. MI または FIML で主分析を実行する
+4. 同じモデルにロバスト SE/ロバスト推定を適用する
+5. 主要係数（例: 処置効果）が方法間で安定か確認する
+
+## データ診断
+
+以下では、英語教育研究を想定した架空データを使って一連の処理を示す。
+
+::: {.callout-note}
+### この章の「データ」は何か
+
+- 本章の推定・検定は、すべて **シミュレーションで生成したデータ** に対して実行している
+- `set.seed(20260302)` を固定しているため、同じコードを実行すれば同じ値が再現される
+- 目的は「手法の考え方」だけでなく、**Rコードが何を入力に何を返すか**を可視化すること
+:::
+
+### シミュレーションで作っている分析世界
+
+この章では、次のような「実務で起きやすい問題」を意図的に混ぜたデータ生成を行う。
+
+1. 処置効果は正（真値 `2.8`）だが、誤差は重尾で外れ値を含む
+2. 事後得点欠測は群・動機づけ・不安に依存し、完全ランダム欠測ではない
+3. 事前得点・動機づけにも欠測を入れ、単純代入では不十分な状況を作る
+
+```{r}
+#| label: generate-sla-data
+#| echo: true
+
+n <- 480
+n_class <- 24
+class_id <- sample(seq_len(n_class), size = n, replace = TRUE)
+class_re <- rnorm(n_class, mean = 0, sd = 2)
+
+# Covariates and treatment
+trt <- rbinom(n, 1, 0.5)
+pretest <- rnorm(n, 50, 10)
+motivation <- rnorm(n, 0, 1)
+anxiety <- rnorm(n, 0, 1)
+study_hours <- pmax(rnorm(n, 4 + 1.2 * trt + 0.03 * pretest + 0.8 * motivation, 1.5), 0)
+
+# Heavy-tailed noise + occasional outliers
+eps <- rt(n, df = 3) * 4
+outlier_flag <- rbinom(n, 1, 0.03)
+eps <- eps + outlier_flag * rnorm(n, 20, 6)
+
+# Data-generating truth (treatment effect = 2.8)
+true_beta_treat <- 2.8
+score_true <- 35 +
+  true_beta_treat * trt +
+  0.55 * pretest +
+  1.8 * motivation -
+  1.3 * anxiety +
+  0.7 * study_hours +
+  class_re[class_id] +
+  eps
+
+# Missingness
+p_miss_score <- plogis(-2.2 + 0.9 * (1 - trt) - 0.8 * motivation + 0.4 * anxiety)
+miss_score <- rbinom(n, 1, p_miss_score) == 1
+
+miss_pretest <- rbinom(n, 1, 0.08) == 1
+p_miss_mot <- plogis(-2.5 + 0.03 * (score_true - mean(score_true)))
+miss_mot <- rbinom(n, 1, p_miss_mot) == 1
+
+score_post <- score_true
+score_post[miss_score] <- NA
+pretest[miss_pretest] <- NA
+motivation[miss_mot] <- NA
+
+df_sla <- tibble(
+  id = seq_len(n),
+  class_id = factor(class_id),
+  treatment_num = trt,
+  treatment = factor(trt, levels = c(0, 1), labels = c("Control", "Treatment")),
+  pretest = pretest,
+  motivation = motivation,
+  anxiety = anxiety,
+  study_hours = study_hours,
+  score_post = score_post,
+  score_true = score_true,
+  outlier_flag = outlier_flag
+)
+
+analysis_vars <- c("score_post", "treatment_num", "pretest", "motivation", "anxiety", "study_hours")
+```
+
+```{r}
+#| label: tbl-sim-data-preview
+#| echo: false
+
+df_sla |>
+  select(id, class_id, treatment, pretest, motivation, anxiety, study_hours, score_post, outlier_flag) |>
+  slice(1:8) |>
+  knitr::kable(digits = 2, caption = "Preview of simulated learner-level data (first 8 rows).")
+```
+
+```{r}
+#| label: tbl-sim-design-check
+#| echo: false
+
+tibble(
+  metric = c(
+    "N (all learners)",
+    "N classes",
+    "Treatment share",
+    "Missing: score_post",
+    "Missing: pretest",
+    "Missing: motivation",
+    "Injected outlier share",
+    "True treatment effect used in DGP"
+  ),
+  value = c(
+    nrow(df_sla),
+    n_distinct(df_sla$class_id),
+    scales::percent(mean(df_sla$treatment_num == 1), accuracy = 0.1),
+    scales::percent(mean(is.na(df_sla$score_post)), accuracy = 0.1),
+    scales::percent(mean(is.na(df_sla$pretest)), accuracy = 0.1),
+    scales::percent(mean(is.na(df_sla$motivation)), accuracy = 0.1),
+    scales::percent(mean(df_sla$outlier_flag == 1), accuracy = 0.1),
+    round(true_beta_treat, 2)
+  )
+) |>
+  knitr::kable(caption = "Sanity check: what this simulation intentionally contains.")
+```
+
+```{r}
+#| label: tbl-diagnosis-overview
+#| echo: false
+
+df_sla |>
+  summarize(
+    n = n(),
+    missing_score_post = mean(is.na(score_post)),
+    missing_pretest = mean(is.na(pretest)),
+    missing_motivation = mean(is.na(motivation))
+  ) |>
+  mutate(across(starts_with("missing_"), ~ scales::percent(.x, accuracy = 0.1))) |>
+  knitr::kable(caption = "Data profile and missing rates.")
+```
+
+### 欠測パターンの可視化
+
+```{r}
+#| label: fig-missing-pattern
+#| fig-cap: "Missingness rate by variable."
+#| fig-width: 7
+#| fig-height: 4
+
+naniar::gg_miss_var(df_sla |> select(score_post, treatment_num, pretest, motivation, anxiety, study_hours)) +
+  labs(x = "Variable", y = "Missing (%)") +
+  theme_book
+```
+
+```{r}
+#| label: fig-missing-heatmap
+#| fig-cap: "Row-level missingness map (subset preview)."
+#| fig-width: 7
+#| fig-height: 4
+
+naniar::vis_miss(
+  df_sla |> select(score_post, treatment_num, pretest, motivation, anxiety, study_hours) |> slice(1:120),
+  sort_miss = TRUE,
+  warn_large_data = FALSE
+) +
+  theme_book
+```
+
+### 外れ値・影響点・分布歪みの診断
+
+```{r}
+#| label: fit-cc-for-diagnostics
+#| include: false
+
+cc_df <- df_sla |>
+  select(score_post, treatment_num, pretest, motivation, anxiety, study_hours, class_id) |>
+  tidyr::drop_na()
+
+fit_cc <- lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = cc_df)
+
+diag_df <- tibble(
+  fitted = fitted(fit_cc),
+  std_resid = rstandard(fit_cc),
+  cook = cooks.distance(fit_cc)
+)
+```
+
+```{r}
+#| label: fig-residual-fitted
+#| fig-cap: "Residuals vs fitted values (complete cases)."
+#| fig-width: 7
+#| fig-height: 4
+
+ggplot(diag_df, aes(x = fitted, y = std_resid)) +
+  geom_hline(yintercept = c(-2, 0, 2), linetype = c("dashed", "solid", "dashed"), color = c("grey50", "grey20", "grey50")) +
+  geom_point(alpha = 0.7) +
+  labs(x = "Fitted", y = "Standardized residual") +
+  theme_book
+```
+
+```{r}
+#| label: fig-cooks-distance
+#| fig-cap: "Cook's distance by observation index."
+#| fig-width: 7
+#| fig-height: 4
+
+ggplot(diag_df, aes(x = seq_along(cook), y = cook)) +
+  geom_point(alpha = 0.7) +
+  geom_hline(yintercept = 4 / nrow(cc_df), color = "red", linetype = "dashed") +
+  labs(x = "Observation", y = "Cook's distance") +
+  theme_book
+```
+
+### 「やってはいけない前処理」
+
+- 欠測のある目的変数を平均で埋めて推定する（分散を過小評価）
+- MI の前に外れ値を機械的に削除する（MNAR を悪化させる可能性）
+- 前処理を全データで先に fit してから CV する（情報漏洩）
+- 「正規性違反だから非有意でも仕方ない」で診断を止める
+
+## 欠測データ処理の基礎
+
+### 完全ケース解析の限界
+
+完全ケース解析（listwise deletion）は実装が簡単だが、MAR/MNAR ではバイアスが入りやすく、検出力も低下する[@little2019; @enders2010]。
+
+```{r}
+#| label: fit-complete-case
+#| include: false
+
+fit_complete_case <- lm(
+  score_post ~ treatment_num + pretest + motivation + anxiety + study_hours,
+  data = cc_df
+)
+
+cc_treat <- broom::tidy(fit_complete_case, conf.int = TRUE) |>
+  filter(term == "treatment_num") |>
+  mutate(method = "Complete case")
+```
+
+### 単純代入の問題
+
+平均代入は手軽だが、標準誤差を過小評価し、推定の不確実性を反映しない。ここでは「悪い比較対象」としてのみ使う。
+
+```{r}
+#| label: fit-mean-imputation
+#| include: false
+
+df_mean_imp <- df_sla |>
+  mutate(
+    pretest = if_else(is.na(pretest), mean(pretest, na.rm = TRUE), pretest),
+    motivation = if_else(is.na(motivation), mean(motivation, na.rm = TRUE), motivation),
+    score_post = if_else(is.na(score_post), mean(score_post, na.rm = TRUE), score_post)
+  )
+
+fit_mean_imp <- lm(
+  score_post ~ treatment_num + pretest + motivation + anxiety + study_hours,
+  data = df_mean_imp
+)
+
+mean_imp_treat <- broom::tidy(fit_mean_imp, conf.int = TRUE) |>
+  filter(term == "treatment_num") |>
+  mutate(method = "Single mean imputation")
+```
+
+### 多重代入（MI）の考え方
+
+MI は、欠測値を 1 回だけ埋めるのではなく、複数回（`m` 回）代入し、推定結果を Rubin 則で統合する。これにより、**代入不確実性**が標準誤差に反映される[@rubin1987; @vanbuuren2018]。
+
+```{r}
+#| label: tbl-missing-basic-comparison
+#| echo: false
+
+bind_rows(cc_treat, mean_imp_treat) |>
+  transmute(
+    method,
+    estimate = estimate,
+    conf.low = conf.low,
+    conf.high = conf.high
+  ) |>
+  knitr::kable(digits = 3, caption = "Treatment effect under naive missing-data strategies.")
+```
+
+## 多重代入の実装（mice）
+
+`mice` は chained equations に基づく実務標準の実装である[@vanbuuren2011]。
+
+```{r}
+#| label: run-mi
+#| echo: true
+
+mi_df <- df_sla |>
+  select(score_post, treatment_num, pretest, motivation, anxiety, study_hours)
+
+imp <- mice(mi_df, m = 20, maxit = 10, seed = 20260302, printFlag = FALSE)
+
+fit_mi <- with(
+  imp,
+  lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours)
+)
+
+pool_mi <- pool(fit_mi)
+
+mi_treat <- summary(pool_mi, conf.int = TRUE) |>
+  as_tibble() |>
+  filter(term == "treatment_num") |>
+  transmute(
+    method = "MI (Rubin pooled)",
+    estimate,
+    std.error,
+    conf.low = `2.5 %`,
+    conf.high = `97.5 %`
+  )
+```
+
+このコードは次の 4 ステップを順に実行している。
+
+```{r}
+#| label: tbl-mi-execution-trace
+#| echo: false
+
+tibble::tribble(
+  ~step, ~処理内容, ~主なオブジェクト, ~読者が確認すべき点,
+  "1", "分析変数のみ抽出", "`mi_df`", "欠測を含む分析対象が正しく入っているか",
+  "2", "多重代入を実行 (`m = 20`)", "`imp`", "チェーンの安定性と代入法の妥当性",
+  "3", "各代入データで同一回帰を推定", "`fit_mi`", "式が主分析と一致しているか",
+  "4", "Rubin則で統合", "`pool_mi`", "推定値とSEが代入不確実性を反映しているか"
+) |>
+  knitr::kable(caption = "Execution trace of the MI pipeline.")
+```
+
+```{r}
+#| label: tbl-mi-imputation-example
+#| echo: false
+
+idx_pre <- which(is.na(mi_df$pretest))
+show_idx <- head(idx_pre, 5)
+
+mi_impute_example <- purrr::map_dfr(show_idx, function(i) {
+  vals <- vapply(1:5, function(m) mice::complete(imp, action = m)$pretest[i], numeric(1))
+  tibble(
+    row_id = i,
+    observed_pretest = mi_df$pretest[i],
+    imputed_values_m1_to_m5 = paste(round(vals, 2), collapse = ", "),
+    imputed_mean = mean(vals),
+    imputed_sd = sd(vals)
+  )
+})
+
+mi_impute_example |>
+  knitr::kable(digits = 2, caption = "Example: how one missing pretest value varies across imputations.")
+```
+
+### 代入モデルの設計
+
+実務では、分析モデルに入る変数に加え、欠測を説明しうる補助変数を代入モデルに含める。今回は最小例として、分析モデルと同じ変数集合で代入している[@vanbuuren2018]。
+
+### 収束確認と診断
+
+```{r}
+#| label: fig-mi-trace
+#| fig-cap: "Trace plots for imputation chains."
+#| fig-width: 7
+#| fig-height: 5
+
+plot(imp)
+```
+
+チェーンが大きくドリフトせず、各反復で安定に混ざっていれば実務上は許容しやすい。
+
+### 推定結果の統合（pool）
+
+```{r}
+#| label: tbl-mi-main
+#| echo: false
+
+summary(pool_mi, conf.int = TRUE) |>
+  as_tibble() |>
+  select(term, estimate, std.error, statistic, p.value, `2.5 %`, `97.5 %`) |>
+  knitr::kable(digits = 3, caption = "Pooled regression results after multiple imputation.")
+```
+
+### 感度分析（MNARを想定したずらし）
+
+MAR は仮定であるため、MNAR を想定して「欠測だったアウトカムを何点ずらすと結論が変わるか」を確認する。ここではデルタ法（pattern-mixture 的なシフト）を使う[@carpenter2013]。
+
+```{r}
+#| label: delta-sensitivity
+#| echo: true
+
+is_score_missing <- is.na(mi_df$score_post)
+imp_list <- mice::complete(imp, action = "all")
+
+delta_grid <- c(0, -2, -4)
+
+delta_results <- purrr::map_dfr(delta_grid, function(delta) {
+  model_list <- purrr::map(imp_list, function(dat) {
+    dat_adj <- dat
+    dat_adj$score_post[is_score_missing] <- dat_adj$score_post[is_score_missing] + delta
+    lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = dat_adj)
+  })
+
+  pool_term(model_list, term = "treatment_num") |>
+    mutate(delta = delta)
+})
+```
+
+上のコードでは、**もともと欠測だった `score_post` だけ**を `delta` 点ずつ平行移動し、処置効果がどこで崩れるかを調べている。`delta = -4` でも効果方向が維持されるなら、MNAR に対して比較的頑健と解釈できる。
+
+```{r}
+#| label: fig-delta-sensitivity
+#| fig-cap: "Delta-based MNAR sensitivity for treatment effect."
+#| fig-width: 7
+#| fig-height: 4
+
+ggplot(delta_results, aes(x = delta, y = estimate)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = delta_grid) +
+  labs(x = "Delta shift for originally missing outcome", y = "Treatment effect") +
+  theme_book
+```
+
+## モデルベースの欠測処理
+
+### FIMLの考え方
+
+FIML は、欠測を含む各ケースの尤度を直接最大化する方法で、SEM 文脈でよく使われる[@enders2010; @rosseel2012]。
+
+```{r}
+#| label: run-fiml
+#| include: false
+
+fiml_model <- "
+  score_post ~ treatment_num + pretest + motivation + anxiety + study_hours
+"
+
+fit_fiml <- lavaan::sem(
+  model = fiml_model,
+  data = mi_df,
+  missing = "fiml",
+  fixed.x = FALSE
+)
+
+fiml_treat <- lavaan::parameterEstimates(fit_fiml, ci = TRUE) |>
+  as_tibble() |>
+  filter(lhs == "score_post", op == "~", rhs == "treatment_num") |>
+  transmute(
+    method = "FIML (lavaan)",
+    estimate = est,
+    std.error = se,
+    conf.low = ci.lower,
+    conf.high = ci.upper
+  )
+```
+
+### MIとFIMLの使い分け
+
+```{r}
+#| label: tbl-mi-fiml
+#| echo: false
+
+bind_rows(mi_treat, fiml_treat) |>
+  knitr::kable(digits = 3, caption = "Treatment effect: MI vs FIML.")
+```
+
+- 多様な分析モデル（非線形・機械学習）に接続しやすいのは MI
+- SEM 系で一貫して扱うなら FIML が実装しやすい
+- 実務では両方実行し、主要結論が一致するかを確認する
+
+### 縦断・階層データでの注意点
+
+- 縦断では時点間相関を保つ代入モデル（2-level MI 等）を使う
+- クラスタデータではクラス/学校 ID を代入モデルに反映する
+- 欠測が波及的に起こる場合、ドロップアウト機構の感度分析を明示する
+
+## ロバスト統計の実装
+
+### ロバスト平均比較（trimmed mean, Yuen）
+
+```{r}
+#| label: robust-trimmed-test
+#| echo: true
+
+group_df <- df_sla |>
+  filter(!is.na(score_post)) |>
+  select(score_post, treatment)
+
+trimmed_diff <- with(
+  group_df,
+  mean(score_post[treatment == "Treatment"], trim = 0.2) -
+    mean(score_post[treatment == "Control"], trim = 0.2)
+)
+
+boot_trim_diff <- function(data, idx) {
+  d <- data[idx, ]
+  mean(d$score_post[d$treatment == "Treatment"], trim = 0.2) -
+    mean(d$score_post[d$treatment == "Control"], trim = 0.2)
+}
+
+boot_trim <- boot::boot(group_df, statistic = boot_trim_diff, R = 2000)
+boot_trim_ci <- boot::boot.ci(boot_trim, type = "perc")
+
+perm_stats <- replicate(2000, {
+  shuffled <- sample(group_df$treatment)
+  mean(group_df$score_post[shuffled == "Treatment"], trim = 0.2) -
+    mean(group_df$score_post[shuffled == "Control"], trim = 0.2)
+})
+perm_p <- mean(abs(perm_stats) >= abs(trimmed_diff))
+
+trimmed_tbl <- tibble(
+  method = "20% trimmed mean difference",
+  estimate = trimmed_diff,
+  conf.low = boot_trim_ci$percent[4],
+  conf.high = boot_trim_ci$percent[5],
+  p_perm = perm_p
+)
+```
+
+```{r}
+#| label: tbl-trimmed-result
+#| echo: false
+
+trimmed_tbl |>
+  knitr::kable(digits = 3, caption = "Robust group comparison via trimmed mean + permutation test.")
+```
+
+Yuen 検定はロバスト平均比較の代表法であり、必要なら `WRS2::yuen()` を追加で使う[@yuen1974; @wilcox2012]。
+
+### ロバスト回帰（M推定, 分位点回帰）
+
+```{r}
+#| label: robust-regression-models
+#| include: false
+
+fit_ols <- lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = cc_df)
+fit_m <- MASS::rlm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = cc_df, psi = MASS::psi.huber)
+fit_q50 <- quantreg::rq(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = cc_df, tau = 0.5)
+
+coef_ols <- broom::tidy(fit_ols, conf.int = TRUE) |>
+  filter(term == "treatment_num") |>
+  transmute(method = "OLS", estimate, se = std.error, conf.low, conf.high)
+
+coef_m <- {
+  sm <- summary(fit_m)
+  est <- sm$coefficients["treatment_num", "Value"]
+  se <- sm$coefficients["treatment_num", "Std. Error"]
+  tibble(method = "M-estimation (Huber)", estimate = est, se = se, conf.low = est - 1.96 * se, conf.high = est + 1.96 * se)
+}
+
+coef_q <- {
+  sq <- summary(fit_q50, se = "nid")
+  est <- sq$coefficients["treatment_num", "Value"]
+  se <- sq$coefficients["treatment_num", "Std. Error"]
+  tibble(method = "Quantile regression (tau = 0.5)", estimate = est, se = se, conf.low = est - 1.96 * se, conf.high = est + 1.96 * se)
+}
+
+robust_reg_tbl <- bind_rows(coef_ols, coef_m, coef_q)
+```
+
+```{r}
+#| label: tbl-robust-regression
+#| echo: false
+
+robust_reg_tbl |>
+  knitr::kable(digits = 3, caption = "Treatment effect across OLS and robust regression models.")
+```
+
+M 推定は外れ値の影響を重みづけで抑え、分位点回帰は中央値など条件付き分位点の効果を直接見る[@huber1964; @koenker1978]。
+
+### ロバスト標準誤差（HC3, クラスタロバスト）
+
+```{r}
+#| label: robust-se-models
+#| include: false
+
+se_std <- lmtest::coeftest(fit_ols)
+se_hc3 <- lmtest::coeftest(fit_ols, vcov. = sandwich::vcovHC(fit_ols, type = "HC3"))
+se_cluster <- lmtest::coeftest(fit_ols, vcov. = sandwich::vcovCL(fit_ols, cluster = cc_df$class_id, type = "HC1"))
+
+robust_se_tbl <- tibble(
+  method = c("Conventional SE", "HC3", "Cluster-robust (class_id)"),
+  estimate = c(se_std["treatment_num", "Estimate"], se_hc3["treatment_num", "Estimate"], se_cluster["treatment_num", "Estimate"]),
+  se = c(se_std["treatment_num", "Std. Error"], se_hc3["treatment_num", "Std. Error"], se_cluster["treatment_num", "Std. Error"]),
+  p_value = c(se_std["treatment_num", "Pr(>|t|)"], se_hc3["treatment_num", "Pr(>|t|)"], se_cluster["treatment_num", "Pr(>|t|)"])
+)
+```
+
+```{r}
+#| label: tbl-robust-se
+#| echo: false
+
+robust_se_tbl |>
+  knitr::kable(digits = 3, caption = "Treatment effect with conventional vs robust standard errors.")
+```
+
+HC3 は小標本でも比較的安定な異分散ロバスト推定量として使われる[@white1980; @mackinnon1985]。
+
+### 置換検定・ブートストラップ
+
+ここで使う `cc_df` は、上で生成したシミュレーションデータ `df_sla` から欠測行を除いた完全ケースである。つまり、以下の検定も「架空データに対する実行例」ではあるが、Rの実装としてはそのまま実データに移植できる。
+
+```{r}
+#| label: bootstrap-coef
+#| echo: true
+
+boot_coef <- function(data, idx) {
+  d <- data[idx, ]
+  coef(lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = d))["treatment_num"]
+}
+
+boot_fit <- boot::boot(cc_df, statistic = boot_coef, R = 2000)
+boot_coef_ci <- boot::boot.ci(boot_fit, type = "perc")
+
+boot_tbl <- tibble(
+  method = "Bootstrap percentile CI",
+  estimate = coef(fit_ols)["treatment_num"],
+  conf.low = boot_coef_ci$percent[4],
+  conf.high = boot_coef_ci$percent[5]
+)
+```
+
+```{r}
+#| label: tbl-bootstrap
+#| echo: false
+
+boot_tbl |>
+  knitr::kable(digits = 3, caption = "Bootstrap CI for treatment effect.")
+```
+
+```{r}
+#| label: fig-bootstrap-distribution
+#| fig-cap: "Bootstrap sampling distribution of treatment effect (simulated data)."
+#| fig-width: 7
+#| fig-height: 4.2
+
+boot_draws <- tibble(estimate = as.numeric(boot_fit$t))
+
+ggplot(boot_draws, aes(x = estimate)) +
+  geom_histogram(bins = 40, fill = "grey70", color = "white") +
+  geom_vline(xintercept = boot_tbl$estimate, color = "red", linewidth = 1) +
+  geom_vline(xintercept = c(boot_tbl$conf.low, boot_tbl$conf.high), linetype = "dashed", color = "blue") +
+  labs(x = "Bootstrap treatment-effect estimate", y = "Count") +
+  theme_book
+```
+
+```{r}
+#| label: fig-permutation-null-trimmed
+#| fig-cap: "Permutation null distribution for the trimmed-mean difference."
+#| fig-width: 7
+#| fig-height: 4.2
+
+perm_df <- tibble(stat = perm_stats)
+
+ggplot(perm_df, aes(x = stat)) +
+  geom_histogram(bins = 40, fill = "grey70", color = "white") +
+  geom_vline(xintercept = trimmed_diff, color = "red", linewidth = 1) +
+  labs(x = "Trimmed-mean difference under label permutation", y = "Count") +
+  theme_book
+```
+
+`p_perm` は「ラベルを入れ替えても、観測された差以上の差がどれくらい出るか」を直接数えている。正規分布近似に頼らず、コード上の resampling 手順そのもので p 値を構成している点が置換検定の要点である。
+
+ブートストラップは分布仮定に依存しにくい不確実性評価として有用である[@efron1993]。
+
+### ノンパラメトリック検定（順位ベース）
+
+ロバスト統計の入口として、順位ベースのノンパラメトリック検定は実務で広く使われている。ただし「ノンパラ = 常に安全」ではなく、何を検定しているか（位置差か分布差か）を明確にする必要がある[@fay2010]。
+
+::: {.callout-tip}
+### 参考になるチュートリアル文献
+
+- Wilcoxon/Mann-Whitney の解釈整理: Fay & Proschan (2010)[@fay2010]
+- 条件付き推測・置換検定の実装: `coin` パッケージ論文[@hothorn2008coin]
+- 反復測定・縦断のノンパラ手法: `nparLD` パッケージ論文[@noguchi2012]
+- 因子計画の順位ベース推定: `rankFD` 論文[@konietschke2023]
+:::
+
+#### 2群比較: Wilcoxon rank-sum + 順位効果量
+
+```{r}
+#| label: nonparam-two-group
+#| echo: true
+
+wilcox_rs <- wilcox.test(
+  score_post ~ treatment,
+  data = group_df,
+  exact = FALSE,
+  conf.int = TRUE
+)
+
+# Rank-biserial correlation (Treatment advantage if positive)
+ranks <- rank(group_df$score_post, ties.method = "average")
+n_t <- sum(group_df$treatment == "Treatment")
+n_c <- sum(group_df$treatment == "Control")
+r_t <- sum(ranks[group_df$treatment == "Treatment"])
+u_t <- r_t - n_t * (n_t + 1) / 2
+rank_biserial <- 2 * u_t / (n_t * n_c) - 1
+
+wilcox_tbl <- tibble(
+  test = "Wilcoxon rank-sum",
+  statistic_w = unname(wilcox_rs$statistic),
+  p_value = wilcox_rs$p.value,
+  conf_low = wilcox_rs$conf.int[1],
+  conf_high = wilcox_rs$conf.int[2],
+  rank_biserial = rank_biserial
+)
+```
+
+```{r}
+#| label: tbl-nonparam-two-group
+#| echo: false
+
+wilcox_tbl |>
+  knitr::kable(digits = 3, caption = "Two-group nonparametric comparison with rank-biserial effect size.")
+```
+
+```{r}
+#| label: fig-nonparam-ecdf
+#| fig-cap: "Empirical CDF by group (nonparametric group-shift diagnostic)."
+#| fig-width: 6.5
+#| fig-height: 4.2
+
+ggplot(group_df, aes(x = score_post, color = treatment)) +
+  stat_ecdf(linewidth = 1) +
+  labs(x = "Post-test score", y = "ECDF", color = "Group") +
+  theme_book
+```
+
+#### 3群以上: Kruskal-Wallis + 多重比較
+
+```{r}
+#| label: nonparam-kw
+#| echo: true
+
+kw_df <- cc_df |>
+  mutate(
+    pretest_group = dplyr::ntile(pretest, 3),
+    pretest_group = factor(pretest_group, levels = c(1, 2, 3), labels = c("Low", "Mid", "High"))
+  )
+
+kw_fit <- kruskal.test(score_post ~ pretest_group, data = kw_df)
+kw_pair <- pairwise.wilcox.test(
+  kw_df$score_post,
+  kw_df$pretest_group,
+  p.adjust.method = "holm",
+  exact = FALSE
+)
+
+kw_main_tbl <- tibble(
+  test = "Kruskal-Wallis",
+  statistic = unname(kw_fit$statistic),
+  df = unname(kw_fit$parameter),
+  p_value = kw_fit$p.value
+)
+
+kw_pair_tbl <- as.data.frame(as.table(kw_pair$p.value)) |>
+  as_tibble() |>
+  rename(group_1 = Var1, group_2 = Var2, p_adjusted = Freq) |>
+  filter(!is.na(p_adjusted))
+```
+
+```{r}
+#| label: tbl-nonparam-kw-main
+#| echo: false
+
+kw_main_tbl |>
+  knitr::kable(digits = 3, caption = "Kruskal-Wallis omnibus test.")
+```
+
+```{r}
+#| label: tbl-nonparam-kw-pairwise
+#| echo: false
+
+kw_pair_tbl |>
+  knitr::kable(digits = 3, caption = "Pairwise Wilcoxon tests (Holm-adjusted p-values).")
+```
+
+#### 反復測定: Friedman 検定
+
+```{r}
+#| label: nonparam-friedman
+#| echo: true
+
+n_subj <- 90
+id_tbl <- tibble(id = factor(seq_len(n_subj)), u = rnorm(n_subj, 0, 6))
+
+fried_df <- tidyr::crossing(
+  id = id_tbl$id,
+  time = factor(c("Pre", "Mid", "Post"), levels = c("Pre", "Mid", "Post"))
+) |>
+  left_join(id_tbl, by = "id") |>
+  mutate(
+    score = 52 + u + case_when(time == "Pre" ~ 0, time == "Mid" ~ 3.5, TRUE ~ 6.0) + rt(n(), df = 5) * 2
+  ) |>
+  select(id, time, score)
+
+fried_fit <- friedman.test(score ~ time | id, data = fried_df)
+fried_pair <- pairwise.wilcox.test(
+  fried_df$score,
+  fried_df$time,
+  paired = TRUE,
+  p.adjust.method = "holm",
+  exact = FALSE
+)
+
+k_time <- nlevels(fried_df$time)
+kendall_w <- unname(fried_fit$statistic) / (n_subj * (k_time - 1))
+
+fried_tbl <- tibble(
+  test = "Friedman",
+  statistic = unname(fried_fit$statistic),
+  df = unname(fried_fit$parameter),
+  p_value = fried_fit$p.value,
+  kendall_w = kendall_w
+)
+
+fried_pair_tbl <- as.data.frame(as.table(fried_pair$p.value)) |>
+  as_tibble() |>
+  rename(time_1 = Var1, time_2 = Var2, p_adjusted = Freq) |>
+  filter(!is.na(p_adjusted))
+```
+
+```{r}
+#| label: tbl-nonparam-friedman-main
+#| echo: false
+
+fried_tbl |>
+  knitr::kable(digits = 3, caption = "Friedman test with Kendall's W effect size.")
+```
+
+```{r}
+#| label: tbl-nonparam-friedman-pairwise
+#| echo: false
+
+fried_pair_tbl |>
+  knitr::kable(digits = 3, caption = "Pairwise Wilcoxon signed-rank tests (Holm-adjusted).")
+```
+
+ノンパラメトリック検定を使う場合も、効果量（順位相関、Kendall's W など）と実質的な差の大きさを併記することが重要である。
+
+#### 他章との接続マップ（Mokkenを含む）
+
+第12章のモッケン尺度分析は、同じ「ノンパラメトリック」でも Wilcoxon/Kruskal/Friedman とは目的が異なる。前者は**尺度の成立性（項目集合の順序構造）**を検証し、後者は**群差・時点差**を検証する。両者を接続すると、探索から確認までの分析設計が明確になる[@mokken1971; @sijtsma2002; @vanderark2007; @sijtsmavanderark2017]。
+
+```{r}
+#| label: tbl-mokken-vs-rank-tests
+#| echo: false
+
+tibble::tribble(
+  ~観点, ~`Mokken尺度分析（第12章）`, ~`順位ベース検定（本章）`,
+  "主目的", "項目集合が尺度として成立するか（H, Hi, IIO）", "群差・時点差の有無を検定する",
+  "分析単位", "項目反応（item-level）", "参加者スコア（person-level）",
+  "主な出力", "H係数, 単調性, IIO, 尺度候補", "p値, 順位効果量, 事後比較",
+  "典型的次ステップ", "GRM/MIRT/PCMで確認的推定へ", "回帰・混合効果・因果推論へ"
+) |>
+  knitr::kable(caption = "Mokken scale analysis and rank-based tests are complementary, not interchangeable.")
+```
+
+```{r}
+#| label: tbl-nonparam-crosswalk
+#| echo: false
+
+tibble::tribble(
+  ~研究フェーズ, ~`ノンパラ/ロバスト手法`, ~`接続先（本書）`, ~実務での接続ルール,
+  "尺度開発（順序項目）", "Mokken（H, Hi, IIO）", "第12章: GRM/MIRT/PCM", "探索(Mokken)で項目選別 -> 確認的IRTへ",
+  "2群比較（歪み・外れ値あり）", "Wilcoxon + 順位効果量", "第1章・第4章", "順位差の確認後、回帰で共変量調整",
+  "3群以上比較", "Kruskal-Wallis + 事後比較", "第2章（ANOVA）", "分布差を確認後、必要に応じGLM/ロバスト回帰",
+  "反復測定", "Friedman + Kendall's W", "第6章（混合効果）", "順位ベースで傾向確認 -> GLMM/LMMでモデル化",
+  "因果推論の頑健性", "置換検定・仕様曲線", "第18章（因果推論）", "推定値の符号・大きさが仕様変更で維持されるか確認",
+  "時系列・RT", "変換比較 + 共通尺度評価", "第13章（時系列）, 本章RT節", "AIC/LRTの適用条件を満たす比較だけ実施"
+) |>
+  knitr::kable(caption = "Crosswalk: how nonparametric/robust analyses connect to other chapters.")
+```
+
+Mokken を含むノンパラ系の推奨フローは次の通り。
+
+1. 項目データなら Mokken で尺度成立性を先に確認する（第12章）
+2. 参加者スコア比較なら順位ベース検定で分布差を点検する（本章）
+3. 主要結論は回帰/混合効果/因果推論で再推定し、効果量と信頼区間で統合報告する
+4. 最後に multiverse で仕様依存性（外れ値・変換・モデル族）を開示する
+
+### Multiverse Analysis（外れ値除外仕様の頑健性）
+
+外れ値の扱いは研究者の裁量が入りやすく、仕様が変わると結論が大きく動くことがある。そこで、合理的に選び得る複数仕様を同時に走らせ、推定値の分布として結論の安定性を評価する。これが Multiverse Analysis の基本発想である[@steegen2016; @simonsohn2020]。
+
+```{r}
+#| label: multiverse-outlier-specs
+#| include: false
+
+apply_outlier_rule <- function(dat, rule) {
+  if (rule == "None") {
+    return(dat)
+  }
+
+  if (rule == "Abs z(score_post) <= 3") {
+    z <- as.numeric(scale(dat$score_post))
+    return(dat[abs(z) <= 3, , drop = FALSE])
+  }
+
+  if (rule == "IQR fence (1.5*IQR)") {
+    q <- quantile(dat$score_post, probs = c(0.25, 0.75), na.rm = TRUE)
+    iqr <- q[2] - q[1]
+    lower <- q[1] - 1.5 * iqr
+    upper <- q[2] + 1.5 * iqr
+    return(dat |> filter(score_post >= lower, score_post <= upper))
+  }
+
+  if (rule == "Cook's D <= 4/n") {
+    fit <- lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = dat)
+    keep <- cooks.distance(fit) <= (4 / nrow(dat))
+    return(dat[keep, , drop = FALSE])
+  }
+
+  stop("Unknown outlier rule: ", rule)
+}
+
+fit_spec <- function(dat, estimator) {
+  if (estimator == "OLS (conventional SE)") {
+    fit <- lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = dat)
+    td <- broom::tidy(fit, conf.int = TRUE) |> filter(term == "treatment_num")
+
+    return(
+      tibble(
+        n_used = nrow(dat),
+        estimate = td$estimate,
+        std.error = td$std.error,
+        conf.low = td$conf.low,
+        conf.high = td$conf.high
+      )
+    )
+  }
+
+  if (estimator == "OLS + HC3") {
+    fit <- lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = dat)
+    ct <- lmtest::coeftest(fit, vcov. = sandwich::vcovHC(fit, type = "HC3"))
+    est <- unname(ct["treatment_num", "Estimate"])
+    se <- unname(ct["treatment_num", "Std. Error"])
+
+    return(
+      tibble(
+        n_used = nrow(dat),
+        estimate = est,
+        std.error = se,
+        conf.low = est - 1.96 * se,
+        conf.high = est + 1.96 * se
+      )
+    )
+  }
+
+  if (estimator == "M-estimation (Huber)") {
+    fit <- MASS::rlm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = dat, psi = MASS::psi.huber)
+    sm <- summary(fit)
+    est <- sm$coefficients["treatment_num", "Value"]
+    se <- sm$coefficients["treatment_num", "Std. Error"]
+
+    return(
+      tibble(
+        n_used = nrow(dat),
+        estimate = est,
+        std.error = se,
+        conf.low = est - 1.96 * se,
+        conf.high = est + 1.96 * se
+      )
+    )
+  }
+
+  stop("Unknown estimator: ", estimator)
+}
+
+outlier_rules <- c(
+  "None",
+  "Abs z(score_post) <= 3",
+  "IQR fence (1.5*IQR)",
+  "Cook's D <= 4/n"
+)
+
+estimators <- c(
+  "OLS (conventional SE)",
+  "OLS + HC3",
+  "M-estimation (Huber)"
+)
+
+multiverse_results <- tidyr::crossing(
+  outlier_rule = outlier_rules,
+  estimator = estimators
+) |>
+  mutate(
+    data = purrr::map(outlier_rule, ~ apply_outlier_rule(cc_df, .x)),
+    fit = purrr::map2(data, estimator, fit_spec)
+  ) |>
+  select(-data) |>
+  tidyr::unnest(fit) |>
+  mutate(
+    ci_excludes_zero = conf.low > 0 | conf.high < 0
+  ) |>
+  arrange(estimate) |>
+  mutate(spec_id = row_number())
+```
+
+```{r}
+#| label: tbl-multiverse
+#| echo: false
+
+multiverse_results |>
+  select(spec_id, outlier_rule, estimator, n_used, estimate, conf.low, conf.high, ci_excludes_zero) |>
+  mutate(ci_excludes_zero = if_else(ci_excludes_zero, "Yes", "No")) |>
+  knitr::kable(digits = 3, caption = "Multiverse analysis across outlier-handling specifications.")
+```
+
+```{r}
+#| label: fig-multiverse-spec-curve
+#| fig-cap: "Specification curve for treatment effect under outlier-handling multiverse."
+#| fig-width: 8
+#| fig-height: 4.5
+
+ggplot(multiverse_results, aes(x = spec_id, y = estimate, color = estimator, shape = outlier_rule)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.15, alpha = 0.8) +
+  geom_point(size = 2) +
+  labs(x = "Specification ID (sorted by estimate)", y = "Treatment effect") +
+  theme_book
+```
+
+```{r}
+#| label: tbl-multiverse-summary
+#| echo: false
+
+multiverse_results |>
+  summarize(
+    n_specs = n(),
+    min_estimate = min(estimate),
+    max_estimate = max(estimate),
+    share_ci_excludes_zero = mean(ci_excludes_zero)
+  ) |>
+  mutate(share_ci_excludes_zero = scales::percent(share_ci_excludes_zero, accuracy = 0.1)) |>
+  knitr::kable(digits = 3, caption = "Summary of multiverse stability.")
+```
+
+実務では、外れ値除外の「正解」を1つに固定するよりも、合理的な複数仕様で効果の符号・大きさ・有意性が維持されるかを報告する方が透明性が高い。
+
+### 反応時間データの変換比較（逆変換・対数変換・Gamma回帰）
+
+反応時間（RT）は正の値のみを取り、右裾の長い分布になりやすい。このため、SLA・心理言語学の研究では、`log(RT)` や `1/RT`（速度指標）への変換、あるいは生データを目的変数とする Gamma 回帰が使われる[@whelan2008; @lo2015]。
+
+```{r}
+#| label: simulate-rt-data
+#| include: false
+
+n_rt <- 900
+condition_num <- rbinom(n_rt, 1, 0.5)
+proficiency_z <- rnorm(n_rt)
+word_freq_z <- rnorm(n_rt)
+
+# True DGP on raw milliseconds (positive, right-skewed)
+eta_rt <- 6.35 - 0.10 * condition_num - 0.07 * proficiency_z - 0.12 * word_freq_z
+mu_rt <- exp(eta_rt)
+shape_rt <- 9
+
+rt_ms <- rgamma(n_rt, shape = shape_rt, scale = mu_rt / shape_rt)
+
+# Occasional attentional lapses (long right tail)
+lapse <- rbinom(n_rt, 1, 0.02) == 1
+rt_ms[lapse] <- rt_ms[lapse] + rexp(sum(lapse), rate = 1 / 600) + 600
+
+rt_df <- tibble(
+  rt_ms = rt_ms,
+  condition_num = condition_num,
+  condition = factor(condition_num, levels = c(0, 1), labels = c("Control", "Treatment")),
+  proficiency_z = proficiency_z,
+  word_freq_z = word_freq_z
+)
+```
+
+```{r}
+#| label: fig-rt-distribution
+#| fig-cap: "Raw RT distribution is typically positive and right-skewed."
+#| fig-width: 7
+#| fig-height: 4
+
+ggplot(rt_df, aes(x = rt_ms)) +
+  geom_histogram(bins = 40, fill = "steelblue", color = "white") +
+  labs(x = "Reaction time (ms)", y = "Count") +
+  theme_book
+```
+
+```{r}
+#| label: fig-rt-transform-distribution
+#| fig-cap: "Distribution under common RT scales (raw, log, inverse-speed)."
+#| fig-width: 8
+#| fig-height: 4.8
+
+rt_df |>
+  transmute(
+    condition,
+    `Raw RT (ms)` = rt_ms,
+    `log(RT)` = log(rt_ms),
+    `1000/RT` = 1000 / rt_ms
+  ) |>
+  pivot_longer(cols = -condition, names_to = "scale", values_to = "value") |>
+  ggplot(aes(x = value, fill = condition)) +
+  geom_density(alpha = 0.3) +
+  facet_wrap(~ scale, scales = "free", nrow = 1) +
+  labs(x = "Value", y = "Density", fill = "Group") +
+  theme_book
+```
+
+```{r}
+#| label: fit-rt-models
+#| include: false
+
+fit_rt_gamma <- glm(
+  rt_ms ~ condition_num + proficiency_z + word_freq_z,
+  family = Gamma(link = "log"),
+  data = rt_df
+)
+
+fit_rt_log <- lm(
+  log(rt_ms) ~ condition_num + proficiency_z + word_freq_z,
+  data = rt_df
+)
+
+fit_rt_inv <- lm(
+  I(1000 / rt_ms) ~ condition_num + proficiency_z + word_freq_z,
+  data = rt_df
+)
+
+# Same reference profile to translate all models back to milliseconds
+ref_prof <- tibble(
+  condition_num = c(0, 1),
+  proficiency_z = 0,
+  word_freq_z = 0
+)
+
+pred_gamma <- predict(fit_rt_gamma, newdata = ref_prof, type = "response")
+smearing_log <- mean(exp(residuals(fit_rt_log)))
+pred_log <- exp(predict(fit_rt_log, newdata = ref_prof)) * smearing_log
+pred_speed <- predict(fit_rt_inv, newdata = ref_prof)
+pred_inv <- 1000 / pmax(pred_speed, 1e-6)
+
+rt_pred_tbl <- tibble(
+  model = c("Gamma GLM (raw RT)", "LM on log(RT)", "LM on 1000/RT"),
+  control_ms = c(pred_gamma[1], pred_log[1], pred_inv[1]),
+  treatment_ms = c(pred_gamma[2], pred_log[2], pred_inv[2])
+) |>
+  mutate(
+    diff_ms = treatment_ms - control_ms,
+    ratio = treatment_ms / control_ms
+  )
+
+# Coefficient-scale summaries (for interpretation)
+beta_gamma <- coef(fit_rt_gamma)["condition_num"]
+beta_log <- coef(fit_rt_log)["condition_num"]
+beta_inv <- coef(fit_rt_inv)["condition_num"]
+
+rt_coef_tbl <- tibble(
+  model = c("Gamma GLM (raw RT, log link)", "LM on log(RT)", "LM on 1000/RT"),
+  coefficient_scale = c("log milliseconds", "log milliseconds", "speed (1/s)"),
+  beta_condition = c(beta_gamma, beta_log, beta_inv),
+  multiplicative_change = c(exp(beta_gamma), exp(beta_log), NA_real_)
+)
+```
+
+```{r}
+#| label: tbl-rt-coef
+#| echo: false
+
+rt_coef_tbl |>
+  mutate(
+    pct_change_ms = if_else(is.na(multiplicative_change), NA_real_, (multiplicative_change - 1) * 100)
+  ) |>
+  select(model, coefficient_scale, beta_condition, multiplicative_change, pct_change_ms) |>
+  knitr::kable(digits = 3, caption = "Condition effect on each model's native scale.")
+```
+
+```{r}
+#| label: tbl-rt-original-scale
+#| echo: false
+
+rt_pred_tbl |>
+  knitr::kable(digits = 2, caption = "Model-implied RT in milliseconds at a shared reference profile.")
+```
+
+#### AIC と対数尤度比（LRT）に関する重要な注意
+
+`log(RT)` 回帰と `1/RT` 回帰と Gamma 回帰は、**目的変数そのものの定義が異なる**。この場合、AIC を並べても「同じ応答変数を別モデルで説明した」比較にはならないため、モデル優劣の根拠としては不適切である[@burnham2002]。  
+同様に、LRT は「同じ応答変数・同じ尤度族・入れ子モデル」でのみ妥当であり、Gamma vs log-LM のような横断比較には使えない。
+
+```{r}
+#| label: tbl-rt-aic-note
+#| echo: false
+
+tibble(
+  model = c("Gamma GLM (raw RT)", "LM on log(RT)", "LM on 1000/RT"),
+  response_definition = c("RT (ms)", "log(RT)", "1000/RT"),
+  aic = c(AIC(fit_rt_gamma), AIC(fit_rt_log), AIC(fit_rt_inv)),
+  note = "Different response definition -> not directly comparable"
+) |>
+  knitr::kable(digits = 2, caption = "AIC values shown for reference only (no direct cross-model ranking).")
+```
+
+```{r}
+#| label: tbl-valid-lrt-example
+#| echo: false
+
+fit_rt_gamma_reduced <- glm(
+  rt_ms ~ proficiency_z + word_freq_z,
+  family = Gamma(link = "log"),
+  data = rt_df
+)
+
+anova(fit_rt_gamma_reduced, fit_rt_gamma, test = "LRT") |>
+  broom::tidy() |>
+  knitr::kable(digits = 3, caption = "Valid LRT example: nested Gamma models with the same response.")
+```
+
+比較したい場合は、**同じ評価軸（ms）に戻した予測性能**で比較する。
+
+```{r}
+#| label: cv-rt-models
+#| include: false
+
+score_rt_model <- function(train, test, model_name) {
+  if (model_name == "Gamma GLM (raw RT)") {
+    fit <- glm(rt_ms ~ condition_num + proficiency_z + word_freq_z, family = Gamma(link = "log"), data = train)
+    pred <- predict(fit, newdata = test, type = "response")
+  } else if (model_name == "LM on log(RT)") {
+    fit <- lm(log(rt_ms) ~ condition_num + proficiency_z + word_freq_z, data = train)
+    smear <- mean(exp(residuals(fit)))
+    pred <- exp(predict(fit, newdata = test)) * smear
+  } else if (model_name == "LM on 1000/RT") {
+    fit <- lm(I(1000 / rt_ms) ~ condition_num + proficiency_z + word_freq_z, data = train)
+    speed_hat <- predict(fit, newdata = test)
+    pred <- 1000 / pmax(speed_hat, 1e-6)
+  } else {
+    stop("Unknown model: ", model_name)
+  }
+
+  tibble(
+    rmse = sqrt(mean((test$rt_ms - pred)^2)),
+    mae = mean(abs(test$rt_ms - pred))
+  )
+}
+
+k <- 5
+set.seed(20260302)
+fold_id <- sample(rep(seq_len(k), length.out = nrow(rt_df)))
+
+rt_models <- c("Gamma GLM (raw RT)", "LM on log(RT)", "LM on 1000/RT")
+
+cv_rt <- tidyr::crossing(
+  fold = seq_len(k),
+  model = rt_models
+) |>
+  mutate(
+    metrics = purrr::map2(fold, model, \(fd, md) {
+      train <- rt_df[fold_id != fd, , drop = FALSE]
+      test <- rt_df[fold_id == fd, , drop = FALSE]
+      score_rt_model(train, test, md)
+    })
+  ) |>
+  tidyr::unnest(metrics)
+
+cv_rt_summary <- cv_rt |>
+  group_by(model) |>
+  summarize(
+    cv_rmse_ms = mean(rmse),
+    cv_mae_ms = mean(mae),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| label: tbl-rt-cv
+#| echo: false
+
+cv_rt_summary |>
+  knitr::kable(digits = 2, caption = "5-fold CV performance on the common millisecond scale.")
+```
+
+実務上の推奨は次の通り。
+
+1. 主要結論は「共通スケール（ms）での予測・効果量」に戻して報告する
+2. AIC/LRT は妥当条件を満たす比較に限定する
+3. 変換・分布仮定そのものを multiverse の一部として開示する
+
+### 発展拡張トピック（相関・PERMANOVA・MDS・t-SNE/UMAP・平滑化・CR2）
+
+ご指摘の通り、実務では次の手法群をセットで使うと分析の頑健性が上がる。
+
+::: {.callout-note}
+### 可視化実装で参照した公式ドキュメント
+
+- ggplot2 リファレンス: [https://ggplot2.tidyverse.org/reference/](https://ggplot2.tidyverse.org/reference/)
+- `vegan::adonis2` / `betadisper`: [https://vegandevs.github.io/vegan/reference/adonis.html](https://vegandevs.github.io/vegan/reference/adonis.html)
+- `Rtsne` パッケージ: [https://cran.r-project.org/package=Rtsne](https://cran.r-project.org/package=Rtsne)
+- `uwot::umap` リファレンス: [https://jlmelville.github.io/uwot/reference/umap.html](https://jlmelville.github.io/uwot/reference/umap.html)
+:::
+
+```{r}
+#| label: tbl-advanced-topics-map
+#| echo: false
+
+tibble::tribble(
+  ~トピック, ~主な用途, ~本書の接続先, ~この章での位置づけ,
+  "相関 + 効果量", "単調関係の確認と実質的効果の報告", "第1章, 第4章", "前処理・探索の基準線",
+  "PERMANOVA", "多変量アウトカムの群差検定", "第3章, 第16章", "分布仮定を弱めた多変量検定",
+  "MDS / t-SNE / UMAP", "高次元構造の可視化", "第9章, 第19章", "構造探索・仮説生成",
+  "LOESS/LOWESS", "非線形トレンドの記述", "第5章, 第13章", "モデル化前の滑らかな傾向確認",
+  "スプライン回帰", "非線形効果の半パラメトリック推定", "第5章", "解釈可能な非線形回帰",
+  "カーネル回帰", "局所平均に基づく平滑化", "第13章", "モデル非依存の関係確認",
+  "cluster-robust / sandwich", "クラスタ依存を考慮した推論", "第6章, 第18章", "主分析の標準誤差感度分析"
+) |>
+  knitr::kable(caption = "Advanced expansion map requested for this chapter.")
+```
+
+#### 相関と効果量（Pearson / Spearman）
+
+```{r}
+#| label: corr-effectsize-bridge
+#| include: false
+
+corr_df <- cc_df |>
+  select(score_post, pretest, motivation, anxiety, study_hours)
+
+pearson_fit <- cor.test(corr_df$score_post, corr_df$pretest, method = "pearson")
+spearman_fit <- cor.test(corr_df$score_post, corr_df$pretest, method = "spearman", exact = FALSE)
+
+corr_tbl <- tibble(
+  method = c("Pearson r", "Spearman rho"),
+  estimate = c(unname(pearson_fit$estimate), unname(spearman_fit$estimate)),
+  p_value = c(pearson_fit$p.value, spearman_fit$p.value)
+)
+```
+
+```{r}
+#| label: tbl-corr-effectsize
+#| echo: false
+
+corr_tbl |>
+  knitr::kable(digits = 3, caption = "Correlation-based effect size summary (linear vs monotonic association).")
+```
+
+```{r}
+#| label: fig-corr-linear-vs-loess
+#| fig-cap: "Linear fit and LOESS fit for score_post vs pretest."
+#| fig-width: 6.8
+#| fig-height: 4.5
+
+ggplot(corr_df, aes(x = pretest, y = score_post)) +
+  geom_point(alpha = 0.35, size = 1.2, color = "grey30") +
+  geom_smooth(method = "lm", se = FALSE, color = "#1b9e77", linewidth = 1) +
+  geom_smooth(method = "loess", se = FALSE, color = "#d95f02", linewidth = 1, linetype = "dashed") +
+  labs(x = "Pre-test score", y = "Post-test score") +
+  theme_book
+```
+
+#### PERMANOVA と MDS（多変量アウトカム）
+
+PERMANOVA は距離行列ベースで群差を検定するため、正規性仮定への依存を下げられる[@anderson2001]。可視化には MDS を組み合わせると解釈しやすい[@kruskal1964]。
+
+```{r}
+#| label: permanova-mds
+#| include: false
+
+multi_df <- cc_df |>
+  transmute(
+    treatment = factor(treatment_num, levels = c(0, 1), labels = c("Control", "Treatment")),
+    pretest, motivation, anxiety, study_hours, score_post
+  )
+
+dist_mat <- vegan::vegdist(multi_df |> select(-treatment), method = "euclidean")
+permanova_fit <- vegan::adonis2(dist_mat ~ treatment, data = multi_df, permutations = 1999)
+
+# PERMANOVA interpretation requires checking group-dispersion differences
+disp_fit <- vegan::betadisper(dist_mat, group = multi_df$treatment, type = "median")
+disp_perm <- vegan::permutest(disp_fit, permutations = 1999)
+disp_tbl <- as_tibble(disp_perm$tab, rownames = "term")
+disp_dist_df <- tibble(
+  treatment = multi_df$treatment,
+  distance_to_centroid = disp_fit$distances
+)
+
+mds_fit <- cmdscale(dist_mat, k = 2, eig = TRUE)
+mds_df <- tibble(
+  dim1 = mds_fit$points[, 1],
+  dim2 = mds_fit$points[, 2],
+  treatment = multi_df$treatment
+)
+```
+
+```{r}
+#| label: tbl-permanova
+#| echo: false
+
+broom::tidy(permanova_fit) |>
+  knitr::kable(digits = 3, caption = "PERMANOVA result on multivariate learner profile.")
+```
+
+```{r}
+#| label: tbl-betadisper
+#| echo: false
+
+disp_tbl |>
+  knitr::kable(digits = 3, caption = "Permutation test for homogeneity of multivariate dispersion.")
+```
+
+```{r}
+#| label: fig-betadisper
+#| fig-cap: "Distance-to-centroid by group (dispersion diagnostic for PERMANOVA)."
+#| fig-width: 6.6
+#| fig-height: 4.2
+
+ggplot(disp_dist_df, aes(x = treatment, y = distance_to_centroid, fill = treatment)) +
+  geom_boxplot(alpha = 0.4, outlier.shape = NA) +
+  geom_jitter(width = 0.12, alpha = 0.4, size = 1) +
+  labs(x = "Group", y = "Distance to group centroid", fill = "Group") +
+  theme_book
+```
+
+```{r}
+#| label: fig-mds
+#| fig-cap: "Classical MDS projection of multivariate profile."
+#| fig-width: 6.5
+#| fig-height: 4.5
+
+ggplot(mds_df, aes(x = dim1, y = dim2, color = treatment)) +
+  geom_point(alpha = 0.75) +
+  stat_ellipse(level = 0.8, linewidth = 0.8) +
+  labs(x = "MDS Dimension 1", y = "MDS Dimension 2", color = "Group") +
+  theme_book
+```
+
+#### t-SNE / UMAP（高次元可視化）
+
+t-SNE と UMAP は、近傍構造の可視化に強い一方で、軸の意味や群間距離の厳密な推論には向かない。したがって本章では、**探索可視化**として位置づける[@maaten2008; @mcinnes2018]。
+
+```{r}
+#| label: tsne-umap-embedding
+#| include: false
+
+set.seed(20260302)
+x_embed <- scale(multi_df |> select(-treatment))
+
+tsne_fit <- Rtsne::Rtsne(
+  as.matrix(x_embed),
+  perplexity = 30,
+  check_duplicates = FALSE,
+  pca = TRUE,
+  verbose = FALSE
+)
+
+set.seed(20260302)
+umap_fit <- uwot::umap(
+  as.matrix(x_embed),
+  n_neighbors = 15,
+  min_dist = 0.1,
+  metric = "euclidean",
+  verbose = FALSE
+)
+
+embed_df <- bind_rows(
+  tibble(method = "t-SNE", dim1 = tsne_fit$Y[, 1], dim2 = tsne_fit$Y[, 2], treatment = multi_df$treatment),
+  tibble(method = "UMAP", dim1 = umap_fit[, 1], dim2 = umap_fit[, 2], treatment = multi_df$treatment)
+)
+```
+
+```{r}
+#| label: fig-tsne-umap
+#| fig-cap: "t-SNE and UMAP embeddings (exploratory visualization)."
+#| fig-width: 7.2
+#| fig-height: 4.6
+
+ggplot(embed_df, aes(x = dim1, y = dim2, color = treatment)) +
+  geom_point(alpha = 0.7, size = 1.3) +
+  stat_ellipse(level = 0.8, linewidth = 0.7) +
+  facet_wrap(~ method, scales = "free") +
+  labs(x = "Dimension 1", y = "Dimension 2", color = "Group") +
+  theme_book
+```
+
+#### LOESS/LOWESS, スプライン回帰, カーネル回帰
+
+LOESS/LOWESS は記述的な局所平滑、スプライン回帰は推定可能な半パラメトリックモデル、カーネル回帰はモデル非依存の局所平均として使い分ける[@cleveland1979; @wood2017; @hardle1990]。
+
+```{r}
+#| label: smoothing-comparison
+#| include: false
+
+smooth_df <- rt_df |>
+  select(rt_ms, proficiency_z) |>
+  arrange(proficiency_z)
+
+grid_x <- seq(min(smooth_df$proficiency_z), max(smooth_df$proficiency_z), length.out = 200)
+
+# LOWESS/LOESS
+lowess_fit <- lowess(smooth_df$proficiency_z, smooth_df$rt_ms, f = 2/3, iter = 1)
+loess_fit <- loess(rt_ms ~ proficiency_z, data = smooth_df, span = 0.75)
+pred_loess <- predict(loess_fit, newdata = tibble(proficiency_z = grid_x))
+
+# Natural spline regression
+spline_fit <- lm(rt_ms ~ splines::ns(proficiency_z, df = 4), data = smooth_df)
+pred_spline <- predict(spline_fit, newdata = tibble(proficiency_z = grid_x))
+
+# Kernel regression (local polynomial)
+kernel_fit <- KernSmooth::locpoly(
+  x = smooth_df$proficiency_z,
+  y = smooth_df$rt_ms,
+  drv = 0,
+  degree = 1,
+  bandwidth = 0.35,
+  gridsize = 200,
+  range.x = range(smooth_df$proficiency_z)
+)
+
+curve_df <- bind_rows(
+  tibble(x = lowess_fit$x, y = lowess_fit$y, method = "LOWESS"),
+  tibble(x = grid_x, y = pred_loess, method = "LOESS"),
+  tibble(x = grid_x, y = pred_spline, method = "Natural spline (df=4)"),
+  tibble(x = kernel_fit$x, y = kernel_fit$y, method = "Kernel regression")
+)
+```
+
+```{r}
+#| label: fig-smoothing-comparison
+#| fig-cap: "Smoothing methods for RT vs proficiency."
+#| fig-width: 7
+#| fig-height: 4.5
+
+ggplot(smooth_df, aes(x = proficiency_z, y = rt_ms)) +
+  geom_point(alpha = 0.15, size = 1) +
+  geom_line(data = curve_df, aes(x = x, y = y, color = method), linewidth = 1) +
+  labs(x = "Proficiency (z)", y = "Reaction time (ms)", color = "Method") +
+  theme_book
+```
+
+#### cluster-robust / sandwich（CR2）
+
+`sandwich` の HC 系に加え、クラスタ数が十分でない状況では `clubSandwich` の CR2 推定量が有用である[@cameron2015; @zeileis2020]。
+
+```{r}
+#| label: cluster-robust-cr2
+#| include: false
+
+fit_cluster_base <- lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = cc_df)
+
+ct_hc3 <- lmtest::coeftest(fit_cluster_base, vcov. = sandwich::vcovHC(fit_cluster_base, type = "HC3"))
+ct_cl <- lmtest::coeftest(fit_cluster_base, vcov. = sandwich::vcovCL(fit_cluster_base, cluster = cc_df$class_id, type = "HC1"))
+ct_cr2 <- clubSandwich::coef_test(fit_cluster_base, vcov = "CR2", cluster = cc_df$class_id, test = "Satterthwaite")
+
+cr2_row <- ct_cr2 |>
+  as_tibble() |>
+  filter(Coef == "treatment_num")
+
+cluster_tbl <- tibble(
+  method = c("HC3", "Cluster-robust HC1", "Cluster-robust CR2"),
+  estimate = c(ct_hc3["treatment_num", "Estimate"], ct_cl["treatment_num", "Estimate"], cr2_row$beta),
+  std.error = c(ct_hc3["treatment_num", "Std. Error"], ct_cl["treatment_num", "Std. Error"], cr2_row$SE),
+  p_value = c(ct_hc3["treatment_num", "Pr(>|t|)"], ct_cl["treatment_num", "Pr(>|t|)"], cr2_row$p_Satt)
+)
+```
+
+```{r}
+#| label: tbl-cluster-robust-advanced
+#| echo: false
+
+cluster_tbl |>
+  knitr::kable(digits = 3, caption = "Comparison of sandwich/cluster-robust inference (HC3 vs HC1 vs CR2).")
+```
+
+## 統合パイプライン
+
+### MI後にロバスト推定を適用する手順
+
+実務では、各代入データセットで同じモデルを当て、係数とロバスト分散を Rubin 則で統合する。
+
+```{r}
+#| label: mi-plus-hc3
+#| include: false
+
+mi_list <- mice::complete(imp, action = "all")
+
+model_list_mi <- purrr::map(
+  mi_list,
+  ~ lm(score_post ~ treatment_num + pretest + motivation + anxiety + study_hours, data = .x)
+)
+
+mi_hc3_treat <- pool_term(
+  model_list_mi,
+  term = "treatment_num",
+  vcov_fun = function(m) sandwich::vcovHC(m, type = "HC3")
+) |>
+  transmute(
+    method = "MI + HC3",
+    estimate,
+    std.error = se,
+    conf.low,
+    conf.high
+  )
+```
+
+### 完全ケース vs MI vs MI+ロバストの比較
+
+```{r}
+#| label: method-comparison
+#| include: false
+
+cc_main <- broom::tidy(fit_complete_case, conf.int = TRUE) |>
+  filter(term == "treatment_num") |>
+  transmute(method = "Complete case", estimate, std.error, conf.low, conf.high)
+
+mi_main <- mi_treat |>
+  select(method, estimate, std.error, conf.low, conf.high)
+
+fiml_main <- fiml_treat |>
+  select(method, estimate, std.error, conf.low, conf.high)
+
+method_compare <- bind_rows(cc_main, mi_main, mi_hc3_treat, fiml_main) |>
+  mutate(truth = true_beta_treat)
+```
+
+```{r}
+#| label: tbl-method-comparison
+#| echo: false
+
+method_compare |>
+  select(method, estimate, std.error, conf.low, conf.high) |>
+  knitr::kable(digits = 3, caption = "Comparison of treatment effect across analytic strategies.")
+```
+
+### 結果の頑健性サマリー
+
+```{r}
+#| label: fig-method-comparison
+#| fig-cap: "Treatment-effect comparison across methods (true value shown in red)."
+#| fig-width: 7
+#| fig-height: 4
+
+ggplot(method_compare, aes(x = reorder(method, estimate), y = estimate)) +
+  geom_hline(yintercept = true_beta_treat, color = "red", linetype = "dashed") +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.15) +
+  geom_point(size = 2) +
+  coord_flip() +
+  labs(x = NULL, y = "Treatment effect") +
+  theme_book
+```
+
+方法が変わっても効果の符号と大きさが大きく崩れないなら、結論の頑健性は高い。逆に、方法依存で結論が反転する場合は、仮定依存性を明示して報告する。
+
+## ケーススタディ（英語教育/SLA）
+
+### 研究シナリオとデータ生成
+
+- 介入: 語彙学習アプリ導入（`treatment_num`）
+- 主要アウトカム: 事後テスト得点（`score_post`）
+- 欠測: 低意欲群で事後得点欠測が増える（MAR に近い）
+- 外れ値: 一部学習者で極端スコア
+
+### 主要分析と感度分析
+
+1. 完全ケース OLS を基準線として記録
+2. MI 主分析で欠測不確実性を反映
+3. MI+HC3 で前提違反に対して SE をロバスト化
+4. 外れ値仕様の Multiverse で安定性を確認
+5. デルタ法で MNAR 感度分析
+
+```{r}
+#| label: tbl-case-study-summary
+#| echo: false
+
+case_tbl <- method_compare |>
+  mutate(
+    interpretation = case_when(
+      method == "Complete case" ~ "参照（欠測バイアスの可能性）",
+      method == "MI (Rubin pooled)" ~ "主分析",
+      method == "MI + HC3" ~ "主分析（ロバストSE）",
+      method == "FIML (lavaan)" ~ "整合性チェック",
+      TRUE ~ "-"
+    )
+  ) |>
+  select(method, estimate, conf.low, conf.high, interpretation)
+
+case_tbl |>
+  knitr::kable(digits = 3, caption = "Case-study summary: primary and sensitivity analyses.")
+```
+
+### 結果の解釈と実務判断
+
+- 主分析（MI）で処置効果が正で、MI+HC3 でも同方向なら、欠測と異分散への耐性がある
+- FIML が近い推定を返すなら、欠測モデル依存性は比較的小さい
+- デルタ法で極端なシフトを与えても効果が維持されるかを確認する
+
+## 研究デザイン別テンプレート（SLA・心理言語学）
+
+以下は、査読対応で頻出する 3 つの設計に対する「最小で再現可能な」分析テンプレートである。設計ごとに、欠測処理とロバスト化を最初から同時に組み込む。
+
+### 最初に決める3つの質問
+
+1. **推定したい効果は何か**  
+   例: 介入の即時効果か、成長率差（`treatment × wave`）か、条件差（RT/正答率）か
+2. **欠測は何に依存して起きていそうか**  
+   例: 低成績・低意欲ほど追跡離脱しやすい、難項目ほど無回答が増える
+3. **どの前提違反を最優先で守るか**  
+   例: 異分散、クラスタ依存、右裾分布、外れ値感度
+
+この3点を先に明文化すると、「モデル式を先に決めて後から言い訳する」順序を避けられる。実務上は、分析コードより先にこの判断ログを残しておくと、査読対応が安定する。
+
+```{r}
+#| label: tbl-design-templates
+#| echo: false
+
+tibble::tribble(
+  ~デザイン, ~典型アウトカム, ~欠測の起点, ~主分析モデル, ~最低限の感度分析,
+  "学級クラスタ介入（縦断）", "テスト得点（連続）", "追跡時点の離脱・無回答", "MI（多層） + 混合効果回帰", "MNARデルタ, CR2/HC3",
+  "心理言語学RT課題", "反応時間（正・右裾）", "極端RT除外, 技術的失敗", "log(RT) LMM または Gamma系モデル", "変換/分布族 multiverse",
+  "文法性判断・語彙判断（2値）", "正誤（0/1）", "項目単位の欠測, 中断", "logit GLMM（被験者・項目ランダム効果）", "完全ケース vs MI, 仕様曲線"
+) |>
+  knitr::kable(caption = "Design-specific defaults for SLA and psycholinguistic studies.")
+```
+
+```{r}
+#| label: simulate-template-datasets
+#| include: false
+
+# ------------------------------
+# Template A: clustered longitudinal score data
+# ------------------------------
+set.seed(20260302)
+
+n_class_tpl <- 10
+students_per_class_tpl <- 12
+waves_tpl <- 0:2
+n_students_tpl <- n_class_tpl * students_per_class_tpl
+
+student_base <- tibble(
+  id = factor(seq_len(n_students_tpl)),
+  class_id = factor(rep(seq_len(n_class_tpl), each = students_per_class_tpl)),
+  treatment_num = rbinom(n_students_tpl, 1, 0.5),
+  pretest = rnorm(n_students_tpl, 50, 9),
+  ses = rnorm(n_students_tpl, 0, 1),
+  motivation0 = rnorm(n_students_tpl, 0, 1),
+  class_re = rnorm(n_class_tpl, 0, 2)[as.integer(class_id)],
+  student_re = rnorm(n_students_tpl, 0, 3)
+)
+
+dat_long <- tidyr::crossing(id = student_base$id, wave = waves_tpl) |>
+  left_join(student_base, by = "id") |>
+  mutate(
+    motivation = motivation0 + 0.2 * wave + rnorm(n(), 0, 0.5),
+    score_latent = 40 +
+      1.2 * wave +
+      2.2 * treatment_num * wave +
+      0.38 * pretest +
+      1.0 * motivation +
+      0.6 * ses +
+      class_re + student_re + rt(n(), df = 6) * 2,
+    score = score_latent
+  ) |>
+  select(id, class_id, wave, treatment_num, score, pretest, motivation, ses)
+
+# Missingness (dropout-like for wave=2, plus covariate missingness)
+p_miss_score_tpl <- plogis(
+  -2.1 +
+    0.9 * (dat_long$wave == 2) -
+    0.5 * dat_long$motivation +
+    0.4 * (1 - dat_long$treatment_num)
+)
+miss_score_tpl <- rbinom(nrow(dat_long), 1, p_miss_score_tpl) == 1
+dat_long$score[miss_score_tpl] <- NA_real_
+dat_long$motivation[rbinom(nrow(dat_long), 1, 0.07) == 1] <- NA_real_
+
+# ------------------------------
+# Template B: RT task data
+# ------------------------------
+set.seed(20260303)
+
+n_subj_rt_tpl <- 60
+n_item_rt_tpl <- 24
+
+subj_rt_tbl <- tibble(
+  subj = factor(seq_len(n_subj_rt_tpl)),
+  proficiency_z = rnorm(n_subj_rt_tpl),
+  subj_re = rnorm(n_subj_rt_tpl, 0, 0.12)
+)
+
+item_rt_tbl <- tibble(
+  item = factor(seq_len(n_item_rt_tpl)),
+  item_re = rnorm(n_item_rt_tpl, 0, 0.10)
+)
+
+rt_raw <- tidyr::crossing(
+  subj = subj_rt_tbl$subj,
+  item = item_rt_tbl$item,
+  condition = factor(c("Control", "Treatment"), levels = c("Control", "Treatment"))
+) |>
+  left_join(subj_rt_tbl, by = "subj") |>
+  left_join(item_rt_tbl, by = "item") |>
+  mutate(
+    eta = 6.35 - 0.08 * (condition == "Treatment") - 0.06 * proficiency_z + subj_re + item_re + rt(n(), df = 8) * 0.05,
+    rt_ms = exp(eta),
+    p_correct = plogis(1.2 + 0.4 * proficiency_z + 0.25 * (condition == "Treatment")),
+    correct = rbinom(n(), 1, p_correct)
+  ) |>
+  select(subj, item, condition, proficiency_z, rt_ms, correct)
+
+# Technical failures / missing RT
+miss_rt <- rbinom(nrow(rt_raw), 1, 0.03) == 1
+rt_raw$rt_ms[miss_rt] <- NA_real_
+
+# ------------------------------
+# Template C: binary accuracy data
+# ------------------------------
+set.seed(20260304)
+
+n_subj_acc_tpl <- 90
+n_item_acc_tpl <- 40
+n_trial_acc_tpl <- 60
+
+subj_acc_tbl <- tibble(
+  subj = factor(seq_len(n_subj_acc_tpl)),
+  group = factor(rbinom(n_subj_acc_tpl, 1, 0.5), levels = c(0, 1), labels = c("Control", "Treatment")),
+  proficiency_z = rnorm(n_subj_acc_tpl),
+  subj_re = rnorm(n_subj_acc_tpl, 0, 0.7)
+)
+
+item_acc_tbl <- tibble(
+  item = factor(seq_len(n_item_acc_tpl)),
+  item_re = rnorm(n_item_acc_tpl, 0, 0.5)
+)
+
+acc_dat <- tidyr::crossing(
+  subj = subj_acc_tbl$subj,
+  trial = seq_len(n_trial_acc_tpl)
+) |>
+  left_join(subj_acc_tbl, by = "subj") |>
+  mutate(item = factor(sample(item_acc_tbl$item, size = n(), replace = TRUE))) |>
+  left_join(item_acc_tbl, by = "item") |>
+  mutate(
+    eta = -0.4 + 0.55 * (group == "Treatment") + 0.35 * proficiency_z + 0.01 * trial + subj_re + item_re,
+    accuracy = rbinom(n(), 1, plogis(eta))
+  ) |>
+  select(subj, item, group, trial, accuracy, proficiency_z)
+```
+
+### テンプレートA: 学級クラスタ介入（縦断）
+
+学校・クラス単位の介入では、個人レベル欠測（離脱）とクラスタ依存が同時に起きやすい。多層代入と混合効果モデルを一連で回す設計が実務的である[@preusler2025; @vanbuuren2018]。
+
+```{r}
+#| label: code-template-cluster-longitudinal
+#| eval: true
+
+# 想定カラム:
+# id, class_id, wave, treatment_num, score, pretest, motivation, ses
+
+# 1) 多層代入（クラス内相関を保持）
+imp_ml <- mice::mice(
+  data = dat_long,
+  m = 10,
+  maxit = 10,
+  seed = 20260302,
+  printFlag = FALSE
+)
+
+# 2) 各代入データで混合効果回帰
+fit_list <- with(
+  imp_ml,
+  lme4::lmer(score ~ treatment_num * wave + pretest + motivation + ses + (1 | class_id/id))
+)
+
+# 3) Rubin統合
+pool_main <- mice::pool(fit_list)
+template_a_main <- summary(pool_main, conf.int = TRUE) |>
+  as_tibble() |>
+  filter(term %in% c("treatment_num", "wave", "treatment_num:wave")) |>
+  select(term, estimate, std.error, statistic, p.value, `2.5 %`, `97.5 %`)
+template_a_main
+```
+
+```{r}
+#| label: tbl-template-a-main
+#| echo: false
+
+template_a_main |>
+  knitr::kable(digits = 3, caption = "Template A output example: pooled fixed effects after MI + mixed model.")
+```
+
+実務では、主効果よりも `treatment_num:wave`（成長差）を主要推定量として事前登録し、欠測とクラスタの両方に頑健な推論を行う。上表では、この交互作用の推定値と信頼区間が主要な読み取り対象である。
+
+#### Aで何をどう解釈するか
+
+- `treatment_num:wave` が正: 介入群の伸び率が対照群より高い
+- `pretest`, `motivation` などの共変量: MAR 仮定を支える説明変数としても重要
+- ランダム効果 `(1 | class_id/id)`: クラス/学習者ごとの切片差を許容
+
+#### Aでよく起きる誤り
+
+- 波（`wave`）を固定効果に入れずに「前後差」だけで済ませる
+- 離脱関連変数を代入モデルに入れず、MAR 仮定が弱くなる
+- クラスタ依存があるのに通常SEだけで結論を出す
+
+#### Aの報告文を具体化する例
+
+「主要推定量は `treatment × wave` 交互作用とし、学校/学級の階層性と個人内反復を考慮した混合効果回帰を適用した。追跡離脱は事前得点・動機づけに関連すると想定し、これらを含む多層多重代入を実施した。」
+
+### テンプレートB: RT課題（語彙判断・自己ペース読文）
+
+RT は外れ値と右裾が避けにくいため、フィルタ規則・変換・モデル族を仕様として明示する。心理言語学の標準的な実務は混合効果モデルである[@lachaud2011; @baayen2008; @barr2013; @luke2016]。
+
+```{r}
+#| label: code-template-rt
+#| eval: true
+
+# 想定カラム:
+# subj, item, condition, proficiency_z, rt_ms, correct
+
+# 1) 最低限の品質管理（事前定義）
+rt_clean <- rt_raw |>
+  dplyr::filter(correct == 1, !is.na(rt_ms), rt_ms >= 200, rt_ms <= 3000)
+
+# 2) 主分析A: log(RT) のLMM
+fit_lmm <- lme4::lmer(
+  log(rt_ms) ~ condition * proficiency_z + (1 | subj) + (1 | item),
+  data = rt_clean
+)
+
+# 3) 感度分析B: 変換を変える/分布族を変える（例）
+fit_gamma <- glm(
+  rt_ms ~ condition * proficiency_z,
+  family = Gamma(link = "log"),
+  data = rt_clean
+)
+
+coef_lmm <- summary(fit_lmm)$coefficients
+coef_gamma <- summary(fit_gamma)$coefficients
+
+stat_col_gamma <- grep(" value$", colnames(coef_gamma), value = TRUE)[1]
+p_col_gamma <- grep("^Pr\\(", colnames(coef_gamma), value = TRUE)[1]
+
+template_b_main <- bind_rows(
+  tibble(
+    model = "LMM on log(RT)",
+    term = "conditionTreatment",
+    estimate = coef_lmm["conditionTreatment", "Estimate"],
+    std.error = coef_lmm["conditionTreatment", "Std. Error"],
+    statistic = coef_lmm["conditionTreatment", "t value"],
+    p.value = NA_real_
+  ),
+  tibble(
+    model = "Gamma GLM",
+    term = "conditionTreatment",
+    estimate = coef_gamma["conditionTreatment", "Estimate"],
+    std.error = coef_gamma["conditionTreatment", "Std. Error"],
+    statistic = coef_gamma["conditionTreatment", stat_col_gamma],
+    p.value = coef_gamma["conditionTreatment", p_col_gamma]
+  )
+)
+template_b_main
+```
+
+```{r}
+#| label: tbl-template-b-main
+#| echo: false
+
+template_b_main |>
+  knitr::kable(digits = 3, caption = "Template B output example: condition effect under two RT models.")
+```
+
+報告は、係数の有意性だけでなく、共通尺度（ms）に戻した予測差を併記すると解釈可能性が高い[@lo2015]。上表はまず「条件効果の符号がモデル間で一致するか」を確認するための最小出力である。
+
+#### Bで何をどう解釈するか
+
+- `log(RT)` モデルの係数 `beta` は、`exp(beta) - 1` で近似的な百分率変化に変換できる
+- 変換・分布族で係数スケールが変わるため、最終報告は ms スケールの予測差でそろえる
+- `(1 + condition | subj)` と `(1 + condition | item)` は、被験者差・項目差に対する過小推定を抑えるための最小構成である[@barr2013]
+
+```{r}
+#| label: code-template-rt-interpretation
+#| eval: true
+
+# log(RT)係数を百分率変化へ
+beta_cond <- lme4::fixef(fit_lmm)["conditionTreatment"]
+pct_change <- (exp(beta_cond) - 1) * 100
+
+# 予測値をmsスケールへ戻して差を出す
+new_dat <- tibble::tibble(
+  condition = factor(c("Control", "Treatment"), levels = c("Control", "Treatment")),
+  proficiency_z = 0
+)
+
+pred_ms <- exp(stats::predict(fit_lmm, newdata = new_dat, re.form = NA))
+diff_ms <- pred_ms[2] - pred_ms[1]
+
+template_b_interp <- tibble(
+  metric = c("Condition beta on log scale", "Approx. percent change", "Predicted ms difference (Treatment - Control)"),
+  value = c(beta_cond, pct_change, diff_ms)
+)
+template_b_interp
+```
+
+#### Bでよく起きる誤り
+
+- フィルタ閾値を事後的に何度も変更し、主要結果だけ報告する
+- RT解析で項目ランダム効果を落としてしまう
+- AIC/LRTの比較条件を満たさないモデル同士を優劣比較する
+
+#### Bの報告文を具体化する例
+
+「RTは事前登録した閾値（200–3000ms）で品質管理し、`log(RT)` の線形混合効果モデルを主分析とした。感度分析としてGammaリンクモデルを併行実行し、主要効果の方向と効果量の安定性を確認した。」
+
+### テンプレートC: 正誤データ（2値）
+
+正誤を比率集計して ANOVA するより、試行レベルの logit GLMM が推奨される[@jaeger2008; @barr2013]。
+
+```{r}
+#| label: code-template-binary
+#| eval: true
+
+# 想定カラム:
+# subj, item, group, trial, accuracy (0/1), proficiency_z
+
+fit_acc <- lme4::glmer(
+  accuracy ~ group * proficiency_z + trial +
+    (1 | subj) + (1 | item),
+  family = binomial(link = "logit"),
+  data = acc_dat,
+  control = lme4::glmerControl(optimizer = "bobyqa", calc.derivs = FALSE)
+)
+
+coef_acc <- summary(fit_acc)$coefficients
+template_c_main <- tibble(
+  term = "groupTreatment",
+  estimate = coef_acc["groupTreatment", "Estimate"],
+  std.error = coef_acc["groupTreatment", "Std. Error"],
+  statistic = coef_acc["groupTreatment", "z value"],
+  p.value = coef_acc["groupTreatment", "Pr(>|z|)"]
+)
+template_c_main
+```
+
+```{r}
+#| label: tbl-template-c-main
+#| echo: false
+
+template_c_main |>
+  knitr::kable(digits = 3, caption = "Template C output example: fixed effect for group in logit GLMM.")
+```
+
+欠測が試行単位で多い場合は、完全ケース集計より先に MI（または明示的な欠測モデル）を検討し、結果を感度分析で補強する[@pichette2015]。
+
+#### Cで何をどう解釈するか
+
+- `groupTreatment` の係数は log-odds 差であり、`exp(beta)` でオッズ比になる
+- 実質解釈には、オッズ比に加えて基準条件での予測正答率差を併記する
+- `trial` を入れることで練習/疲労の時系列トレンドを統制しやすい
+
+```{r}
+#| label: code-template-binary-interpretation
+#| eval: true
+
+beta_group <- lme4::fixef(fit_acc)["groupTreatment"]
+odds_ratio <- exp(beta_group)
+
+# 基準的な試行条件での予測確率を比較
+nd <- tibble::tibble(
+  group = factor(c("Control", "Treatment"), levels = c("Control", "Treatment")),
+  proficiency_z = 0,
+  trial = median(acc_dat$trial)
+)
+
+pred_prob <- stats::predict(fit_acc, newdata = nd, type = "response", re.form = NA)
+prob_diff <- pred_prob[2] - pred_prob[1]
+
+template_c_interp <- tibble(
+  metric = c("Group beta (log-odds)", "Odds ratio", "Predicted probability difference (Treatment - Control)"),
+  value = c(beta_group, odds_ratio, prob_diff)
+)
+template_c_interp
+```
+
+#### Cでよく起きる誤り
+
+- 被験者・項目を平均化して情報を落としたうえでt検定/ANOVAを行う
+- オッズ比のみを提示し、実際の正答率差を示さない
+- 収束問題に対して無根拠にランダム効果を削る
+
+#### Cの報告文を具体化する例
+
+「正誤データは試行レベルでlogit GLMMを適用し、被験者・項目の交差ランダム効果を含めた。結果はオッズ比と、基準条件における予測正答率差の両方で提示した。」
+
+### 仕様感度分析の最小グリッド
+
+```{r}
+#| label: tbl-sla-multiverse-grid
+#| echo: false
+
+tibble::tribble(
+  ~仕様軸, ~選択肢A, ~選択肢B, ~選択肢C,
+  "欠測処理", "完全ケース", "MI", "FIML（適用可能時）",
+  "RTスケール", "raw ms", "log(RT)", "1000/RT",
+  "外れ値規則", "絶対閾値（200-3000ms）", "z閾値", "Cook's D/IQR",
+  "分散推定", "通常SE", "HC3", "クラスタロバスト/CR2",
+  "モデル族", "OLS/LMM", "Gamma系", "Quantile/ロバスト回帰"
+) |>
+  knitr::kable(caption = "Minimum multiverse grid for reviewer-facing robustness checks.")
+```
+
+主張は「単一仕様で有意」ではなく、**合理的仕様集合で符号と効果量が安定するか**で評価する。
+
+### 査読対応に使える報告文（ひな型）
+
+1. 欠測処理  
+「欠測は主に追跡時点で生じ、観測共変量で条件づけた MAR を仮定して `m = 30` の多重代入を実施した。主要推定量は Rubin 則で統合した。」
+2. ロバスト化  
+「異分散およびクラスタ依存の可能性を考慮し、HC3 およびクラスタロバスト（CR2）標準誤差を併記した。」
+3. 仕様感度  
+「RT スケール（raw/log/inverse）、外れ値規則、モデル族を横断する multiverse を実施し、主要効果の符号と大きさの安定性を確認した。」
+
+## 報告テンプレート（APA 7）
+
+### 方法セクション
+
+- 欠測率と欠測メカニズムに関する仮定（MAR など）
+- MI の設定（`m`, `maxit`, 代入法, 乱数種）
+- ロバスト推定の種類（HC3, クラスタロバスト, M 推定 など）
+- 感度分析の仕様（デルタの範囲）
+
+### 結果セクション
+
+- 主推定値（係数, 95% CI, p 値/事後確率）
+- 方法間比較（Complete case, MI, MI+HC3, FIML）
+- 感度分析で結論が変化する境界条件
+
+### 付録・再現コードの提示
+
+```{r}
+#| label: report-ready-code-snippet
+#| eval: true
+
+# Minimal reproducibility checklist
+sessionInfo()
+# 1) missingness diagnostics
+# 2) MI main model
+# 3) robust-SE sensitivity
+# 4) MNAR delta sensitivity
+```
+
+## トラブルシューティング
+
+### 代入が不安定なとき
+
+- 反復回数 `maxit` を増やす
+- 代入法（`pmm`, `norm`, `logreg` など）を変える
+- 完全分離/極端値を生む変数を確認する
+
+### 外れ値で推定が壊れるとき
+
+- OLS と M 推定・分位点回帰を並列実行する
+- HC3 やクラスタロバスト SE に切り替える
+- 削除ではなく、まず影響診断（Cook's distance）を報告する
+
+### MNARが疑われるとき
+
+- デルタ法で「どの程度ずれると結論が変わるか」を提示する
+- 欠測理由の質的情報（離脱理由など）を併記する
+- 可能なら追跡調査で欠測機構の裏づけを取る
+
+## まとめ
+
+### 実務チェックリスト
+
+- 欠測率・欠測パターンを最初に可視化した
+- 完全ケースを基準線として保存した
+- MI/FIML の主分析を実行した
+- ロバスト推定（少なくとも HC3）を併用した
+- MNAR 感度分析を実施した
+- 方法間比較を図表で報告した
+
+### 次の章への橋渡し
+
+この章の枠組みは、因果推論・縦断モデル・階層モデルにもそのまま拡張できる。特に、
+
+- 傾向スコア分析前の欠測処理
+- 成長曲線モデルでのドロップアウト
+- 多層データでのクラスタロバスト推定
+
+を扱う際の基盤として再利用できる。

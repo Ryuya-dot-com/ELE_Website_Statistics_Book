@@ -246,7 +246,7 @@ pacman::p_load(
   gt
 )
 
-theme_set(theme_bw(base_size = 12))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 theme_update(legend.position = "bottom")
 set.seed(2024)
 
@@ -307,7 +307,7 @@ plot_check_model_separate <- function(
 
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
-      theme_bw(base_size = 12) +
+      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),
@@ -859,7 +859,7 @@ sjPlot::plot_model(
     color = "Sender proficiency",
     fill = "Sender proficiency"
   ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(legend.position = "bottom")
 ```
 
@@ -1295,7 +1295,7 @@ sjPlot::plot_model(
     x = "Mean baseline score of dyad (z)",
     y = "Expected collaboration count"
   ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(legend.position = "bottom")
 ```
 
@@ -1585,7 +1585,7 @@ sjPlot::plot_model(
     color = "Class",
     fill = "Class"
   ) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(legend.position = "bottom")
 ```
 
