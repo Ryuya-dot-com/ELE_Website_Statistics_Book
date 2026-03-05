@@ -1974,6 +1974,7 @@ missing_comparison %>%
 ```{r}
 #| label: reporting-descriptive
 #| echo: true
+#| results: asis
 report_descriptive <- glue::glue(
   "The collaboration network comprised N = {gorder(g)} learners across three ",
   "classes (A, B, C). The network contained {gsize(g)} edges ",
@@ -1991,6 +1992,7 @@ cat(report_descriptive)
 
 ```{r}
 #| label: reporting-community
+#| results: asis
 report_community <- glue::glue(
   "Community detection using the Louvain algorithm identified ",
   "{length(unique(membership(com_louvain)))} communities ",
@@ -2006,6 +2008,7 @@ cat(report_community)
 
 ```{r}
 #| label: reporting-ergm
+#| results: asis
 ergm_coef_edges <- round(ergm_coefs["edges", "Estimate"], 2)
 ergm_coef_class <- round(ergm_coefs["nodematch.class", "Estimate"], 2)
 ergm_p_class <- round(ergm_coefs["nodematch.class", "Pr(>|z|)"], 3)
