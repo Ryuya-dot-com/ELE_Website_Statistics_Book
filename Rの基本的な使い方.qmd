@@ -728,7 +728,7 @@ sim_data <- data.frame(
     rbeta(1000, 2, 5) * 100            # ベータ分布（右歪み）
   ),
   distribution = rep(
-    c("正規分布\n(標準的)", "床効果あり\n(下限40点)", "右に歪んだ分布\n(ベータ分布)"),
+    c("Normal Distribution\n(Standard)", "Floor Effect\n(Lower Bound 40)", "Right-Skewed Distribution\n(Beta Distribution)"),
     each = 1000
   )
 )

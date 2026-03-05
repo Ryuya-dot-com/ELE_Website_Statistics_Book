@@ -1679,7 +1679,7 @@ lgm_demo <- tibble(
 ) |>
   mutate(
     id = factor(id),
-    semester = factor(time, labels = c("1学期", "2学期", "3学期", "4学期"))
+    semester = factor(time, labels = c("Sem 1", "Sem 2", "Sem 3", "Sem 4"))
   )
 
 # Panel A: Cross-sectional snapshot (boxplot at each time)

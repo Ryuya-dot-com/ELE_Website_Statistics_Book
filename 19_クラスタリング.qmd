@@ -846,40 +846,40 @@ set.seed(2030)
 n_each <- 120
 
 dat_cluster <- tibble(
-  profile_true = rep(c("基礎層", "中間層", "上位層"), each = n_each)
+  profile_true = rep(c("Basic", "Intermediate", "Advanced"), each = n_each)
 ) |>
   mutate(
     vocabulary = rnorm(
       n(),
-      mean = dplyr::case_match(profile_true, "基礎層" ~ 45, "中間層" ~ 60, "上位層" ~ 74),
+      mean = dplyr::case_match(profile_true, "Basic" ~ 45, "Intermediate" ~ 60, "Advanced" ~ 74),
       sd = 8
     ),
     grammar = rnorm(
       n(),
-      mean = dplyr::case_match(profile_true, "基礎層" ~ 47, "中間層" ~ 58, "上位層" ~ 72),
+      mean = dplyr::case_match(profile_true, "Basic" ~ 47, "Intermediate" ~ 58, "Advanced" ~ 72),
       sd = 8
     ),
     fluency = rnorm(
       n(),
-      mean = dplyr::case_match(profile_true, "基礎層" ~ 42, "中間層" ~ 55, "上位層" ~ 70),
+      mean = dplyr::case_match(profile_true, "Basic" ~ 42, "Intermediate" ~ 55, "Advanced" ~ 70),
       sd = 10
     ),
     anxiety = rnorm(
       n(),
-      mean = dplyr::case_match(profile_true, "基礎層" ~ 62, "中間層" ~ 50, "上位層" ~ 38),
+      mean = dplyr::case_match(profile_true, "Basic" ~ 62, "Intermediate" ~ 50, "Advanced" ~ 38),
       sd = 7
     ),
     # 外的妥当性検証用（クラスタリングには使用しない）
     final_exam = rnorm(
       n(),
-      mean = dplyr::case_match(profile_true, "基礎層" ~ 55, "中間層" ~ 68, "上位層" ~ 82),
+      mean = dplyr::case_match(profile_true, "Basic" ~ 55, "Intermediate" ~ 68, "Advanced" ~ 82),
       sd = 8
     )
   ) |>
   mutate(
     id = row_number(),
     final_exam = pmin(pmax(round(final_exam, 1), 0), 100),
-    profile_true = factor(profile_true, levels = c("基礎層", "中間層", "上位層"))
+    profile_true = factor(profile_true, levels = c("Basic", "Intermediate", "Advanced"))
   ) |>
   dplyr::select(id, profile_true, dplyr::everything())
 ```

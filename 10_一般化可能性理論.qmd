@@ -145,8 +145,8 @@ ggplot(ctt_gt_combined, aes(x = Component, y = Percent, fill = Framework)) +
   scale_fill_manual(values = c("CTT" = "#4e79a7", "G-theory" = "#59a14f")) +
   scale_y_continuous(limits = c(0, 105)) +
   labs(
-    title = "CTT = 1つの誤差バケツ vs 一般化可能性理論 = 複数の誤差バケツ",
-    x = NULL, y = "分散の割合 (%)", fill = "Framework"
+    title = "CTT = One Error Bucket vs G-theory = Multiple Error Buckets",
+    x = NULL, y = "Proportion of Variance (%)", fill = "Framework"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
@@ -317,7 +317,7 @@ bind_rows(crossed_layout, nested_layout) |>
   ) +
   labs(
     title = "Crossed vs Nested Designs",
-    subtitle = "交差設計は全セルが埋まり、ネスト設計は課題ごとに評価者が分かれる",
+    subtitle = "Crossed designs fill all cells; nested designs assign different raters per task",
     x = NULL, y = NULL
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
@@ -943,7 +943,7 @@ g_study_results |>
   scale_fill_viridis_d() +
   scale_y_continuous(limits = c(0, max(g_study_results$percent) * 1.15)) +
   labs(
-    title = "G研究: 分散成分の分解（p × t × r:t 設計）",
+    title = "G-study: Variance Component Decomposition (p x t x r:t Design)",
     x = "Source", y = "Percent of total variance (%)"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
@@ -1263,7 +1263,13 @@ one_step_long <- one_step_design |>
   pivot_longer(cols = c(G, Phi), names_to = "Coefficient", values_to = "Value") |>
   mutate(
     Coefficient = ifelse(Coefficient == "G", "G coefficient", "Phi coefficient"),
-    Scenario = factor(Scenario, levels = c("現行設計", "+1 タスク", "+1 評価者", "+1 タスク & +1 評価者"))
+    Scenario = factor(
+      dplyr::recode(Scenario,
+        "現行設計" = "Current Design",
+        "+1 タスク" = "+1 Task",
+        "+1 評価者" = "+1 Rater",
+        "+1 タスク & +1 評価者" = "+1 Task & +1 Rater"),
+      levels = c("Current Design", "+1 Task", "+1 Rater", "+1 Task & +1 Rater"))
   )
 
 ggplot(one_step_long, aes(x = Scenario, y = Value, fill = Coefficient)) +
@@ -1278,7 +1284,7 @@ ggplot(one_step_long, aes(x = Scenario, y = Value, fill = Coefficient)) +
   scale_fill_manual(values = c("G coefficient" = "#1f77b4", "Phi coefficient" = "#d62728")) +
   scale_y_continuous(limits = c(0, 1.05)) +
   labs(
-    title = "+1ステップの設計比較: どの1手が最も効率的か？",
+    title = "+1 Step Design Comparison: Which Single Change Is Most Efficient?",
     x = NULL, y = "Reliability coefficient", fill = "Coefficient"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -1372,7 +1378,7 @@ ggplot(
   scale_x_continuous(breaks = sort(unique(d_results_long$TaskCount))) +
   scale_y_continuous(limits = c(0, 1)) +
   labs(
-    title = "D研究: タスク数 × 評価者数による信頼性の変化",
+    title = "D-study: Reliability by Number of Tasks x Raters",
     x = "Number of tasks", y = "Reliability coefficient", linetype = "Coefficient"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -1476,7 +1482,7 @@ ggplot(phi_feasible, aes(x = TaskCount, y = RaterCount, color = Dependability)) 
   scale_x_continuous(breaks = sort(unique(phi_feasible$TaskCount))) +
   scale_y_continuous(breaks = sort(unique(phi_feasible$RaterCount))) +
   labs(
-    title = paste0("Phi >= ", phi_target, " を満たす設計（合否判定用）"),
+    title = paste0("Designs Meeting Phi >= ", phi_target, " (For Pass/Fail Decisions)"),
     x = "Number of tasks", y = "Number of raters"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -1508,7 +1514,7 @@ cost_data |>
   scale_x_continuous(breaks = sort(unique(cost_data$TaskCount))) +
   scale_y_continuous(limits = c(0.3, 1.0)) +
   labs(
-    title = "評価者4名固定時: タスク数の増加に伴う収穫逓減",
+    title = "Diminishing Returns: Increasing Tasks with 4 Raters Fixed",
     x = "Number of tasks", y = "Reliability coefficient", color = "Coefficient"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -1580,7 +1586,7 @@ ggplot(budget_plot_data, aes(x = TotalCost, y = Dependability, color = Generaliz
   ) +
   scale_color_viridis_c(name = "G coefficient") +
   labs(
-    title = "予算制約下の設計空間（目的: Phi最大化）",
+    title = "Design Space Under Budget Constraint (Goal: Maximize Phi)",
     x = "Total cost", y = "Phi coefficient"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -1770,7 +1776,7 @@ ggplot(
   scale_x_discrete(labels = function(x) paste0("Subtest ", x)) +
   scale_y_continuous(limits = c(0, 105)) +
   labs(
-    title = "多変量G研究: サブテスト別の分散成分",
+    title = "Multivariate G-study: Variance Components by Subtest",
     x = NULL, y = "Percent of total variance (%)", fill = "Source"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -1986,7 +1992,7 @@ ggplot(mv_d_long, aes(x = Scenario, y = Value, fill = Coefficient)) +
   scale_fill_manual(values = c("G" = "#1f77b4", "Phi" = "#d62728")) +
   scale_y_continuous(limits = c(0, 1.1)) +
   labs(
-    title = "多変量D研究: 重み付けと信頼性",
+    title = "Multivariate D-study: Weighting and Reliability",
     x = NULL, y = "Reliability coefficient", fill = "Coefficient"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -2069,7 +2075,7 @@ mv_sim_long |>
   scale_x_continuous(breaks = 1:10) +
   scale_y_continuous(limits = c(0.4, 1.0)) +
   labs(
-    title = "多変量D研究（等重み）",
+    title = "Multivariate D-study (Equal Weights)",
     x = "Baseline number of items", y = "Reliability coefficient", color = "Coefficient"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
@@ -2209,7 +2215,7 @@ icc_results |>
   geom_text(aes(label = round(ICC, 3)), vjust = -0.5, size = 3.4) +
   scale_fill_manual(values = c("Person" = "#4e79a7", "Task" = "#f28e2b", "Rater" = "#e15759", "Person:Task" = "#76b7b2")) +
   scale_y_continuous(limits = c(0, max(icc_results$ICC) * 1.2)) +
-  labs(title = "ICC: 各成分の寄与度", x = NULL, y = "ICC") +
+  labs(title = "ICC: Contribution of Each Component", x = NULL, y = "ICC") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 ```

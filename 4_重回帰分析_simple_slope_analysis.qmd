@@ -474,7 +474,7 @@ ggplot(
   facet_grid(Time ~ Treatment) +
   labs(
     title = "Predicted Lines Under Different Codings",
-    subtitle = "線が重なれば、コーディングに依らず予測は同一",
+    subtitle = "Overlapping lines confirm predictions are invariant to coding",
     x = "Proficiency (z)",
     y = "Predicted Score_Recall"
   ) +
@@ -936,7 +936,7 @@ ggplot(pred_focus_ci, aes(x = Proficiency, y = fit)) +
   geom_line(linewidth = 1.0, color = "#1D4ED8") +
   labs(
     title = "Confidence Interval vs Prediction Interval",
-    subtitle = "Writing × Immediate（灰=prediction, 青=confidence）",
+    subtitle = "Writing × Immediate (gray = prediction, blue = confidence)",
     x = "Proficiency (z)",
     y = "Predicted Score_Recall"
   ) +
@@ -1695,7 +1695,7 @@ if (interaction_power_available) {
     theme(legend.position = "bottom")
 } else {
   plot.new()
-  text(0.5, 0.5, "InteractionPoweR 未インストールのため曲線をスキップ")
+  text(0.5, 0.5, "InteractionPoweR not installed; power curve skipped")
 }
 ```
 
