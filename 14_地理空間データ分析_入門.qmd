@@ -680,7 +680,7 @@ cold_tbl <- cold_top |>
   gt::tab_style(style = gt::cell_text(weight = "bold"), locations = gt::cells_column_labels(everything())) |>
   gt::opt_row_striping()
 
-list(hot_tbl, cold_tbl)
+htmltools::tagList(hot_tbl, cold_tbl)
 ```
 
 ### ローカル Moran の地図（Local I の値）
