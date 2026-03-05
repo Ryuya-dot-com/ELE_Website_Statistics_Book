@@ -1896,15 +1896,16 @@ rma_to_gt(m_ml, title = "3水準多層モデル（Fisher z）")
 ```{r}
 #| label: multilevel-interpret
 # 全体の平均相関に変換
-cat("全体平均 (Fisher z):", round(coef(m_ml), 3), "\n")
-cat("全体平均 (r):", round(tanh(coef(m_ml)), 3), "\n")
+ml_fisher_z <- round(coef(m_ml), 3)
+ml_r <- round(tanh(coef(m_ml)), 3)
 
 # 分散成分の割合
 total_var <- sum(m_ml$sigma2)
-cat("\n分散の内訳:\n")
-cat("  研究間:", round(m_ml$sigma2[1] / total_var * 100, 1), "%\n")
-cat("  研究内:", round(m_ml$sigma2[2] / total_var * 100, 1), "%\n")
+ml_between_pct <- round(m_ml$sigma2[1] / total_var * 100, 1)
+ml_within_pct <- round(m_ml$sigma2[2] / total_var * 100, 1)
 ```
+
+全体平均効果は Fisher *z* スケールで `r ml_fisher_z`、相関係数 *r* に逆変換すると `r ml_r` であった。分散の内訳を見ると、研究間（Level 3）が `r ml_between_pct`%、研究内（Level 2）が `r ml_within_pct`% であった。
 
 #### モデレーター分析（多層モデル）
 
@@ -2260,7 +2261,6 @@ r_to_d(r = 0.30)
 # r = 0.30 の場合
 r <- 0.30
 d_from_r <- 2 * r / sqrt(1 - r^2)
-cat("r =", r, "→ d ≈", round(d_from_r, 3), "\n")
 
 # escalc でも可能（Fisher z から逆変換も含む）
 es_example <- escalc(measure = "ZCOR", ri = c(0.20, 0.35, 0.10), ni = c(80, 120, 60))
@@ -2270,9 +2270,12 @@ as.data.frame(es_example[, c("yi", "vi")]) |>
   gt() |>
   tab_header(title = "Fisher z 変換結果") |>
   fmt_number(columns = c(yi, vi), decimals = 4)
-cat("\n元の r に戻す: tanh(z)\n")
-cat("r =", round(tanh(es_example$yi), 3), "\n")
+
+# 逆変換用の値を保存
+r_back <- round(tanh(es_example$yi), 3)
 ```
+
+*r* = `r r` を Cohen's *d* に変換すると *d* ≈ `r round(d_from_r, 3)` となる。Fisher *z* から元の *r* に戻すには `tanh()` を適用する: *r* = `r paste(r_back, collapse = ", ")`。
 
 ##### *t* 値・*F* 値からの効果量算出
 
@@ -2282,21 +2285,18 @@ cat("r =", round(tanh(es_example$yi), 3), "\n")
 t_val <- 2.45
 n1 <- 30; n2 <- 32
 d_from_t <- t_val * sqrt(1/n1 + 1/n2)
-cat("t =", t_val, "→ d ≈", round(d_from_t, 3), "\n")
 
 # F値（1自由度）から d を計算
 F_val <- 6.0
 d_from_F <- sqrt(F_val) * sqrt(1/n1 + 1/n2)
-cat("F =", F_val, "→ d ≈", round(d_from_F, 3), "\n")
 
-# escalc で分散を直接計算する方法
-# t値から d を計算した後、Hedges' correction で g を求める
+# Hedges' correction で g を求める
 J <- 1 - 3 / (4 * (n1 + n2 - 2) - 1)  # Hedges' correction factor
 g_from_t <- d_from_t * J
 vi_from_t <- (n1 + n2) / (n1 * n2) + g_from_t^2 / (2 * (n1 + n2))
-cat("\nHedges g ≈", round(g_from_t, 3),
-    ", vi ≈", round(vi_from_t, 4), "\n")
 ```
+
+*t* = `r t_val` の場合、*d* ≈ `r round(d_from_t, 3)` となる。*F* = `r F_val`（1自由度）の場合は *d* ≈ `r round(d_from_F, 3)` である。Hedges の修正を適用すると *g* ≈ `r round(g_from_t, 3)`（*v~i~* ≈ `r round(vi_from_t, 4)`）となる。
 
 ::: {.callout-note}
 #### 効果量変換のオンラインツール
@@ -2791,10 +2791,11 @@ V_assumed <- vcalc(vi, cluster = study_id, obs = es_id,
 # V はブロック対角行列
 # 対角要素: vi（各効果量の分散）
 # 非対角要素（同一研究内）: rho * sqrt(vi_a * vi_b)
-cat("V 行列の次元:", dim(V_assumed), "\n")
-cat("非ゼロ要素の割合:",
-    round(sum(V_assumed != 0) / prod(dim(V_assumed)) * 100, 1), "%\n")
+V_dim <- dim(V_assumed)
+V_nonzero_pct <- round(sum(V_assumed != 0) / prod(dim(V_assumed)) * 100, 1)
 ```
+
+構築した **V** 行列の次元は `r V_dim[1]` × `r V_dim[2]` であり、非ゼロ要素の割合は `r V_nonzero_pct`%（ブロック対角構造のため大部分がゼロ）であった。
 
 #### CHE モデルの適合
 
@@ -2937,10 +2938,21 @@ sim_cors <- lapply(1:k_masem, function(i) {
   list(R = R_obs, n = n)
 })
 
-# 結果の確認（最初の 2 研究）
-cat("Study 1 (n =", sim_cors[[1]]$n, "):\n")
+```
+
+結果を確認する。Study 1（*n* = `r sim_cors[[1]]$n`）の観測相関行列:
+
+```{r}
+#| label: masem-sim-study1
+#| echo: false
 round(sim_cors[[1]]$R, 3)
-cat("\nStudy 2 (n =", sim_cors[[2]]$n, "):\n")
+```
+
+Study 2（*n* = `r sim_cors[[2]]$n`）の観測相関行列:
+
+```{r}
+#| label: masem-sim-study2
+#| echo: false
 round(sim_cors[[2]]$R, 3)
 ```
 
@@ -2999,7 +3011,13 @@ for (i in 1:nrow(masem_results)) {
   R_pooled[p[2], p[1]] <- masem_results$r_pooled[i]
 }
 
-cat("プール相関行列（Stage 1 の結果）:\n")
+```
+
+Stage 1 で得られたプール相関行列は以下のとおりである:
+
+```{r}
+#| label: masem-pooled-display
+#| echo: false
 round(R_pooled, 3)
 ```
 
