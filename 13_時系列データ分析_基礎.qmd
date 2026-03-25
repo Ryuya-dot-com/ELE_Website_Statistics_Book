@@ -1,0 +1,2219 @@
+---
+title: "時系列データ分析（基礎）：ARIMA・ETS・介入時系列分析"
+bibliography: references_timeseries.bib
+nocite: |
+  @hyndman2021, @shin2016, @shumway2017, @ortega2005, @verspoor2008, @gu2015, @debot2007, @turner2021, @bernal2017, @li2025, @fant1960, @boersma2023, @thomas2007, @cohen1988_ts, @hillenbrand1995, @flege1995, @dejong2009, @derwing2009, @saito2022, @bores2023rpraat, @coretta2023speakr
+---
+
+## はじめに
+
+本章では、英語教育研究で最も頻出する **テストスコアの時系列** を対象に、`ARIMA`・`ETS`・`介入時系列分析 (ITS / ARIMAX)` を中心に学びます。扱う問いは、次の2つです。
+
+1. **スコアの予測と傾向の把握**: あるコホートの月次・週次スコアは、今後どう推移するか。
+2. **教育介入の効果検証**: カリキュラム変更や新しい指導法の導入後に、スコアの水準や傾きは本当に変わったか。
+
+これらの問いに共通するのは、**データが時間順に並び、隣接する観測値どうしが依存する**ことです。t検定や通常の回帰のように独立性を前提にすると、標準誤差や p 値を誤って解釈する危険があります。そこで本章では、まず定常性・自己相関・分解・差分の基礎を押さえ、そのうえで ARIMA / ETS による予測と ITS による介入効果検証へ進みます。
+
+第二言語習得の縦断研究では、単に「前より上がったか」だけでなく、**どのような軌跡で伸びたか**、**途中で停滞や揺らぎがあったか**を追う必要があると繰り返し論じられてきました [@ortega2005; @debot2007; @verspoor2008]。本章の時系列分析は、そうした「時間の中での変化」を、初学者でも追える形で数量化するための基礎道具です。
+
+初心者向けにごく短く言い換えると、`ARIMA` / `ETS` は「**このコホートは次にどうなりそうか**」を見る分析で、`ITS / ARIMAX` は「**ある出来事の前後で変化のしかたが変わったか**」を見る分析です。前者は継続的な学習モニタリングやスコア報告の文脈 [@gu2015]、後者は教育介入の準実験的評価 [@bernal2017; @li2025] に対応します。
+
+### この章の読み方
+
+- **最短ルート**: `分析の流れ` → `時系列データの特性と分解` → `ARIMAモデルの基本実装` → `介入時系列分析（ITS）`
+- **実務で追加して読む部分**: `欠測値・外れ値・複数季節性` と `tidyverts`
+- **次章以降**: VAR / DTW / HMM / SSM / ベイズ時系列は次の発展章、音声波形と Praat はその次の音声章で扱います。
+
+分析中に問題が発生した場合は、章末の[トラブルシューティング](#sec-ts-troubleshoot)を参照してください。
+
+### この章の到達目標
+
+1. 時系列データの**定常性**を視覚的・統計的（ADF/KPSS）に判断し、適切な差分回数を決定できる。
+2. `auto.arima()` と `ets()` を使って、予測と残差診断の基本手順を実行できる。
+3. **介入時系列分析（ITS / ARIMAX）**で step / ramp 効果を推定し、反事実プロットと標準化効果量を報告できる。
+4. 欠測・外れ値・複数季節性のような実務上の問題に対して、どの補助手法を使うべきか説明できる。
+5. `forecast` と `tidyverts` を、同じ予測課題に対する2つの実装スタイルとして使い分けられる。
+
+### クイックリファレンス：この章で扱う手法
+
+| 研究の問い | まず試す手法 | この章での位置づけ |
+|---|---|---|
+| スコアの予測・傾向把握 | `auto.arima()` / `ets()` | 本章の基本ルート |
+| 教育介入の効果検証 | **ITS: ARIMAX** | 本章のハイライト |
+| 欠測や外れ値への対処 | `na_kalman()` / `tsoutliers()` | 実務補足 |
+| 複数季節性 | `tbats()` | 発展的だが実務で有用 |
+| tidyverse 流の予測実装 | `tsibble` + `fable` + `feasts` | 実装スタイルの別ルート |
+
+発展手法と音声時系列は、次の2章で独立に扱います。
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+pacman::p_load(
+  tidyverse,
+  moments,
+  forecast,
+  tseries,
+  gt,
+  DT,
+  urca,
+  strucchange,
+  imputeTS,
+  tsibble,
+  tsibbledata,
+  ggtime,
+  fable,
+  feasts
+)
+
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_update(legend.position = "bottom")
+set.seed(2024)
+```
+
+## 分析の流れ
+
+時系列データを手にしたとき、最初にすべきことは「**何を知りたいか**」を明確にすることです。研究目的によって、進むべき分析の道が大きく異なります。以下のフローチャートは、研究の問いから適切な手法への道筋を示しています。
+
+```{mermaid}
+%%| label: fig-ts-flowchart
+%%| fig-cap: "時系列分析の手法選択フローチャート"
+flowchart TD
+    A["時系列データを入手"] --> B{"研究目的は何か？"}
+    B -->|"将来のスコアを<br>予測したい"| C["ARIMA / ETS"]
+    B -->|"介入（教授法変更等）の<br>効果を検証したい"| D["<strong>ITS：ARIMAX</strong><br>（本章のハイライト）"]
+    B -->|"変数間の時間的<br>因果関係を調べたい"| E["VAR +<br>Granger因果性"]
+    B -->|"学習曲線の<br>形を比較したい"| F["DTW"]
+    C --> G{"季節性あり？"}
+    G -->|Yes| H["SARIMA / seasonal ETS<br>/ TBATS"]
+    G -->|No| I["ARIMA / ETS"]
+    D --> J["ステップ効果 + ランプ効果<br>+ 反事実プロット"]
+
+    style D fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+```
+
+英語教育研究では、新しい教授法やカリキュラムの効果を検証する**介入研究**が多いため、多くの読者はこのフローチャートで「介入の効果検証」のパス、すなわち **ITS / ARIMAX** に進むことになります。本章後半の `介入時系列分析（ITS）` に到達するまでに必要な基礎概念（定常性・差分・自己相関・残差診断）を、前半で順に押さえる構成です。
+
+どの手法を選ぶにしても、時系列分析の基本的な流れは共通しています。以下の5つのステップを順に進めます。
+
+1. **プロット**：まず時系列をグラフにして、トレンド・季節性・外れ値・構造変化を目視で確認する
+2. **定常性の確認**：ADF検定・KPSS検定で系列が定常かどうかを統計的に判定し、必要に応じて差分を取る
+3. **モデルの選択**：ACF/PACFのパターンや `auto.arima()` の自動探索で、ARIMA(p, d, q) の次数を決める
+4. **フィット＆残差診断**：モデルを推定し、残差にパターンが残っていないか（Ljung-Box検定等）を確認する。残差に構造が残っていればStep 3に戻る
+5. **予測・効果量・報告**：将来予測、介入効果の推定、信頼区間の算出を行い、論文に報告する
+
+この5ステップの各段階を、以降のセクションで一つずつ詳しく解説していきます。
+
+## データの作成：英語教育研究のシナリオ
+
+本章では、AirPassengers のような汎用データセットではなく、英語教育研究に直接関連する**3つのシミュレーションデータ**を使います。いずれも架空のデータですが、実際の研究で見られるパターンを反映しています。
+
+以下の3つの系列は、文献で繰り返し扱われる研究課題を、初学者向けに単純化したものです。読むときは、**どのデータがどの研究質問に対応しているか**を意識してください。
+
+### Dataset 1: 週次語彙テストスコア（40週）
+
+ある大学の英語プログラムで、20項目の語彙クイズを毎週実施しています。1年間（40週）にわたるクラス平均スコアを観察します。このデータには以下の特徴があります：
+
+- **緩やかな上昇トレンド**：学習が進むにつれてスコアが向上
+- **試験期間のディップ**：中間試験（第15–16週）と期末試験（第30–31週）の前後でスコアが一時的に低下（学生が語彙学習より試験対策を優先するため）
+- **自己相関**：先週のスコアが今週のスコアに影響する（AR(1)的な構造）
+
+この種の**短い反復測定系列**は、教室ベースの縦断研究で典型的です [@ortega2005]。ここで答えたいのは、「来週以降も緩やかに伸びるか」「試験週の落ち込みを含めても全体として上向きか」であり、**因果効果の検証ではなく予測と傾向把握**が中心です。
+
+```{r}
+#| label: create-vocab-data
+n_weeks <- 40
+trend <- seq(0, 6, length.out = n_weeks)           # 緩やかな上昇（6点分）
+exam_dip <- -2.5 * (dnorm(1:n_weeks, 15, 2) + dnorm(1:n_weeks, 31, 2)) / dnorm(0, 0, 2)
+ar_noise <- as.numeric(arima.sim(n = n_weeks, list(ar = 0.55), sd = 1.2))
+vocab_scores <- 10 + trend + exam_dip + ar_noise    # ベースライン10点（/20）
+vocab_scores <- pmax(pmin(vocab_scores, 20), 0)     # 0–20に制限
+# 40週を1本の非季節系列として扱う例なので frequency = 1
+vocab_ts <- ts(vocab_scores, frequency = 1)
+
+autoplot(vocab_ts) +
+  labs(title = "Weekly vocabulary quiz scores (40 weeks)",
+       x = "Week", y = "Score (/20)") +
+  geom_vline(xintercept = c(15, 31), linetype = "dashed", alpha = 0.4) +
+  annotate("text", x = 15, y = max(vocab_scores) - 0.5, label = "Midterm", size = 3) +
+  annotate("text", x = 31, y = max(vocab_scores) - 0.5, label = "Final", size = 3)
+```
+
+**図の読み方**：
+
+- **y軸（Score /20）**：20点満点の語彙テストのクラス平均スコア。ベースラインは約10点。
+- **全体的な上昇トレンド**：左から右に向かってスコアが上がっており、40週間の学習効果を反映しています。
+- **破線（Midterm / Final）**：中間試験（第15週）と期末試験（第31週）の時期。この前後でスコアが一時的に下がっています（試験対策のため語彙学習の優先度が下がる）。
+- **ギザギザした変動**：AR(1)ノイズによるもの。先週のスコアが今週に影響する「自己相関」を反映しています。
+- **この例での位置づけ**：ここでは「40週の短い教育系列を、季節モデルなしでどう扱うか」を学ぶため、年周期は入れずに**非季節の基礎例**として使います。
+
+### Dataset 2: 月次TOEFL風スコア（24ヶ月、介入あり）
+
+ある語学学校が、30名のコホートの平均TOEFL iBTスコアを24ヶ月間追跡しています。**12ヶ月目にカリキュラムを刷新**し、統合スキル重視の新プログラムに切り替えました。このデータは、介入時系列分析 (ITS) のデモンストレーションに使います。
+
+この設定は、反復的なスコア報告や妥当性検証の文脈で見られる継続測定 [@gu2015] と、単一群 ITS による教育介入評価 [@bernal2017; @li2025] の両方を意識したものです。ここでの焦点は、「介入後に上がったか」だけではなく、**直後に跳ね上がったのか**、**その後も月ごとに積み上がったのか**を分けてみることです。
+
+- **介入前（月1–12）**：ベースライン約65点、微増トレンド（+0.3点/月）、月次の自己相関
+- **介入後（月13–24）**：ステップ変化（即座に+5点）＋ 緩やかなランプ効果（+0.5点/月の追加上昇）
+
+```{r}
+#| label: create-toefl-data
+n_months <- 24
+intervention_point <- 12
+months <- 1:n_months
+
+# 共通のAR(1)ノイズ
+ar_toefl <- as.numeric(arima.sim(n = n_months, list(ar = 0.45), sd = 2))
+
+# 介入前後のスコア構築
+baseline <- 65
+pre_trend <- 0.3 * months
+step_effect <- ifelse(months > intervention_point, 5, 0)
+ramp_effect <- ifelse(months > intervention_point, 0.5 * (months - intervention_point), 0)
+
+toefl_scores <- baseline + pre_trend + step_effect + ramp_effect + ar_toefl
+toefl_ts <- ts(toefl_scores, frequency = 12, start = c(2022, 1))
+
+autoplot(toefl_ts) +
+  labs(title = "Monthly TOEFL-like scores (24 months, intervention at month 12)",
+       x = "Time", y = "Score") +
+  geom_vline(xintercept = 2022 + 12/12, linetype = "dashed", color = "red", linewidth = 0.8) +
+  annotate("text", x = 2023.1, y = max(toefl_scores) - 1,
+           label = "Curriculum change", color = "red", size = 3.5)
+```
+
+**図の読み方**：
+
+- **赤い破線（Curriculum change）**：12ヶ月目のカリキュラム変更時点。ここを境にスコアの水準が変わっているかどうかが分析の焦点です。
+- **介入前（左半分）**：ベースライン約65点からの緩やかな上昇（+0.3点/月程度）。
+- **介入後（右半分）**：スコアが一段階ジャンプし（ステップ効果）、さらに上昇の傾きが急になっているように見えます（ランプ効果）。
+- **重要な注意**：このような視覚的パターンだけでは介入効果を確認できません。自己相関やトレンドの影響を統計的に切り分けるITS分析（セクション6）が必要です。
+
+### Dataset 3: 週次読解流暢性 WPM（30週、季節性あり）
+
+EFLプログラムで、学生の音読流暢性（words per minute, WPM）を毎週測定しています。30週間のデータには**周期的な低下パターン**が見られます：中間試験と期末試験の準備期間に音読練習が減り、WPMが一時的に下がります。
+
+学習発達の**揺らぎや一時的な後退**を、単なるノイズではなく発達過程の一部としてみる視点は、動的システム論の SLA 研究でよく強調されます [@debot2007; @verspoor2008]。このデータでは、そうした揺らぎが「ただの乱れ」なのか、「周期的な構造」なのかを見分ける練習をします。
+
+```{r}
+#| label: create-fluency-data
+n_fluency <- 30
+trend_f <- seq(0, 15, length.out = n_fluency)      # 全体的な上昇（15 WPM分）
+# 10週周期の季節的パターン（試験準備期間のディップ）
+seasonal_f <- -5 * sin(2 * pi * (1:n_fluency) / 10)
+ar_f <- as.numeric(arima.sim(n = n_fluency, list(ar = 0.4), sd = 3))
+fluency_wpm <- 100 + trend_f + seasonal_f + ar_f   # ベースライン100 WPM
+fluency_ts <- ts(fluency_wpm, frequency = 10)       # 周期10
+
+autoplot(fluency_ts) +
+  labs(title = "Weekly reading fluency (WPM, 30 weeks)",
+       x = "Week", y = "Words per Minute")
+```
+
+**図の読み方**：
+
+- **全体の傾向**：右上がりなので、読解流暢性は学期を通して伸びています。
+- **規則的な波**：単なるノイズではなく、ほぼ同じ間隔で山と谷が出ています。ここが後で STL 分解や季節差分を試す理由です。
+- **この例での位置づけ**：Dataset 1 が「非季節の基礎例」なのに対し、Dataset 3 は「周期性を含む基礎例」です。後半の季節性の説明では主にこの系列を使います。
+
+### 3つのデータセットの概要
+
+::: {.panel-tabset}
+
+#### 記述統計
+
+```{r}
+#| label: desc-stats-ts
+tibble(
+  Dataset = c("Vocabulary quiz", "TOEFL-like scores", "Reading fluency (WPM)"),
+  N = c(length(vocab_ts), length(toefl_ts), length(fluency_ts)),
+  Mean = round(c(mean(vocab_ts), mean(toefl_ts), mean(fluency_ts)), 1),
+  SD = round(c(sd(vocab_ts), sd(toefl_ts), sd(fluency_ts)), 1),
+  Median = round(c(median(vocab_ts), median(toefl_ts), median(fluency_ts)), 1),
+  Min = round(c(min(vocab_ts), min(toefl_ts), min(fluency_ts)), 1),
+  Max = round(c(max(vocab_ts), max(toefl_ts), max(fluency_ts)), 1),
+  Skewness = round(c(
+    moments::skewness(as.numeric(vocab_ts)),
+    moments::skewness(as.numeric(toefl_ts)),
+    moments::skewness(as.numeric(fluency_ts))
+  ), 2),
+  Kurtosis = round(c(
+    moments::kurtosis(as.numeric(vocab_ts)),
+    moments::kurtosis(as.numeric(toefl_ts)),
+    moments::kurtosis(as.numeric(fluency_ts))
+  ), 2)
+) |>
+  gt() |>
+  tab_header(title = "Descriptive statistics of simulated datasets") |>
+  tab_footnote("Skewness: 0に近いほど左右対称。正なら右裾が長い。Kurtosis: 3が正規分布の基準値。")
+```
+
+**表の読み方**：Skewness（歪度）が0に近ければ分布は左右対称です。正の値は右裾が長い（高得点方向に外れ値がある）ことを示します。Kurtosis（尖度）は3が正規分布の基準値で、3より大きければ裾が重い（極端な値が出やすい）分布です。
+
+#### 分布の確認
+
+```{r}
+#| label: desc-dist-ts
+tibble(
+  value = c(as.numeric(vocab_ts), as.numeric(toefl_ts), as.numeric(fluency_ts)),
+  dataset = rep(c("Vocabulary (/20)", "TOEFL-like", "Fluency (WPM)"),
+                c(length(vocab_ts), length(toefl_ts), length(fluency_ts)))
+) |>
+  ggplot(aes(x = value)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 12, fill = "steelblue", alpha = 0.7) +
+  geom_density(color = "tomato", linewidth = 0.8) +
+  facet_wrap(~dataset, scales = "free", ncol = 3) +
+  labs(title = "Distribution of each dataset",
+       x = "Value", y = "Density")
+```
+
+ヒストグラムと密度曲線の形状を確認し、天井・床効果や極端な歪みがないかを確認します。
+
+#### 3系列の比較プロット
+
+```{r}
+#| label: desc-compare-ts
+p1 <- autoplot(vocab_ts) + labs(title = "Vocabulary", x = "Week", y = "Score (/20)")
+p2 <- autoplot(toefl_ts) + labs(title = "TOEFL-like", x = "Time", y = "Score")
+p3 <- autoplot(fluency_ts) + labs(title = "Fluency", x = "Week", y = "WPM")
+gridExtra::grid.arrange(p1, p2, p3, ncol = 1)
+```
+
+3つのデータセットを並べると、それぞれ異なる特徴が見えます。語彙テストは緩やかな上昇トレンド、TOEFLスコアは介入時点での水準変化、流暢性は周期的な上下動が特徴的です。
+
+#### 自己相関の確認
+
+```{r}
+#| label: desc-acf-ts
+p_acf1 <- ggAcf(vocab_ts) + labs(title = "ACF: Vocabulary")
+p_acf2 <- ggAcf(toefl_ts) + labs(title = "ACF: TOEFL-like")
+p_acf3 <- ggAcf(fluency_ts) + labs(title = "ACF: Fluency")
+gridExtra::grid.arrange(p_acf1, p_acf2, p_acf3, ncol = 1)
+```
+
+3つのデータセットすべてに自己相関が見られます。青い破線（95%信頼限界）を超えるバーの数に注目してください。この自己相関が「なぜ問題なのか」「通常のt検定や回帰がなぜ使えないのか」は、次のセクションで詳しく解説します。
+
+:::
+
+
+### `ts()` の `frequency` パラメータ設定ガイド
+
+`ts()` オブジェクトを作成する際の `frequency` は、**1年間あたりの観測回数**を指定します。教育データでは以下が一般的です：
+
+| データの頻度 | `frequency` | 例 |
+|---|---|---|
+| 年次（年1回テスト） | `1` | 各学年末の学力テスト |
+| 学期ごと（年2–3回） | `2` または `3` | 前期・後期テスト |
+| 月次 | `12` | 月次のTOEFLスコア推移 |
+| 隔週 | `26` | 隔週の小テスト |
+| 週次 | `52` | 週次の語彙テスト |
+| 日次（授業日のみ） | `5` ×学期週数 を年換算 | 毎日の出席・課題提出 |
+
+ポイントは、「データが毎週取られているか」ではなく、**どの周期をモデルに見せたいか**です。
+
+- **年周期の週次季節性**を見たいなら `frequency = 52`
+- **学期内の10週サイクル**のような局所周期を見たいなら `frequency = 10`
+- 今回の Dataset 1 のように、**短い系列を非季節の基礎例として扱う**なら `frequency = 1` という割り切りもあります
+
+つまり、`frequency = 1` は「週次データだから誤り」ではなく、「この例では季節周期をモデル化しない」という明示的な選択です。一方、周期性を見たいのに `frequency = 1` にしてしまうと、季節性の検出・分解ができません。
+
+`frequency` がわからない場合は、`findfrequency(y)` で自動推定できます（`forecast`パッケージ）。
+
+### 教育データ特有の注意点
+
+教育データを時系列として分析する際に、自然科学のデータにはない特有の考慮事項があります。
+
+1. **学校暦による構造的欠測**：春休み・夏休みの期間はデータが存在しません。欠測として補間するか、休暇期間を除外して「授業週」で連番を振るかは研究目的に応じて判断してください。補間する場合は `imputeTS::na_kalman()` が推奨です（セクション7参照）。
+
+2. **天井・床効果 (ceiling/floor effects)**：満点20点のテストでは、上位の学生が天井に張り付き、トレンドが人工的に平坦化します。Box-Cox変換（`lambda` パラメータ）や、項目応答理論（第11章）で能力推定値を使うことで対処できます。
+
+3. **練習効果 (practice effects)**：同じテストを繰り返し使用すると、学習効果ではなくテスト慣れによるスコア上昇が混入します。パラレルフォーム（複数バージョン）の使用や、IRT等化でこの問題を軽減できます。
+
+4. **コホートの構成変化**：学生の転入・転出によりグループの構成が変化します。特に学年変わりでクラス替えがある場合、前後のスコアは異なる集団のものです。分析時には、同一学生の追跡データか集計データかを明確にしてください。
+
+5. **イベント的外れ値**：文化祭・体育祭の週、インフルエンザによる学級閉鎖、自然災害による休校など、教育特有のイベントでスコアが突然変動します。これらは外れ値として除外するのではなく、ITSの**パルスダミー**としてモデルに組み込むのが適切です。
+
+## 時系列データの特性と分解
+
+### なぜt検定や通常の回帰が使えないのか
+
+第1章で学んだt検定や第4章の回帰分析は、統計学の「基本道具」として幅広く使われています。しかし、時系列データにこれらの手法をそのまま適用すると、**重大な誤りを犯す**可能性があります。その核心にあるのが**自己相関** (autocorrelation) の問題です。
+
+社会科学向けの時系列入門でも、**独立性の破れを無視した推論は最初に避けるべき誤り**として繰り返し警告されています [@shin2016; @shumway2017]。教育データでは同じ学習者や同じクラスを追跡することが多いため、この問題は例外ではなくむしろ標準です。
+
+**自己相関とは何か**：時系列における自己相関とは、「ある時点の値が、その前の時点の値に引きずられる」現象です。教育データで具体的に考えてみましょう。ある学生が今週の語彙テストで18点を取ったとします。来週のテストでは、クラス平均の14点にいきなり戻るでしょうか？ まずありえません。おそらく17〜19点の範囲に留まるでしょう。この「先週の成績が今週の成績を予測する」という性質が自己相関です。
+
+### 自己相関を無視するとどうなるか：具体的な数値
+
+自己相関を無視してOLS回帰やt検定を適用すると、以下の問題が生じます。
+
+- **標準誤差が過小推定**される → p値が本来よりも小さくなる
+- **有意でないはずの効果が有意に見える**（第一種の過誤率の上昇）
+- 予測区間が狭すぎて実際の変動を捉えられない
+
+この問題の深刻さを数値で理解しましょう。正の自己相関がある系列では、各データ点が運ぶ「独立な情報」は見かけよりも少なくなります。**有効標本サイズ** (effective sample size) は、概算で次のように縮小します：
+
+$$n_{\text{eff}} \approx n \times \frac{1 - \rho}{1 + \rho}$$
+
+ここで $\rho$ はラグ1の自己相関係数です。たとえば、40週分のデータ（$n = 40$）で自己相関 $\rho = 0.6$ がある場合：
+
+$$n_{\text{eff}} \approx 40 \times \frac{1 - 0.6}{1 + 0.6} = 40 \times 0.25 = 10$$
+
+つまり、**40データ点のつもりでも、独立な情報は10データ点分しかない**のです。OLS回帰が $n = 40$ で計算した標準誤差は実態の半分程度になり、p値は楽観的すぎる結果を返します。教育介入の「有意な効果」が実は統計的アーティファクトだった、ということが起こりえます。
+
+**教育研究で自己相関が生じる典型的な状況**：
+
+- **同じ生徒の反復測定**：毎週の語彙テスト、月次のTOEFLスコアなど、同一の学習者を繰り返し測定するデータはほぼ確実に自己相関を持つ
+- **クラス単位の集約データ**：クラスの平均スコアを週次で記録する場合、クラスの構成が変わらない限り強い自己相関が生じる
+- **学習の累積性**：言語学習は「昨日の知識の上に今日の知識が積み重なる」ため、本質的に自己相関を伴う
+
+時系列分析の手法（ARIMA等）は、この自己相関を**明示的にモデルに組み込む**ことで、正しい標準誤差・正しいp値・適切な幅の予測区間を提供します。
+
+### 定常性 (stationarity)
+
+時系列分析で最も重要な概念の一つが**定常性**です。直感的に言えば、定常な時系列とは「統計的な性質が時間によって変わらない」系列のことです。
+
+**なぜ定常性がこれほど重要なのか**：ARIMAモデルは「未来は過去に似ている」という前提に立っています。この前提が成り立つためには、データの平均やばらつきが時間を通じて安定していなければなりません。もし平均が上がり続ける系列（例：学習効果でスコアが右肩上がり）をそのままモデルに渡すと、モデルは「平均に戻ろう」とする力を誤って推定してしまい、予測が大きく外れます。
+
+教育データの文脈で考えてみましょう。語彙テストの平均スコアが第1週で10点、第40週で16点だったとします。この「10→16の上昇」をそのまま扱うと、ARIMAは「このデータの真の平均はどこか？」を決められません。10点なのか16点なのか、それとも13点なのか — 平均が動いているからです。**差分を取って「先週からの変化量」に変換すると、この問題が解消されます**（差分については後述）。
+
+比喩で考えてみましょう。弓道の射手を想像してください。
+
+- **定常**：熟練の射手が的を狙っている。矢は的の中心周辺に、一定の散らばりで集まる。100本目でも500本目でも、命中パターンは変わらない。
+- **非定常（トレンド）**：初心者が練習中。最初は的を外すが、徐々に上達して中心に近づいていく。矢の平均的な位置が時間とともに移動する。
+- **非定常（分散変化）**：射手の集中力が不安定。調子のいい日は集中して散らばりが小さく、悪い日は大きくばらつく。
+
+より正確には、**弱定常性** (weak stationarity) は以下を要求します：
+
+- 平均が時間に依らず一定
+- 分散が時間に依らず一定
+- 自己共分散が時点間の差（ラグ）のみに依存
+
+#### 定常/非定常を目視で判断するチェックポイント
+
+プロットを見たときに、以下の3点を確認してください。
+
+1. **平均の漂流**：系列が全体的に上昇または下降していないか？ → 上がっていれば非定常（トレンド）
+2. **分散の膨張・収縮**：時間が経つにつれて振れ幅が大きく（あるいは小さく）なっていないか？ → 変化していれば非定常
+3. **水準のシフト**：ある時点を境にスコアの水準が急変していないか？ → 構造変化の可能性
+
+1つでも該当すれば非定常の疑いがあり、差分や変換が必要です。以下の3つのパネルで、定常な系列と非定常な系列を視覚的に比較してみましょう。
+
+::: {.panel-tabset}
+#### 定常な系列
+
+```{r}
+#| label: stationary-demo
+# AR(1)の定常的なノイズ（トレンドを除いた語彙テストの残差に相当）
+stationary_ex <- arima.sim(n = 100, list(ar = 0.5), sd = 1)
+autoplot(ts(stationary_ex)) +
+  labs(title = "Stationary series (AR(1), constant mean & variance)",
+       x = "Time", y = "Value") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "blue", alpha = 0.5)
+```
+
+#### 非定常（トレンドあり）
+
+```{r}
+#| label: nonstationary-trend
+# 語彙テストの生データ（上昇トレンドがあるので非定常）
+autoplot(vocab_ts) +
+  labs(title = "Non-stationary: vocabulary scores with upward trend",
+       x = "Week", y = "Score (/20)")
+```
+
+#### 非定常（分散変化）
+
+```{r}
+#| label: nonstationary-variance
+# 分散が時間とともに増大する例
+changing_var <- cumsum(rnorm(100)) * seq(0.5, 2, length.out = 100)
+autoplot(ts(changing_var)) +
+  labs(title = "Non-stationary: increasing variance over time",
+       x = "Time", y = "Value")
+```
+
+:::
+
+### 単位根検定（ADF検定）
+
+プロットによる目視確認は重要ですが、主観的な判断に頼るだけでは不十分です。特に、トレンドが緩やかだったり系列が短かったりすると、目で見ただけでは定常かどうか判断に迷うことがあります。そこで**統計検定**の出番です。
+
+**「単位根」とは何か**：単位根 (unit root) とは、系列が**ランダムウォーク**（酔歩）をしている状態を意味します。ランダムウォークでは、今日の値＝昨日の値＋ランダムノイズです。酔っ払いが壁にぶつかるまでふらふら歩き続けるように、系列はどこに向かうか予測不能で、一定の平均に戻る力がありません。このような系列に対しては、将来の予測も介入効果の推定も意味をなしません。
+
+**ADF検定**（拡張ディッキー＝フラー検定）は、このような単位根が存在するかどうかを検定します。帰無仮説は「単位根が存在する（＝非定常である）」なので、**p値が小さければ（< 0.05）帰無仮説を棄却して「定常」と判断**します。
+
+以下では、語彙テストの生データ（上昇トレンドがあるため非定常の疑いあり）と、1階差分を取った後のデータ（トレンドを除去したもの）に対してADF検定を実行し、差分がトレンドを除去できたかどうかを確認します。
+
+```{r}
+#| label: adf-test-vocab
+# 生データ（非定常が疑われる）
+adf_raw <- adf.test(vocab_ts)
+
+# 1階差分（トレンド除去後）
+adf_diff <- adf.test(diff(vocab_ts))
+
+tibble(
+  Series = c("Raw vocab scores", "Differenced (diff)"),
+  ADF_statistic = round(c(adf_raw$statistic, adf_diff$statistic), 3),
+  p_value = round(c(adf_raw$p.value, adf_diff$p.value), 4),
+  Conclusion = c(
+    ifelse(adf_raw$p.value < 0.05, "Stationary", "Non-stationary (unit root)"),
+    ifelse(adf_diff$p.value < 0.05, "Stationary", "Non-stationary (unit root)")
+  )
+) |>
+  gt() |>
+  tab_header(title = "ADF test: raw vs. differenced vocabulary scores")
+```
+
+この例では、生データはトレンドのため非定常と判断されやすく、1階差分後の系列は定常に近づくはずです。したがって、この表では「差分前後で結論がどう変わったか」を最初に確認してください。
+
+ADF検定の結果を読むときの注意点：p値が小さい（例: < 0.05）→「単位根を棄却 → 定常と判断」。p値が大きい → 「非定常の可能性あり → 差分を取って再検定」。この検定は系列の長さや次数の設定に敏感なので、**視覚的な確認（プロット）と併用**するのが安全です。なお、ADF検定は小標本（$n < 30$ 程度）では検出力が低いため、教育データでは結果を過信しないことが重要です。
+
+### KPSS検定との併用
+
+**なぜADF検定だけでは不十分なのか**：ADF検定の帰無仮説は「非定常」です。もしp値が大きくて帰無仮説を棄却できなかった場合、「非定常である」と確認されたわけではなく、「定常とは言い切れない」というだけです。帰無仮説の非対称性により、ADF単独では判断が中途半端になることがあります。
+
+そこで、帰無仮説が**逆方向**の**KPSS検定** (Kwiatkowski-Phillips-Schmidt-Shin) と併用します。KPSS検定の帰無仮説は「定常」です。この2つの検定を、同じ問いに対して**逆の立場から意見を述べる2人の裁判官**と考えてください。両方が同じ結論に至れば、その判断は信頼できます。FPP3 [@hyndman2021] もこの併用を推奨しています。
+
+| ADF | KPSS | 結論 |
+|-----|------|------|
+| p < 0.05（定常）| p > 0.05（定常）| **定常** |
+| p > 0.05（非定常）| p < 0.05（非定常）| **非定常 → 差分が必要** |
+| 食い違う | 食い違う | より慎重な判断が必要 |
+
+```{r}
+#| label: kpss-test
+#| code-fold: true
+# KPSS検定（帰無仮説：定常）
+kpss_raw <- urca::ur.kpss(as.numeric(vocab_ts), type = "tau")
+
+# ADF と KPSS の結果を並べて表示
+tibble(
+  Test = c("ADF (H0: non-stationary)", "KPSS (H0: stationary)"),
+  Statistic = c(round(adf_raw$statistic, 3),
+                round(kpss_raw@teststat, 3)),
+  Conclusion = c(
+    ifelse(adf_raw$p.value < 0.05, "Reject H0 → Stationary", "Fail to reject → possibly non-stationary"),
+    ifelse(kpss_raw@teststat > kpss_raw@cval[2], "Reject H0 → Non-stationary", "Fail to reject → Stationary")
+  )
+) |>
+  gt() |>
+  tab_header(title = "ADF vs KPSS: complementary stationarity tests")
+
+# ndiffs() で必要な差分回数を自動判定
+cat("Recommended differencing (KPSS-based):", forecast::ndiffs(vocab_ts, test = "kpss"), "\n")
+cat("Recommended differencing (ADF-based):", forecast::ndiffs(vocab_ts, test = "adf"), "\n")
+```
+
+**ADF検定とKPSS検定の結果が食い違う場合**：系列が定常と非定常の境界領域にあると、検出力の異なる2つの検定が異なる結論を出すことがあります。特に $n < 40$ の教育データでは珍しくありません。その場合は、機械的に「とりあえず1回差分する」のではなく、次の順で**最小限の差分**を判断してください。
+
+1. まず**プロットを目視**で確認する。明らかなトレンドや分散変化があるかを確認する。
+2. `ndiffs()` の結果を参照し、通常差が本当に必要かを確かめる。
+3. 差分を入れたら、再度プロットと ACF を見て、ゼロ付近で安定しているか、ラグ1に大きな負のスパイクが出ていないかを確認する。
+4. 迷う場合も、「差分は多いほど安全」ではなく、**必要最小限にとどめる**のが原則です。
+
+### 時系列の分解
+
+**なぜ分解するのか**：時系列のプロットを眺めているだけでは、「上昇トレンドがありそう」「波打っている」「ノイズが多い」といった印象は得られても、それぞれがどの程度の大きさなのか、どちらが支配的なのかは判断しにくいです。時系列の分解 (decomposition) は、データを**3つの部品**に分離して、それぞれを個別に観察できるようにする操作です。
+
+- **トレンド** (trend)：長期的な方向性。「全体として上がっているのか、下がっているのか、横ばいなのか」
+- **季節成分** (seasonal)：一定の周期で繰り返されるパターン。教育データでは「試験前にスコアが下がる」「学期初めに高い」など
+- **残差** (remainder)：トレンドでも季節性でも説明できないランダムな変動
+
+料理の味に例えるなら、完成した料理の味を「甘味・塩味・旨味」に分けて個別に確認するようなものです。全体の味は3つの合計ですが、個別に確認することで「塩味が強すぎる」などの問題が見えてきます。
+
+Dataset 3（読解流暢性）は、試験周期に応じた約10週ごとの季節的パターンを埋め込んであるため、分解のデモンストレーションに適しています。以下で STL (Seasonal and Trend decomposition using Loess) を適用し、3つの成分を分離します。
+
+```{r}
+#| label: stl-decompose-fluency
+stl_fluency <- stl(fluency_ts, s.window = "periodic")
+autoplot(stl_fluency) +
+  labs(title = "STL decomposition: reading fluency (WPM)")
+```
+
+```{r}
+#| label: seasonality-profile-fluency
+fluency_cycle_tbl <- tibble(
+  Week = seq_along(fluency_ts),
+  WPM = as.numeric(fluency_ts),
+  Cycle_position = factor(cycle(fluency_ts), levels = 1:frequency(fluency_ts)),
+  Cycle_block = factor((seq_along(fluency_ts) - 1) %/% frequency(fluency_ts) + 1)
+)
+
+ggplot(fluency_cycle_tbl, aes(x = Cycle_position, y = WPM, group = Cycle_block, color = Cycle_block)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 1.8) +
+  labs(
+    title = "Seasonal profile by exam cycle position",
+    x = "Position within the 10-week cycle",
+    y = "Reading fluency (WPM)",
+    color = "Cycle block"
+  )
+
+fluency_cycle_tbl |>
+  group_by(Cycle_position) |>
+  summarise(
+    mean_wpm = mean(WPM),
+    sd_wpm = sd(WPM),
+    .groups = "drop"
+  ) |>
+  mutate(Cycle_position_num = as.integer(as.character(Cycle_position))) |>
+  ggplot(aes(x = Cycle_position_num, y = mean_wpm)) +
+  geom_ribbon(aes(ymin = mean_wpm - sd_wpm, ymax = mean_wpm + sd_wpm), fill = "#c6dbef", alpha = 0.6) +
+  geom_line(color = "#08519c", linewidth = 1) +
+  geom_point(color = "#08519c", size = 2) +
+  scale_x_continuous(breaks = 1:frequency(fluency_ts)) +
+  labs(
+    title = "Average seasonal pattern across cycle positions",
+    x = "Position within the 10-week cycle",
+    y = "Mean WPM"
+  )
+```
+
+```{r}
+#| label: seasonality-calendar-toefl
+toefl_month_tbl <- tibble(
+  Month = yearmonth(seq.Date(as.Date("2022-01-01"), by = "month", length.out = length(toefl_ts))),
+  Score = as.numeric(toefl_ts)
+) |>
+  as_tsibble(index = Month)
+
+ggtime::gg_season(toefl_month_tbl, Score) +
+  labs(
+    title = "Calendar-season profile for the monthly TOEFL-like series",
+    x = "Month within year",
+    y = "Score"
+  )
+
+ggtime::gg_subseries(toefl_month_tbl, Score) +
+  labs(
+    title = "Subseries view for the monthly TOEFL-like series",
+    x = "Month within year",
+    y = "Score"
+  )
+```
+
+**この2つの図の使い分け**：`gg_season()` は「各年の線が似た形で重なるか」を見る図です。毎年同じ月で山や谷が出るなら、季節性が安定していると判断できます。`gg_subseries()` は「どの月が相対的に高いか」「月ごとのばらつきは大きいか」を見る図で、季節ダミーや季節差分の必要性を具体的に考えるのに向いています。
+
+#### STLのパラメータ
+
+`s.window = "periodic"` は季節パターンが全期間で同一であると仮定します。教育データでは試験日程が年度によって微妙にずれることがあるため、数値を指定する（例: `s.window = 7`）と季節パターンの緩やかな変化を許容できます。`t.window` はトレンドの平滑化の窓幅を制御します。
+
+#### SARIMA 前に季節性をどう可視化するか
+
+- 合成のような **10週周期**データでは、上のように「周期内の位置」に並べ替えたプロファイル図が分かりやすいです。
+- 月次や四半期のような **カレンダー季節性** では、`ggtime::gg_season()` や `ggtime::gg_subseries()` が有効です。
+- つまり、SARIMA に入る前に「**周期が本当に繰り返しているか**」「**毎周期で形がどれくらい安定しているか**」を図で確認しておくと、季節差分や季節AR/MA項の必要性が判断しやすくなります。
+
+**STL分解結果の読み方**：
+
+| パネル | 意味 | 確認ポイント | この例では |
+|--------|------|-------------|-----------|
+| **data** | 生の時系列 | 全体的な形状を把握 | 30週間のWPM。上昇しながら波打つ |
+| **trend** | 長期的な方向性 | 単調増加/減少/プラトー？ | 30週で約15 WPMの上昇（学習効果） |
+| **seasonal** | 繰り返しの周期パターン | 一貫した形状か？ | 約10週周期の上下動（試験ディップ） |
+| **remainder** | 説明できないランダム変動 | パターンがないこと、分散が一定であること | ゼロ付近でランダムに散在 |
+| **右側のスケールバー** | 各成分の相対的な大きさ | どの成分が支配的か比較 | バーが短い成分ほど変動が大きい |
+
+**スケールバーの読み方のコツ**：4つのパネルの右側にある灰色のバーの長さは、それぞれの成分の縦軸のスケールに対応しています。バーが短い（= 縦軸のレンジが広い）ほど、その成分の変動幅が大きいことを意味します。trend と seasonal のバーを比較して、どちらが支配的かを判断してください。
+
+#### 加法分解と乗法分解
+
+季節変動の振幅が**一定**なら加法分解 ($y_t = T_t + S_t + R_t$)、振幅がトレンドに**比例**して大きくなるなら乗法分解（あるいは対数変換後に加法分解）が適します。教育データでは多くの場合、加法分解で十分です。`stl()` は加法分解を行います。
+
+#### 分解とARIMAモデルの関係
+
+時系列の分解は**必須のステップではありません**。`auto.arima()` は内部で差分や季節調整を自動的に行うため、分解を事前に実施しなくてもモデル構築は可能です。ただし、分解には以下の利点があります：
+
+- データの構造（トレンドの強さ、季節パターンの形、残差の大きさ）を**事前に理解**できる
+- 残差にパターンが残っていないか（＝分解が適切か）を視覚的に確認できる
+- 論文の方法セクションで「データにはこのような特徴が見られた」と記述する根拠になる
+
+分析ワークフローとしては、「まず分解してデータの構造を把握 → ARIMAモデルの構築に進む」という流れが理想的です。
+
+### 階差（差分）
+
+**階差** (differencing) は、非定常な系列を定常化するための基本操作です。直感的には、「高度計の読み」を「上昇率」に変換する操作と同じです。実際のスコア（何点か？）ではなく、「先週からの変化量」（何点上がった/下がったか？）に注目します。
+
+$$\Delta y_t = y_t - y_{t-1}$$
+
+この操作でトレンドが除去されます。季節性がある場合は、**季節差** ($y_t - y_{t-s}$, sは周期) も取ります。
+
+以下では、語彙テストの生データ（上段）と1階差分後のデータ（下段）を並べて、差分がトレンド除去にどう効くかを視覚的に確認します。差分後の系列がゼロ付近で安定して振動していれば、定常化に成功しています。
+
+```{r}
+#| label: differencing-demo
+p1 <- autoplot(vocab_ts) +
+  labs(title = "Original: vocabulary scores", x = "Week", y = "Score")
+p2 <- autoplot(diff(vocab_ts)) +
+  labs(title = "After 1st differencing (trend removed)", x = "Week", y = "Change in score") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "blue", alpha = 0.5)
+
+gridExtra::grid.arrange(p1, p2, ncol = 1)
+```
+
+```{r}
+#| label: seasonal-differencing-demo
+seasonal_diff_fluency <- diff(fluency_ts, lag = frequency(fluency_ts))
+
+p_season_raw <- autoplot(fluency_ts) +
+  labs(
+    title = "Original weekly fluency series with a 10-week cycle",
+    x = "Week",
+    y = "WPM"
+  )
+
+p_season_diff <- autoplot(seasonal_diff_fluency) +
+  labs(
+    title = "After seasonal differencing (lag = 10)",
+    x = "Week",
+    y = "Seasonally differenced WPM"
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "#2171b5", alpha = 0.7)
+
+gridExtra::grid.arrange(p_season_raw, p_season_diff, ncol = 1)
+```
+
+**差分後のプロットの読み方**：上段の生データには右肩上がりのトレンドが見えていましたが、差分後（下段）は**ゼロの周りで安定して振動**しています。青い破線（y = 0）が系列の中心にあり、上下対称に散らばっている — これが「定常に近い」状態です。
+
+**差分とARIMAの関係**：ADF検定で非定常と判定されたデータに差分を1回取り、再検定して定常が確認される — この流れがARIMAの「I」(Integrated) の決定プロセスです。ARIMA(1, **1**, 0) の太字の **1** は「差分を1回取った」ことを意味しています。つまり、差分で非定常を解消してからAR/MAモデルを当てはめるのがARIMAの基本戦略です。
+
+**季節差分**：通常の差分 ($y_t - y_{t-1}$) はトレンドを除去しますが、季節的なパターン（例：毎学期の試験前にスコアが下がる）は除去できません。季節差分 $y_t - y_{t-s}$ は、「$s$ 期前の同時期との差」を取る操作です。たとえば、$s = 10$（10週周期）の場合、第15週のスコアから第5週のスコアを引きます。これにより「前回の同じ時期と比べてどう変化したか」がわかり、季節パターンが除去されます。SARIMAモデル（季節ARIMAモデル）はこの季節差分を内包しています。
+
+**季節差分後の見え方**：上の 10 週周期の例では、季節差分後の系列は「前回の同じ時期との差」に変換されるため、繰り返しパターンがかなり弱まります。`gg_season()` や `gg_subseries()` で周期の繰り返しが明確に見え、かつ季節差分後にその波が薄れるなら、SARIMA の季節差分 $D$ を入れる合理的な根拠になります。
+
+::: {.callout-warning}
+#### 過剰差分 (over-differencing) に注意
+
+差分は1回で十分な場合がほとんどです。2回以上差分を取ると**人工的な負の自己相関**が導入され、モデルの推定を不安定にします。過剰差分の兆候は、差分後のACFのラグ1に**大きな負のスパイク**（-0.5前後）が現れることです。`forecast::ndiffs()` で適切な差分回数を自動判定できます。
+
+```{r}
+#| label: overdiff-demo
+#| code-fold: true
+# 過剰差分のデモ
+d1 <- diff(vocab_ts)               # 1回差分（適切）
+d2 <- diff(vocab_ts, differences = 2)  # 2回差分（過剰の可能性）
+
+p_d1 <- ggAcf(d1) + labs(title = "ACF: 1st diff (appropriate)")
+p_d2 <- ggAcf(d2) + labs(title = "ACF: 2nd diff (over-differenced?)")
+gridExtra::grid.arrange(p_d1, p_d2, ncol = 2)
+```
+:::
+
+
+### ACF/PACF と AR/MA の直感
+
+ここまでで、定常性の確認と差分によるトレンド除去を学びました。いよいよ、データの**自己相関構造の"指紋"**を読む技術に入ります。ACFとPACFは、データがどのような自己相関パターンを持っているかを可視化するツールで、どのタイプのARIMAモデルが適しているかを教えてくれます。
+
+ARIMAモデルの核心は、**AR** (Autoregressive) と **MA** (Moving Average) の2つの成分です。まず直感的に理解しましょう。
+
+#### AR と MA のアナロジー
+
+- **AR（自己回帰）**：**振り子**の動き。振り子の現在の位置は、直前の位置に引きずられる。スコアの文脈では、「先週85点だったから、今週も85点に近いだろう」という慣性。AR係数が大きいほど慣性が強く、過去の値に強く依存します。
+
+- **MA（移動平均）**：**サーモスタット**の動き。設定温度を目指して、直前の予測誤差を修正する。「先週のモデル予測が2点高すぎたから、今週はその分を差し引こう」という修正メカニズム。
+
+- **I（和分 / 積分）**：差分を取ってからAR+MAを当てはめる。ARIMA(1,1,0)は「1回差分してAR(1)を適用」の意味。
+
+- **ARIMA(p, d, q)**：p = AR次数（何ラグ前まで見るか）、d = 差分の回数、q = MA次数（何期前の誤差まで使うか）。
+
+**数式で見るAR/MA**：アナロジーで直感をつかんだら、数式でもう一段階踏み込みましょう。
+
+**AR(1)モデル**：
+
+$$y_t - \mu = \phi \cdot (y_{t-1} - \mu) + \varepsilon_t$$
+
+ここで $\mu$ は系列の平均です。つまり AR(1) は、「**今週の値そのもの**」ではなく「**平均との差**」が先週の平均との差に引きずられる」と読むのが正確です。たとえば平均が14点、先週が16点なら「平均より2点高い状態」が今週にもある程度残ります。$\phi$ が1に近いほど過去への依存が強く、0に近いほど記憶が弱いと解釈します。
+
+**MA(1)モデル**：
+
+$$y_t = \varepsilon_t + \theta \cdot \varepsilon_{t-1}$$
+
+「今週のスコア = 今週のランダムノイズ + $\theta$ × 先週の予測ミス」。ARが「過去の値そのもの」に依存するのに対し、MAは「過去の予測誤差」に依存します。$\theta = 0.4$ なら、先週の予測が2点外れていた場合、今週は $0.4 \times 2 = 0.8$ 点分の修正が入ります。
+
+#### ACF と PACF — なぜ2つ必要なのか
+
+**ACF** (自己相関関数) は、各ラグ（1期前、2期前、…）での相関をすべて表示します。しかしACFには問題があります。ラグ2の相関が高く見えても、それは「ラグ1を介した間接的な相関」かもしれません。たとえば、先週のスコアと今週のスコアが相関していて（ラグ1）、先週と先々週も相関しているなら（ラグ1）、結果的に先々週と今週も相関して見えます（ラグ2）。これは見せかけの相関です。
+
+**PACF** (偏自己相関関数) は、中間のラグの影響を**取り除いた**うえでの「純粋な」相関を表示します。ラグ2のPACFが高ければ、それはラグ1を経由しない**直接的な**依存関係です。
+
+ACFだけではARモデルとMAモデルを区別できないため、PACFが必要です。2つのプロットを組み合わせることで、データの"指紋"を正確に読み取れます。
+
+**ACF** と **PACF** のプロットで、差分後の語彙テストデータの自己相関構造を確認してみましょう。
+
+```{r}
+#| label: acf-pacf-vocab
+p_acf <- ggAcf(diff(vocab_ts)) + labs(title = "ACF: differenced vocabulary scores")
+p_pacf <- ggPacf(diff(vocab_ts)) + labs(title = "PACF: differenced vocabulary scores")
+gridExtra::grid.arrange(p_acf, p_pacf, ncol = 1)
+```
+
+#### ACF/PACF の読み方（次数同定のルール）
+
+| パターン | ACF | PACF | 示唆するモデル |
+|----------|-----|------|----------------|
+| ACFが指数的に減衰、PACFがラグpで打ち切り | 緩やかに減衰 | p期で急に0に | **AR(p)** |
+| ACFがラグqで打ち切り、PACFが指数的に減衰 | q期で急に0に | 緩やかに減衰 | **MA(q)** |
+| 両方とも緩やかに減衰 | — | — | **ARMA(p,q)** を検討 |
+
+ただし、実務では `auto.arima()` による自動同定を基本とし、ACF/PACFは補助的な確認に使います。
+
+#### シミュレーションでAR/MAのパターンを体験
+
+上の表のパターン（「ACFが減衰、PACFが打ち切り → AR」「ACFが打ち切り、PACFが減衰 → MA」）を実際のデータで確認します。以下では AR(1) と MA(1) をそれぞれシミュレーションし、ACF/PACFの4パネルを並べて比較します。対角的なパターン（AR のACF ≈ MA のPACF、AR のPACF ≈ MA のACF）に注目してください。
+
+```{r}
+#| label: simulate-ar-ma
+# AR(1): PACFがラグ1で切れる
+sim_ar1 <- arima.sim(n = 200, list(ar = 0.7))
+# MA(1): ACFがラグ1で切れる
+sim_ma1 <- arima.sim(n = 200, list(ma = 0.7))
+
+par(mfrow = c(2, 2))
+acf(sim_ar1, main = "ACF of AR(1): gradual decay")
+pacf(sim_ar1, main = "PACF of AR(1): cuts off at lag 1")
+acf(sim_ma1, main = "ACF of MA(1): cuts off at lag 1")
+pacf(sim_ma1, main = "PACF of MA(1): gradual decay")
+par(mfrow = c(1, 1))
+```
+
+**シミュレーション結果の読み方**：4つのパネルを比較してください。
+
+- **左上（AR(1)のACF）**：ラグが増えるにつれて**緩やかに減衰**している。これは「記憶」が間接的に伝播するため。
+- **右上（AR(1)のPACF）**：ラグ1で有意なスパイクがあり、**ラグ2以降は急にゼロに落ちる**。「記憶は直接的には1期分だけ」というAR(1)の特徴。
+- **左下（MA(1)のACF）**：ラグ1で有意なスパイクがあり、**ラグ2以降は急にゼロ**。「修正は1回だけ」というMA(1)の特徴。
+- **右下（MA(1)のPACF）**：**緩やかに減衰**している。
+
+つまり、**PACFが急に切れる → ARモデル、ACFが急に切れる → MAモデル**です。このパターンを覚えておけば、自分のデータに対してどのモデルが適しそうか、ある程度の当たりがつけられます。
+
+#### 教育データでの実務的な目安
+
+教育データ（$n < 50$ 時点）では、高次のARやMAモデルを推定するには標本が足りないことがほとんどです。実務的には、**AR(1) か ARMA(1,1) が最もよく当てはまるモデル**です。ACF/PACFから次数を読み取る練習は重要ですが、最終的には `auto.arima()` に任せるのが安全です。ACF/PACFは「auto.arima() の結果が納得できるか確認する」ためのツールと位置づけてください。
+
+## ARIMAモデルの基本実装
+
+### 手動同定 → 推定 → 診断
+
+ここからは、前セクションで学んだ基礎概念を実際のモデル構築に適用します。Dataset 1（語彙テスト）を使って、ARIMAモデルを**5つのステップ**で手動構築するプロセスを一歩ずつ進めます。各ステップにはYes/Noの判断ポイントがあり、Noなら前のステップに戻ります。
+
+ARIMA は、初心者向けに言えば「**過去の形を使って次を予測するモデル**」です。ここで明らかにしたいのは、(a) 差分が必要か、(b) どれくらい過去に引きずられるか、(c) 次の数時点をどれくらいの不確実性で予測できるか、の3点です。逆に、**なぜスコアが変わったか**という因果的な問いそのものには答えません [@hyndman2021; @shin2016]。
+
+1. **プロット** → 2. **差分で定常化** → 3. **ACF/PACFで次数推定** → 4. **モデル推定** → 5. **残差診断**
+
+**Step 1: 時系列をプロットして特徴を把握**
+
+まず最初にすべきは、データを目で見ることです。上昇トレンドがあり、試験期間にディップがある。非定常の可能性が高い。
+
+**Step 2: 差分を取って定常化し、ADF検定**
+
+Step 1でトレンドが確認されたため、このままではARIMAモデルに渡せません。差分を取ってトレンドを除去し、ADF検定で定常化できたかどうかを確認します。
+
+```{r}
+#| label: arima-step2
+# 1階差分
+d_vocab <- diff(vocab_ts)
+adf.test(d_vocab)
+```
+
+**Step 3: ACF/PACF で候補次数を確認**
+
+差分で定常化した系列の"指紋"（ACF/PACF）を確認し、AR/MAの次数を推測します。前のセクションで既に差分後のACF/PACFを表示しました。PACFがラグ1で有意なスパイクを示し、ラグ2以降はゼロ近辺 → **AR(1)** が候補です。
+
+**Step 4: モデルの推定**
+
+Step 3の結果からAR(1)が候補となったので、ARIMA(**1**, **1**, **0**) を推定します。この括弧内の数字の意味は：AR次数 = 1（1期前の値に依存）、差分回数 = 1（1回差分した）、MA次数 = 0（移動平均項なし）です。
+
+```{r}
+#| label: arima-step4
+# ARIMA(1,1,0): 1回差分してAR(1)を適用
+fit_vocab_manual <- Arima(vocab_ts, order = c(1, 1, 0))
+```
+
+#### 係数テーブル
+
+```{r}
+#| label: arima-step4-coef
+# forecast::Arima の係数テーブルを手動で構築
+# （broom::tidy() が Arima クラスに対応していない場合のロバストな方法）
+arima_coefs <- coef(fit_vocab_manual)
+arima_se    <- sqrt(diag(vcov(fit_vocab_manual)))
+tibble(
+  term     = names(arima_coefs),
+  estimate = unname(arima_coefs),
+  std.error = arima_se,
+  statistic = unname(arima_coefs) / arima_se,
+  p.value   = 2 * pnorm(-abs(unname(arima_coefs) / arima_se))
+) |>
+  gt() |>
+  tab_header(title = "ARIMA(1,1,0) coefficients") |>
+  fmt_number(columns = where(is.numeric), decimals = 4)
+```
+
+#### モデル適合度
+
+```{r}
+#| label: arima-step4-fit
+tibble(
+  Metric = c("sigma²", "log likelihood", "AIC", "AICc", "BIC"),
+  Value = c(
+    fit_vocab_manual$sigma2,
+    fit_vocab_manual$loglik,
+    fit_vocab_manual$aic,
+    fit_vocab_manual$aicc,
+    fit_vocab_manual$bic
+  )
+) |>
+  gt() |>
+  tab_header(title = "ARIMA(1,1,0) model fit") |>
+  fmt_number(columns = Value, decimals = 2)
+```
+
+#### 出力の読み方
+
+- **ar1**：AR(1)の係数推定値。0.55 なら「差分後のスコアの55%が1期前の値に引きずられる」ことを意味します。
+- **sigma²**：残差の分散（モデルが説明しきれないランダムな変動の大きさ）。
+- **AIC / AICc / BIC**：モデル選択基準。**AICc**（小標本補正情報量基準）は $\text{AICc} = \text{AIC} + \frac{2k(k+1)}{n-k-1}$ で定義され、パラメータ数 $k$ に対するサンプルサイズ $n$ が小さいほど補正が大きくなります。教育データ（$n < 100$）ではAICよりAICcを使うのが安全です。AICcが小さいモデルほど「データへの当てはまり」と「パラメータの節約」のバランスが良いと判断されます。**AICcの差が2未満**なら実質的に同等、**10以上**なら強い差と解釈するのが目安です。
+- **log likelihood**：対数尤度（モデルのデータへの当てはまりの良さ）。AICcは「-2×対数尤度 + 補正項」なので、対数尤度が大きいほどAICcは小さくなります。
+
+なお、`forecast::Arima()` は基本Rの `arima()` のラッパーで、`model` 引数によるモデルの再適用や `lambda` による Box-Cox 変換に対応しています。本章では `Arima()` を推奨します。
+
+**Step 5: 残差診断**
+
+モデルの「食べ残し」にあたる**残差** (residuals) にパターンが残っていないかをチェックします。ARIMAモデルが時系列の構造（トレンド＋自己相関）を正しく捉えていれば、残差はランダムなノイズ（白色雑音）になるはずです。残差にまだ自己相関が残っていれば、「モデルが見落としている構造がある」ことを意味し、Step 3に戻って次数を見直す必要があります。
+
+残差診断には少なくとも 3 つの視点があります。(1) 残差の時系列プロットにパターンがないこと、(2) ACFに有意な自己相関が残っていないこと、(3) Ljung-Box検定で統計的に確認することです。`checkresiduals()` はこの 3 つを一度に実行してくれるので、**最初のスクリーニング**として非常に便利です。ただし、`checkresiduals()` が良好だからといってモデルが完全に正しいと断定できるわけではありません。残差の分散変化、外れ値、解釈の妥当性も別途確認します。
+
+```{r}
+#| label: arima-step5
+checkresiduals(fit_vocab_manual)
+```
+
+#### 残差の時系列プロット
+
+`checkresiduals()` の上段パネルは残差の時系列プロットです。
+
+- **確認ポイント**：系統的なパターン（上昇・下降・波打ち）がないこと
+- **OK**：残差がゼロ付近でランダムに散在し、分散が時間を通じてほぼ一定
+- **NG**：残差にトレンドや周期パターンが見える → モデルが構造を捉えきれていない → 次数の見直しが必要
+- この段階では、「残差に**大きな取り残し**がないか」を見るのが目的です。ここで見逃した構造は、予測や係数解釈を不安定にします。
+
+#### 残差のACF
+
+中段パネルは残差の自己相関関数（ACF）です。
+
+- **確認ポイント**：青い破線（95%信頼限界）を超えるバーがないこと
+- **OK**：すべてのラグが破線内に収まっている → 残差に有意な自己相関なし
+- **NG**：特定のラグが破線を超えている → そのラグに対応するAR/MA項の追加を検討
+- 5%有意水準では、20本中1本程度は偶然超えることがあるため、1本だけなら過度に心配する必要はありません
+
+#### Ljung-Box検定
+
+下段の検定結果は残差の自己相関を**まとめて**検定します。
+
+- **帰無仮説**：ラグ1～$h$の自己相関がすべて0
+- **統計量**：$Q = n(n+2) \sum_{k=1}^{h} \frac{\hat{\rho}_k^2}{n-k}$（カイ二乗分布に従う）
+- **判断基準**：**p > 0.05 なら「少なくとも強い残差自己相関は検出されない」** と読めます。ただし、これだけでモデルの妥当性が完全に保証されるわけではありません。
+- ラグの数 $h$ は `checkresiduals()` が自動設定。FPP3 は非季節データで $h = \min(10, T/5)$ を推奨
+
+#### 正規性チェック
+
+残差の正規性は**補助的な確認**です。ARIMA の実務では、まず残差白色性を優先して確認し、正規性は予測区間の形をどこまで信頼するかの参考として使います。
+
+```{r}
+#| label: residual-additional
+#| code-fold: true
+# 追加の残差診断
+resid_manual <- residuals(fit_vocab_manual)
+shapiro.test(resid_manual)
+```
+
+- **Shapiro-Wilk検定**：帰無仮説は「残差が正規分布に従う」です。ただし、小標本ではこの検定は不安定なので、**合否判定というより補助情報**として使います。
+- 正規性が怪しい場合でも、自己相関が十分に取れていればモデルが即座に無効になるわけではありません。予測区間を保守的にしたい場合は `forecast(..., bootstrap = TRUE)` を検討してください。
+
+
+### 自動同定 `auto.arima()`
+
+手動同定は教育的ですが、実務では `auto.arima()` による自動選択が効率的です。この関数は AICc を最小化するモデルを探索します。本章では、**教育データのような短い系列**を想定して、デフォルトより少し保守的な設定を最初から使います。
+
+```{r}
+#| label: auto-arima-vocab
+fit_vocab_auto <- auto.arima(
+  vocab_ts,
+  stepwise = FALSE,
+  approximation = FALSE,
+  max.p = 2,
+  max.q = 2
+)
+```
+
+#### モデル概要
+
+```{r}
+#| label: auto-arima-vocab-summary
+# forecast::Arima の係数テーブルを手動で構築
+auto_coefs <- coef(fit_vocab_auto)
+auto_se    <- sqrt(diag(vcov(fit_vocab_auto)))
+tibble(
+  term     = names(auto_coefs),
+  estimate = unname(auto_coefs),
+  std.error = auto_se,
+  statistic = unname(auto_coefs) / auto_se,
+  p.value   = 2 * pnorm(-abs(unname(auto_coefs) / auto_se))
+) |>
+  gt() |>
+  tab_header(title = "auto.arima(): selected model coefficients") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
+
+# モデルの情報量基準
+tibble(
+  Metric = c("AICc", "BIC", "Log-likelihood", "sigma^2"),
+  Value = round(c(fit_vocab_auto$aicc, fit_vocab_auto$bic,
+                  fit_vocab_auto$loglik, fit_vocab_auto$sigma2), 2)
+) |>
+  knitr::kable(caption = "Model fit statistics")
+```
+
+`auto.arima()` は、ここで指定した探索範囲の中で AICc を最小化するモデルを選択しました。上の表では、まず選ばれた次数と係数を確認し、そのうえで AICc や残差診断と合わせて「このモデルを採用してよいか」を判断します。
+
+#### 残差診断
+
+```{r}
+#| label: auto-arima-vocab-resid
+checkresiduals(fit_vocab_auto)
+```
+
+残差に大きなパターンが残っていないこと、ACFのバーがおおむね信頼限界内に収まっていること、Ljung-Box検定で強い自己相関が取り残されていないことを確認します。
+
+#### 予測
+
+```{r}
+#| label: auto-arima-vocab-fc
+fc_vocab <- forecast(fit_vocab_auto, h = 10)
+autoplot(fc_vocab) +
+  labs(title = "Vocabulary quiz score forecast (next 10 weeks)",
+       x = "Week", y = "Score (/20)")
+```
+
+予測区間（青い帯）は将来のスコアの**不確実性**を表します。時間が経つほど広がるのは、遠い未来ほど予測が不確実になるためです。
+
+
+#### `auto.arima()` の重要パラメータ
+
+教育データでは、以下のパラメータを意識的に調整すると、モデルが不必要に複雑になるのを防ぎやすくなります。
+
+| パラメータ | デフォルト | 推奨 | 理由 |
+|-----------|----------|------|------|
+| `stepwise` | `TRUE` | **`FALSE`** | ヒューリスティック探索ではなく全探索。教育データは短いので計算コストは小さい |
+| `approximation` | 自動 | `FALSE` | 150点超で近似計算に切り替わる。短い系列では影響なし |
+| `lambda` | `NULL` | 必要なら `"auto"` | 分散が時間とともに変化する場合にのみ有効。毎回必須ではない |
+| `max.p`, `max.q` | 5 | **2** | 小標本では高次モデルの推定が不安定。$n < 50$ なら次数を制限 |
+
+```{r}
+#| label: auto-arima-detailed
+#| code-fold: true
+# stepwise=TRUE（デフォルト）vs FALSE（全探索）の比較
+fit_step <- auto.arima(vocab_ts, stepwise = TRUE, approximation = FALSE, max.p = 2, max.q = 2)
+fit_full <- auto.arima(vocab_ts, stepwise = FALSE, approximation = FALSE, max.p = 2, max.q = 2)
+
+tibble(
+  Search = c("Stepwise (default)", "Exhaustive"),
+  Model = c(paste0(fit_step), paste0(fit_full)),
+  AICc = round(c(fit_step$aicc, fit_full$aicc), 1)
+) |>
+  knitr::kable(caption = "Stepwise vs exhaustive model search")
+```
+
+#### 小サンプル（$n < 50$ 時点）での推奨設定
+
+教育データでは時点数が20〜40と少ないことが多く、これはARIMAの世界では**非常に小さい**サンプルサイズです。以下の設定を推奨します。
+
+```r
+# 小サンプル時の推奨
+fit_small <- auto.arima(y,
+  stepwise = FALSE,     # 全探索
+  max.p = 2, max.q = 2, # 高次モデルを制限
+  max.P = 1, max.Q = 1  # 季節項も制限
+)
+
+# ブートストラップ予測区間（正規性を仮定しない）
+fc_boot <- forecast(fit_small, h = 10, bootstrap = TRUE)
+```
+
+`forecast(..., bootstrap = TRUE)` は残差のブートストラップに基づく予測区間を計算し、正規分布の仮定が怪しい小標本で特に有効です。
+
+::: {.callout-warning}
+#### `arima()` が収束しない場合
+
+**症状**：`auto.arima()` や `Arima()` の実行時に `"non-stationary AR part"` や `"possible convergence problem"` の警告が表示される。
+
+**原因**：差分の過不足、初期値の問題、またはサンプルサイズに対してモデルが複雑すぎる。教育データ（$n < 50$ 時点）で特に発生しやすい。
+
+**修正手順**：
+
+1. `auto.arima(stepwise = FALSE)` で全探索を試みる
+2. `max.p = 2, max.q = 2` で次数を制限する
+3. `lambda = "auto"` でBox-Cox変換を検討する
+4. `ndiffs()` と `nsdiffs()` で適切な差分回数を確認する
+5. それでも不安定なら `ets()` や SSM（KFAS）への切り替えを検討
+:::
+
+### ETS（指数平滑：Holt–Winters）
+
+指数平滑モデル (`ets`) は、**レベル** (level)、**傾き** (trend)、**季節成分** (seasonal) を**指数重み**で逐次更新するモデルです。過去の観測値に対して、より新しいものほど大きな重みを与えます。
+
+ARIMA が「残った自己相関をどう表すか」を重視するのに対し、ETS は「**いまの水準・傾き・季節パターンをどう更新するか**」を重視します。したがって ETS は、機序の説明というより、**実務上の予測とモニタリング**に向いたモデルです [@hyndman2021]。教育現場で言えば、「次の数週間で平均 WPM はどのあたりに来そうか」を素早く把握したい場面に向いています。
+
+`ets()` の出力には **ETS(X, Y, Z)** という表記が使われます。
+
+| 位置 | 意味 | 選択肢 |
+|------|------|--------|
+| **X** (Error) | 誤差の構造 | A = 加法的, M = 乗法的 |
+| **Y** (Trend) | トレンドの構造 | N = なし, A = 加法的, A_d = 減衰加法 |
+| **Z** (Seasonal) | 季節性の構造 | N = なし, A = 加法的, M = 乗法的 |
+
+例えば **ETS(A, A, N)** は「加法的誤差・加法的トレンド・季節性なし」で、Holtの線形トレンドモデルに相当します。`ets()` はこれらの組み合わせを自動で探索し、AICcが最小のモデルを選択します。
+
+```{r}
+#| label: ets-fluency
+fit_ets <- ets(fluency_ts)
+fit_ets
+checkresiduals(fit_ets)
+fc_ets <- forecast(fit_ets, h = 10)
+
+ets_plot_tbl <- tibble(
+  Time = as.numeric(time(fluency_ts)),
+  Observed = as.numeric(fluency_ts),
+  Fitted = as.numeric(fitted(fit_ets))
+)
+
+ets_fc_tbl <- tibble(
+  Time = as.numeric(time(fc_ets$mean)),
+  Mean = as.numeric(fc_ets$mean),
+  Lo80 = as.numeric(fc_ets$lower[, 1]),
+  Hi80 = as.numeric(fc_ets$upper[, 1]),
+  Lo95 = as.numeric(fc_ets$lower[, 2]),
+  Hi95 = as.numeric(fc_ets$upper[, 2])
+)
+
+ggplot() +
+  geom_line(data = ets_plot_tbl, aes(x = Time, y = Observed), color = "black", linewidth = 0.8) +
+  geom_line(data = ets_plot_tbl, aes(x = Time, y = Fitted), color = "#238b45", linewidth = 0.9) +
+  geom_ribbon(data = ets_fc_tbl, aes(x = Time, ymin = Lo95, ymax = Hi95), fill = "#bae4b3", alpha = 0.25) +
+  geom_ribbon(data = ets_fc_tbl, aes(x = Time, ymin = Lo80, ymax = Hi80), fill = "#74c476", alpha = 0.35) +
+  geom_line(data = ets_fc_tbl, aes(x = Time, y = Mean), color = "#006d2c", linewidth = 1) +
+  labs(
+    title = "ETS fitted values and forecast intervals for reading fluency",
+    x = "Time",
+    y = "WPM"
+  )
+```
+
+**図の読み方**：黒線が実測値、緑線がモデルの fitted 値、緑の帯が将来10週の予測区間です。過去区間で緑線が黒線に滑らかに追随し、将来区間で帯が急に広がりすぎていなければ、ETS はこの系列のレベル・傾き・季節を無理なく捉えていると読めます。
+
+#### ETS出力の読み方
+
+| 出力要素 | 意味 | 確認ポイント |
+|---------|------|-------------|
+| **ETS(X, Y, Z)** | 選択されたモデル型（Error, Trend, Seasonal） | 上のETS表記テーブルと照合。例：ETS(A, A, A) = 加法的誤差・加法的トレンド・加法的季節 |
+| **alpha（平滑パラメータ：レベル）** | レベルの更新速度 | 0に近い → 過去の情報を重視（滑らか）。1に近い → 直近の観測値に追随（敏感） |
+| **beta（平滑パラメータ：傾き）** | トレンドの更新速度 | 0に近い → 傾きが安定。1に近い → 傾きが急変しやすい |
+| **gamma（平滑パラメータ：季節）** | 季節パターンの更新速度 | 0に近い → 季節パターン固定。1に近い → 季節パターンが毎周期変化 |
+| **Initial states** | 初期レベル・傾き | モデルの出発点。通常は自動推定 |
+| **sigma^2** | 残差分散 | ARIMAと同義。小さいほど当てはまりが良い |
+| **AICc** | 小標本補正情報量基準 | ARIMAのAICcと**直接比較可能**（同じデータ・同じ変換であれば） |
+
+#### ETS と ARIMA の違い
+- **ETS** はレベル・傾き・季節を指数重みで更新する「平滑」型のモデル。構造が直感的で解釈しやすい。
+- **ARIMA** は差分＋ARMA で記述する「確率過程」型のモデル。残差の自己相関構造を明示的にモデル化する。
+- 多くのケースで予測性能は同等。強い季節＋滑らかなトレンド → ETS、差分で定常化しやすい → ARIMA、のように使い分けるか、**両方当ててAICc/残差/tsCVで比較**するのが現実的です。
+
+### モデル比較（AICc / 精度指標）
+
+```{r}
+#| label: model-compare
+# Dataset 3 で ARIMA と ETS を比較
+fit_arima_f <- auto.arima(fluency_ts)
+fit_ets_f <- ets(fluency_ts)
+fc_arima_f <- forecast(fit_arima_f, h = 10)
+fc_ets_f <- forecast(fit_ets_f, h = 10)
+
+tibble(
+  Model = c("auto.arima", "ets"),
+  AICc = round(c(fit_arima_f$aicc, fit_ets_f$aicc), 1)
+) |>
+  knitr::kable(caption = "AICc comparison: ARIMA vs ETS (reading fluency)")
+
+compare_fitted_tbl <- bind_rows(
+  tibble(
+    Time = as.numeric(time(fluency_ts)),
+    Value = as.numeric(fitted(fit_arima_f)),
+    Model = "ARIMA fitted"
+  ),
+  tibble(
+    Time = as.numeric(time(fluency_ts)),
+    Value = as.numeric(fitted(fit_ets_f)),
+    Model = "ETS fitted"
+  )
+)
+
+compare_fc_tbl <- bind_rows(
+  tibble(
+    Time = as.numeric(time(fc_arima_f$mean)),
+    Mean = as.numeric(fc_arima_f$mean),
+    Lo80 = as.numeric(fc_arima_f$lower[, 1]),
+    Hi80 = as.numeric(fc_arima_f$upper[, 1]),
+    Model = "ARIMA forecast"
+  ),
+  tibble(
+    Time = as.numeric(time(fc_ets_f$mean)),
+    Mean = as.numeric(fc_ets_f$mean),
+    Lo80 = as.numeric(fc_ets_f$lower[, 1]),
+    Hi80 = as.numeric(fc_ets_f$upper[, 1]),
+    Model = "ETS forecast"
+  )
+)
+
+ggplot() +
+  geom_line(
+    data = tibble(Time = as.numeric(time(fluency_ts)), Observed = as.numeric(fluency_ts)),
+    aes(x = Time, y = Observed),
+    color = "black",
+    linewidth = 0.8
+  ) +
+  geom_line(
+    data = compare_fitted_tbl,
+    aes(x = Time, y = Value, color = Model),
+    linewidth = 0.8,
+    alpha = 0.9
+  ) +
+  geom_ribbon(
+    data = compare_fc_tbl,
+    aes(x = Time, ymin = Lo80, ymax = Hi80, fill = Model),
+    alpha = 0.18
+  ) +
+  geom_line(
+    data = compare_fc_tbl,
+    aes(x = Time, y = Mean, color = Model),
+    linewidth = 1
+  ) +
+  labs(
+    title = "ARIMA vs ETS: fitted trajectories and 80% forecast intervals",
+    x = "Time",
+    y = "WPM",
+    color = "",
+    fill = ""
+  )
+
+bind_rows(
+  accuracy(fit_arima_f) |>
+    as.data.frame() |>
+    tibble::rownames_to_column("Set") |>
+    mutate(Model = "ARIMA"),
+  accuracy(fit_ets_f) |>
+    as.data.frame() |>
+    tibble::rownames_to_column("Set") |>
+    mutate(Model = "ETS")
+) |>
+  dplyr::select(Model, Set, RMSE, MAE, MAPE, MASE) |>
+  mutate(across(c(RMSE, MAE, MAPE, MASE), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Training-set accuracy: ARIMA vs ETS")
+```
+
+**比較図の読み方**：黒線が観測値、色線が各モデルの fitted 値、半透明の帯が80%予測区間です。過去データへの追随が似ていても、将来区間で予測の中心線や帯の広がり方が違うことがあります。ここでは「どちらが当てはまりやすいか」だけでなく、「どちらが将来をより保守的に見積もるか」も確認してください。
+
+#### 精度指標の読み方
+
+| 指標 | 正式名称 | 意味 | 小さいほど良い？ |
+|------|---------|------|:---------------:|
+| **ME** | Mean Error | 平均誤差（バイアス）。正なら過大予測、負なら過小予測 | **0に近い** |
+| **RMSE** | Root Mean Squared Error | 典型的な予測誤差の大きさ（元の単位：WPM） | はい |
+| **MAE** | Mean Absolute Error | 平均絶対偏差。外れ値の影響がRMSEより小さい | はい |
+| **MAPE** | Mean Absolute Percentage Error | パーセント誤差。値が0に近いデータでは不安定 | はい |
+| **MASE** | Mean Absolute Scaled Error | ナイーブ予測と比較した相対誤差。**< 1 ならナイーブ予測より良い** | はい |
+
+**2つのモデルの比較方法**：同じデータに対するRMSEやMASEを比較し、小さいモデルが予測性能で優れます。ただし、訓練データでの精度（in-sample accuracy）は過学習の影響を受けるため、次のtsCVによる**アウトオブサンプル評価**がより信頼できます。
+
+### 時系列クロスバリデーション（tsCV）
+
+過学習を防ぎ、モデルの**真の予測性能**を評価するには、tsCV（時系列クロスバリデーション）が有効です。学習データを過去→未来の順に展開し、1ステップ先の予測誤差を繰り返し計算します。
+
+```{r}
+#| label: tscv-compare
+f_arima <- function(y, h) forecast(auto.arima(y), h = h)
+f_ets   <- function(y, h) forecast(ets(y), h = h)
+
+e_arima <- tsCV(fluency_ts, f_arima, h = 1)
+e_ets   <- tsCV(fluency_ts, f_ets,   h = 1)
+
+tibble(
+  Model = c("auto.arima", "ets"),
+  MSE = round(c(mean(e_arima^2, na.rm = TRUE), mean(e_ets^2, na.rm = TRUE)), 2)
+) |>
+  gt() |>
+  tab_header(title = "tsCV: 1-step-ahead MSE comparison")
+
+tscv_tbl <- tibble(
+  Time = seq_along(fluency_ts),
+  ARIMA = as.numeric(e_arima),
+  ETS = as.numeric(e_ets)
+) |>
+  pivot_longer(-Time, names_to = "Model", values_to = "Error") |>
+  filter(!is.na(Error)) |>
+  mutate(Squared_error = Error^2) |>
+  group_by(Model) |>
+  mutate(Cumulative_MSE = cummean(Squared_error)) |>
+  ungroup()
+
+ggplot(tscv_tbl, aes(x = Time, y = Squared_error, color = Model)) +
+  geom_line(linewidth = 0.85, alpha = 0.85) +
+  geom_point(size = 1.5) +
+  labs(
+    title = "Rolling 1-step-ahead squared errors from tsCV",
+    x = "Forecast origin",
+    y = "Squared error"
+  )
+
+ggplot(tscv_tbl, aes(x = Time, y = Cumulative_MSE, color = Model)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Cumulative MSE as the rolling-origin evaluation progresses",
+    x = "Forecast origin",
+    y = "Cumulative mean squared error"
+  )
+```
+
+**tsCV結果の読み方**：MSE（Mean Squared Error）は1ステップ先の予測誤差の平均二乗です。MSEが小さいモデルほど予測性能が優れています。上の `accuracy()` による訓練データ精度と異なり、tsCVは**アウトオブサンプル**（未見のデータ）に対する精度なので、過学習の影響を受けにくく、より信頼できる比較です。MSEの差がわずかであれば、よりシンプルなモデルを選ぶのが安全です（パラメータ数が少ないほど安定）。
+
+**2つの図の役割**：上の二乗誤差プロットは「どの時点で予測を外したか」を見るための図です。スパイクが集中するなら、その時点で外れ値・構造変化・未モデリングの季節性が疑われます。下の累積MSEプロットは、評価が進むにつれてどちらのモデルが安定して優位かを見る図で、終盤まで一貫して低い線が実務上は有利です。
+
+#### tsCV の注意点
+- **データ漏洩** (leakage) を避けるため、常に「過去のみで学習→未来を予測」の順序を守ります。
+- 比較するモデルには**同じ前処理**（変換・差分）を適用して公平に評価します。
+
+## 介入時系列分析（ITS）
+
+### 本章のハイライト
+
+介入時系列分析 (Interrupted Time Series, ITS) は、教育介入の効果を検証するための強力なクウェーシ実験デザインです。ランダム化比較試験 (RCT) が実施困難な教育現場で、「新しいカリキュラムを導入したことでスコアが変わったか」を統計的に評価できます。
+
+初心者向けにまとめると、ITS が明らかにするのは「**介入の前後で系列の高さや傾きが変わったか**」です。特に、(1) 介入直後にジャンプしたか、(2) その後の伸び方が変わったか、を分けて見られる点が重要です。一方で、ITS だけで**同時期に起きた別の出来事を完全に排除した純粋な因果効果**まで言い切れるわけではありません。この点は Bernal et al. [@bernal2017] のチュートリアルでも強調されています。
+
+@turner2021 の品質基準ガイドに基づく4ステップ:
+
+1. **データの可視化と前処理**（トレンド・分散の確認、必要なら変換）
+2. **モデルの選択**（ARIMA + 介入ダミーの外生変数 = ARIMAX）
+3. **モデルの推定**（係数の推定と信頼区間）
+4. **残差診断**（白色性の確認）
+
+### なぜITSが英語教育研究に重要か
+
+英語教育では、以下のような場面で介入効果の検証が必要になります：
+
+- 新しい教科書やカリキュラムの導入効果
+- CLIL（内容言語統合型学習）プログラムの評価
+- 反転授業やオンライン学習への移行効果
+- コロナ禍によるオンライン授業への突然の切り替えの影響
+
+しかし、教育現場では学生をランダムに介入群と統制群に割り当てることが倫理的・実務的に困難な場合が多くあります。ITSは、**同一の対象者を時間方向に追跡し、介入前後のトレンドの変化を検出する**ことで、この問題を回避します。PLOS ONE に掲載された @li2025 の研究では、プロジェクトベース学習がEFL学習者のライティングに与える効果をITSデザインで検証しています。
+
+この研究例を本章の言葉に置き換えると、「介入後の平均が高いか」だけでなく、「**導入直後にすぐ上がったのか**」「**数回の測定を通じて少しずつ差が広がったのか**」を切り分ける、ということです。ここが前後比較の t 検定と ITS の決定的な違いです。
+
+#### ITSに必要なデータ量
+
+介入前後に**最低8–10時点**のデータが必要です（Kontopantelis et al., 2015）。週次測定を1学期行えば約15時点が得られ、十分です。月次測定1年間では12時点で、やや少ないがギリギリ実行可能です。半期の月次データ（6時点のみ）では不十分です。
+
+### なぜ通常の回帰ではだめなのか：OLS vs ARIMAX
+
+ITS分析でよくある誤りは、自己相関を無視して通常のOLS回帰（第4章）を当てはめることです。以下で「間違った方法」と「正しい方法」を比較します。
+
+```{r}
+#| label: its-ols-vs-arimax
+#| code-fold: true
+# 「間違った方法」：OLS 回帰（自己相関を無視）
+df_its_ols <- data.frame(
+  time = 1:n_months,
+  score = as.numeric(toefl_ts),
+  post = ifelse(1:n_months > intervention_point, 1, 0),
+  time_after = ifelse(1:n_months > intervention_point,
+                      1:n_months - intervention_point, 0)
+)
+fit_ols <- lm(score ~ time + post + time_after, data = df_its_ols)
+
+# Durbin-Watson 検定で自己相関を確認
+dw <- lmtest::dwtest(fit_ols)
+
+# 「正しい方法」：ARIMAX（OLSとの比較用に先にフィット）
+step_dummy_pre <- ifelse(1:n_months > intervention_point, 1, 0)
+ramp_dummy_pre <- ifelse(1:n_months > intervention_point,
+                         1:n_months - intervention_point, 0)
+xreg_pre <- cbind(step = step_dummy_pre, ramp = ramp_dummy_pre)
+fit_arimax_pre <- auto.arima(toefl_ts, xreg = xreg_pre)
+
+tibble(
+  Method = c("OLS (自己相関無視)", "ARIMAX (自己相関考慮)"),
+  `Step SE` = c(
+    round(summary(fit_ols)$coefficients["post", "Std. Error"], 2),
+    round(sqrt(diag(vcov(fit_arimax_pre)))["step"], 2)
+  ),
+  Note = c(
+    paste0("DW = ", round(dw$statistic, 2), ", p = ", round(dw$p.value, 3),
+           ifelse(dw$p.value < 0.05, " → 自己相関あり！", "")),
+    "自己相関をモデルに組み込み済み"
+  )
+) |>
+  gt() |>
+  tab_header(title = "OLS vs ARIMAX: standard errors comparison")
+```
+
+::: {.callout-warning}
+#### OLSの標準誤差は信用できない
+
+Durbin-Watson検定の結果が有意（p < 0.05）の場合、残差に自己相関があることを意味し、OLSの標準誤差は**過小推定**されています。つまり、本来有意でない効果が「有意」と判定されるリスクがあります。ARIMAXはこの自己相関を明示的にモデル化するため、正しい推論が可能です。
+
+なお、サンプルサイズが極めて小さく（10時点未満）ARIMA推定が不安定な場合は、**Newey-West補正**（`sandwich::NeweyWest()`）によるロバスト標準誤差が実用的な代替案となります。
+:::
+
+### 3つの介入効果のタイプ
+
+介入の効果は、時系列上でどのように現れるかによって3つに分類されます。
+
+介入効果の型は、(1) **ステップ（step）**: 介入直後に水準が恒常的に変化する型、(2) **パルス（pulse）**: 介入時点でのみ一時的に変化する型、(3) **ランプ（ramp）**: 介入後に効果が徐々に累積する型、の3つに整理できます。分析では研究デザインに合わせて適切な介入ダミー（step / pulse / ramp）を指定します。
+
+- **ステップ (step)**：介入直後にスコアが即座にジャンプし、その後もそのレベルが維持される。例：新しい教科書を採用した途端にテストの平均点が上がった。
+- **パルス (pulse)**：介入時点でのみ一時的に変化し、すぐ元に戻る。例：特別講師を1週だけ招いたときの一時的な成績向上。
+- **ランプ (ramp)**：介入後、効果が時間とともに徐々に蓄積される。例：タスクベース教授法の導入後、学生の習慣が徐々に変わり、数ヶ月かけてスコアが改善。
+
+### フルITS分析：Dataset 2（TOEFLスコア）
+
+#### ダミー変数の作成
+
+```{r}
+#| label: its-create-dummies
+# 介入ダミーの作成
+step_dummy  <- ts(ifelse(months > intervention_point, 1, 0),
+                  start = c(2022, 1), frequency = 12)
+ramp_dummy  <- ts(ifelse(months > intervention_point, months - intervention_point, 0),
+                  start = c(2022, 1), frequency = 12)
+pulse_dummy <- ts(ifelse(months == intervention_point + 1, 1, 0),
+                  start = c(2022, 1), frequency = 12)
+
+# 可視化
+tibble(
+  Month = months,
+  TOEFL = as.numeric(toefl_ts),
+  Step = as.numeric(step_dummy),
+  Ramp = as.numeric(ramp_dummy) / max(ramp_dummy)  # スケーリング
+) |>
+  pivot_longer(-Month, names_to = "Variable", values_to = "Value") |>
+  ggplot(aes(Month, Value, color = Variable)) +
+  geom_line(linewidth = 0.8) +
+  geom_vline(xintercept = intervention_point, linetype = "dashed") +
+  labs(title = "TOEFL scores with intervention dummies",
+       x = "Month", y = "Value (scaled)") +
+  facet_wrap(~Variable, scales = "free_y", ncol = 1)
+```
+
+#### ARIMAX モデルの推定
+
+外生変数（介入ダミー）をARIMAモデルに組み込んだモデルを**ARIMAX**（ARIMA with eXogenous regressors）と呼びます。数学的には以下のように表現されます。
+
+$$
+y_t = \beta_0 + \beta_{\text{step}} \cdot D_t^{\text{step}} + \beta_{\text{ramp}} \cdot D_t^{\text{ramp}} + n_t, \quad n_t \sim \text{ARIMA}(p, d, q)
+$$
+
+ここで $D_t^{\text{step}}$ は介入後に1となるステップダミー、$D_t^{\text{ramp}}$ は介入後の経過時間を表すランプダミー、$n_t$ は自己相関を持つ誤差項（ARIMA過程）です。通常の回帰分析（第4章）との違いは、**誤差項 $n_t$ が独立ではなく ARIMA 構造を持つ**点です。これにより、時系列の自己相関を考慮した正しい標準誤差と p 値が得られます。
+
+```{r}
+#| label: its-arimax-fit
+xreg_its <- cbind(step = as.numeric(step_dummy),
+                  ramp = as.numeric(ramp_dummy))
+
+fit_its <- auto.arima(toefl_ts, xreg = xreg_its)
+```
+
+#### ARIMAX 係数
+
+```{r}
+#| label: its-arimax-coefs
+# forecast::Arima の係数テーブルを手動で構築
+its_coefs <- coef(fit_its)
+its_se    <- sqrt(diag(vcov(fit_its)))
+tibble(
+  term     = names(its_coefs),
+  estimate = unname(its_coefs),
+  std.error = its_se,
+  statistic = unname(its_coefs) / its_se,
+  p.value   = 2 * pnorm(-abs(unname(its_coefs) / its_se))
+) |>
+  gt() |>
+  tab_header(title = "ARIMAX: Interrupted Time Series") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
+```
+
+`step` 係数が介入直後の即座の水準変化、`ramp` 係数が介入後の月あたりの追加的変化を表します。95% CI が0を含まなければ統計的に有意です。
+
+たとえば `step = 4.8`、`ramp = 0.4` なら、「導入直後に平均スコアが約 4.8 点上がり、その後 6 か月でさらに約 2.4 点（= 0.4 × 6）積み上がる」と読みます。初学者は、まず**step はジャンプ、ramp は傾きの追加**と覚えると混乱しにくくなります。
+
+#### 残差診断
+
+```{r}
+#| label: its-arimax-resid
+checkresiduals(fit_its)
+```
+
+Ljung-Box検定の p > 0.05 なら、少なくとも**強い残差自己相関は検出されない**と読めます。ここでも、これだけでモデルが完全に妥当と断定するのではなく、係数解釈・反事実・残差プロットをあわせて確認します。
+
+#### ARIMAX 出力の読み方
+
+| 出力要素 | 確認場所 | 意味 | この分析での注目点 |
+|---------|---------|------|------------------|
+| **ARIMA order** | 最初の行（例: ARIMA(1,0,0)） | 誤差項 $n_t$ の自己相関構造 | スコアの時間的依存を捉えている。介入効果とは独立 |
+| **`step` 係数** | xreg セクション | 介入直後の**即座の水準変化**（点） | 正で有意 → カリキュラム変更直後にスコアがジャンプ |
+| **`ramp` 係数** | xreg セクション | 介入後の**毎月の追加的変化**（点/月） | 正で有意 → 介入後もスコアが月々改善し続けている |
+| **ar1**（あれば） | Coefficients | 残差の自己回帰係数 | スコアの「粘り」の強さ |
+| **sigma^2** | Coefficients 下 | 残差分散 | 小さいほどモデルの当てはまりが良い |
+| **AICc** | Information criteria | モデル選択基準 | 代替モデル（step のみ、ramp のみ）と比較 |
+| **Ljung-Box p** | `checkresiduals()` | 残差の白色性検定 | **p > 0.05 なら強い残差自己相関は検出されにくい** |
+
+**ITS分析の核心**：`step` と `ramp` の係数とその95%信頼区間が、この分析で最も報告すべき結果です。信頼区間が0を含まなければ、介入効果が統計的に有意と判断されます。
+
+#### 係数の解釈
+
+```{r}
+#| label: its-interpretation
+coefs <- coef(fit_its)
+se <- sqrt(diag(vcov(fit_its)))
+
+# step と ramp の係数を抽出
+its_results <- tibble(
+  Effect = c("Step (immediate change)", "Ramp (gradual change per month)"),
+  Estimate = round(coefs[c("step", "ramp")], 2),
+  SE = round(se[c("step", "ramp")], 2),
+  CI_lower = round(Estimate - 1.96 * SE, 2),
+  CI_upper = round(Estimate + 1.96 * SE, 2)
+)
+
+its_results |>
+  gt() |>
+  tab_header(title = "ITS results: intervention effects on TOEFL scores") |>
+  cols_label(CI_lower = "95% CI lower", CI_upper = "95% CI upper")
+```
+
+#### 結果の読み方
+
+- **Step 係数**が正で有意 → カリキュラム変更直後にスコアが即座に上昇したことを示す
+- **Ramp 係数**が正で有意 → 変更後、毎月追加的にスコアが上昇し続けていることを示す
+- 両方が有意 → 即座の効果と漸進的な効果の両方が存在
+
+#### 反事実プロット（もし介入がなかったら？）
+
+ITS分析の強みは、**反事実** (counterfactual) — 「介入がなかった場合に予想されるスコアの推移」を推定できることです。ここでは、介入ダミーを 0 に固定したうえで、**推定済みの ARIMAX モデルから no-intervention の fitted series** を作り、実際のスコアと比較します。したがって、単純な直線延長ではなく、自己相関構造も含めたモデルベースの反事実です。
+
+```{r}
+#| label: its-counterfactual
+# 反事実: 介入がなかったと仮定（step=0, ramp=0）
+xreg_counterfactual <- cbind(step = rep(0, n_months), ramp = rep(0, n_months))
+counterfactual <- fitted(Arima(toefl_ts, model = fit_its, xreg = xreg_counterfactual))
+
+# プロット
+tibble(
+  Time = as.numeric(time(toefl_ts)),
+  Actual = as.numeric(toefl_ts),
+  Counterfactual = as.numeric(counterfactual)
+) |>
+  pivot_longer(-Time, names_to = "Scenario", values_to = "Score") |>
+  ggplot(aes(Time, Score, color = Scenario, linetype = Scenario)) +
+  geom_line(linewidth = 0.9) +
+  geom_vline(xintercept = 2022 + 12/12, linetype = "dashed", color = "gray40") +
+  annotate("text", x = 2023.05, y = min(toefl_scores) + 2,
+           label = "Intervention", color = "gray40", size = 3.5) +
+  scale_color_manual(values = c("Actual" = "steelblue", "Counterfactual" = "tomato")) +
+  labs(title = "Actual vs. counterfactual TOEFL scores",
+       x = "Year", y = "TOEFL score")
+```
+
+実線（Actual）と破線（Counterfactual）の差が、介入によって生じたと推定されるスコア変化です。
+
+#### 効果量の算出
+
+ITS分析では、介入効果の**大きさ**を補助的に標準化して示すことがあります。ここでは、介入前の SD を分母にした**記述的な標準化指標**を作り、介入後にどれくらいの差が積み上がったかを見ます。これは便利な要約ですが、ランダム化比較試験で使う通常の Cohen's $d$ と同一視しない方が安全です。
+
+```{r}
+#| label: its-effect-size
+# 介入前のSDで標準化した効果量
+pre_sd <- sd(toefl_scores[1:intervention_point])
+fitted_vals <- fitted(fit_its)
+counter_vals <- as.numeric(counterfactual)
+
+# 各時点での効果量（実測値 - 反事実）/ 介入前SD
+effect_trajectory <- (as.numeric(toefl_ts) - counter_vals) / pre_sd
+post_idx <- (intervention_point + 1):n_months
+
+tibble(
+  Metric = c("Pre-intervention SD",
+             "Step effect (raw points)",
+             "Effect at final time point (d)",
+             "Cumulative mean effect (d)"),
+  Value = round(c(
+    pre_sd,
+    coefs["step"],
+    effect_trajectory[n_months],
+    mean(effect_trajectory[post_idx], na.rm = TRUE)
+  ), 2)
+) |>
+  gt() |>
+  tab_header(title = "ITS effect size summary")
+
+# 効果量の時間推移
+tibble(Month = post_idx, d = effect_trajectory[post_idx]) |>
+  ggplot(aes(Month, d)) +
+  geom_line(linewidth = 0.8, color = "steelblue") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  labs(title = "Standardized intervention effect trajectory (pre-intervention SD units)",
+       x = "Month", y = "Effect size (d)")
+```
+
+**効果量プロットの読み方**：
+
+- **横軸**：介入後の各月。
+- **縦軸**：介入前のSDで標準化した「実測値 - 反事実」の差です。値が大きいほど、介入後の観測値が no-intervention の反事実から大きく離れていることを示します。
+- **軌跡の形状**：ステップ効果のみなら水平線、ランプ効果があれば右上がりの直線になります。両方あれば、初期ジャンプ + 上昇です。
+- **Summary table**：`Pre-intervention SD` は標準化の分母、`Step effect (raw points)` は即座の変化、`Effect at final time point (d)` は最終時点での累積効果量、`Cumulative mean effect (d)` は介入後全期間の平均効果量です。
+
+#### 予測（介入継続を仮定）
+
+```{r}
+#| label: its-forecast
+h <- 12
+newx <- cbind(step = rep(1, h), ramp = (1:h) + max(ramp_dummy))
+fc_its <- forecast(fit_its, xreg = newx, h = h)
+autoplot(fc_its) +
+  labs(title = "ARIMAX forecast (intervention continues)",
+       x = "Year", y = "TOEFL score") +
+  geom_vline(xintercept = 2022 + 12/12, linetype = "dashed", color = "red", alpha = 0.5)
+```
+
+### 構造変化の検出
+
+介入時点が既知でない場合、**統計的に変化点を検出**することも可能です。
+
+```{r}
+#| label: breakpoints-toefl
+bp <- strucchange::breakpoints(as.numeric(toefl_ts) ~ 1)
+bp_summary <- summary(bp)
+bp_rss <- bp_summary$RSS
+# RSS table structure varies; convert to data frame safely
+if (is.matrix(bp_rss)) {
+  bp_df <- as.data.frame(bp_rss)
+  bp_df$n_breaks <- 0:(nrow(bp_df) - 1)
+  bp_df |>
+    dplyr::select(n_breaks, everything()) |>
+    gt() |>
+    tab_header(title = "Breakpoint Analysis: Model Comparison") |>
+    fmt_number(columns = where(is.numeric), decimals = 2)
+} else {
+  cat("RSS table is not available in this output format; inspect `plot(bp)` and `breakpoints(bp)` directly.\\n")
+}
+plot(bp)
+```
+
+#### breakpoints出力の読み方
+
+- **summary(bp)**：候補となる変化点の数（0個、1個、2個...）ごとのBIC（ベイズ情報量基準）とRSS（残差二乗和）を表示します。**BICが最小**となる変化点数が推奨されます。
+- **plot(bp)**：BIC/RSSの変化点数に対するプロット。最小値の位置が最適な変化点数です。
+- **推定された変化点の時点**：`breakpoints(bp)` で具体的な時点番号が返されます。月12の介入時点に近いかどうかを確認してください。
+
+自動検出された変化点と、既知の介入時点（月12）を比較してみてください。一致していれば、介入効果の証拠がより強固になります。不一致の場合は、介入以外の要因（教員の変更、試験形式の変更など）も検討すべきです。
+
+::: {.callout-warning}
+#### ITS分析で残差に自己相関が残る場合
+
+**症状**：`checkresiduals()` のLjung-Box検定で p < 0.05、またはACFに有意なラグが残っている。
+
+**原因**：ARIMA次数が不十分で、スコアの時間的依存を捉えきれていない。
+
+**修正手順**：
+
+1. `auto.arima(stepwise = FALSE)` で再度全探索
+2. ACFの有意なラグを確認し、そのラグに対応するAR/MA項を手動で追加（例：ラグ2が有意 → AR(2)を試す）
+3. 季節性がある場合は季節ARIMA (SARIMA) を検討
+4. それでも解決しない場合は、**季節ダミーやイベントダミー**を外生変数として追加
+5. 最終手段として **Newey-West補正**によるロバスト標準誤差を使用
+:::
+
+### ITSの脅威と限界
+
+#### ITS分析の内的妥当性への脅威
+
+ITSは強力なデザインですが、以下の脅威に注意が必要です。
+
+1. **歴史的脅威 (history threat)**：介入と同時期に他の変化が起きた場合（例：カリキュラム変更と同時に教員が交代した）、効果の帰属が不明確になります。
+2. **測定の変化 (instrumentation)**：介入に合わせてテスト形式を改訂した場合、スコア変化は介入効果か測定の違いか区別できません。
+3. **成熟 (maturation)**：統制群がない場合、学生の自然な成長と介入効果を完全に分離できません。
+4. **平均への回帰 (regression to the mean)**：異常に低いスコアを契機に介入を実施した場合、その後の改善は部分的に統計的回帰の可能性があります。
+
+**対策**：可能であれば**統制群付きITS (Controlled ITS, CITS)** を設計し、差の差 (difference-in-differences) 的な解釈を行います。統制群がない場合は、上記の脅威を論文のLimitationsで明記してください。
+
+### ITS 報告テンプレート
+
+ITSの結果を論文に記載する際の標準的なフォーマットです。
+
+**報告テンプレート（ITS / ARIMAX）**
+
+- **デザイン**：月次 / 週次の時系列（N = __ 時点、介入は第 __ 時点）
+- **前処理**：対数変換の有無、差分の回数
+- **モデル**：ARIMA(p, d, q) + step / ramp / pulse の外生変数
+- **選択基準**：AICc = __、残差 Ljung-Box p = __（白色性 OK / NG）
+- **介入効果**：
+  - ステップ変化：$\hat{\beta}_{\text{step}}$ = __ (SE = __), 95% CI [__, __]
+  - 傾き変化：$\hat{\beta}_{\text{ramp}}$ = __ (SE = __), 95% CI [__, __]
+- **効果の解釈**：介入後、スコアは即座に約__点上昇し、その後も月あたり約__点の追加的上昇が見られた
+- **限界**：交絡の可能性（同時期の他の変更）、データ点数の制約
+
+## 欠測値・外れ値・複数季節性
+
+### 教育データにおける欠測値の処理
+
+教育データには欠測が頻繁に発生します — 学校休暇、休校日、学生の欠席、テスト未実施の週など。時系列データの欠測補間は、**時間的順序を尊重**する必要があるため、単純な平均値代入は不適切です。
+
+```{r}
+#| label: missing-education
+# 語彙テストデータに3週分の欠測を導入（学校休暇を想定）
+vocab_na <- vocab_ts
+vocab_na[c(8, 20, 35)] <- NA
+
+# 2つの補間法を比較
+interp_linear <- na.interp(vocab_na)                 # 線形補間
+interp_kalman <- imputeTS::na_kalman(vocab_na)       # 状態空間モデルに基づく補間
+
+tibble(
+  Week = 1:n_weeks,
+  Original = as.numeric(vocab_ts),
+  Linear = as.numeric(interp_linear),
+  Kalman = as.numeric(interp_kalman)
+) |>
+  pivot_longer(-Week, names_to = "Method", values_to = "Score") |>
+  ggplot(aes(Week, Score, color = Method)) +
+  geom_line(alpha = 0.8) +
+  geom_point(data = tibble(Week = c(8, 20, 35)),
+             aes(x = Week, y = vocab_ts[c(8, 20, 35)]),
+             color = "red", size = 3, shape = 4, inherit.aes = FALSE) +
+  labs(title = "Missing value imputation: linear vs. Kalman",
+       x = "Week", y = "Score (/20)")
+```
+
+`na_kalman()` はカルマンフィルタに基づく補間で、系列の自己相関構造を考慮するため、一般に線形補間より正確です。ただし、補間・置換は**予測用途**では有効ですが、**因果推論**が目的なら欠測指示変数の導入やロバスト手法の検討が必要です。
+
+### 外れ値の検出と処理
+
+テストスコア系列には、試験前の追い込みや体調不良など、通常の変動パターンから外れたデータ点が含まれることがあります。`forecast::tsoutliers()` は、ARIMAモデルの残差に基づいて外れ値を自動検出し、置換候補値を提案します。
+
+```{r}
+#| label: outlier-education
+out <- tsoutliers(vocab_ts)
+out
+
+vocab_clean <- vocab_ts
+if (length(out$index) > 0) {
+  vocab_clean[out$index] <- out$replacements
+}
+```
+
+**出力の読み方**：`$index` は外れ値として検出された時点のインデックス、`$replacements` はモデルに基づく推定置換値です。外れ値が0件の場合は「通常の変動範囲内にすべてのデータ点がある」ことを意味します。
+
+外れ値が検出されたとき、機械的に置換する前に**ドメイン知識**を確認してください。たとえば、第15週のスコア低下が「文化祭の週で授業が短縮された」ことによるものなら、外れ値ではなく**介入（パルス効果）**としてモデルに含めるべきです。「外れ値を置換する」と「介入としてモデル化する」では研究上の意味がまったく異なります。
+
+### TBATS（複数季節性への対応）
+
+日次の出席データなど、**週次パターン**（月曜日に低い）と**年次パターン**（学期の始まりと終わり）が重なるデータには、TBATSが有効です。ARIMA / ETS は**1つの周期**しか扱えませんが、TBATSは**複数の周期を同時に**モデル化できます。
+
+#### TBATSの名前の由来と構成要素
+
+TBATSは以下の5つの要素の頭文字です。
+
+| 要素 | 正式名 | 役割 |
+|------|--------|------|
+| **T** | Trigonometric seasonality | フーリエ級数で季節パターンを表現。非整数周期も可 |
+| **B** | Box-Cox transformation | 分散安定化。λ = 0 なら対数変換、λ = 1 なら変換なし |
+| **A** | ARMA errors | 残差のAR/MA構造をモデル化 |
+| **T** | Trend | 局所線形トレンド（レベル + 傾き） |
+| **S** | Seasonal | 上のTrigonometricと合わせて季節効果を表現 |
+
+#### ARIMA との使い分け
+
+| 観点 | ARIMA / SARIMA | TBATS |
+|------|---------------|-------|
+| 季節周期の数 | 1つのみ | **複数**（例：週次 + 年次） |
+| 非整数周期 | 不可（frequencyは整数） | 可能（例：365.25日） |
+| Box-Cox 変換 | `lambda` で手動指定 | **自動推定** |
+| 計算速度 | 速い | やや遅い（フーリエ項の推定） |
+| 解釈のしやすさ | AR/MA 係数で直感的 | フーリエ係数は直感的でない |
+
+**実務的な判断**：教育データが**週次・月次**で1つの周期しかない場合はARIMA/ETSで十分です。日次データで曜日効果と学期効果が重なる場合にTBATSを検討してください。
+
+```{r}
+#| label: tbats-fit
+fit_tb <- tbats(fluency_ts)
+```
+
+#### モデル概要
+
+```{r}
+#| label: tbats-summary
+# TBATS の主要パラメータを表にまとめる
+tb_params <- tibble(
+  Parameter = c("Box-Cox λ", "ARMA order", "Damping φ",
+                "AIC"),
+  Value = c(
+    ifelse(is.null(fit_tb$lambda), "None (no transformation)",
+           as.character(round(fit_tb$lambda, 3))),
+    paste0("(", fit_tb$p, ", ", fit_tb$q, ")"),
+    ifelse(is.null(fit_tb$damping.parameter), "N/A",
+           as.character(round(fit_tb$damping.parameter, 3))),
+    as.character(round(fit_tb$AIC, 2))
+  )
+)
+tb_params |>
+  gt() |>
+  tab_header(title = "TBATS model parameters") |>
+  tab_footnote(
+    footnote = "λ = 1 means no Box-Cox transformation was applied.",
+    locations = cells_body(columns = Parameter, rows = Parameter == "Box-Cox λ")
+  )
+
+tb_comp <- tbats.components(fit_tb)
+tb_comp_tbl <- as_tibble(tb_comp) |>
+  mutate(Time = as.numeric(time(fluency_ts)), .before = 1) |>
+  rename_with(
+    ~ stringr::str_to_title(gsub("[._]", " ", .x)),
+    .cols = -Time
+  )
+
+tb_comp_tbl |>
+  pivot_longer(-Time, names_to = "Component", values_to = "Value") |>
+  ggplot(aes(x = Time, y = Value)) +
+  geom_line(color = "#6a51a3", linewidth = 0.8) +
+  facet_wrap(~ Component, scales = "free_y", ncol = 1) +
+  labs(
+    title = "TBATS component view based on the estimated model structure",
+    x = "Time",
+    y = NULL
+  )
+```
+
+この成分図では、観測系列がどの部品に分解されているかを見ます。`Level` が滑らかに上がっていれば長期上昇、`Season` 系の成分が規則的に揺れていれば周期構造、`Slope` が小さく変動していれば傾きが大きく暴れていないことを示します。どの列が出るかは推定された TBATS 構造に依存するため、「何が分離されたか」を先に確認してください。
+
+#### 予測
+
+```{r}
+#| label: tbats-forecast
+fc_tb <- forecast(fit_tb, h = 10)
+tb_fc_tbl <- tibble(
+  Time = as.numeric(time(fc_tb$mean)),
+  Mean = as.numeric(fc_tb$mean),
+  Lo80 = as.numeric(fc_tb$lower[, 1]),
+  Hi80 = as.numeric(fc_tb$upper[, 1]),
+  Lo95 = as.numeric(fc_tb$lower[, 2]),
+  Hi95 = as.numeric(fc_tb$upper[, 2])
+)
+
+ggplot() +
+  geom_line(
+    data = tibble(Time = as.numeric(time(fluency_ts)), Observed = as.numeric(fluency_ts)),
+    aes(x = Time, y = Observed),
+    color = "black",
+    linewidth = 0.8
+  ) +
+  geom_ribbon(data = tb_fc_tbl, aes(x = Time, ymin = Lo95, ymax = Hi95), fill = "#dadaeb", alpha = 0.25) +
+  geom_ribbon(data = tb_fc_tbl, aes(x = Time, ymin = Lo80, ymax = Hi80), fill = "#9e9ac8", alpha = 0.35) +
+  geom_line(data = tb_fc_tbl, aes(x = Time, y = Mean), color = "#6a51a3", linewidth = 1) +
+  labs(
+    title = "TBATS forecast with prediction intervals",
+    x = "Time",
+    y = "Score"
+  )
+```
+
+この予測図では、黒線が過去の観測値、紫線が予測平均、帯が80%と95%の予測区間です。複数季節性を持つ系列では、予測平均が単調な直線ではなく周期性を保ったまま先へ伸びるかどうかが重要です。TBATS の利点は、その周期構造を壊さずに先読みできる点にあります。
+
+#### ARIMA との比較
+
+```{r}
+#| label: tbats-vs-arima
+# 同じデータに auto.arima を適用して AIC を比較
+fit_arima_fluency <- auto.arima(fluency_ts)
+fc_arima_fluency <- forecast(fit_arima_fluency, h = 10)
+
+tibble(
+  Model = c("TBATS", paste0("ARIMA", paste0(arimaorder(fit_arima_fluency), collapse = ","))),
+  AIC   = c(fit_tb$AIC, fit_arima_fluency$aic),
+  AICc  = c(NA_real_, fit_arima_fluency$aicc)
+) |>
+  gt() |>
+  tab_header(title = "TBATS vs. ARIMA: model comparison") |>
+  fmt_number(columns = where(is.numeric), decimals = 2) |>
+  sub_missing(missing_text = "—") |>
+  tab_footnote(
+    footnote = "TBATS uses AIC; ARIMA uses AICc. Direct comparison is approximate.",
+    locations = cells_column_labels(columns = AIC)
+  )
+
+bind_rows(
+  tibble(
+    Time = as.numeric(time(fc_tb$mean)),
+    Mean = as.numeric(fc_tb$mean),
+    Model = "TBATS"
+  ),
+  tibble(
+    Time = as.numeric(time(fc_arima_fluency$mean)),
+    Mean = as.numeric(fc_arima_fluency$mean),
+    Model = "ARIMA"
+  )
+) |>
+  ggplot(aes(x = Time, y = Mean, color = Model)) +
+  geom_line(linewidth = 1) +
+  geom_line(
+    data = tibble(Time = as.numeric(time(fluency_ts)), Observed = as.numeric(fluency_ts)),
+    aes(x = Time, y = Observed),
+    inherit.aes = FALSE,
+    color = "black",
+    linewidth = 0.8
+  ) +
+  labs(
+    title = "TBATS vs ARIMA: forecast means on the same horizon",
+    x = "Time",
+    y = "Predicted WPM",
+    color = ""
+  )
+```
+
+この比較図では、将来10週に限った予測中心線の違いを見ます。TBATS と ARIMA の線がほぼ重なるなら、複雑な季節構造を明示しても予測は大きく変わっていません。逆に、周期の山谷や傾きの出方が明確に違うなら、系列の季節構造をどちらがより自然に表しているかを検討する余地があります。
+
+#### TBATSの出力の読み方
+
+- **Box-Cox λ**：データの変換パラメータ。λ = 1 なら変換なし、λ = 0 なら対数変換。分散が時間とともに増大するデータでは λ < 1 が選ばれます。
+- **ARMA order**：残差のAR/MA次数。(0, 0) なら残差にARMA構造がない（白色雑音）。
+- **Damping φ**：トレンドの減衰パラメータ。1未満ならトレンドが将来に向かって減衰し、過度に楽観的な予測を抑制します。
+- **Seasonal periods**：検出された季節周期。教育データでは frequency の設定に依存します。
+
+教育データで TBATS が威力を発揮するのは、**日次の学習ログ**（曜日効果 + 学期効果）や**CBT（コンピュータベーステスト）の受験者数**（日次 + 月次パターン）などです。週次・月次のテストスコアには ARIMA/ETS で十分なことがほとんどです。
+
+------------------------------------------------------------------------
+
+### モデル選択早見表：どの手法をいつ使うか
+
+| シナリオ | 推奨手法 | 理由 |
+|---------|---------|------|
+| 短い系列（<30点）、季節性なし | ARIMA or ETS | シンプルで診断が容易 |
+| 強い季節性 + 滑らかなトレンド | ETS (or SARIMA) | 季節更新が自然 |
+| 複数の季節周期が重なる | TBATS | 非整数・複数周期を同時処理 |
+| **介入効果の検証** | **ARIMAX (ITS)** | 外生変数で step/ramp/pulse を明示的にモデル化 |
+| 複数変数の時間的因果 | VAR + Granger | 変数間のクロスラグ効果を検定 |
+| 時間ずれのある2系列の類似度比較 | DTW | 時間軸の伸縮を許容して形状を対応づけ |
+| 潜在レジーム（停滞/伸長）の推定 | HMM | 観測値の背後にある状態遷移を推定 |
+| 欠測あり・測定誤差の分離 | SSM (KFAS) | カルマンフィルタが欠測を自然に処理 |
+| 小標本 + 事前情報あり | brms（ベイズ） | 事前分布が正則化の役割。確率的解釈 |
+| 非線形トレンド（プラトー/S字） | brms + GP | ガウス過程が柔軟な曲線をフィット |
+
+教育研究では**ITS (ARIMAX)** が最も頻出です。迷ったらまず `auto.arima()` を試し、次にITSの枠組みに進んでください。
+
+
+## tidyverts（fable / tsibble / feasts）
+
+`tsibble`（整然時系列）＋ `fable`（モデリング）＋ `feasts`（特徴量・残差診断）は、tidyverse スタイルの時系列分析パイプラインを提供する **tidyverts** エコシステムです。`forecast` パッケージが「1系列ずつ `ts` オブジェクトを処理する」のに対し、tidyverts は **`tibble` の延長で複数系列をまとめて扱える**ため、たとえば「複数クラスの語彙テストスコアを同時にモデル化し、クラスごとに最適なモデルを自動選択する」といったパイプラインが自然に書けます。
+
+これは教育データと相性がよく、たとえば「A組・B組・C組の週次小テストを同じ前処理で整え、クラスごとに ARIMA と ETS を比較する」といった**運用上の定型作業**を整理しやすくなります。FPP3 [@hyndman2021] でも、時系列を `index` と `key` を持つ tidy な表として扱う利点が強調されています。
+
+以下では、語彙テストの `ts` オブジェクトを `tsibble` に変換し、**本章の main workflow と同じ順番**で `features()` → `model()` → `forecast()` → `accuracy()` → `gg_tsresiduals()` をたどります。つまり、「別の流儀の章外トピック」ではなく、同じ分析手順を tidyverse 流に書き換えた例として読んでください。
+
+### tidyverts 公式ドキュメント（参照先）
+- `tsibble`: <https://tsibble.tidyverts.org/reference/index.html>
+- `tsibbledata`（公開データセット集）: <https://tsibbledata.tidyverts.org/>
+- `fable`: <https://fable.tidyverts.org/reference/index.html>
+- `feasts`: <https://feasts.tidyverts.org/reference/index.html>
+- `fabletools` の `model()` / `forecast()` / `accuracy()` も上記サイトから辿れます
+
+初心者が最初に押さえるべきなのは、`tsibble` の **`index`** と **`key`** です。`index` は時間軸、`key` は「どの系列か」を区別するラベルです。教育データなら、`index` は週や月、`key` はクラス名・学習者ID・学校名などに対応します。`forecast` が「1系列ずつ」考えるのに対し、tidyverts はこの `key` を使って**複数系列を同じ文法で並列処理**できます。
+
+### 複数系列をまとめて見る
+
+まずは、`tsibble` が複数系列の可視化に向いていることを、3クラスの週次語彙テストを想定した簡単な例で確認します。
+
+```{r}
+#| label: fable-multiple-series
+vocab_multi_tbl <- tibble(
+  Week = rep(1:n_weeks, times = 3),
+  Class = rep(c("Class A", "Class B", "Class C"), each = n_weeks),
+  Score = c(
+    pmax(pmin(vocab_scores + 0.4, 20), 0),
+    pmax(pmin(vocab_scores - 0.8 + 0.6 * sin(2 * pi * (1:n_weeks) / 10), 20), 0),
+    pmax(pmin(vocab_scores - 0.4 + 0.4 * cos(2 * pi * (1:n_weeks) / 8), 20), 0)
+  )
+) |>
+  as_tsibble(key = Class, index = Week)
+
+ggplot(vocab_multi_tbl, aes(x = Week, y = Score, color = Class)) +
+  geom_line(linewidth = 0.85) +
+  labs(
+    title = "Three class-level vocabulary series stored as one tsibble",
+    x = "Week",
+    y = "Score (/20)",
+    color = "Class"
+  )
+```
+
+この図では、初学者は次の順で読むと迷いにくくなります。
+
+1. **水準差**：どのクラスが一貫して高いか、低いか。
+2. **傾き**：どのクラスが速く伸びているか。
+3. **同時変動**：同じ週に全クラスが一緒に下がるか。もしそうなら、試験週や学校行事のような共通要因を疑います。
+
+つまり、この段階の可視化は「モデルを当てる前に、系列の並び方そのものを理解する」ためのものです。tidyverts の利点は、こうした複数系列を**別々のオブジェクトに分けずに**、1つの表のまま扱える点にあります [@hyndman2021]。
+
+### モデリングと予測
+
+次のコードでは、1本の語彙系列を対象に、tidyverts 流の基本手順をそのまま実行します。`features()` は「どんな系列か」の要約、`model()` は候補モデルの当てはめ、`glance()` はモデル比較、`augment()` は fitted / residual の取り出し、`forecast()` は将来予測、という役割分担です。
+
+```{r}
+#| label: fable-analysis-sequence
+vocab_tbl <- as_tsibble(vocab_ts)
+vocab_features <- features(vocab_tbl, value, feat_stl)
+train_tbl <- vocab_tbl |>
+  filter(index <= max(index) - 6)
+test_tbl <- vocab_tbl |>
+  filter(index > max(index) - 6)
+
+# ARIMA と ETS を同時に当てはめ
+fit_tbl <- train_tbl |> model(ARIMA = ARIMA(value), ETS = ETS(value))
+fit_glance <- glance(fit_tbl)
+fit_augmented <- augment(fit_tbl)
+
+# 保留しておいた6時点を予測
+fc_raw <- fit_tbl |>
+  fabletools::forecast(h = nrow(test_tbl), level = c(80, 95))
+
+fc_tbl <- fc_raw |>
+  hilo(level = c(80, 95)) |>
+  unpack_hilo(`80%`, names_sep = "_") |>
+  unpack_hilo(`95%`, names_sep = "_") |>
+  rename(
+    lo80 = `80%_lower`,
+    hi80 = `80%_upper`,
+    lo95 = `95%_lower`,
+    hi95 = `95%_upper`
+  )
+
+vocab_features |>
+  gt() |>
+  tab_header(title = "Feature summary from feasts::feat_stl()") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
+
+fit_glance |>
+  dplyr::select(.model, sigma2, AIC, AICc, BIC, MSE, AMSE, MAE) |>
+  gt() |>
+  tab_header(title = "Model summary from glance()") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
+
+ggplot() +
+  geom_line(data = vocab_tbl, aes(x = index, y = value), color = "black", linewidth = 0.8) +
+  geom_ribbon(
+    data = fc_tbl,
+    aes(x = index, ymin = lo95, ymax = hi95, fill = .model),
+    alpha = 0.18
+  ) +
+  geom_ribbon(
+    data = fc_tbl,
+    aes(x = index, ymin = lo80, ymax = hi80, fill = .model),
+    alpha = 0.32
+  ) +
+  geom_line(
+    data = fit_augmented,
+    aes(x = index, y = .fitted, color = .model),
+    linewidth = 0.8,
+    alpha = 0.9
+  ) +
+  geom_line(
+    data = fc_tbl,
+    aes(x = index, y = .mean, color = .model),
+    linewidth = 1
+  ) +
+  labs(
+    title = "Vocabulary score forecasting in tidyverts: train/test split",
+    x = "Week",
+    y = "Score (/20)",
+    color = "Model",
+    fill = "Model"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+ここでは最後の 6 時点を**簡単な holdout**として残しています。したがって、この節の `accuracy()` は訓練データへの当てはまりではなく、未使用だった時点に対する予測精度として読めます。考え方は、前節の `tsCV` をもっと簡単にしたものです。
+
+この例で見るべき順番は、`features()` で系列の性格をつかみ、`glance()` で候補モデルを絞り、予測図で fitted と forecast の形を確認し、最後に holdout accuracy でどちらが実際に当たりやすいかを見る、という流れです。
+
+予測図では、初学者は次の 4 点を見ると十分です。
+
+1. **黒線**：実際の観測値。
+2. **色線（過去区間）**：各モデルの fitted 値。観測値にどれくらい滑らかについていくか。
+3. **色線（未来区間）**：各モデルの予測平均。将来に向かう方向性が一致しているか。
+4. **帯**：予測区間。不確実性がどこから急に大きくなるか。
+
+もし 2 つのモデルの fitted 値がどちらも似ているなら、「過去にはどちらも合う」と読めます。その場合は、holdout accuracy や予測区間の広がり方を見て、より実務的に扱いやすい方を選びます。
+
+### 残差診断
+
+```{r}
+#| label: fable-residuals
+fit_tbl |> dplyr::select(ARIMA) |> gg_tsresiduals() +
+  labs(title = "ARIMA residual diagnostics (feasts)")
+```
+
+`gg_tsresiduals()` の読み方は `forecast::checkresiduals()` と同じです。残差系列、ACF、分布の3点をまとめて確認し、ここでも「強い自己相関が残っていないか」をまず見ます。
+
+この図は「モデルがどこまで取り切れたか」の確認です。予測図が「当てはまり」を見る図だとすれば、残差診断図は「**取り残し**」を見る図です。残差系列に波が残る、ACF に大きなスパイクが残る、分布が極端に歪む、といった場合は、まだ系列の特徴を十分に説明できていません。
+
+### 公開データで季節性と分解を見る
+
+```{r}
+#| label: fable-tsibbledata-pbs
+pbs_a10 <- tsibbledata::PBS |>
+  filter(ATC2 == "A10", Concession == "Concessional", Type == "Co-payments") |>
+  mutate(
+    Date = as.Date(Month),
+    Year = lubridate::year(Date)
+  )
+
+pbs_stl <- pbs_a10 |>
+  model(stl = STL(log(Cost) ~ season(window = "periodic")))
+
+pbs_components <- components(pbs_stl) |>
+  dplyr::select(Month, `log(Cost)`, trend, season_year, remainder) |>
+  pivot_longer(-Month, names_to = "component", values_to = "value") |>
+  mutate(Date = as.Date(Month))
+
+ggtime::gg_season(pbs_a10, Cost) +
+  labs(
+    title = "Seasonal profiles in tsibbledata::PBS (A10 antidiabetic therapy)",
+    x = "Month",
+    y = "Cost"
+  )
+
+ggtime::gg_subseries(pbs_a10, Cost) +
+  labs(
+    title = "Subseries view: month-specific levels in tsibbledata::PBS",
+    x = "Month",
+    y = "Cost"
+  )
+
+ggplot(pbs_components, aes(x = Date, y = value)) +
+  geom_line(color = "#08519c", linewidth = 0.75) +
+  facet_wrap(~ component, scales = "free_y", ncol = 1) +
+  labs(
+    title = "STL decomposition on log(Cost) using fable + feasts",
+    x = "Date",
+    y = NULL
+  )
+```
+
+`tsibbledata::PBS` は月次系列なので、`tidyverts` の強みである**季節の見え方**と**分解の見え方**を示す教材に向いています。`ggtime::gg_season()` では「毎年似た月に山や谷が出るか」を、`ggtime::gg_subseries()` では「各月の典型的な水準とばらつき」を、STL 分解では「そのパターンを trend / season / remainder にどう切り分けるか」を見ます。
+
+ここで重要なのは、3つの図が役割分担している点です。`gg_season()` は「季節パターンの再現性」、`gg_subseries()` は「月ごとの平均水準と散らばり」、STL は「その季節性をトレンドと切り分けた後の残差」を見せます。つまり、季節性の有無だけでなく、「安定しているか」「変動の大きさはどれくらいか」「残差にまだ構造が残っていないか」を段階的に読めます。
+
+初学者向けには、3つの図を次の順で見るのがおすすめです。まず `gg_season()` で「同じ月に同じ山谷があるか」をざっくり確認し、次に `gg_subseries()` で「どの月が高いか・ばらつくか」を確認し、最後に STL で「その季節パターンを除いたあとに何が残るか」を見ます。これで「季節性がある」から「その季節性はどれくらい安定しているか」まで、一段ずつ理解できます。
+
+### モデル比較
+
+```{r}
+#| label: fable-accuracy
+# 予測精度の比較（holdout）
+fabletools::accuracy(fc_raw, test_tbl) |>
+  dplyr::select(.model, .type, RMSE, MAE, MAPE) |>
+  mutate(across(c(RMSE, MAE, MAPE), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Holdout accuracy comparison: ARIMA vs ETS")
+```
+
+### tidyverts 出力の読み方
+- `features(..., feat_stl)` は、系列がどの程度 **トレンド主導**か、どの程度 **スパイク的**かを事前に把握するための要約です。
+- `glance()` は、各モデルの `AIC / AICc / BIC / sigma2` を横並びで返すので、**どのモデルが簡潔で当てはまりが良いか**を最初に比較するのに向いています。
+- `augment()` で得られる `.fitted` と `.resid` を使うと、モデルの内部予測を tidy な形で可視化できます。
+- `forecast()` + `hilo()` で取り出した 80% / 95% 区間は、**予測の中心だけでなく不確実性の広がり**を示します。先に行くほど帯が広がるのが自然です。
+
+### forecast と tidyverts の使い分け
+
+| 場面 | 推奨 | 理由 |
+|------|------|------|
+| 1系列の迅速な分析・ITS | `forecast` | `auto.arima()` + `xreg` で手軽 |
+| 複数系列の一括処理 | `fable` | キー（グループ）ごとの自動モデル選択 |
+| tidyverse パイプラインとの統合 | `fable` | `tibble` / `dplyr` / `ggplot2` と自然に連携 |
+| brms 等ベイズモデルとの接続 | どちらでも | データ整形は `tsibble` が便利 |
+
+本章では `forecast` パッケージをメインに使用していますが、日常的に tidyverse を使う方は tidyverts への移行を検討してください。
+
+------------------------------------------------------------------------
+
+
+## 報告テンプレート集
+
+### テンプレート①：基本ARIMA（worked example: Dataset 1 語彙テスト）
+
+> 週次語彙テストスコア（N = 40 時点、20点満点）に対し、ARIMA モデルを `auto.arima()` により最大尤度推定で当てはめた。モデル選択は AICc に基づき、`stepwise = FALSE`, `approximation = FALSE`, `max.p = 2`, `max.q = 2` の設定で探索した。選択されたモデルは ARIMA([p],[d],[q]) であり、AICc = [値] であった。差分は通常差 d = [値]、季節差 D = [値] で、必要な場合のみ Box-Cox 変換を検討した。主要係数は [値]（SE = [値]）であり、残差診断では Ljung-Box 検定の p = [値] で強い残差自己相関は検出されなかった。必要に応じてブートストラップ予測区間も確認した。10週先の予測では、スコアは [値] 点（95% PI: [[値], [値]]）と推定された。
+
+#### 査読者チェックリスト（基本ARIMA）
+
+- [ ] ADF / KPSS による定常性検定の結果を報告したか
+- [ ] `ndiffs()` による差分回数の根拠を示したか
+- [ ] 残差診断（ACF + Ljung-Box）の結果を報告したか
+- [ ] AICcの値と、代替モデルとの比較を示したか
+- [ ] 予測区間の幅を報告し、その意味を解釈したか
+- [ ] 小標本の場合、`bootstrap = TRUE` を検討したか
+
+
+### テンプレート②：ITS / ARIMAX（worked example: Dataset 2 TOEFLスコア）
+
+> 月次TOEFL風スコア（N = 24 時点）に対し、介入時系列分析（ITS）を実施した。介入は第12時点（2023年1月）のカリキュラム刷新（統合スキル重視プログラムへの移行）である。外生変数として step ダミー（介入後 = 1）と ramp ダミー（介入後の経過月数）を ARIMAX モデルに組み込んだ。`auto.arima()` により選択されたモデルは ARIMA([p],[d],[q]) + step + ramp であり、AICc = [値] であった。
+>
+> **介入効果の推定**：
+>
+> - ステップ変化（即座の効果）：$\hat{\beta}_{\text{step}}$ = [値]（SE = [値]）、95% CI [[値], [値]]。カリキュラム変更直後にTOEFLスコアが約 [値] 点上昇した。
+> - 傾き変化（漸進的効果）：$\hat{\beta}_{\text{ramp}}$ = [値]（SE = [値]）、95% CI [[値], [値]]。変更後、毎月さらに約 [値] 点の追加的上昇が見られた。
+>
+> 残差診断では Ljung-Box p = [値] であり、強い残差自己相関は検出されなかった。Durbin-Watson 検定により、OLS 回帰の残差には有意な自己相関（DW = [値], p = [値]）が検出され、ARIMAX の使用が妥当であることが支持された。介入前 SD で標準化した記述的指標は最終時点で d = [値] であった。反事実プロットでは、推定済み ARIMAX モデルから得た no-intervention の fitted series と実測値の差を可視化した。
+>
+> **限界**：統制群を設定していないため、同時期の他の変更（教員の異動等）による交絡を完全には排除できない。24時点は ARIMA 推定の下限に近く、推定値の不確実性が大きい可能性がある。
+
+#### 査読者チェックリスト（ITS / ARIMAX）
+
+- [ ] 介入前後の最低時点数（各8–10以上）を満たしているか
+- [ ] ADF / KPSS による定常性検定を報告したか
+- [ ] OLS との比較（Durbin-Watson 検定）で ARIMAX の必要性を示したか
+- [ ] step と ramp の両方をテスト（有意でなくても報告）したか
+- [ ] 反事実 (counterfactual) プロットを提示したか
+- [ ] 介入前 SD で標準化した記述的な効果指標を算出・報告したか
+- [ ] 残差診断（Ljung-Box）でモデルの妥当性を確認したか
+- [ ] 内的妥当性への脅威（history, maturation, instrumentation）を Limitations に記載したか
+
+
+## トラブルシューティング（よくあるつまずき） {#sec-ts-troubleshoot}
+
+各セクション内の警告ボックスに個別の対処法を記載しています。ここでは、セクション横断的なよくある問題をまとめます。
+
+| 問題 | 対処 | 関連セクション |
+|------|------|-------------|
+| 季節差が効かない | `frequency(ts_object)` で `frequency` の設定を確認 | セクション3（`ts()` の frequency ガイド） |
+| 外れ値の影響が大きい | `tsclean()` またはパルスダミーで対処 | セクション7（外れ値の検出と処理） |
+| 週次 vs 月次で結果が異なる | 週次はノイズが多いがITSの検出力が高い。月次は滑らかだが時点数が少ない | セクション6（ITS） |
+| 複数クラスのデータ | 階層時系列（乱効果付きモデル）を検討 | 第6章の混合効果モデル参照 |
+| 天井・床効果でARIMAが不安定 | Box-Cox変換（`lambda`）でデータを変換。IRT能力値の使用も検討 | セクション3（教育データ注意点） |
+
+
+### 次に読む章
+
+- **発展手法を知りたい**: 次の章 `時系列データ分析（発展）：VAR・DTW・HMM・状態空間モデル・ベイズ時系列` へ進んでください。
+- **音声や Praat へ進みたい**: その次の章 `音声時系列分析：Praat・rPraat・音響分析` で音声波形・音響特徴量・Praat / rPraat のワークフローを扱います。
+
+## 参考文献
+
+::: {#refs}
+:::

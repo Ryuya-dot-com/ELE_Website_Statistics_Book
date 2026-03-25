@@ -8,7 +8,7 @@
 - 第II部：回帰分析（重回帰、GLM、混合効果モデル など）
 - 第III部：ベイズ統計と機械学習（入門）
 - 第IV部：多変量解析（因子分析、G理論、IRT/ラッシュ、拡張ラッシュ など）
-- 第V部：時系列解析（ARIMA）
+- 第V部：時系列データ分析（基礎・発展・音声の3章構成）
 - 第VI部：地理空間データ（入門・応用）
 - 第VII部：ネットワーク分析
 - 第VIII部：メタ分析
@@ -33,6 +33,20 @@ quarto render
 ```
 
 PDF/EPUB も `_quarto.yml` の設定に従って生成できます（LaTeX 環境が必要な場合があります）。
+
+### HTML ビルドの実務メモ
+
+このプロジェクトは Dropbox 配下にあり、`quarto render --to html` の最後で `_book/` に大量の HTML/図版資産を書き戻す処理が数分かかることがあります。日常的なローカル確認では、まず `/tmp` にレンダリングする方が安定します。
+
+```bash
+# 高速なローカル HTML ビルド（/tmp に出力）
+bash _scripts/render_book_html.sh
+
+# /tmp にレンダリングしたあと、_book/ と index.html も更新
+bash _scripts/render_book_html.sh --sync
+```
+
+`quarto render` 自体も引き続き使えますが、Dropbox 配下では `[26/26]` の後に出力同期が長く見えることがあります。`_scripts/render_book_html.sh` は Quarto の本体処理を維持したまま、重い最終書き出しだけをローカル一時ディレクトリへ逃がすための補助スクリプトです。
 
 ## スタイルと一貫性
 

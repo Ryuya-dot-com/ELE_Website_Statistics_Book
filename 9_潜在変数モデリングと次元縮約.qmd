@@ -1,0 +1,4664 @@
+---
+title: "潜在変数モデリングと次元縮約：PCA・因子分析・SEM・LGM・CA・MDS"
+bibliography: references_latent_variable.bib
+---
+
+## はじめに
+
+英語教育研究では、直接測定できない概念（構成概念）を扱う場面が頻繁にある。たとえば「動機づけ」「言語適性」「コミュニケーション能力」「読解力」はいずれも直接観察できず、複数の質問紙項目やテスト項目を通じて間接的に測定される。@dornyei2005 は第二言語習得における個人差変数の心理学的基盤を包括的にレビューし、これらの構成概念が複数の下位次元から構成されることを示した。こうした**観測変数の背後にある構造**を統計的に明らかにするのが、本章で扱う潜在変数モデリングと次元縮約の手法群である[@kline2023; @brown2015]。
+
+本章では6つの手法を体系的に解説する。**主成分分析（PCA）** と **探索的因子分析（EFA）** で構造の探索と次元縮約を行い、**確認的因子分析（CFA）** と **構造方程式モデリング（SEM）** で理論に基づく仮説検証を行う。さらに、カテゴリカルデータの関係性を可視化する **コレスポンデンス分析（CA/MCA）** と、距離・類似度データを低次元空間に写像する **多次元尺度法（MDS）** を取り上げる。
+
+すべてのデータ例は英語教育研究の文脈に基づくシミュレーションデータを用いるため、分析結果の解釈がそのまま研究実践に接続する設計となっている。
+
+### 最初にここだけ（はじめに）
+
+#### Step 1: 問題を1文で捉える
+
+「観測データの背後にある構造（次元・因子・関係パターン）を少数の成分で要約し、理論の検証や尺度の妥当性確認に使う。」
+
+#### Step 2: 覚える区別は1つだけ
+
+- **PCA / CA / MDS** = データを「要約・可視化」する記述的手法
+- **EFA / CFA / SEM / LGM** = 潜在構造を「推定・検証」する確率モデル
+
+#### Step 3: この章でやること
+
+1. PCA で次元縮約の基本を理解する
+2. EFA で潜在因子を探索し、CFA / SEM で仮説を検証する
+3. LGM で個人の成長軌跡をモデリングする（SEM × 縦断データ）
+4. CA / MDS でカテゴリカルデータ・距離データを可視化する
+
+#### Step 4: どこまで読めば実務に使えるか
+
+- **尺度開発**: EFA → CFA → 信頼性 で研究に使える
+- **構造検証**: 上記 + SEM 節まで
+- **縦断的成長**: SEM + LGM 節（語彙力・読解力の成長、視線計測データ）
+- **カテゴリデータ**: CA / MCA 節
+- **類似度可視化**: MDS 節
+
+#### 読む順序（迷ったとき）
+- **最短ルート（30分）**: はじめに → PCA → EFA → 手法比較ガイド → 報告テンプレート
+- **標準ルート（60分）**: 上記 + CFA → SEM → PCA vs EFA 比較
+- **縦断ルート（75分）**: 標準 + LGM（語彙成長 → 視線計測 → 条件付きモデル）
+- **拡張ルート（90分〜）**: 上記 + CA / MCA → MDS → WLSMV → 測定不変性 → ブートストラップ
+
+### 手法選択ガイド
+
+手法選択は、まず研究の問いに対してデータの種類を確認するところから始まります。以下のフローチャートで判断の流れを概観できます。
+
+```{mermaid}
+%%| fig-width: 9
+%%| label: fig-method-selection
+%%| fig-cap: "データの種類と研究目的に基づく手法選択フローチャート"
+flowchart TD
+    A["データの種類は？"] --> B["連続 / Likert"]
+    A --> C["カテゴリカル"]
+    A --> D["距離・類似度行列"]
+
+    B --> E{"目的は？"}
+    E --> F["次元縮約・可視化 → PCA"]
+    E --> G["潜在構造の探索 → EFA"]
+    E --> H["測定仮説の検証 → CFA"]
+    E --> I["因果・媒介の検証 → SEM"]
+    E --> J["個人の成長軌跡 → LGM"]
+
+    G --> |"因子構造確定後"| H
+    H --> |"構造パス追加"| I
+    I --> |"縦断データあり"| J
+
+    C --> K{"入力形式は？"}
+    K --> L["クロス集計表 → CA"]
+    K --> M["個票データ → MCA"]
+
+    D --> N["MDS"]
+
+    style F fill:#e8f4f8,stroke:#2980b9
+    style G fill:#e8f4f8,stroke:#2980b9
+    style H fill:#fef9e7,stroke:#f39c12
+    style I fill:#fef9e7,stroke:#f39c12
+    style J fill:#fef9e7,stroke:#f39c12
+    style L fill:#f5eef8,stroke:#8e44ad
+    style M fill:#f5eef8,stroke:#8e44ad
+    style N fill:#eafaf1,stroke:#27ae60
+```
+
+連続変数や Likert データなら、目的に応じて PCA（次元縮約）、EFA（探索）、CFA（確認）、SEM（構造検証）、LGM（成長分析）を選びます。カテゴリカルデータなら、クロス集計表が中心であれば CA、個票データかつ多変数であれば MCA が適しています。距離・類似度行列が与えられている場合は MDS を使います。実務上は EFA で構造を探索してから CFA に進み、さらに構造パスを加えて SEM、縦断データなら LGM へ展開する順序が基本です。
+
+#### 用語ミニ辞典
+
+**基本概念**
+
+| 用語 | 英語 | 定義 |
+|---|---|---|
+| 潜在変数 | latent variable | 直接測定できない構成概念（動機づけ、能力等）。複数の観測変数から推定する |
+| 観測変数 | observed / indicator variable | 実際に測定できるデータ（質問紙の回答、テスト得点等） |
+| 反映指標 | reflective indicator | 潜在変数が観測変数を**生成**するモデル（因子→項目）。尺度開発の標準 |
+| 形成指標 | formative indicator | 観測変数が潜在変数を**構成**するモデル（項目→合成変数）。SES 等に適用 |
+
+**EFA / PCA 関連**
+
+| 用語 | 英語 | 定義 |
+|---|---|---|
+| 因子負荷量 | factor loading | 潜在因子が観測変数に与える影響の大きさ。絶対値 > .40 が実質的 |
+| 共通性 | communality ($h^2$) | 因子で説明される観測変数の分散割合。$h^2 < .30$ は除外候補 |
+| 独自性 | uniqueness ($u^2$) | 因子で説明されない分散（$1 - h^2$）。測定誤差＋項目固有の分散 |
+| 固有値 | eigenvalue | 各成分 / 因子が説明する分散量。平行分析で因子数を決定する |
+| 回転 | rotation | 因子の解釈可能性を高めるための変換 |
+| 斜交回転 | oblique rotation | 因子間相関を許容する回転（promax, oblimin）。心理・教育データの標準 |
+| 直交回転 | orthogonal rotation | 因子間を独立に保つ回転（varimax）。因子が無相関の場合のみ |
+| 交差負荷 | cross-loading | 1つの項目が複数因子に .30 以上の負荷を持つこと。項目修正の対象 |
+
+**CFA / SEM 関連**
+
+| 用語 | 英語 | 定義 |
+|---|---|---|
+| 測定モデル | measurement model | 潜在変数と観測変数の対応関係を定義するモデル部分（CFA に相当） |
+| 構造モデル | structural model | 潜在変数間の回帰関係を定義するモデル部分 |
+| パス係数 | path coefficient | 変数間の回帰関係の強さ。標準化値（$\beta$）で報告するのが一般的 |
+| 標準化解 | standardized solution | 全変数を分散1に標準化した推定値。`std.all` 列で確認する |
+| 含意共分散行列 | model-implied covariance matrix ($\boldsymbol{\Sigma}(\boldsymbol{\theta})$) | モデルが正しいと仮定した場合に予測される変数間の共分散 |
+| 直接効果 | direct effect | ある変数から別の変数への媒介なしの効果 |
+| 間接効果 | indirect effect | 媒介変数を経由する効果（パス係数の積で算出） |
+| 総効果 | total effect | 直接効果 + 間接効果 |
+| 修正指標 | modification indices (MI) | 制約を解放した場合の $\chi^2$ 改善の期待値。MI > 10 で検討対象 |
+| Heywood ケース | Heywood case | 分散の推定値が負、または標準化負荷 > 1 になる異常推定 |
+
+**適合度指標**
+
+| 略称 | 正式名称 | 直感的意味 | 基準値 |
+|------|---------|-----------|--------|
+| $\chi^2$ | カイ二乗検定 | モデルの完全適合を検定。大標本で有意になりやすいため単独で判断しない | $p > .05$（参考） |
+| CFI | Comparative Fit Index | **ベースラインモデル（全変数無相関）からの改善度**。1.0 = 完全改善 | > .90 許容, > .95 良好 |
+| TLI | Tucker-Lewis Index | CFI と同様だが**自由度でペナルティ**を与える。複雑モデルに厳しい | > .90 許容, > .95 良好 |
+| RMSEA | Root Mean Square Error of Approximation | **自由度あたりの近似誤差**。モデルの複雑さを考慮した「misfit per df」 | < .08 許容, < .05 良好 |
+| SRMR | Standardized Root Mean Square Residual | **観測相関と予測相関の平均的なズレ**。残差の大きさを直接反映 | < .08 良好 |
+
+**推定量**
+
+| 推定量 | 正式名称 | 使用場面 |
+|--------|---------|---------|
+| ML | Maximum Likelihood | 連続変数・正規性仮定を満たす場合の標準 |
+| MLR | Robust ML（Satorra-Bentler 補正） | 非正規データ。ロバスト標準誤差と補正 $\chi^2$ を提供 |
+| WLSMV | Weighted Least Squares Mean and Variance adjusted | 順序カテゴリ（5件法以下の Likert 尺度）。ポリコリック相関を使用 |
+| FIML | Full Information Maximum Likelihood | 欠損データ。MAR 仮定の下で不偏推定を提供 |
+
+**妥当性指標**
+
+| 用語 | 英語 | 定義 | 基準値 |
+|------|------|------|--------|
+| 収束的妥当性 | convergent validity | 同一因子の指標が十分に高い負荷を持つか | AVE > .50 |
+| 弁別的妥当性 | discriminant validity | 異なる因子が十分に区別できるか | 因子間相関 < .85, Fornell-Larcker 基準 |
+| AVE | Average Variance Extracted | 因子が指標の分散を平均的にどれだけ説明するか | > .50 |
+
+**LGM / 縦断分析**
+
+| 用語 | 英語 | 定義 |
+|---|---|---|
+| 潜在成長曲線 | latent growth curve | 個人の変化を切片・傾きの潜在因子でモデリングする手法 |
+| 切片因子 | intercept factor | LGM における初期水準の個人差を表す潜在変数 |
+| 傾き因子 | slope factor | LGM における成長率の個人差を表す潜在変数 |
+
+**CA / MCA / MDS**
+
+| 用語 | 英語 | 定義 |
+|---|---|---|
+| 慣性 | inertia | CA における分散に相当する量（$\chi^2 / n$）。大きいほど行列間の関連が強い |
+| ストレス | stress | MDS における距離再現の誤差。低次元での「歪みの大きさ」 |
+| 注視時間 | gaze duration | 視線計測で関心領域を初回通過する際の総注視時間 |
+| 測定不変性 | measurement invariance | 群間で測定モデルが同等に機能するかの検証 |
+
+### この章の到達目標
+
+- PCA の固有値分解を理解し、スクリープロットとバイプロットを解釈できる。
+- EFA で因子数を決定し、因子負荷量表を作成・解釈できる。
+- CFA のモデル定義と適合度評価ができる（lavaan の基本操作を含む）。
+- SEM で潜在変数間の媒介効果を推定し、ブートストラップ CI を報告できる。
+- LGM で個人の成長軌跡をモデリングし、共変量の効果を検証できる。
+- CA / MCA でカテゴリカルデータの関係構造を可視化できる。
+- MDS で距離データを低次元空間に写像し、ストレスで適合度を評価できる。
+- 各手法の結果を APA 形式で報告できる。
+
+### この章の立場
+- 本章は「尺度開発・構成概念の検証・縦断的成長・データの要約」に焦点を絞る。ベイズ SEM やネットワーク分析は別章で扱う。ARIMA 等の集団レベルの時系列分析は第13章を参照。
+- 目的は「多機能なコード集」ではなく、**研究で使える分析思考**を身につけることである。
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+# Load required packages
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(
+  tidyverse,        # Data manipulation and visualization
+  psych,            # EFA and reliability analysis
+  GPArotation,      # Factor rotations
+  sjPlot,           # EFA table formatting
+  lavaan,           # CFA/SEM/LGM
+  semPlot,          # Path diagrams
+  lavaanPlot,       # Alternative path diagrams
+  seminr,           # PLS-SEM
+  FactoMineR,       # PCA, CA, MCA
+  factoextra,       # Visualization support
+  smacof,           # Non-metric MDS
+  MASS,             # Multivariate normal simulation (LGM)
+  patchwork,        # Plot composition
+  gt,               # Table formatting
+  scales,           # Axis labeling
+  broom,            # Model output tidying
+  glue              # Reporting templates
+)
+set.seed(2024)
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_update(legend.position = "bottom")
+
+# Render tables as lightweight static outputs while keeping the table pipelines compact.
+lite_gt <- function(data) {
+  structure(list(data = as.data.frame(data), caption = NULL), class = "lite_gt")
+}
+
+resolve_lite_cols <- function(df, cols_expr) {
+  if (is.null(cols_expr)) {
+    return(character(0))
+  }
+  names(tidyselect::eval_select(cols_expr, df))
+}
+
+gt <- function(data, ...) {
+  lite_gt(data)
+}
+
+tab_header <- function(data, title = NULL, subtitle = NULL, ...) {
+  data$caption <- paste(Filter(Negate(is.null), c(title, subtitle)), collapse = " — ")
+  data
+}
+
+fmt_number <- function(data, columns, decimals = 2, ...) {
+  cols <- resolve_lite_cols(data$data, substitute(columns))
+  for (nm in cols) {
+    if (is.numeric(data$data[[nm]])) {
+      data$data[[nm]] <- formatC(data$data[[nm]], digits = decimals, format = "f")
+    }
+  }
+  data
+}
+
+fmt_scientific <- function(data, columns, decimals = 3, ...) {
+  cols <- resolve_lite_cols(data$data, substitute(columns))
+  for (nm in cols) {
+    if (is.numeric(data$data[[nm]])) {
+      data$data[[nm]] <- formatC(data$data[[nm]], digits = decimals, format = "e")
+    }
+  }
+  data
+}
+
+cols_label <- function(data, ...) {
+  labels <- rlang::list2(...)
+  for (nm in names(labels)) {
+    if (nm %in% names(data$data)) {
+      names(data$data)[names(data$data) == nm] <- as.character(labels[[nm]])
+    }
+  }
+  data
+}
+
+tab_style <- function(data, ...) data
+tab_footnote <- function(data, ...) data
+tab_spanner <- function(data, ...) data
+cell_fill <- function(...) NULL
+cell_text <- function(...) NULL
+cells_body <- function(...) NULL
+cells_column_labels <- function(...) NULL
+
+print.lite_gt <- function(x, ...) {
+  print(knitr::kable(x$data, caption = x$caption, format = "pipe", escape = FALSE))
+  invisible(x)
+}
+
+knit_print.lite_gt <- function(x, ...) {
+  knitr::asis_output(knitr::kable(x$data, caption = x$caption, format = "pipe", escape = FALSE))
+}
+```
+
+### 因子分析・SEM の前提条件と前処理
+
+因子分析（EFA/CFA）および SEM を適用する前に、データが分析の前提条件を満たしているかを確認する必要がある。前提の侵害は推定の偏りや不安定な結果を引き起こすため、分析に先立って以下の項目を体系的に検証することが重要である。
+
+#### データの種類と相関係数の選択
+
+因子分析の入力となる相関係数は、データの測定水準に応じて使い分ける必要がある。
+
+| データの種類 | 相関係数 | R での指定 | 備考 |
+|-------------|---------|-----------|------|
+| 連続変数 | Pearson 相関 | `cor(data)` | 正規性仮定が必要 |
+| 順序カテゴリ（Likert 5件法以下） | **ポリコリック相関** | `psych::polychoric(data)$rho` | 背後に連続な正規分布を仮定[@holgadotello2010] |
+| 2値データ（正誤, Yes/No） | **テトラコリック相関** | `psych::tetrachoric(data)$rho` | ポリコリック相関の2値特殊ケース |
+| 6件法以上の Likert | Pearson 相関でほぼ問題なし | `cor(data)` | 実務的にはMLR推定が安全 |
+
+ポリコリック相関とテトラコリック相関は、観測される離散的な反応の背後に**連続的な正規分布**（閾値モデル）を仮定する。例えば、5件法の Likert 項目で「4」と回答した場合、背後の連続的な態度が閾値 $\tau_3$ と $\tau_4$ の間にあると解釈する。WLSMV 推定量はこの閾値モデルを内部的に使用しており、`ordered = TRUE` を指定すると lavaan が自動的にポリコリック/テトラコリック相関を計算する。
+
+#### サンプルサイズ
+
+| 手法 | 最低ライン | 推奨 | 根拠 |
+|------|-----------|------|------|
+| EFA | 項目数 $\times$ 5（$N:p = 5:1$） | 項目数 $\times$ 10 または $N \geq 300$ | @costello2005; @goretzko2021 |
+| CFA | $N \geq 200$ | $N \geq 300$ | @kline2023; @brown2015 |
+| SEM（媒介モデル等） | $N \geq 200$ | $N \geq 400$（5潜在変数以上） | @kline2023 |
+| PLS-SEM | 経路数 $\times$ 10 | $N \geq 100$ | @hair2019 |
+
+サンプルサイズが不十分な場合、因子負荷量の推定が不安定になり、Heywood ケース（負の分散推定）が生じやすくなる。SLA 研究ではサンプルの確保が困難な場合が多いが、$N < 150$ では EFA の結果が極めて不安定になるため、最低でも200を確保することを強く推奨する[@plonsky2015]。
+
+#### 多変量正規性
+
+ML（最尤法）推定は多変量正規性を仮定する。心理・教育データ（特に Likert 尺度）では厳密な正規性は満たされないことが多いが、**MLR（ロバスト ML）**を使用すれば、中程度の非正規性には頑健な推定が得られる。深刻な非正規性（歪度 > 2、尖度 > 7）がある場合は WLSMV を検討する。
+
+```{r}
+#| label: mardia-normality-test
+#| eval: false
+
+# Multivariate normality check — run on your actual data
+# Replace 'your_data' with your data frame of observed variables
+mardia_result <- psych::mardia(your_data, plot = FALSE)
+
+# Key outputs:
+# mardia_result$b1p    — multivariate skewness
+# mardia_result$b2p    — multivariate kurtosis
+# mardia_result$p.skew — p-value for skewness
+# mardia_result$p.kurt — p-value for kurtosis
+```
+
+Mardia 検定が有意（$p < .05$）の場合、多変量正規性の仮定が侵害されていることを示す。この場合、(a) ML の代わりに **MLR** を使用する、(b) カテゴリ数が少なければ **WLSMV** を使用する、(c) **ブートストラップ**で頑健な標準誤差と信頼区間を算出する、のいずれかの対策を講じる。実データでは EFA/CFA の前に必ず確認すること。本章の EFA セクションでは、シミュレーションデータの正規性を KMO/Bartlett 検定とともに確認する。
+
+#### 線形性
+
+EFA/CFA の因子モデルは、潜在変数と観測変数の間に**線形関係**を仮定する。非線形な関係（天井効果、床効果、U 字型の関係等）がある場合、因子負荷量が過小推定される。線形性の確認には、項目間の散布図行列や残差プロットを視覚的に検査する方法が実用的である。天井効果や床効果が顕著な項目は、分析前に除外を検討する。
+
+#### 外れ値
+
+多変量外れ値は因子構造を歪め、特定の因子が外れ値の影響だけで形成される「アーティファクト因子」を生む危険がある。マハラノビス距離を用いて多変量外れ値を検出し、$p < .001$（カイ二乗分布に基づく）のケースを確認する。外れ値の除外は慎重に行い、統計的基準だけでなく実質的な理由（データ入力ミス、不誠実な回答等）がある場合のみ除外する。
+
+#### 欠損データ
+
+SLA 研究では脱落や無回答により欠損データが生じることが多い。欠損のメカニズムには3種類がある。
+
+| メカニズム | 定義 | 対処法 |
+|-----------|------|--------|
+| **MCAR** (Missing Completely at Random) | 欠損が完全にランダム | リストワイズ削除でも不偏だが非効率 |
+| **MAR** (Missing at Random) | 欠損が他の観測変数に依存 | **FIML** または多重代入（`mice`）が有効 |
+| **MNAR** (Missing Not at Random) | 欠損が欠損値自体に依存 | 特別な選択モデルが必要。FIML でも偏る |
+
+lavaan では `missing = "fiml"` を指定するだけで FIML が利用でき、MAR の下では不偏推定量が得られる。リストワイズ削除（lavaan のデフォルト）はサンプルサイズを大幅に減少させるため、欠損が5%を超える場合は FIML の使用を強く推奨する。
+
+#### 前処理チェックリスト（分析前に確認）
+1. サンプルサイズは十分か？（EFA: $N \geq 200$, CFA/SEM: $N \geq 200$--300）
+2. KMO > .60、Bartlett 検定有意か？（EFA のみ）
+3. データの測定水準に応じた相関係数を選択したか？（Pearson / ポリコリック / テトラコリック）
+4. Mardia 検定で多変量正規性を確認したか？→ 侵害されていれば MLR または WLSMV
+5. 天井・床効果のある項目はないか？
+6. 多変量外れ値（マハラノビス距離）を確認したか？
+7. 欠損の割合と FIML の適用を検討したか？
+
+## 回帰分析からの橋渡し
+
+読者がすでに馴染んでいる回帰分析から出発しよう。@bandalos2018 が測定理論の教科書で整理しているように、社会科学における統計手法は「観測変数間の関係」から「潜在構造の推定」へと段階的に拡張される。回帰分析では、1つの結果変数を複数の説明変数で予測する。
+
+$$Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \cdots + \beta_p X_p + \varepsilon$$
+
+ここで $Y$ は観測される結果変数、$X$ は観測される説明変数である。しかし、英語教育研究では「動機づけ」「不安」「読解力」といった**直接測定できない構成概念**を扱う場面が多い。このとき、方向が逆転する。回帰では「$X$ から $Y$ を予測する」のに対し、因子分析では「潜在変数 $f$ が観測変数 $X$ を生成する」と考える。
+
+$$\underbrace{X = \Lambda f + u}_{\text{因子分析モデル}}$$
+
+ここで $\Lambda$ は因子負荷行列、$f$ は潜在因子、$u$ は独自性（誤差）である。この「方向の逆転」が、回帰分析と潜在変数モデルの根本的な違いである。
+
+### 橋渡しの直感
+- **回帰分析**: 観測変数 → 観測変数（予測）
+- **PCA**: 観測変数 → 少数の合成変数（要約）
+- **因子分析**: 潜在変数 → 観測変数（生成モデル）
+
+相関行列を計算する時点で、すでに PCA と EFA の入力データは手元にある。`cor(data)` が出発点である。
+
+以下の小さな例で、相関行列の「ブロック構造」が潜在因子の存在を示唆する様子を確認しよう。
+
+```{r}
+#| label: bridge-correlation-demo
+#| fig-width: 7
+#| fig-height: 5
+
+# Simulate a small vocabulary test: 6 items, 2 latent skills
+set.seed(2024)
+n <- 200
+skill_read  <- rnorm(n)
+skill_listen <- rnorm(n, mean = 0.3 * skill_read)  # Moderate correlation
+
+bridge_data <- data.frame(
+  Read_1  = skill_read  + rnorm(n, sd = 0.6),
+  Read_2  = skill_read  + rnorm(n, sd = 0.6),
+  Read_3  = skill_read  + rnorm(n, sd = 0.6),
+  List_1  = skill_listen + rnorm(n, sd = 0.6),
+  List_2  = skill_listen + rnorm(n, sd = 0.6),
+  List_3  = skill_listen + rnorm(n, sd = 0.6)
+)
+
+# Correlation matrix with block structure
+cor_mat <- cor(bridge_data)
+
+# Visualize
+cor_long <- cor_mat |>
+  as.data.frame() |>
+  rownames_to_column("Var1") |>
+  pivot_longer(-Var1, names_to = "Var2", values_to = "r") |>
+  mutate(
+    Var1 = factor(Var1, levels = rev(colnames(cor_mat))),
+    Var2 = factor(Var2, levels = colnames(cor_mat))
+  )
+
+ggplot(cor_long, aes(Var2, Var1, fill = r)) +
+  geom_tile() +
+  geom_text(aes(label = round(r, 2)), size = 3.5) +
+  scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b", midpoint = 0) +
+  labs(
+    title = "Correlation Matrix: 6-Item Vocabulary Test",
+    subtitle = "Block structure suggests two latent factors (Reading vs. Listening)",
+    fill = "r"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+相関行列に明確なブロック構造が見える。Reading 項目同士の相関が高く、Listening 項目同士の相関も高い。一方、Reading と Listening の間の相関は相対的に低い。この構造が、潜在因子（Reading 能力、Listening 能力）の存在を示唆している。
+
+**回帰分析・PCA・因子分析の比較**（モデルの方向と目的の違いに注目）
+
+| 観点 | 回帰分析 | PCA | 因子分析 |
+|------|---------|-----|---------|
+| 目的 | 予測・因果推論 | 次元縮約・可視化 | 潜在構造の推定 |
+| モデル方向 | X → Y | X → PC | f → X |
+| 推定対象 | 回帰係数 β | 固有ベクトル | 因子負荷 Λ |
+| 誤差の扱い | 残差 ε | 含まない | 独自性 u |
+| 潜在変数 | なし | なし（合成変数） | あり |
+| 典型的な用途（SLA） | テスト得点の予測 | テスト項目の要約 | 尺度開発・妥当性検証 |
+
+### よくある誤解
+「PCA は因子分析の一種である」と誤解されることがあるが、両者は目的もモデルも異なる。PCA は全分散の要約であり、因子分析は共通分散の推定である。この違いは後述の「PCA vs EFA の比較」節で詳しく扱う。
+
+## 潜在構造の探索と検証
+
+### 主成分分析（PCA）
+
+### コンセプト
+
+主成分分析（PCA）は、多数の変数を少数の**主成分**（principal component）に要約する手法である。データの分散を最大限に保ちながら次元を削減することが目的であり、潜在変数モデルではなく幾何学的な変換手法である[@jolliffe2016]。言語テスティングでは、テスト項目の次元構造を概観する目的で古くから用いられてきた[@bachman1982; @loewen2020]。
+
+#### 最初にここだけ（PCA）
+1. PCA は相関行列（または共分散行列）を固有値分解する
+2. 固有値が大きい成分ほど多くの分散を説明する
+3. スクリープロットと累積寄与率で保持する成分数を決める
+4. バイプロットで変数と個体の関係を同時に可視化する
+
+#### 数学的定義
+
+$p$ 個の観測変数 $X_1, X_2, \ldots, X_p$ に対し、第 $k$ 主成分は次のように定義される。
+
+$$z_k = v_{k1} x_1 + v_{k2} x_2 + \cdots + v_{kp} x_p = \mathbf{v}_k^\top \mathbf{x}$$
+
+ここで $\mathbf{v}_k$ は相関行列 $\mathbf{R}$ の第 $k$ 固有ベクトルであり、$z_k$ の分散は対応する固有値 $\lambda_k$ に等しい。固有値分解は次の形式である。
+
+$$\mathbf{R} = \mathbf{V} \boldsymbol{\Lambda} \mathbf{V}^\top$$
+
+$\lambda_1 \geq \lambda_2 \geq \cdots \geq \lambda_p$ の順に並び、第1主成分が最大の分散を説明する。
+
+固有ベクトルは「分散が最大になる方向」を、固有値は「その方向でどれだけ分散を説明できるか」を表す。主成分分析では、相関行列を固有値分解することで、元の変数空間をより少数の直交する方向（主成分）に要約する。直感的には、固有値が大きい主成分ほど「データの散らばりを多く捉えるカメラアングル」であり、固有値が小さい主成分はノイズに近い方向を表す。
+
+#### 幾何学的直感
+
+PCA は、$p$ 次元のデータ雲を眺める「最良のカメラアングル」を見つける作業に例えられる。第1主成分はデータの分散（散らばり）が最大になる方向に座標軸を回転させ、第2主成分は第1主成分と直交する方向で残りの分散を最大化する。
+
+英語技能テストの例で考えると:
+
+- Reading, Listening, Grammar の12項目は12次元空間に存在する
+- PCA はこの12次元空間で「最もデータが散らばっている方向」を見つける
+- 第1主成分は「英語力全般」のように、すべての技能に共通する方向を捉えることが多い
+- 第2主成分以降で「Reading vs. Listening」のような技能間の差異が表現される
+
+この直感は、後述のバイプロットで矢印の方向と長さを解釈する際の基盤になる。
+
+#### PCA のスケーリング
+変数のスケールが異なるとき（例: テスト得点 0〜100 と Likert 1〜6）は、共分散行列ではなく**相関行列**（標準化後）を用いる。`FactoMineR::PCA()` はデフォルトで標準化を行う。
+
+### SLA データ例: 英語技能テスト
+
+言語テスティングにおける PCA の古典的な活用例として、@bachman1982 はコミュニケーション能力の構成要素（言語能力・語用論的能力・社会言語学的能力）を multi-trait multi-method デザインで検討し、PCA で特性効果と方法効果を分離した。また @dewaele2014 は、1,746名の多言語話者のデータに PCA を適用し、Foreign Language Enjoyment（FLE）尺度の次元構造を解明している。@plonsky2015 は L2 研究における因子分析的手法のメタ的レビューで、多くの研究が EFA と称しながら実際には PCA を実行していた実態を指摘しており、手法選択の重要性を示している。
+
+以下では300名の日本人 EFL 学習者に対する12項目のテスト（Reading 4項目、Listening 4項目、Grammar 4項目）をシミュレーションで生成する。
+
+シミュレーションでは、Reading・Listening・Grammar の3技能間に中程度の正の相関（$r = .30$--$.50$）を設定した。これは Bachman (1982) 等のコミュニケーション能力テスト研究で報告される技能間相関の典型的な範囲を反映している。因子負荷量は $.65$--$.80$ とし、言語テスト研究で一般的に報告される値域に設定した。誤差の標準偏差 $.50$ は、共通性がおよそ $.50$--$.70$ になるよう調整したものである。
+
+```{r}
+#| label: pca-data-simulation
+
+# Simulate English proficiency test data (12 items, 3 skills)
+set.seed(2024)
+n_pca <- 300
+
+# Latent skills with moderate correlations
+Sigma_skills <- matrix(c(1, 0.5, 0.4,
+                          0.5, 1, 0.3,
+                          0.4, 0.3, 1), nrow = 3)
+skills <- MASS::mvrnorm(n_pca, mu = c(0, 0, 0), Sigma = Sigma_skills)
+colnames(skills) <- c("Reading", "Listening", "Grammar")
+
+# Generate observed items from latent skills
+pca_data <- data.frame(
+  Read_1  = skills[,1] * 0.8 + rnorm(n_pca, sd = 0.5),
+  Read_2  = skills[,1] * 0.7 + rnorm(n_pca, sd = 0.5),
+  Read_3  = skills[,1] * 0.75 + rnorm(n_pca, sd = 0.5),
+  Read_4  = skills[,1] * 0.65 + rnorm(n_pca, sd = 0.5),
+  List_1  = skills[,2] * 0.8 + rnorm(n_pca, sd = 0.5),
+  List_2  = skills[,2] * 0.7 + rnorm(n_pca, sd = 0.5),
+  List_3  = skills[,2] * 0.75 + rnorm(n_pca, sd = 0.5),
+  List_4  = skills[,2] * 0.65 + rnorm(n_pca, sd = 0.5),
+  Gram_1  = skills[,3] * 0.8 + rnorm(n_pca, sd = 0.5),
+  Gram_2  = skills[,3] * 0.7 + rnorm(n_pca, sd = 0.5),
+  Gram_3  = skills[,3] * 0.75 + rnorm(n_pca, sd = 0.5),
+  Gram_4  = skills[,3] * 0.65 + rnorm(n_pca, sd = 0.5)
+)
+```
+
+### 固有値と分散の説明率
+
+ここでは `FactoMineR::PCA()` で主成分分析を実行する。`graph = FALSE` は自動作図を抑制し、後で `factoextra` パッケージで可視化するための設定である。`PCA()` はデフォルトでデータを標準化（`scale.unit = TRUE`）するため、変数のスケールが異なっても自動的に調整される。
+
+固有値テーブルでは、各行が1つの主成分に対応し、**Eigenvalue 列**が分散量、**Cumulative % 列**が累積寄与率を示す。累積寄与率が 80% に達するまでの成分数が、データの大部分を要約するのに必要な次元数の目安となる。
+
+```{r}
+#| label: pca-analysis
+#| fig-width: 8
+#| fig-height: 5
+
+# Perform PCA
+res_pca <- FactoMineR::PCA(pca_data, graph = FALSE)
+
+# Eigenvalue table
+pca_eig_df <- as.data.frame(res_pca$eig) |>
+  mutate(Dimension = row_number()) |>
+  dplyr::select(Dimension, everything())
+
+pca_eig_df |>
+  gt() |>
+  tab_header(
+    title = "PCA Eigenvalues and Variance Explained",
+    subtitle = "English Proficiency Test (12 items, 300 learners)"
+  ) |>
+  fmt_number(columns = -Dimension, decimals = 2) |>
+  cols_label(
+    Dimension = "Dim",
+    eigenvalue = "Eigenvalue",
+    `percentage of variance` = "% Variance",
+    `cumulative percentage of variance` = "Cumulative %"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = `cumulative percentage of variance`,
+      rows = `cumulative percentage of variance` <= 80
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Highlighted rows show components contributing to 80% cumulative variance",
+    locations = cells_column_labels(columns = `cumulative percentage of variance`)
+  )
+
+# Scree plot
+fviz_eig(res_pca, addlabels = TRUE, ylim = c(0, 50)) +
+  labs(
+    title = "Scree Plot: English Proficiency Test",
+    subtitle = "Look for the 'elbow' where eigenvalue decline levels off"
+  )
+```
+
+スクリープロットでは、横軸が成分番号、縦軸が固有値である。「肘」（急激に減少が緩やかになる点）より左側の成分を保持するのが基本方針である。赤い破線は Kaiser 基準（固有値 = 1）を示す。肘の位置は分析者の判断に依存し、特に固有値が連続的に減少する場合に判定が困難になる。Kaiser 基準（固有値 > 1）は変数が少ないときに過大抽出する傾向があるため、平行分析との併用が推奨される。実際、12変数程度のデータでは Kaiser 基準が4成分を示唆しても、平行分析では2〜3成分が適切と判断されることが少なくない。
+
+### スクリープロット（tidyverse 版）
+
+```{r}
+#| label: pca-scree-tidyverse
+#| fig-width: 7
+#| fig-height: 5
+
+eig_vals <- res_pca$eig[, 1]
+scree_tbl <- tibble(Component = seq_along(eig_vals), Eigenvalue = eig_vals)
+
+ggplot(scree_tbl, aes(Component, Eigenvalue)) +
+  geom_point(size = 3, color = "darkblue") +
+  geom_line(linewidth = 0.8, color = "darkblue") +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  scale_x_continuous(breaks = scree_tbl$Component) +
+  annotate("text", x = 11, y = 1.15, label = "Kaiser criterion (λ = 1)",
+           color = "red", size = 3.5, hjust = 1) +
+  labs(
+    title = "Scree Plot (tidyverse)",
+    subtitle = "Components above the red line have eigenvalue > 1",
+    y = "Eigenvalue"
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+Kaiser 基準（赤い破線）より上の成分は4つあるが、肘の位置はおおむね2〜3成分を示唆する。複数の基準（Kaiser 基準、肘の判断、平行分析）が一致しない場合、理論的な解釈可能性も含めて総合的に判断する必要がある。
+
+#### 成分数の決定基準
+- **Kaiser 基準**（固有値 > 1）: 過大評価の傾向があり、単独では推奨しない[@kaiser1960]。
+- **スクリープロット**（肘の位置）: 主観的だが視覚的に有用[@cattell1966]。
+- **平行分析**（Horn 法）: ランダムデータの固有値と比較する最も推奨される方法[@horn1965]。
+- **MAP テスト**: 偏相関行列に基づく客観的基準[@velicer1976]。
+- 実務では**複数の基準を総合判断**するのがベストプラクティスである。
+
+#### 平行分析による成分数の検証
+
+平行分析は、実データの固有値をランダムデータ（同じサイズ）の固有値と比較する方法である。実データの固有値がランダムデータの固有値を上回る成分のみを保持する[@horn1965]。
+
+`psych::fa.parallel()` の主要引数:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `fm` | `"ml"` | 推定法。`"ml"`（最尤法）が一般的。`"pa"`（主軸法）も選択可能 |
+| `fa` | `"pc"` | **PCA の成分数を決定する場合は `"pc"`**。EFA の因子数なら `"fa"`。混同しやすいので注意 |
+| `n.iter` | `100` | ランダムデータの生成回数。多いほど安定するが計算時間が増える |
+
+```{r}
+#| label: pca-parallel-analysis
+#| fig-width: 8
+#| fig-height: 6
+
+# Parallel analysis for PCA
+psych::fa.parallel(pca_data, fm = "ml", fa = "pc", n.iter = 100,
+                   main = "Parallel Analysis: English Proficiency Test (PCA)")
+```
+
+出力の読み方: 青い三角（実データの固有値）が赤い破線（ランダムデータの固有値）を上回っている成分のみを保持する。ランダムデータの固有値を超えない成分は、偶然のノイズで説明できる程度の分散しか持たないと判断される。
+
+### バイプロットと変数診断
+
+バイプロットは個体（学習者）と変数（テスト項目）を同じ2次元平面上に配置し、両者の関係を一望する図である。バイプロットの読み方には3つの要素がある。第一に、**矢印の方向**は変数と主成分の相関を表し、同じ方向の矢印を持つ変数は正の相関にある。第二に、**矢印の長さ**は変数の寄与の大きさ（$\cos^2$）に対応し、長い矢印ほどこの2次元空間上でよく表現されている。第三に、**$\cos^2$**（表現の質）は0〜1の値をとり、1に近いほどその変数がこの平面上で正確に表現されていることを意味する。矢印が短い変数は高次の成分に情報が分散しているため、2次元バイプロット上の位置だけで解釈を確定させるべきではない。
+
+以下のタブで、FactoMineR 版・tidyverse 版のバイプロット、および各変数の寄与率と $\cos^2$ を確認する。
+
+::: {.panel-tabset}
+
+#### バイプロット（FactoMineR）
+
+```{r}
+#| label: pca-biplot
+#| fig-width: 10
+#| fig-height: 8
+
+# FactoMineR biplot
+fviz_pca_biplot(res_pca, repel = TRUE,
+                col.var = "red", col.ind = "grey60",
+                title = "PCA Biplot: English Proficiency Test")
+```
+
+#### バイプロット（tidyverse）
+
+```{r}
+#| label: pca-biplot-tidyverse
+#| fig-width: 10
+#| fig-height: 8
+
+# Tidyverse biplot
+ind <- as_tibble(res_pca$ind$coord) |> mutate(id = row_number())
+var <- as_tibble(res_pca$var$coord, rownames = "Variable")
+
+ggplot() +
+  geom_point(data = ind, aes(Dim.1, Dim.2), alpha = 0.4, size = 1.5, color = "grey50") +
+  geom_segment(
+    data = var,
+    aes(x = 0, y = 0, xend = Dim.1 * 3, yend = Dim.2 * 3),
+    arrow = arrow(length = unit(0.25, "cm")),
+    color = "red", linewidth = 0.8
+  ) +
+  geom_text(
+    data = var,
+    aes(Dim.1 * 3.3, Dim.2 * 3.3, label = Variable),
+    color = "darkred", size = 3.5
+  ) +
+  labs(
+    title = "PCA Biplot (tidyverse)",
+    subtitle = "Arrows: variables; Points: individuals (learners)",
+    x = paste0("Dim 1 (", round(res_pca$eig[1,2], 1), "%)"),
+    y = paste0("Dim 2 (", round(res_pca$eig[2,2], 1), "%)")
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+バイプロットを見ると、Reading 系の変数（Read_1, Read_2, Read_3, Read_4）が同じ方向に密集しているのは、これらが共通の主成分に強く寄与することを示す。同様に Listening 系・Grammar 系の変数もそれぞれクラスタを形成しているのが確認できる。矢印が長い変数ほどその成分上での表現が良好であり、短い変数は2次元空間での近似が不十分であることを意味する。技能グループ間の矢印の角度が鋭角であるのは、シミュレーションで設定した技能間の正の相関（$r = .30$--$.50$）を反映している。
+
+#### 寄与率テーブル
+
+各変数が各次元の形成にどれだけ寄与しているかを百分率で示す。寄与率が高い変数が、その次元の「正体」を教えてくれる。
+
+```{r}
+#| label: pca-contrib
+
+# Variable contributions (%)
+pca_var_contrib <- as_tibble(res_pca$var$contrib[, 1:2], rownames = "Variable") |>
+  rename(Contrib_Dim1 = `Dim.1`, Contrib_Dim2 = `Dim.2`) |>
+  arrange(desc(Contrib_Dim1))
+
+pca_var_contrib |>
+  gt() |>
+  tab_header(
+    title = "PCA Variable Contributions",
+    subtitle = "Contribution to Dim 1 and Dim 2 (%)"
+  ) |>
+  fmt_number(columns = c(Contrib_Dim1, Contrib_Dim2), decimals = 2)
+```
+
+#### cos² テーブル
+
+$\cos^2$ は各変数がこの2次元平面でどれだけ正確に表現されているかを示す（0〜1）。値が低い変数は、この平面上の位置が信頼できないため解釈を控える。
+
+```{r}
+#| label: pca-cos2
+
+# Variable cos2 (quality of representation)
+pca_var_cos2 <- as_tibble(res_pca$var$cos2[, 1:2], rownames = "Variable") |>
+  rename(cos2_Dim1 = `Dim.1`, cos2_Dim2 = `Dim.2`) |>
+  arrange(desc(cos2_Dim1))
+
+pca_var_cos2 |>
+  gt() |>
+  tab_header(
+    title = "PCA Variable cos²",
+    subtitle = "Quality of representation on Dim 1 and Dim 2"
+  ) |>
+  fmt_number(columns = c(cos2_Dim1, cos2_Dim2), decimals = 3)
+```
+
+```{r}
+#| label: pca-cos2-heatmap
+#| fig-width: 8
+#| fig-height: 5
+
+# Variable cos2 heatmap
+pca_var_cos2 |>
+  pivot_longer(-Variable, names_to = "Dimension", values_to = "cos2") |>
+  mutate(Dimension = gsub("cos2_", "", Dimension)) |>
+  ggplot(aes(x = Dimension, y = reorder(Variable, cos2), fill = cos2)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(cos2, 2)), size = 3.5) +
+  scale_fill_gradient(low = "white", high = "#2b8cbe") +
+  labs(title = "Variable cos² Heatmap",
+       subtitle = "Quality of representation on each dimension",
+       y = "Variable", fill = "cos²")
+```
+
+cos² ヒートマップでは、各変数が第1・第2主成分の平面上でどの程度よく表現されているかを色の濃さで示す。cos² が高い（濃い青）変数ほど、バイプロット上の位置が信頼できる。cos² が低い変数は、この2次元では十分に表現されていないため、解釈を控えるか上位の成分も考慮する必要がある。cos² が高い（濃い青の）変数はこの2次元空間でよく表現されており、結果の解釈に含めてよい。cos² < 0.50 の変数は追加の成分を考慮する必要があり、バイプロット上の位置のみに基づいた解釈は慎重に行うべきである。
+
+:::
+
+#### バイプロットの読み方
+- **矢印の長さ**: 長いほどこの2次元平面で十分に表現されている（$\cos^2$ が高い）
+- **矢印同士の角度**: 小さい = 正の相関、反対向き = 負の相関、直交 = ほぼ無相関
+- **個体点の位置**: 矢印方向に遠いほどその変数の値が大きい
+- まず**累積寄与率**を確認し、この平面が全体の何%を説明しているかを把握すること
+
+#### 寄与率と $\cos^2$ の違い
+- **寄与率（contribution）**: その次元が「どの変数に支えられているか」。次元の解釈に使う。
+- **$\cos^2$**: その変数が「この平面でどれだけ正確に再現されているか」。低い点の解釈は控えめに。
+- 実務手順: 寄与率で軸の主要因を把握 → $\cos^2$ で信頼できる変数のみ解釈する。
+
+#### PCA の注意点
+- PCA は**全分散**（共通分散 + 独自性）を回収する。したがって、測定誤差を含む合成変数を生成する。これが因子分析との根本的な違いである[@loewen2020]。
+- 外れ値に引っ張られやすい。主成分スコアの分布を事前に確認すること。
+- 2次元で十分とは限らない。**累積寄与率**と **$\cos^2$** を必ず確認する。
+
+### 探索的因子分析（EFA）
+
+### コンセプトと手順
+
+探索的因子分析（EFA）は、観測変数間の相関を「共通因子 + 独自性」に分解するモデルである。PCA と異なり、EFA は**確率モデル**であり、観測データの背後にある潜在因子を推定する[@thurstone1947; @revelle2024]。
+
+SLA 研究では尺度開発の場面で EFA が最も頻繁に用いられてきた。@gardner1985 は Attitude/Motivation Test Battery（AMTB）を開発する過程で EFA を用い、統合的動機づけ・道具的動機づけ・言語不安・学習環境への態度という4つの上位構成概念を同定した。AMTB はその後数十年にわたり L2 動機づけ研究の標準的測定ツールとなった。@horwitz1986 は33項目の Foreign Language Classroom Anxiety Scale（FLCAS）を EFA で分析し、コミュニケーション不安・テスト不安・否定的評価への恐れという3つの下位因子を抽出した。FLCAS は現在までに世界中で翻訳・追試されている、SLA 研究で最も引用される尺度の一つである。
+
+こうした歴史的な蓄積を踏まえ、@plonsky2015 は L2 研究における EFA の実施慣行を体系的に検証した。このメタ的レビューでは、因子数決定に Kaiser 基準（固有値 > 1）のみを用いている研究が依然として多いこと、回転法の選択根拠が報告されていないケースが頻繁にあること、そしてサンプルサイズが項目数に対して不十分な研究が散見されることが指摘されている。本章では、これらの問題点を踏まえたベストプラクティスに沿って EFA を解説する。
+
+#### 最初にここだけ（EFA）
+1. EFA の因子モデル: $\mathbf{X} = \boldsymbol{\Lambda} \mathbf{f} + \mathbf{u}$
+2. 因子数は平行分析で決定する（Kaiser 基準は過大評価しがち）
+3. 回転は斜交回転（promax）をデフォルトとする
+4. 因子負荷量 > 0.40 を実質的に意味のある負荷とみなす
+
+#### 因子モデルの定式化
+
+$$\mathbf{x}_i = \boldsymbol{\Lambda} \mathbf{f}_i + \mathbf{u}_i$$
+
+- $\mathbf{x}_i$: $p$ 個の観測変数ベクトル（第 $i$ 回答者）
+- $\boldsymbol{\Lambda}$: $p \times m$ の因子負荷行列
+- $\mathbf{f}_i$: $m$ 個の共通因子ベクトル（$m \ll p$）
+- $\mathbf{u}_i$: 独自性ベクトル（特殊分散 + 測定誤差）
+
+因子モデルでは、相関行列は次のように分解される。
+
+$$\mathbf{R} = \boldsymbol{\Lambda} \boldsymbol{\Phi} \boldsymbol{\Lambda}^\top + \boldsymbol{\Psi}$$
+
+$\boldsymbol{\Phi}$ は因子間相関行列（直交回転では単位行列）、$\boldsymbol{\Psi}$ は独自性の対角行列である。
+
+身近な例で考えてみよう。英語テストで「リスニング問題5問」「リーディング問題5問」「文法問題5問」の計15問があるとする。各問題のスコア（観測変数）は、直接は測定できない「聴解力」「読解力」「文法知識」（潜在因子）から生み出されている。因子分析はこの生成過程を逆算し、**観測されたスコアの相関パターンから背後にある少数の能力次元を推定する**手法である。因子負荷行列 $\boldsymbol{\Lambda}$ は「各問題がどの能力にどの程度依存しているか」を数値化したものにほかならない。
+
+#### 共通性・独自性の直感
+
+因子モデルでは、各観測変数の分散を**共通性**（communality: $h^2$）と**独自性**（uniqueness: $u^2$）に分解する。
+
+$$\text{Var}(X_j) = h_j^2 + u_j^2 = 1 \quad (\text{標準化後})$$
+
+- **共通性** $h_j^2 = \sum_{k=1}^{m} \lambda_{jk}^2$: 因子負荷量の二乗和。この値が高い項目ほど因子によって十分に説明されている。
+- **独自性** $u_j^2 = 1 - h_j^2$: 因子で説明されない分散。測定誤差と項目固有の分散を含む。
+
+共通性が低い項目（例: $h^2 < .30$）は、当該の因子群と弱い関連しかなく、尺度からの除外や項目内容の修正を検討する候補となる。共通性が 0.30 未満の項目は、因子との関連が弱く、分散の大部分がランダムノイズに帰属する。このような項目を尺度に含めると信頼性が低下するため、項目修正や削除を検討する。
+
+#### 因子数の過少・過多のリスク
+
+因子数の決定は EFA における最も重要な判断である。
+
+- **過少抽出**（underfactoring）: 真の因子構造を取りこぼし、項目間の共分散パターンが十分に説明されない。因子負荷に偏りが生じ、因子の解釈が曖昧になる。
+- **過多抽出**（overfactoring）: ノイズや特定サンプルに過剰適合し、再現性の低い因子を抽出する。余分な因子は少数の項目のみに負荷し、解釈が困難になる。
+
+このトレードオフを最小化するため、スクリープロット、平行分析、理論的予測を**総合判断**するのが実務的なベストプラクティスである。実務では、理論的に想定される因子数 $k$ に対して $k-1$, $k$, $k+1$ の各モデルを推定し、解釈可能性と適合度を比較することで過少・過多抽出のリスクを軽減できる。
+
+#### 推定法の選択
+- **最尤法（ML）**: 正規性を仮定し、適合度検定が可能。中〜大サンプルで推奨[@kline2023]。
+- **主軸法（PA）**: 分布の仮定が緩い。小サンプルでも頑健。
+- **最小残差法（minres）**: 反復なしで高速。探索段階で有用。
+- Likert 尺度には `psych::fa()` の `cor="poly"`（ポリコリック相関）を検討[@holgadotello2010]。
+
+### SLA データ例: L2 動機づけ質問紙
+
+D&ouml;rnyei の L2 動機づけ自己体系（L2 Motivational Self System）に基づく質問紙をシミュレーションする[@dornyei2009]。この3因子構造は、日本・中国・イランのEFL学習者を対象とした @taguchi2009 の CFA による多国間比較で妥当性が確認され、@you2016 の中国 EFL 学習者調査でも支持されてきた。近年では @alhoorie2024 が弁別的妥当性の問題を指摘しており、適切な EFA・CFA の手続きの重要性が改めて強調されている。
+
+@taguchi2009 は日本・中国・イランの 3 か国で同一の 3 因子構造（理想 L2 自己・義務 L2 自己・L2 学習経験）を確認し、異なる文化圏でも L2MSS モデルの因子構造が再現されることを実証した。
+
+以下では500名の日本人大学生に対する18項目（6点 Likert）で、3因子を想定したデータを生成する。
+
+- **Ideal L2 Self（理想 L2 自己）**: 自分が英語を流暢に使う将来像への志向
+- **Ought-to L2 Self（義務的 L2 自己）**: 周囲からの期待に応えたいという動機
+- **L2 Learning Experience（L2 学習経験）**: 授業や教材から得られる楽しさ
+
+因子負荷量は $.60$--$.78$ の範囲で設定した。これは心理尺度研究で「良好な負荷」とされる値域である。因子間相関は Ideal L2 Self と Ought-to L2 Self の間が $.45$、Ideal L2 Self と L2 Learning Experience の間が $.35$、Ought-to L2 Self と L2 Learning Experience の間が $.25$ とし、@taguchi2009 等の先行研究で報告された L2MSS 因子間相関を参考にした。また、現実のデータで完全な単純構造が得られることはまれであるため、4箇所に $.08$--$.12$ の微小な交差負荷を意図的に設定している。
+
+```{r}
+#| label: efa-data-simulation
+
+# Simulate L2 Motivation Questionnaire (Dornyei L2MSS-inspired)
+set.seed(2024)
+n_efa <- 500
+
+# Factor correlation matrix (oblique: factors are correlated)
+Phi_efa <- matrix(c(1,   0.45, 0.35,
+                     0.45, 1,   0.25,
+                     0.35, 0.25, 1), nrow = 3)
+
+# Factor scores
+f_scores <- MASS::mvrnorm(n_efa, mu = c(0, 0, 0), Sigma = Phi_efa)
+
+# Factor loading matrix (18 items x 3 factors)
+Lambda_efa <- matrix(0, nrow = 18, ncol = 3)
+# Ideal L2 Self (items 1-6)
+Lambda_efa[1:6, 1] <- c(0.78, 0.72, 0.69, 0.75, 0.66, 0.70)
+# Ought-to L2 Self (items 7-12)
+Lambda_efa[7:12, 2] <- c(0.74, 0.68, 0.71, 0.65, 0.73, 0.60)
+# L2 Learning Experience (items 13-18)
+Lambda_efa[13:18, 3] <- c(0.76, 0.70, 0.73, 0.67, 0.64, 0.71)
+# Small cross-loadings for realism
+Lambda_efa[1, 2] <- 0.12; Lambda_efa[3, 3] <- 0.10
+Lambda_efa[8, 1] <- 0.08; Lambda_efa[14, 1] <- 0.11
+
+# Generate observed scores and convert to Likert
+raw_efa <- f_scores %*% t(Lambda_efa) + matrix(rnorm(n_efa * 18, sd = 0.5), nrow = n_efa)
+likert_efa <- apply(raw_efa, 2, function(x) {
+  pmin(pmax(round(scales::rescale(x, to = c(1, 6))), 1), 6)
+})
+motivation <- as.data.frame(likert_efa)
+names(motivation) <- paste0("M", sprintf("%02d", 1:18))
+```
+
+### 因子数の決定
+
+ここでは `fa.parallel()` に `fa = "fa"` を指定し、**因子分析用の平行分析**を実行する。PCA の成分数決定に使った `fa = "pc"` とは異なり、共通分散のみを対象にした基準値が生成される点に注意。
+
+```{r}
+#| label: efa-parallel-analysis
+#| fig-width: 8
+#| fig-height: 6
+
+# Parallel analysis (Horn's method)
+pa_result <- psych::fa.parallel(motivation, fm = "ml", fa = "fa", n.iter = 100,
+                                 main = "Parallel Analysis: L2 Motivation Questionnaire")
+```
+
+出力の読み方: 図中の青い三角線（実データ）が赤い破線（ランダムデータ）を上回る因子数が、平行分析による推奨因子数である。コンソールにも `Parallel analysis suggests that the number of factors = X` と表示される。この値を、理論的な予測（ここでは D&ouml;rnyei の3因子構造）と照合する。
+
+#### EFA の前提検定: KMO と Bartlett 検定
+
+因子分析を実行する前に、データが因子分析に適しているかを確認する2つの事前検定がある。
+
+- **KMO（Kaiser-Meyer-Olkin）指標**: 変数間の偏相関が十分に小さいか（＝共通因子による説明が期待できるか）を測定する。ここで偏相関とは、他のすべての変数を統制した上での2変数間の相関である。値は 0--1 の範囲で、0.60 以上が許容水準、0.80 以上が良好とされる [@kaiser1974]。
+- **Bartlett の球面性検定**: 相関行列が単位行列（＝変数間に相関がない）と等しいかどうかを検定する。有意（$p < .05$）であれば、変数間に因子分析で捉えるべき相関構造が存在すると判断できる。
+
+```{r}
+#| label: efa-kmo-bartlett
+
+# KMO measure of sampling adequacy
+kmo_result <- psych::KMO(motivation)
+
+# Bartlett's test of sphericity
+bartlett_result <- psych::cortest.bartlett(cor(motivation), n = nrow(motivation))
+
+tibble(
+  Test = c("KMO (Overall MSA)", "Bartlett χ²", "Bartlett df", "Bartlett p"),
+  Value = c(
+    round(kmo_result$MSA, 3),
+    round(bartlett_result$chisq, 1),
+    bartlett_result$df,
+    ifelse(bartlett_result$p.value < .001, "< .001",
+           round(bartlett_result$p.value, 3))
+  )
+) |>
+  gt() |>
+  tab_header(
+    title = "EFA Prerequisite Tests",
+    subtitle = "KMO Sampling Adequacy and Bartlett's Sphericity Test"
+  )
+```
+
+KMO の全体値（Overall MSA）が `r round(kmo_result$MSA, 2)` であり、因子分析に適したデータであることが確認できる。Bartlett 検定も有意であり、相関行列は単位行列ではない（＝因子構造が存在する）。この2つの条件を満たした上で、以下の因子数決定と因子抽出に進む。
+
+KMO < 0.60 の場合、因子分析の前提が十分に満たされていない。対処法として (a) 多重共線性の高い変数の除外、(b) 偏相関が低い変数の除外、(c) サンプルサイズの拡大が考えられる。Bartlett 検定で有意でない場合は、相関行列が単位行列に近く、因子を抽出する十分な根拠がない。その場合は因子分析以外の手法（例: 個別の変数レベルでの分析）を検討すべきである。
+
+以下の固有値テーブルでは、Kaiser 基準（固有値 > 1）を満たす因子が太字で表示される。平行分析と Kaiser 基準の結果が異なる場合は、平行分析を優先する。
+
+```{r}
+#| label: efa-eigenvalue-table
+
+# Eigenvalue table
+eig_vals <- eigen(cor(motivation))$values
+data.frame(
+  Factor = 1:length(eig_vals),
+  Eigenvalue = eig_vals,
+  Proportion = eig_vals / sum(eig_vals),
+  Cumulative = cumsum(eig_vals / sum(eig_vals))
+) |>
+  slice(1:10) |>
+  gt() |>
+  tab_header(
+    title = "Eigenvalues from Correlation Matrix",
+    subtitle = "L2 Motivation Questionnaire (18 items, 500 respondents)"
+  ) |>
+  fmt_number(columns = c(Eigenvalue, Proportion, Cumulative), decimals = 3) |>
+  tab_style(
+    style = list(cell_fill(color = "#e6ffe6"), cell_text(weight = "bold")),
+    locations = cells_body(columns = Eigenvalue, rows = Eigenvalue > 1)
+  ) |>
+  tab_footnote(
+    footnote = "Parallel analysis is more reliable than Kaiser criterion alone",
+    locations = cells_column_labels(columns = Eigenvalue)
+  )
+```
+
+#### 因子数決定のベストプラクティス
+- 平行分析の結果を第一に参照する。
+- スクリープロットの「肘」を視覚的に確認する。
+- 理論的な予測（ここでは D&ouml;rnyei の3因子構造）と照合する。
+- 因子数を1つ多く / 1つ少なく推定してみて、解の安定性を比較する。
+
+### 因子負荷の推定と回転
+
+ここでは `psych::fa()` を用いて EFA を実行する。主要な引数は以下の通り:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `nfactors` | `3` | 抽出する因子数。平行分析の結果に基づいて決定 |
+| `fm` | `"ml"` | 推定法。最尤法（ML）は適合度検定が可能。`"pa"`（主軸法）は正規性仮定が不要 |
+| `rotate` | `"promax"` | 斜交回転。因子間相関を許容する。`"varimax"` は直交回転 |
+| `cor` | （既定値） | 相関行列の種類。既定は Pearson 相関。Likert 5件法以下では `cor = "poly"`（ポリコリック相関）を検討 |
+
+以下の因子負荷テーブルの読み方:
+
+| 列 | 意味 | 実務上の判断基準 |
+|---|---|---|
+| ML1, ML2, ML3 | 各因子への負荷量 | 絶対値 > .40 で「実質的に意味がある」 |
+| 高い正の値 | その因子との強い関連 | 1つの因子にのみ高く負荷するのが理想（単純構造） |
+| 複数因子に .30 以上 | 交差負荷 | 項目の改訂や除外を検討 |
+
+```{r}
+#| label: efa-estimation
+
+# Fit EFA with promax rotation (oblique: allows factor correlations)
+fit_efa <- psych::fa(motivation, nfactors = 3, fm = "ml", rotate = "promax")
+
+# Display summary as gt table
+unclass(fit_efa$loadings) |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Item") |>
+  gt() |>
+  tab_header(title = "EFA Factor Loadings (cut = 0.30)") |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
+```
+
+上記のテーブルでは、カットオフ値 .30 以上の負荷量のみが表示される。結果を見ると、ML1 に M01--M06（Ideal L2 Self 項目）が高く負荷し、ML2 に M07--M12（Ought-to L2 Self 項目）、ML3 に M13--M18（L2 Learning Experience 項目）が対応している。これは @dornyei2009 の L2MSS 理論の3因子構造と一致しており、交差負荷はいずれも .30 未満で良好な単純構造が得られている[@watkins2018; @goretzko2021]。
+
+複数因子に 0.30 以上の負荷量を持つ項目（交差負荷項目）は因子構造を曖昧にする。対処法には (a) 当該項目の削除、(b) より厳しい基準（0.40 以上）での項目選別、(c) 目標回転（target rotation）の検討がある。ただし、心理学的構成概念には本質的に複数の側面を持つ項目が存在するため、すべての交差負荷を機械的に排除するべきではない。
+
+#### 回転法の選択
+- **斜交回転（promax, oblimin）**: 因子間相関を許容する。心理・教育データではほぼ常に推奨。動機づけの下位構成概念は互いに相関するのが自然であるため、斜交回転をデフォルトとする。
+- **直交回転（varimax）**: 因子間を独立と仮定。理論的に無相関と考えられる場合のみ。
+- 斜交回転の結果、因子間相関が .10 未満であれば直交回転でも差がないことを確認できる。
+
+**promax と oblimin の違い**: promax は最初に varimax（直交）回転を行い、その解を目標にして斜交化する**二段階法**である。計算が高速で安定しやすいが、間接的な方法のため最適解でない可能性がある。一方、oblimin（delta = 0 で quartimin と呼ばれる）は因子パターンの単純構造を**直接最適化**する方法であり、理論的にはより厳密である。実際のデータではどちらを使っても結果が大きく異なることは少ないが、因子間相関が強い場合（$r > .50$）は oblimin のほうが安定した解を得やすい傾向がある。
+
+#### Multiverse Analysis: 分析者の選択が結果に与える影響
+
+EFA では、(1) 回転法、(2) 因子数、(3) 推定法の選択が分析者に委ねられており、これらの選択によって結果が変わりうる。この**分析者の恣意性**（researcher degrees of freedom）を透明化するため、複数の分析仕様を並列で示す **multiverse analysis** が近年推奨されている。以下では、回転法（promax / oblimin / varimax）と推定法（ML / PA）の6通りの組み合わせで EFA を実行し、結果の頑健性を検証する。
+
+::: {.panel-tabset}
+
+##### Promax × ML（デフォルト）
+
+```{r}
+#| label: multiverse-promax-ml
+
+fit_promax_ml <- psych::fa(motivation, nfactors = 3, fm = "ml", rotate = "promax")
+psych::fa.diagram(fit_promax_ml, main = "Promax × ML", cut = 0.30)
+```
+
+##### Oblimin × ML
+
+```{r}
+#| label: multiverse-oblimin-ml
+
+fit_oblimin_ml <- psych::fa(motivation, nfactors = 3, fm = "ml", rotate = "oblimin")
+psych::fa.diagram(fit_oblimin_ml, main = "Oblimin × ML", cut = 0.30)
+```
+
+##### Varimax × ML
+
+```{r}
+#| label: multiverse-varimax-ml
+
+fit_varimax_ml <- psych::fa(motivation, nfactors = 3, fm = "ml", rotate = "varimax")
+psych::fa.diagram(fit_varimax_ml, main = "Varimax × ML", cut = 0.30)
+```
+
+##### Promax × PA（主軸法）
+
+```{r}
+#| label: multiverse-promax-pa
+
+fit_promax_pa <- psych::fa(motivation, nfactors = 3, fm = "pa", rotate = "promax")
+psych::fa.diagram(fit_promax_pa, main = "Promax × PA (Principal Axis)", cut = 0.30)
+```
+
+##### Oblimin × PA
+
+```{r}
+#| label: multiverse-oblimin-pa
+
+fit_oblimin_pa <- psych::fa(motivation, nfactors = 3, fm = "pa", rotate = "oblimin")
+psych::fa.diagram(fit_oblimin_pa, main = "Oblimin × PA", cut = 0.30)
+```
+
+##### 因子負荷量の比較
+
+```{r}
+#| label: multiverse-comparison
+#| fig-width: 10
+#| fig-height: 7
+
+# Extract primary loadings from each specification
+extract_primary <- function(fit, label) {
+  loads <- unclass(fit$loadings)
+  tibble(
+    Item = rownames(loads),
+    Factor = apply(abs(loads), 1, which.max),
+    Loading = apply(loads, 1, function(x) x[which.max(abs(x))]),
+    Specification = label
+  )
+}
+
+multiverse_df <- bind_rows(
+  extract_primary(fit_promax_ml,  "Promax × ML"),
+  extract_primary(fit_oblimin_ml, "Oblimin × ML"),
+  extract_primary(fit_varimax_ml, "Varimax × ML"),
+  extract_primary(fit_promax_pa,  "Promax × PA"),
+  extract_primary(fit_oblimin_pa, "Oblimin × PA")
+)
+
+ggplot(multiverse_df, aes(x = Item, y = Loading, color = Specification, shape = Specification)) +
+  geom_point(size = 2.5, alpha = 0.8, position = position_dodge(width = 0.5)) +
+  geom_hline(yintercept = c(0.40, -0.40), linetype = "dashed", color = "grey50") +
+  facet_wrap(~ paste0("Factor ", Factor), scales = "free_x") +
+  labs(title = "Multiverse Analysis: Factor Loadings Across Specifications",
+       subtitle = "Robust results should be consistent across rotation and estimation methods",
+       y = "Primary Loading", x = NULL) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(face = "bold"))
+```
+
+:::
+
+#### Multiverse Analysis の解釈
+
+上記の比較から、以下の点を確認する。
+
+1. **項目の因子帰属が安定しているか**: 全ての仕様で同じ項目が同じ因子に帰属していれば、因子構造は頑健である。帰属が仕様によって変わる項目は、交差負荷が大きく構造が不安定な「弱い項目」であり、除外候補となる。
+2. **負荷量の大きさが安定しているか**: 5つの仕様で負荷量がほぼ同じ値を示していれば、推定は安定している。大きく異なる場合、その因子の定義が曖昧であることを示唆する。
+3. **斜交回転と直交回転の差**: varimax（直交）と promax/oblimin（斜交）で結果が大きく異なる場合、因子間に実質的な相関があることを意味し、**斜交回転を採用すべき**根拠となる。
+
+Multiverse analysis の結果は、論文の補遺（supplementary materials）に掲載するか、本文中で「主要な分析仕様は promax × ML とし、oblimin × ML および promax × PA でも結果の頑健性を確認した」と報告するのが望ましい。
+
+#### 因子負荷の可視化
+
+因子負荷量を複数の角度から確認する。負荷量テーブルでは数値を精査し、ヒートマップとバーチャートでパターンを視覚的に把握し、構造図で因子と項目の対応を確認する。
+
+::: {.panel-tabset}
+
+##### 負荷量テーブル（sjPlot）
+
+`sjPlot::tab_fa()` は因子負荷量・共通性・Cronbach's $\alpha$ を整形されたテーブルで出力する。項目が因子ごとにソートされ、主負荷が一目で分かる。主要な引数:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `fctr.load.tlrn` | `0.1` | この値未満の負荷量を非表示にする閾値。`.30` にすると微弱な負荷が消え見やすくなるが、交差負荷を見落とす可能性がある |
+| `show.cronb` | `TRUE` | 各因子の Cronbach's $\alpha$ を表示。信頼性の簡易確認に便利 |
+| `show.comm` | `TRUE` | 各項目の共通性（communality）を表示。共通性が低い（< .20）項目は除外を検討 |
+| `sort` | `TRUE` | 項目を主負荷の因子ごとにソートして表示 |
+
+```{r}
+#| label: efa-loading-table
+
+# Formatted factor loading table
+sjPlot::tab_fa(
+  motivation,
+  rotation = "promax",
+  method = "ml",
+  nmbr.fctr = 3,
+  fctr.load.tlrn = 0.1,
+  sort = TRUE,
+  title = "EFA Results: L2 Motivation Questionnaire",
+  show.cronb = TRUE,
+  show.comm = TRUE,
+  digits = 2,
+  encoding = "UTF-8"
+)
+```
+
+##### 負荷量テーブル（gt）
+
+gt 版では、各項目の主負荷因子・最大負荷量・共通性（$h^2$）・独自性（$u^2$）を一覧する。共通性が .30 未満の項目（黄色ハイライト）は因子で十分に説明されておらず、除外候補となる。
+
+#### 斜交回転と共通性の計算
+直交回転（varimax）では、共通性は各因子の負荷量の二乗和 $h^2_j = \sum_k \lambda_{jk}^2$ で計算できる。しかし**斜交回転（promax, oblimin）では因子間に相関があるため、この単純な二乗和は正確な共通性にならない**。斜交回転の共通性は因子間相関行列 $\boldsymbol{\Phi}$ を考慮した $h^2_j = \boldsymbol{\lambda}_j^\top \boldsymbol{\Phi} \boldsymbol{\lambda}_j$ で算出される。以下のコードでは `psych::fa()` が内部で正確に計算した `$communality` を直接参照している。
+
+```{r}
+#| label: efa-summary-gt
+
+# Summary table with gt
+load_tbl <- fit_efa$loadings |>
+  unclass() |>
+  as.data.frame() |>
+  rownames_to_column(var = "Item")
+
+# Use communality from psych::fa() directly (correct for oblique rotation)
+comm_df <- tibble(Item = names(fit_efa$communality),
+                  Communality = fit_efa$communality)
+
+efa_summary <- load_tbl |>
+  pivot_longer(-Item, names_to = "Factor", values_to = "Loading") |>
+  group_by(Item) |>
+  mutate(Abs = abs(Loading)) |>
+  slice_max(order_by = Abs, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  left_join(comm_df, by = "Item") |>
+  mutate(Uniqueness = 1 - pmin(Communality, 1)) |>
+  dplyr::select(Item, Factor, Loading, Communality, Uniqueness) |>
+  arrange(Factor, desc(abs(Loading)))
+
+efa_summary |>
+  gt() |>
+  tab_header(
+    title = "EFA Summary Table",
+    subtitle = "Maximum Loading, Communality (h²), and Uniqueness (u²)"
+  ) |>
+  fmt_number(columns = c(Loading, Communality, Uniqueness), decimals = 3) |>
+  cols_label(
+    Item = "Item", Factor = "Primary Factor", Loading = "Max Loading",
+    Communality = "h²", Uniqueness = "u²"
+  ) |>
+  tab_spanner(label = "Factor Solution", columns = c(Item, Factor, Loading)) |>
+  tab_spanner(label = "Variance Components", columns = c(Communality, Uniqueness)) |>
+  tab_footnote(
+    footnote = "h² = communality; u² = uniqueness (1 − h²)",
+    locations = cells_column_labels(columns = Communality)
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#fff3cd"),
+    locations = cells_body(columns = Communality, rows = Communality < 0.30)
+  )
+```
+
+サマリーテーブルから、全18項目の共通性（$h^2$）が .30 以上であることを確認する。共通性が低い項目は因子によって十分に説明されておらず、黄色でハイライトされる。独自性（$u^2 = 1 - h^2$）は各項目の因子で説明されない分散の割合を表す。独自性 $u^2 = 1 - h^2$ は、その項目の分散のうち共通因子では説明できない部分を表す。独自性が高い（例: $u^2 > 0.70$）項目は、測定誤差や特殊因子の影響が大きく、共通因子モデルに適合していない可能性がある。
+
+##### ヒートマップ
+
+ヒートマップでは、行（項目）× 列（因子）のセルの色で負荷量の大きさと方向を直感的に把握する。赤が強い正の負荷、青が負の負荷を示す。理想的な単純構造では、各項目が1つの因子にのみ濃い赤を示す。
+
+```{r}
+#| label: efa-heatmap
+#| fig-width: 8
+#| fig-height: 10
+
+heat_tbl <- as.data.frame(unclass(fit_efa$loadings)) |>
+  rownames_to_column("Item") |>
+  pivot_longer(-Item, names_to = "Factor", values_to = "Loading")
+
+ggplot(heat_tbl, aes(Factor, Item, fill = Loading)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(
+    title = "EFA Factor Loadings Heatmap",
+    subtitle = "L2 Motivation Questionnaire (promax rotation)"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+ヒートマップの赤色セルは高い因子負荷（当該因子と項目の強い関連）を、青色や白色は低い負荷を示す。理想的な単純構造では、各項目が1つの因子にのみ赤いセルを持ち、他の因子は白色となる。
+
+##### バーチャート
+
+バーチャートでは、各項目の絶対負荷量を因子別に並列比較する。各項目がどの因子に最も強く負荷しているかが一目瞭然である。
+
+```{r}
+#| label: efa-loading-barplot
+#| fig-width: 10
+#| fig-height: 8
+
+# Factor loading bar plot
+loadings_df_bar <- as.data.frame.matrix(unclass(fit_efa$loadings))
+loadings_df_bar$Item <- rownames(loadings_df_bar)
+loadings_long_bar <- pivot_longer(loadings_df_bar, cols = -Item, names_to = "Factor", values_to = "Loading")
+
+ggplot(loadings_long_bar, aes(x = reorder(Item, abs(Loading)), y = abs(Loading), fill = Factor)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  labs(
+    title = "Factor Loadings by Item",
+    subtitle = "L2 Motivation Questionnaire (promax rotation)",
+    x = "Item", y = "|Loading|"
+  ) +
+  scale_fill_brewer(palette = "Set1")
+```
+
+##### 因子構造図
+
+`psych::fa.diagram()` は因子と項目の対応をパス図で描画する。矢印の太さが負荷量の大きさに対応し、因子間の相関も曲線で示される。
+
+```{r}
+#| label: efa-diagram
+#| fig-width: 10
+#| fig-height: 8
+
+psych::fa.diagram(fit_efa, main = "Factor Structure: L2 Motivation")
+```
+
+パス図の矢印の太さは因子負荷量に比例し、太い矢印ほど因子と項目の関連が強い。因子間の曲線は因子間相関（斜交回転で許容される相関）を表し、0 でなければ因子が独立でないことを示す。
+
+:::
+
+##### 因子間相関マトリックス
+
+斜交回転（promax）を使用した場合、因子間相関行列（$\boldsymbol{\Phi}$）の確認は不可欠である。因子間相関が高すぎる（$r > .85$）場合は弁別的妥当性に疑義が生じ、因子の統合を検討すべきである[@costello2005]。逆に全ての因子間相関が .10 未満であれば、直交回転（varimax）でも同等の結果が得られる。
+
+```{r}
+#| label: efa-factor-correlation
+#| fig-width: 6
+#| fig-height: 5
+
+# Factor inter-correlation matrix (Phi)
+phi_mat <- fit_efa$Phi
+colnames(phi_mat) <- rownames(phi_mat) <- c("ML1:\nIdeal L2\nSelf",
+                                              "ML2:\nOught-to\nL2 Self",
+                                              "ML3:\nL2 Learning\nExperience")
+
+phi_df <- as.data.frame(phi_mat) |>
+  rownames_to_column("Factor1") |>
+  pivot_longer(-Factor1, names_to = "Factor2", values_to = "r")
+
+ggplot(phi_df, aes(x = Factor1, y = Factor2, fill = r)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(r, 2)), size = 5) +
+  scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(title = "Factor Inter-Correlation Matrix (Phi)",
+       subtitle = "Promax rotation — moderate correlations support oblique rotation",
+       fill = "r") +
+  theme(axis.title = element_blank())
+```
+
+因子間相関はいずれも中程度（$.25$--$.35$ 程度）であり、因子間に相関があることを示している。これは斜交回転の選択が適切であったことを裏付ける。同時に、.85 を大きく下回っているため、3因子の弁別的妥当性は良好である。因子間相関が .25〜.45 の範囲にあるのは、動機づけの3側面（理想自己・義務自己・学習経験）が独立ではなく緩やかに関連していることを示す。相関が .85 を超える場合は因子の弁別的妥当性が疑われ、2因子を統合すべき根拠になりうる（@brown2015）。
+
+#### 項目選別の基準
+- **因子負荷量 < 0.40**: 当該因子との関連が弱い。除外を検討。
+- **交差負荷 > 0.30**: 複数因子に負荷。解釈の曖昧さの原因になる。
+- **共通性 $h^2$ < 0.30**: 因子で十分に説明されていない。項目の質を再検討。
+- ただし、これらは目安であり、理論的根拠と合わせて判断すること。
+
+これら 3 つの基準（因子負荷 < .40、交差負荷 > .30、共通性 < .30）が矛盾する場合は、(a) まず共通性を確認し測定品質の低い項目を除外、(b) 次に主負荷量が基準を満たすか確認、(c) 最後に交差負荷の有無を検討するという優先順位が実務的である。理論的に重要な項目は、統計基準をわずかに下回っても保持する判断もありうる。
+
+### 信頼性（$\omega$ 係数・$\alpha$ 係数）
+
+内的整合性の指標として、McDonald の $\omega$（オメガ）が推奨される[@mcneish2018; @flora2020]。Cronbach の $\alpha$ は因子負荷が等しいという仮定（本質的タウ等価モデル）を置くため、因子負荷にばらつきがある場合に信頼性を過小評価する。SLA の尺度開発では、因子負荷量が等しくない（tau-equivalent でない）場合が多い。例えば、動機づけ質問紙の 10 項目中、一部の項目が他より強い負荷を持つと、$\alpha$ は内的一貫性を過小評価する。$\omega$ はこの不均一性を考慮するため、より正確な推定値を返す。
+
+```{r}
+#| label: efa-reliability
+
+# Factor 1 items (Ideal L2 Self): M01-M06
+items_f1 <- paste0("M", sprintf("%02d", 1:6))
+# Factor 2 items (Ought-to L2 Self): M07-M12
+items_f2 <- paste0("M", sprintf("%02d", 7:12))
+# Factor 3 items (L2 Learning Experience): M13-M18
+items_f3 <- paste0("M", sprintf("%02d", 13:18))
+
+# Compute reliability for each factor
+compute_reliability <- function(data, items, factor_name) {
+  alpha_res <- psych::alpha(data[, items])
+  omega_res <- psych::omega(data[, items], plot = FALSE)
+  tibble(
+    Factor = factor_name,
+    `Cronbach's α` = alpha_res$total$raw_alpha,
+    `McDonald's ω` = omega_res$omega.tot,
+    `N items` = length(items)
+  )
+}
+
+rel_tbl <- bind_rows(
+  compute_reliability(motivation, items_f1, "Ideal L2 Self"),
+  compute_reliability(motivation, items_f2, "Ought-to L2 Self"),
+  compute_reliability(motivation, items_f3, "L2 Learning Experience")
+)
+
+rel_tbl |>
+  gt() |>
+  tab_header(
+    title = "Internal Consistency Reliability",
+    subtitle = "L2 Motivation Questionnaire (3 factors)"
+  ) |>
+  fmt_number(columns = c(`Cronbach's α`, `McDonald's ω`), decimals = 3) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(columns = `McDonald's ω`, rows = `McDonald's ω` > 0.70)
+  ) |>
+  tab_footnote(
+    footnote = "ω is preferred over α; values > .70 indicate acceptable reliability",
+    locations = cells_column_labels(columns = `McDonald's ω`)
+  )
+```
+
+上記テーブルでは、3因子すべてで McDonald's $\omega$ が .70 を超えており、内的整合性は許容水準を満たしている。$\alpha$ も参考値として併記しているが、$\omega$ のほうが因子構造を正確に反映した信頼性指標であるため[@mcneish2018]、$\omega$ を優先して報告する。
+
+#### 信頼性の報告
+- $\omega$（オメガ）を第一指標として報告し、$\alpha$ は比較可能性のため補助的に記載する[@flora2020]。
+- $\omega > .70$ が一般的な目安だが、探索段階では .65 程度でも許容されることがある。
+- 95% 信頼区間も併記すると情報量が増す。
+
+### 因子得点と尺度得点の計算: EFA/CFA の結果を後続分析に活かす
+
+EFA で因子構造を確認し、信頼性を検証した後、多くの SLA 研究では**因子ごとの得点**を計算して後続の分析（回帰分析、t 検定、ANOVA 等）に使用する。得点の計算方法には大きく分けて3つのアプローチがある。
+
+#### 方法1: 尺度得点（Sum Score / Mean Score）
+
+最も簡便な方法は、各因子に属する項目の**平均値**または**合計値**を計算する方法である。SLA 研究で最も広く使われている。
+
+```{r}
+#| label: efa-scale-scores
+
+# Create scale scores (mean of items belonging to each factor)
+motivation <- motivation  # EFA data from earlier
+
+scale_scores <- tibble(
+  id = 1:nrow(motivation),
+  Ideal_L2_Self    = rowMeans(motivation[, paste0("M", sprintf("%02d", 1:6))]),
+  Ought_to_L2_Self = rowMeans(motivation[, paste0("M", sprintf("%02d", 7:12))]),
+  L2_Learning_Exp  = rowMeans(motivation[, paste0("M", sprintf("%02d", 13:18))])
+)
+
+scale_scores |>
+  pivot_longer(-id, names_to = "Scale", values_to = "Score") |>
+  ggplot(aes(x = Score, fill = Scale)) +
+  geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
+  facet_wrap(~ Scale, scales = "free_y") +
+  labs(title = "Distribution of Scale Scores (Mean of Items)",
+       subtitle = "Higher scores indicate stronger endorsement of each construct",
+       x = "Scale Score (1-6)", y = "Frequency") +
+  theme(legend.position = "none")
+```
+
+尺度得点は直感的で解釈が容易だが、**全項目を同じ重みで平均する**ため、因子負荷量の違いを反映しない。また、測定誤差を考慮しないため、因子間の関係を過小推定する傾向がある。
+
+#### 方法2: 因子得点（Factor Scores）
+
+`psych::factor.scores()` は、因子負荷量に基づく**重み付き得点**を計算する。負荷量の高い項目をより重視するため、尺度得点よりも精度が高い。
+
+```{r}
+#| label: efa-factor-scores
+
+# Compute factor scores (regression method, Thurstone method)
+fs <- psych::factor.scores(motivation, fit_efa, method = "Thurstone")
+
+# Compare three scoring methods
+fs_comparison <- tibble(
+  id = 1:nrow(motivation),
+  # Method 1: Simple mean
+  Scale_Mean = scale_scores$Ideal_L2_Self,
+  # Method 2: Factor score (Thurstone/regression)
+  Factor_Score = fs$scores[, "ML1"]
+)
+
+# Correlation between methods
+cor_methods <- cor(fs_comparison$Scale_Mean, fs_comparison$Factor_Score)
+
+fs_comparison |>
+  ggplot(aes(x = Scale_Mean, y = Factor_Score)) +
+  geom_point(alpha = 0.3, size = 1.5) +
+  geom_smooth(method = "lm", color = "#e41a1c", se = FALSE) +
+  labs(title = "Scale Score vs. Factor Score (Ideal L2 Self)",
+       subtitle = glue::glue("r = {round(cor_methods, 3)} — high but not identical"),
+       x = "Scale Score (simple mean)", y = "Factor Score (Thurstone method)") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+#### 因子得点の推定法
+
+| 方法 | 関数指定 | 特徴 |
+|------|---------|------|
+| **Thurstone（回帰法）** | `method = "Thurstone"` | 因子負荷量と相関行列から重み付き合成。最も一般的 |
+| **Bartlett 法** | `method = "Bartlett"` | 因子得点の推定値が不偏。交差負荷がある場合に頑健 |
+| **tenBerge 法** | `method = "tenBerge"` | 因子間相関を正確に保存する。斜交回転で推奨 |
+
+実用上、3つの方法で得られる因子得点は高度に相関するため、結果に大きな違いは生じないことが多い。
+
+#### 方法3: lavaan による潜在変数得点
+
+CFA/SEM の推定結果から `lavPredict()` で潜在変数得点を予測できる。測定モデルの構造（交差負荷の制約、残差相関等）を完全に反映するため、理論的には最も正確である。
+
+```{r}
+#| label: cfa-lavpredict
+#| eval: false
+
+# After fitting CFA model (fit_cfa_3f)
+latent_scores <- lavaan::lavPredict(fit_cfa_3f)
+head(latent_scores)
+# Returns: matrix with columns F1, F2, F3 (one row per respondent)
+```
+
+#### どの方法を選ぶべきか？
+
+| 場面 | 推奨アプローチ | 理由 |
+|------|---------------|------|
+| **尺度開発の報告** | 尺度得点（平均） | 読者が再現しやすい |
+| **EFA 後の探索的分析** | 因子得点（Thurstone） | 因子負荷量を反映 |
+| **CFA 後の後続分析** | `lavPredict()` | 測定モデルを完全に反映 |
+| **因果仮説の検証** | **SEM を使う**（得点を作らない） | 測定誤差を明示的に処理 |
+
+#### 合成変数 vs SEM: いつ SEM を使うべきか
+
+SLA 研究では「EFA/CFA で因子構造を確認 → 尺度得点を計算 → 重回帰分析」というパイプラインが長く主流であったが、このアプローチには以下の限界がある。
+
+1. **測定誤差の無視**: 尺度得点は測定誤差を含むため、変数間の関係が減衰する（attenuation bias）。例えば、信頼性 $\omega = .80$ の2尺度の真の相関が $.50$ でも、観測レベルでは $.50 \times .80 = .40$ に低下する。
+2. **不確実性の過小評価**: 尺度得点を「確定値」として扱うため、標準誤差が過小推定され、第1種の過誤率が膨張する。
+3. **構造全体の整合性が見えない**: 測定モデルと構造モデルを別々に推定すると、全体としてのモデル適合を評価できない。
+
+**SEM を推奨する場面**: 理論的な因果仮説を検証する場合（例: 動機づけ → 努力 → 英語力）。
+
+**合成変数でよい場面**: (a) サンプルサイズが SEM の要件（$N > 200$）を満たさない、(b) 予備的・探索的な分析、(c) 群間比較（t 検定・ANOVA）で使う場合、(d) 他の研究との比較可能性を優先する場合。
+
+実際の SLA 研究では、合成変数による分析と SEM による分析を**併記**し、結果の頑健性を示すことも有効な戦略である。
+
+#### 合成変数を使った後続分析の例
+
+以下のコードは、EFA で確認した3因子の尺度得点を用いて、基本的な群間比較と回帰分析を行う例である。
+
+```{r}
+#| label: efa-downstream-analysis
+
+# Add a grouping variable (simulated)
+set.seed(2024)
+analysis_data <- scale_scores |>
+  mutate(
+    Gender = sample(c("Male", "Female"), n(), replace = TRUE),
+    Proficiency = 0.35 * Ideal_L2_Self + 0.20 * L2_Learning_Exp -
+                  0.15 * Ought_to_L2_Self + rnorm(n(), sd = 0.6)
+  )
+
+# --- Group comparison (t-test) ---
+t_result <- t.test(Ideal_L2_Self ~ Gender, data = analysis_data)
+
+# --- Multiple regression with scale scores ---
+fit_reg <- lm(Proficiency ~ Ideal_L2_Self + Ought_to_L2_Self + L2_Learning_Exp,
+              data = analysis_data)
+
+# Display regression results
+broom::tidy(fit_reg) |>
+  gt() |>
+  tab_header(
+    title = "Regression: Motivation Scales Predicting Proficiency",
+    subtitle = "Using scale scores (item means) as predictors"
+  ) |>
+  fmt_number(columns = c(estimate, std.error, statistic, p.value), decimals = 3)
+```
+
+上記の回帰分析では、Ideal L2 Self と L2 Learning Experience が英語力の有意な正の予測因子であり、Ought-to L2 Self は弱い負の予測因子である。ただし、**この推定値は測定誤差による減衰を受けている**ことに留意する必要がある。同じ仮説を SEM で検証すれば、潜在変数レベルの回帰係数が得られ、測定誤差の影響を補正した推定が可能になる（本章の SEM セクション参照）。
+
+ここまでの EFA で3因子構造が示唆され、信頼性も確認された。しかし EFA は「データ主導」の探索であり、得られた構造が理論的に妥当かどうかは別の検証が必要である。次に PCA との比較を整理した後、独立サンプルで因子構造を検証する**確認的因子分析（CFA）**に進む。
+
+### PCA vs EFA の比較
+
+PCA と EFA は混同されやすいが、本質的に異なる手法である[@loewen2020]。@plonsky2015 のメタ的レビューでは、L2 研究の論文で「因子分析」と称しつつ実際には PCA を実行しているケースが多数報告されており、手法選択の混乱が SLA 分野全体に影響を与えていることが指摘されている。この節では両者の違いを明確にする。
+
+**PCA と EFA の比較**（目的・モデル・分散の扱いが根本的に異なる）
+
+| 観点 | PCA | EFA |
+|------|-----|-----|
+| 目的 | 次元縮約・可視化 | 潜在因子の探索 |
+| モデルの種類 | 幾何学的変換（非モデル） | 確率モデル |
+| 分散の扱い | 全分散を回収 | 共通分散のみ |
+| 誤差項 | なし | 独自性（u²） |
+| 回転 | 任意（通常なし） | 斜交 / 直交 |
+| 因子間相関 | 直交のみ | 許容（斜交時） |
+| 適合度検定 | なし | カイ二乗適合度 |
+| 推奨場面（SLA） | テスト項目の要約、クラスタリングの前処理 | 尺度開発、構成概念の探索 |
+
+### PCA は因子分析ではない
+PCA の成分は「観測変数の線形結合」であり、誤差を含む。EFA の因子は「誤差を分離した潜在変数」である。構成概念の妥当性を検討する場合（尺度開発など）は、PCA ではなく EFA / CFA を使うべきである。
+
+### 使い分けの判断基準
+- **PCA を使う場面**: 多変量データの可視化、予測モデルの前処理（多重共線性の解消）、変数のスクリーニング
+- **EFA を使う場面**: 尺度開発の初期段階、構成概念の内部構造の探索、因子数の仮説生成
+- 迷ったら EFA を選ぶ方が安全である。PCA の結果は EFA とほぼ同じになることも多いが、解釈の枠組みが異なる。
+
+### 確認的因子分析（CFA）
+
+### コンセプト
+
+EFA で「3因子が良い」という仮説が得られたら、次のステップは**別のデータ**（もしくは分割した検証データ）でその構造を**確認**することである。確認的因子分析（CFA）は、事前に指定した因子構造がデータに適合するかどうかを検定する[@brown2015]。
+
+EFA で「3因子構造が妥当」という仮説が得られたら、次はその仮説を**新しいデータ**で検証する。これが CFA の役割である。同じデータで EFA → CFA を行うと、EFA がデータのノイズに適合した構造を CFA が追認するだけになり（過適合）、結論の一般化可能性が損なわれる。
+
+SLA 研究における CFA の代表的な活用例を挙げる。@taguchi2009 は日本・中国・イランの EFL 学習者データで L2MSS の3因子構造（Ideal L2 Self / Ought-to L2 Self / L2 Learning Experience）に CFA を適用し、3か国すべてで同一の因子構造が成立することを確認した。@kormos2008 は中高生・大学生・成人の3群で同じ動機づけモデルの CFA を実施し、年齢層間で因子構造は維持されるものの因子間相関のパターンが異なることを示した。@dewaele2014 は FLE（Foreign Language Enjoyment）尺度を開発する過程で、享受と不安が単一次元の両極ではなく独立した構成概念であることを主成分分析で示し、その後の CFA 研究の土台を築いた。@winke2014 は SEM のチュートリアル論文の中で、テストの構成概念妥当性を CFA で検証する手順を step-by-step で解説している。
+
+近年では、@alhoorie2024 が L2MSS 関連の18尺度を384名の韓国 EFL 学習者に実施し、CFA で弁別的妥当性を検証した結果、多くの構成概念間で重大な弁別性の問題が発見された。これは L2 動機づけ研究における測定の質を根本的に問い直す知見であり、適切な CFA 手続きの重要性を改めて示している。
+
+#### アンケート研究と言語テスティングにおける EFA/CFA の役割
+
+EFA と CFA は、SLA 研究における2つの主要な測定場面で中核的な役割を果たす。
+
+**（1）質問紙（アンケート）研究での尺度開発**
+
+尺度開発は、SLA 研究で最も頻繁に EFA/CFA が適用される場面である。典型的なプロセスは次の通りである。
+
+1. **構成概念の定義**: 理論に基づき、測定したい構成概念を明確にする（例: L2 動機づけの3側面）
+2. **項目プールの作成**: 構成概念ごとに6--10項目の候補を作成（最終項目数の1.5--2倍）
+3. **パイロットデータで EFA**: 探索的に因子構造を確認し、交差負荷や低共通性の項目を除外
+4. **独立サンプルで CFA**: 精選された項目構成で因子構造を確認
+5. **信頼性の評価**: $\omega$ で内的整合性を報告
+6. **妥当性の検証**: 収束的妥当性（AVE > .50）、弁別的妥当性（因子間相関 < .85）、基準関連妥当性（外的変数との相関）
+
+この一連の手続きは @dornyei2009 の動機づけ尺度や @horwitz1986 の言語不安尺度（FLCAS）の開発において実践されてきた。@plonsky2015 のメタレビューは、SLA 研究での EFA 実施慣行に多くの問題（因子数決定に Kaiser 基準のみ使用、直交回転の不適切な選択等）があることを指摘しており、本章で示したベストプラクティスの遵守が重要である。
+
+**（2）言語テスティングにおける構成概念妥当性の検証**
+
+言語テストの妥当性検証においても、CFA/SEM は不可欠な役割を果たす。テストの**構成概念妥当性**（construct validity）とは、テストが意図した能力を測定しているかどうかの根拠であり、Messick [-@messick1989] の統一的妥当性概念やKane [-@kane2013] の解釈・使用論証（Interpretation/Use Argument; IUA）の枠組みで体系化されている。
+
+CFA はこの妥当性検証において以下の役割を担う。
+
+- **内部構造の検証**: テストの下位技能（Reading, Listening, Grammar 等）が理論的に予測される因子構造を持つかを CFA で確認する。@bachman1982 は MTMM（多特性多方法）行列と CFA を組み合わせたコミュニケーション能力テストの妥当性検証の先駆的研究である。
+- **次元性の検証**: テストが一次元（1因子）か多次元かを CFA のモデル比較（1因子 vs 多因子）で検証できる。これは IRT（項目応答理論）の前提条件の確認にも直結する（後述）。
+- **テスト・バイアスの検出**: 測定不変性（本章で詳述）は、群間（男女、L1背景、習熟度レベル等）で項目が同じように機能しているかを検証する方法であり、IRT における DIF（差異項目機能; Differential Item Functioning）分析と相補的なアプローチである。
+
+#### EFA/CFA と IRT の関係: 2つの潜在変数モデルの統一的理解
+
+EFA/CFA と IRT は、ともに「直接観測できない潜在特性（因子/能力）が観測反応を生成する」という確率モデルに基づいている。実際、両者は数理的に深い対応関係にある。
+
+| 観点 | EFA/CFA | IRT |
+|------|---------|-----|
+| データ | 連続変数（Likert 等） | 二値（正誤）/ 順序 |
+| 潜在変数 | 因子（factor） | 能力（ability, $\theta$） |
+| パラメータ | 因子負荷量 $\lambda$ | 識別力 $a$（$\approx \lambda$） |
+| 次元性 | 因子数で表現 | 一次元性の仮定 |
+| 推定法 | ML, WLSMV | JML, MML, CMLE |
+
+特に重要なのは、**1パラメータ IRT（Rasch モデル）は、全項目の因子負荷量が等しいという制約を課した1因子 CFA と数学的に等価**である点である。2パラメータ IRT（2PL）は因子負荷量が項目ごとに異なる1因子 CFA に対応する。この対応関係を理解しておくと、「尺度開発では CFA、テスト分析では IRT」という使い分けの背後にある統一的な枠組みが見えてくる。
+
+テストの**一次元性の検証**は、EFA/CFA ベースのアプローチと IRT ベースのアプローチの両方で行える。
+
+- **EFA ベース**: 相関行列（二値データの場合はテトラコリック相関）の固有値分析で、第1固有値が第2固有値を大きく上回るか（比率 > 3--4）を確認する
+- **CFA ベース**: 1因子モデルの適合度を確認する。CFI > .95, RMSEA < .06 を満たせば一次元性が支持される
+- **IRT ベース**: 残差の主成分分析（PCA of residuals）で、モデルが捉えきれていない体系的な次元がないかを確認する（第11章・第12章で詳述）
+
+本書では第11章（項目応答理論とラッシュモデル）と第12章（拡張ラッシュモデル）で IRT を包括的に扱っている。テスティング研究では、CFA による構成概念妥当性の検証と IRT による項目分析・能力推定を**相補的に**活用するのが現代的なアプローチである。
+
+#### 最初にここだけ（CFA）
+1. CFA は「仮説検証」。EFA で探索した構造をここで確認する。
+2. lavaan パッケージの `cfa()` で推定する[@rosseel2012]。
+3. 適合度指標（CFI, TLI, RMSEA, SRMR）で評価する。
+4. **同じデータで EFA → CFA は禁止**。必ず別サンプルを使う。
+
+#### CFA の前提条件
+- **理論に基づく因子構造の仮説**が必要。EFA の結果だけでなく、先行研究に基づいて因子構造を定義する。例えば、L2MSS の3因子構造を検証する場合、@dornyei2009 の理論的枠組みと @taguchi2009 の先行 CFA 結果が根拠となる。
+- 各因子に最低3つの指標変数が望ましい（2つでも推定は可能だが不安定）[@brown2015]。
+- サンプルサイズは最低200、できれば300以上[@kline2023]。
+
+### lavaan の記法
+
+`lavaan` パッケージでは以下の演算子を使ってモデルを記述する[@rosseel2012]。
+
+| 演算子 | 意味 | 例 |
+|---|---|---|
+| `=~` | 「〜により測定される」（因子→指標） | `visual =~ x1 + x2 + x3` |
+| `~` | 回帰（構造パス） | `speed ~ visual + textual` |
+| `~~` | （共）分散 | `visual ~~ textual` |
+| `~1` | 切片 | `x1 ~1` |
+| `:=` | 定義式（間接効果など） | `ind := a * b` |
+
+### SLA データ例: 動機づけの CFA
+
+EFA で確認した3因子構造を、**新しい検証サンプル**で確認する。
+
+```{r}
+#| label: cfa-data-simulation
+
+# Generate a NEW validation sample (separate from EFA sample)
+set.seed(4321)  # Different seed for independent sample
+n_cfa <- 400
+
+f_scores_cfa <- MASS::mvrnorm(n_cfa, mu = c(0, 0, 0), Sigma = Phi_efa)
+
+raw_cfa <- f_scores_cfa %*% t(Lambda_efa) + matrix(rnorm(n_cfa * 18, sd = 0.5), nrow = n_cfa)
+likert_cfa <- apply(raw_cfa, 2, function(x) {
+  pmin(pmax(round(scales::rescale(x, to = c(1, 6))), 1), 6)
+})
+motivation_cfa <- as.data.frame(likert_cfa)
+names(motivation_cfa) <- paste0("M", sprintf("%02d", 1:18))
+```
+
+ここでは、EFA で得た3因子構造を `lavaan::cfa()` で確認する。比較対象として1因子モデルも推定し、因子構造の必要性を検証する。モデル式は上述の「lavaan の記法」節の演算子（`=~`, `~`, `~~` 等）で記述する。
+
+**`cfa()` の主要引数**:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `std.lv` | `TRUE` | 潜在変数の分散を 1 に固定する。これにより全ての因子負荷量が自由推定され、**標準化解が直接得られる**。`FALSE`（既定）では第1指標の負荷を 1 に固定（マーカー法） |
+| `estimator` | （既定 = `"ML"`） | 推定法。正規性仮定が成立する場合は既定の ML でよい |
+
+出力テーブルの主要列:
+
+| 列 | 意味 | 確認ポイント |
+|---|---|---|
+| `est` | 非標準化推定値 | 因子負荷量（`=~` 行）やパス係数 |
+| `std.all` | 完全標準化推定値 | .50 以上なら実質的に意味のある負荷 |
+| `pvalue` | 有意確率 | < .05 で統計的に有意 |
+
+標準化解（`std.all`）は、すべての変数を標準偏差 1 に揃えた上でのパラメータ推定値であり、異なるスケールの変数間で効果の大きさを比較するために用いる。因子負荷量の標準化解が .50 を下回る項目は、当該潜在変数との関連が弱い可能性がある。
+
+```{r}
+#| label: cfa-model-estimation
+
+# Define the 3-factor CFA model (from EFA results)
+cfa_model_3f <- '
+  IdealL2   =~ M01 + M02 + M03 + M04 + M05 + M06
+  OughtL2   =~ M07 + M08 + M09 + M10 + M11 + M12
+  LearnExp  =~ M13 + M14 + M15 + M16 + M17 + M18
+'
+
+# Define a 1-factor model for comparison
+cfa_model_1f <- '
+  General =~ M01 + M02 + M03 + M04 + M05 + M06 +
+             M07 + M08 + M09 + M10 + M11 + M12 +
+             M13 + M14 + M15 + M16 + M17 + M18
+'
+
+# Fit both models
+fit_cfa_3f <- cfa(cfa_model_3f, data = motivation_cfa, std.lv = TRUE)
+fit_cfa_1f <- cfa(cfa_model_1f, data = motivation_cfa, std.lv = TRUE)
+
+# Display 3-factor model summary as gt table
+parameterEstimates(fit_cfa_3f, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "CFA 3-Factor Model: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
+```
+
+パラメータ推定値テーブルでは、`=~` 行が各項目の因子負荷量を示す。`std.all` 列の値が標準化負荷量であり、.50 以上であれば収束的妥当性の目安を満たす。全項目の標準化負荷量を確認し、極端に低い値（< .40）がないか、推定値が1を超える Heywood ケースがないかを確認する。因子間相関（`~~` 行のうち潜在変数間）が .85 を超える場合は弁別的妥当性に疑義がある[@alhoorie2024]。
+
+### 適合度指標の比較
+
+```{r}
+#| label: cfa-fit-comparison
+
+# Extract fit indices
+indices <- c("chisq", "df", "pvalue", "cfi", "tli", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "srmr")
+fit_3f <- fitMeasures(fit_cfa_3f, indices)
+fit_1f <- fitMeasures(fit_cfa_1f, indices)
+
+data.frame(
+  Measure = names(fit_3f),
+  `3-Factor` = as.numeric(fit_3f),
+  `1-Factor` = as.numeric(fit_1f)
+) |>
+  gt() |>
+  tab_header(
+    title = "CFA Model Fit Comparison",
+    subtitle = "3-Factor (L2MSS) vs. 1-Factor Model"
+  ) |>
+  fmt_number(
+    columns = c(`X3.Factor`, `X1.Factor`),
+    rows = Measure %in% c("cfi", "tli", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "srmr"),
+    decimals = 3
+  ) |>
+  fmt_number(
+    columns = c(`X3.Factor`, `X1.Factor`),
+    rows = Measure %in% c("chisq", "df"),
+    decimals = 1
+  ) |>
+  fmt_scientific(
+    columns = c(`X3.Factor`, `X1.Factor`),
+    rows = Measure == "pvalue",
+    decimals = 3
+  ) |>
+  cols_label(Measure = "Fit Index", `X3.Factor` = "3-Factor", `X1.Factor` = "1-Factor") |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(
+      columns = `X3.Factor`,
+      rows = (Measure %in% c("cfi", "tli") & `X3.Factor` > 0.95) |
+             (Measure == "rmsea" & `X3.Factor` < 0.05) |
+             (Measure == "srmr" & `X3.Factor` < 0.08)
+    )
+  ) |>
+  tab_footnote(
+    footnote = "Good fit: CFI/TLI > .95, RMSEA < .05 [.08], SRMR < .08",
+    locations = cells_column_labels(columns = `X3.Factor`)
+  )
+```
+
+テーブルの読み方: 緑色ハイライトのセルは基準を満たす指標である。3因子モデルが1因子モデルよりも全ての指標で優れていれば、L2MSS の3因子構造が支持される。CFI/TLI の差（$\Delta$CFI）が .010 以上あれば、3因子モデルの優位性は実質的に意味がある。
+
+3因子モデルでは CFI = .95 以上かつ RMSEA < .06、SRMR < .08 をすべて満たしているかを確認する。1因子モデルや2因子モデルと比較して CFI が .03 以上改善しているのは、実質的に意味のある適合度の向上を示す（@chen2007）。これらの結果から、動機づけデータは3つの独立した側面で構成されるという理論的仮説が統計的に支持される。
+
+CFA/SEM の適合度指標は、モデルが仮定する共分散構造（含意共分散行列 $\boldsymbol{\Sigma}(\boldsymbol{\theta})$）が実データの共分散行列 $\mathbf{S}$ にどれだけ近いかを多角的に評価するものである。各指標は「モデルの悪さ」を異なる角度から測定しており、単一の指標に頼るのではなく複数を総合的に判断する。
+
+- **カイ二乗検定（$\chi^2$）**は、モデルとデータの完全な一致を帰無仮説とする検定である。しかし、サンプルサイズが大きくなると些細なズレでも有意になるため、$N > 200$ の場合は**単独での判断は避ける**。自由度（df）はモデルの複雑さを表す指標で、「既知の情報量（データが提供する共分散・分散の数 $= p(p+1)/2$）からモデルが推定するパラメータ数を差し引いたもの」である。自由度が大きいほどモデルは倹約的であり、自由度が 0 のモデル（飽和モデル）は検定不能だがデータを完全に再現する。
+- **CFI（Comparative Fit Index）**は、「全変数が無相関」と仮定するベースライン（独立）モデルから、どれだけ適合が改善されたかを測る。0--1 の範囲で、1.0 に近いほど改善が大きい。直感的には「一番悪いモデルから見て何%改善されたか」を表す。
+- **TLI（Tucker-Lewis Index）**は CFI と類似するが、モデルの自由度（パラメータ数）にペナルティを与える。不必要にパラメータを増やしたモデルに対して CFI より厳しく評価するため、「倹約性を重視した改善度」と理解できる。
+- **RMSEA（Root Mean Square Error of Approximation）**は、**自由度1あたりの近似誤差**を表す。モデルの複雑さを考慮した「1パラメータあたりのミスフィットの大きさ」であり、値が小さいほど良い。90% 信頼区間が併記されるため、推定の不確実性も評価できる。
+- **SRMR（Standardized Root Mean Square Residual）**は、観測された相関行列とモデルが予測する相関行列の**残差の平均的な大きさ**である。最も直感的な指標で、「モデルが各変数間の相関をどのくらい再現できているか」を直接反映する。
+
+#### 適合度指標のカットオフ基準（目安）
+- **CFI / TLI**: 0.90 以上で許容、0.95 以上で良好[@hu1999]
+- **RMSEA**: 0.08 未満で許容、0.05 未満で良好。90% 信頼区間の上限が 0.08 未満なら安心
+- **SRMR**: 0.08 未満で良好
+- **$\chi^2$ 検定**: 大標本では常に有意になるため、$\chi^2 / df$ の比（2--3 未満で良好）を参考にする場合もある
+- 複数の指標を総合的に評価する。「全ての指標が完璧」を求める必要はない[@kline2023]
+
+#### 適合度指標への過度の依存
+Hu & Bentler [-@hu1999] のカットオフ値は「目安」であり「絶対基準」ではない。@mcneish2023 は、固定的なカットオフ値がモデルの複雑さや指標数によって不適切になりうることを示し、データごとに動的なカットオフ（dynamic fit index cutoffs）を算出する方法を提案している。適合度だけでなく、**理論的整合性**（因子構造に学術的意味があるか）、**パラメータの解釈可能性**（負荷量が合理的か）、**局所適合**（残差行列に系統的パターンがないか）を合わせて評価する。
+
+### CFA 診断
+
+モデルを報告する前に、パス図・標準化負荷量・残差共分散・因子間相関の4つの側面から結果を点検する。
+
+::: {.panel-tabset}
+
+#### パス図
+
+パス図は測定モデルの構造を視覚的に確認するためのものである。楕円が潜在因子、四角が観測変数、矢印上の数値が標準化因子負荷量を示す。
+
+```{r}
+#| label: cfa-path-diagram
+#| fig-width: 10
+#| fig-height: 8
+
+# Path diagram (standardized estimates)
+semPaths(fit_cfa_3f, whatLabels = "std", layout = "tree", rotation = 2,
+         edge.label.cex = 0.8, sizeMan = 6, sizeLat = 10,
+         nodeLabels = c(paste0("M", sprintf("%02d", 1:18)),
+                        "Ideal\nL2", "Ought\nL2", "Learn\nExp"))
+```
+
+パス図の楕円は潜在変数（直接観測できない構成概念）、長方形は観測変数（実際の質問項目）を表す。潜在変数から観測変数への矢印上の数値が因子負荷量であり、.50 以上が望ましい。観測変数の右側の小さい矢印は測定誤差（独自性）を表し、因子では説明できない変動を示す。
+
+#### 標準化因子負荷量
+
+標準化因子負荷量（Std. Loading）は、潜在因子が各観測変数をどの程度説明するかを示す。.50 以上（緑ハイライト）が収束的妥当性の目安である。95% 信頼区間も併記されているため、推定の精度を確認できる。
+
+```{r}
+#| label: cfa-standardized-solution
+
+# Extract standardized solution
+std_sol <- standardizedSolution(fit_cfa_3f) |>
+  as_tibble() |>
+  filter(op == "=~") |>
+  dplyr::select(lhs, rhs, est.std, ci.lower, ci.upper, pvalue)
+
+std_sol |>
+  gt() |>
+  tab_header(
+    title = "CFA Standardized Factor Loadings",
+    subtitle = "3-Factor Model: L2 Motivation"
+  ) |>
+  fmt_number(columns = c(est.std, ci.lower, ci.upper), decimals = 3) |>
+  fmt_scientific(columns = pvalue, decimals = 3) |>
+  cols_label(
+    lhs = "Factor", rhs = "Item", est.std = "Std. Loading",
+    ci.lower = "95% CI Lower", ci.upper = "95% CI Upper", pvalue = "p"
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(columns = est.std, rows = est.std > 0.50)
+  )
+```
+
+#### 残差共分散行列
+
+CFA モデルが想定する共分散構造は**含意共分散行列**（model-implied covariance matrix）$\boldsymbol{\Sigma}(\boldsymbol{\theta})$ として表現される。
+
+$$\boldsymbol{\Sigma}(\boldsymbol{\theta}) = \boldsymbol{\Lambda} \boldsymbol{\Phi} \boldsymbol{\Lambda}^\top + \boldsymbol{\Psi}$$
+
+残差行列（観測 $-$ 含意）の要素が全体的に 0 に近いほど局所適合が良好。系統的に大きい残差がある場合は修正指標を参考にする。
+
+```{r}
+#| label: cfa-implied-cov
+
+# Model-implied vs observed covariance (first 6 variables)
+implied_cov <- lavInspect(fit_cfa_3f, what = "implied")$cov
+observed_cov <- cov(motivation_cfa[, 1:6])
+
+# Residual covariance (discrepancy)
+resid_cov <- observed_cov - implied_cov[1:6, 1:6]
+
+as.data.frame(round(resid_cov, 3)) |>
+  rownames_to_column("Variable") |>
+  gt() |>
+  tab_header(
+    title = "Residual Covariance Matrix (First 6 Items)",
+    subtitle = "Observed − Implied: values close to 0 indicate good local fit"
+  ) |>
+  fmt_number(columns = -Variable, decimals = 3)
+```
+
+残差の大きさを視覚的に把握するため、全18項目の残差相関行列をヒートマップで可視化する。赤いセルはモデルが過小推定している相関（正の残差）、青いセルは過大推定している相関（負の残差）を示す。系統的なパターン（例: 同一因子内の特定項目ペアに大きな正の残差）がある場合は、残差共分散の追加や項目の修正を検討する。
+
+```{r}
+#| label: cfa-residual-heatmap
+#| fig-width: 9
+#| fig-height: 8
+
+# Full residual correlation matrix (standardized)
+resid_full <- lavaan::lavResiduals(fit_cfa_3f, type = "cor")$cov
+resid_df <- as.data.frame(as.table(as.matrix(resid_full))) |>
+  rename(Var1 = 1, Var2 = 2, Residual = 3)
+
+ggplot(resid_df, aes(x = Var1, y = Var2, fill = Residual)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = ifelse(abs(Residual) > 0.05, round(Residual, 2), "")),
+            size = 2.5) +
+  scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b",
+                       midpoint = 0, limits = c(-0.15, 0.15)) +
+  labs(title = "CFA Residual Correlation Heatmap (18 Items)",
+       subtitle = "Red = model underestimates correlation; Blue = overestimates",
+       fill = "Residual r") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title = element_blank())
+```
+
+残差相関の絶対値が .10 を超えるペアは局所的な不適合を示唆する。これらのペアは修正指標の結果と照合し、理論的に妥当な場合のみ残差共分散の追加を検討する。
+
+含意共分散行列（$\Sigma(\hat{\theta})$）はモデルが仮定する理論上の共分散構造であり、データの共分散行列（$S$）との差が残差共分散行列である。残差が大きい項目ペアは、モデルが捉えきれていない関連パターンの存在を示唆する。ただし、残差を小さくするために修正指標に従って相関パスを追加する際は、理論的な根拠がない修正は過適合を招くため慎重に判断する必要がある。
+
+#### 因子間相関
+
+因子間相関が .85 を超える場合は弁別的妥当性に疑義が生じる。その場合、2因子を統合した簡素なモデルとの比較を検討する。
+
+```{r}
+#| label: cfa-factor-correlations
+
+# Factor correlations
+fac_cor <- lavInspect(fit_cfa_3f, what = "cor.lv")
+
+as.data.frame(round(fac_cor, 3)) |>
+  rownames_to_column("Factor") |>
+  gt() |>
+  tab_header(
+    title = "CFA Factor Correlations",
+    subtitle = "Latent factor intercorrelations"
+  ) |>
+  fmt_number(columns = -Factor, decimals = 3) |>
+  tab_footnote(
+    footnote = "High correlations (> .85) may suggest poor discriminant validity",
+    locations = cells_column_labels(columns = -Factor)
+  )
+```
+
+:::
+
+#### 収束的妥当性と弁別的妥当性
+- **収束的妥当性**: 標準化因子負荷量が .50 以上、AVE（平均分散抽出）が .50 以上
+- **弁別的妥当性**: 因子間相関の二乗が各因子の AVE を下回る（Fornell-Larcker 基準）
+- `lavaan` では `lavInspect(fit, "cor.lv")` で因子間相関を確認できる
+
+CFA では測定モデル（潜在変数と観測変数の関係）の妥当性を検証した。次の SEM では、CFA で確認された潜在変数同士の因果関係・媒介効果を推定する。SEM = 測定モデル（CFA）+ 構造モデル（潜在変数間のパス）という二層構造を持つ。
+
+### 構造方程式モデリング（SEM）
+
+### コンセプト
+
+構造方程式モデリング（SEM）は、CFA の**測定モデル**（潜在変数と観測変数の対応関係を定義する部分）に、**構造モデル**（潜在変数間の回帰関係を定義する部分）を加えたものである[@kline2023]。測定モデルは「目に見えない構成概念をどの項目で測るか」を記述し、構造モデルは「その構成概念同士がどのように関連するか（因果仮説）」を記述する。SLA 研究では、動機づけ、不安、自律性といった潜在構成概念間の因果仮説を検証するために広く用いられる[@innami2011; @winke2014]。
+
+回帰分析では観測変数をそのまま用いるため測定誤差が無視される。SEM は潜在変数を介して測定誤差を明示的にモデル化するため、より正確な構造パラメータの推定が可能になる。これが SEM を「測定誤差を補正した回帰分析」と呼べる根拠である。
+
+#### 最初にここだけ（SEM）
+1. SEM = 測定モデル（CFA）+ 構造モデル（潜在回帰）
+2. まず CFA で測定モデルの適合を確認してから構造パスを追加する（Two-Step Approach）
+3. 媒介効果は `:=` で定義し、ブートストラップで信頼区間を求める
+4. Likert 尺度では `estimator = "WLSMV"` を検討する
+
+#### SEM の2部構造
+
+$$\underbrace{\mathbf{x} = \boldsymbol{\Lambda} \boldsymbol{\eta} + \boldsymbol{\varepsilon}}_{\text{測定モデル}} \quad ; \quad \underbrace{\boldsymbol{\eta} = \mathbf{B} \boldsymbol{\eta} + \boldsymbol{\Gamma} \boldsymbol{\xi} + \boldsymbol{\zeta}}_{\text{構造モデル}}$$
+
+- 測定モデル: 観測変数 $\mathbf{x}$ を潜在変数 $\boldsymbol{\eta}$ で説明（$\boldsymbol{\Lambda}$ = 因子負荷行列、$\boldsymbol{\varepsilon}$ = 測定誤差）
+- 構造モデル: 潜在変数間の回帰関係を記述（$\mathbf{B}$ = 内生変数間の回帰係数、$\boldsymbol{\Gamma}$ = 外生→内生の回帰係数、$\boldsymbol{\zeta}$ = 残差）
+
+SEM の推定は、モデルのパラメータ $\boldsymbol{\theta}$（負荷量・パス係数・分散等）から**含意共分散行列** $\boldsymbol{\Sigma}(\boldsymbol{\theta})$ を計算し、それが実データの標本共分散行列 $\mathbf{S}$ にどれだけ近いかを最適化する過程である。直感的には、「このモデル（仮説）が正しければ、変数間の共分散はこうなるはず」という予測値と、実際のデータから計算される共分散の差を最小化している。最尤推定（ML）では、対数尤度関数 $F_{\text{ML}} = \log|\boldsymbol{\Sigma}(\boldsymbol{\theta})| + \text{tr}(\mathbf{S}\boldsymbol{\Sigma}(\boldsymbol{\theta})^{-1}) - \log|\mathbf{S}| - p$ を最小化する（$p$ は観測変数の数）。
+
+#### 回帰分析からSEMへ: 統一的な視点
+
+実は、これまでの章で学んできた回帰分析もSEMの特殊ケースとして理解できる。
+
+| モデル | SEM的解釈 | 潜在変数 | 測定モデル |
+|--------|----------|---------|-----------|
+| 単回帰 $y = \beta x + \varepsilon$ | 観測変数間の直接効果1本 | なし | なし |
+| 重回帰 $y = \beta_1 x_1 + \beta_2 x_2 + \varepsilon$ | 複数の観測変数→1つの結果変数 | なし | なし |
+| パス解析 | 観測変数のみのSEM（媒介・直接効果） | なし | なし |
+| CFA | 測定モデルのみ | あり | あり |
+| SEM（フル） | 測定モデル＋構造モデル | あり | あり |
+
+この統一的な視点を持つことで、**回帰分析は「潜在変数がなく、測定誤差を無視した SEM」**と位置づけられる。SEM の利点は、(1) 測定誤差を明示的にモデリングできること、(2) 複数の従属変数を同時に扱えること、(3) 直接効果と間接効果を同時推定できることにある。
+
+#### Two-Step Approach
+1. **Step 1**: 測定モデル（CFA）を推定し、適合度を確認する
+2. **Step 2**: 測定モデルが許容範囲内であれば、構造パスを追加して SEM を推定する
+- この手順を守ることで、測定の問題と構造の問題を切り分けて診断できる[@anderson1988; @kline2023]
+
+#### SLA 研究における SEM の活用
+
+SEM は SLA 研究において理論モデルの検証に広く活用されている。@innami2011 は *Language Assessment Quarterly* で言語テスティング・学習研究における SEM の使用状況をレビューし、報告慣行の問題点と改善策を整理した。@kunnan1998 はそれに先立ち、言語評価研究に SEM を導入するためのチュートリアルを *Language Testing* 誌で発表している。以下は SLA における SEM の代表的な活用例である。
+
+- **動機づけ → 学習行動 → 到達度**: @papi2010 は1,011名のイラン高校生のデータで L2MSS の3要素が不安と意図的努力に与える影響を SEM で検証し、Ideal L2 Self と L2 Learning Experience が不安を低減する一方、Ought-to L2 Self は不安を増加させることを示した。
+- **WTC モデル**: @yashima2002 は297名の日本人大学生のデータで「国際的志向性 → 動機づけ → L2自信 → WTC」の因果経路を SEM で明らかにし、L2 WTC 研究に新たな枠組みを提示した。
+- **L2 selves と情動**: @teimouri2017 は Ideal L2 Self / Ought-to L2 Self を三分法に拡張し、各自己概念が享受や不安といった情動を介して動機的行動を予測するモデルを SEM で検証した。
+- **年齢差と動機**: @kormos2008 は3つの年齢群（中高生・大学生・成人）で L2 動機づけモデルを SEM で比較し、Ideal L2 Self の影響力が年齢層によって異なることを示した。
+- **大規模調査**: @you2016 は中国 EFL 学習者の大規模調査で L2MSS の構造関係をジェンダー差に着目して SEM で検証した。
+- **テストの構成概念妥当性**: @winke2014 は *Annual Review of Applied Linguistics* のチュートリアル論文で、SEM を用いた言語テストの構成概念妥当性検証を step-by-step で解説し、リスニング・リーディング・文法テスト間の潜在関係モデリングの実例を示した。
+
+重要なのは、SEM は**因果関係を「証明」するものではない**ということである[@kline2023]。SEM が示すのは「データがこの因果仮説と矛盾しない」ということであり、因果の方向性はあくまで理論に基づく仮定である。同じデータに対して、異なる因果方向のモデルが等しく適合することもある（等価モデルの問題）。
+
+#### lavaan モデル構文リファレンス
+
+lavaan [@rosseel2012] のモデル定義では、以下の演算子を使って測定モデルと構造モデルを記述する。
+
+| 演算子 | 意味 | 使用例 | 説明 |
+|--------|------|--------|------|
+| `=~` | 測定モデル（因子→指標） | `F1 =~ x1 + x2 + x3` | 潜在変数 F1 が x1, x2, x3 を生成する |
+| `~` | 回帰パス | `y ~ x1 + x2` | y を x1 と x2 で予測する |
+| `~~` | 共分散（残差相関） | `x1 ~~ x2` | x1 と x2 の残差共分散を推定する |
+| `~1` | 切片（平均） | `F1 ~ 1` | 潜在変数 F1 の平均を推定する |
+| `:=` | 定義済みパラメータ | `ind := a * b` | ラベル付きパスの積で間接効果を定義 |
+| `*` | ラベル / 固定値 | `F1 =~ 1*x1` | 負荷量を1に固定（スケーリング） |
+
+#### lavaan の主要関数
+
+| 関数 | 目的 | 返り値の主要列 |
+|------|------|--------------|
+| `cfa()` / `sem()` / `growth()` | モデル推定 | lavaan オブジェクト |
+| `summary(fit, standardized = TRUE)` | 結果の要約 | テキスト出力 |
+| `parameterEstimates(fit)` | パラメータテーブル | `lhs`（左辺）, `op`（演算子）, `rhs`（右辺）, `est`（推定値）, `se`（標準誤差）, `z`（z値）, `pvalue`, `ci.lower`, `ci.upper`, `std.all`（完全標準化値） |
+| `fitMeasures(fit)` | 適合度指標 | `chisq`, `df`, `pvalue`, `cfi`, `tli`, `rmsea`, `rmsea.ci.lower`, `rmsea.ci.upper`, `srmr` |
+| `modindices(fit)` | 修正指標 | `lhs`, `op`, `rhs`, `mi`（修正指標値）, `epc`（期待パラメータ変化量） |
+| `standardizedSolution(fit)` | 標準化解 | `est.std`（標準化推定値） |
+| `lavInspect(fit, "rsquare")` | 決定係数 | 各内生変数の $R^2$ |
+
+#### 推定法の選択ガイド
+
+| データの特徴 | 推奨推定法 | lavaan 指定 |
+|-------------|-----------|------------|
+| 連続変数、正規性あり | ML（最尤法） | `estimator = "ML"` |
+| 連続変数、正規性に不安 | MLR（ロバストML） | `estimator = "MLR"` |
+| 順序カテゴリ（5件法以下） | WLSMV | `estimator = "WLSMV", ordered = TRUE` |
+| 間接効果の CI | ブートストラップ | `se = "bootstrap", bootstrap = 5000` |
+| 欠損データあり | FIML（完全情報ML） | `missing = "fiml"` |
+
+FIML（Full Information Maximum Likelihood）は、欠損値を含むデータに対して、各ケースで利用可能な情報を最大限に活用してパラメータを推定する方法である。リストワイズ削除と異なり、欠損がランダム（MAR: Missing at Random）であれば不偏推定量が得られる。lavaan では `missing = "fiml"` を指定するだけで利用でき、SLA 研究のように縦断データで脱落が生じやすい場面で特に有用である。
+
+### 回帰分析は SEM で再現できる
+
+SEM を学ぶ前に、回帰分析が SEM の特殊ケースであることを実感しておこう。以下のデモでは、`lm()` による重回帰と `lavaan::sem()` で同一の結果が得られることを確認する。
+
+```{r}
+#| label: sem-regression-equivalence
+
+# Demo: lm() and lavaan::sem() produce identical results
+set.seed(42)
+demo_data <- data.frame(
+  motivation = rnorm(200),
+  anxiety    = rnorm(200),
+  proficiency = rnorm(200)
+)
+demo_data$proficiency <- 0.4 * demo_data$motivation -
+                          0.3 * demo_data$anxiety + rnorm(200, sd = 0.8)
+
+# Method 1: lm()
+fit_lm <- lm(proficiency ~ motivation + anxiety, data = demo_data)
+
+# Method 2: lavaan::sem() (path analysis = SEM without latent variables)
+path_model <- 'proficiency ~ motivation + anxiety'
+fit_path <- lavaan::sem(path_model, data = demo_data)
+
+# Compare coefficients
+tibble(
+  Predictor = c("motivation", "anxiety"),
+  `lm() estimate` = coef(fit_lm)[c("motivation", "anxiety")],
+  `sem() estimate` = parameterEstimates(fit_path) |>
+    filter(op == "~") |> pull(est)
+) |>
+  gt() |>
+  tab_header(
+    title = "Regression via lm() vs. lavaan::sem()",
+    subtitle = "Identical estimates — regression is a special case of SEM"
+  ) |>
+  fmt_number(columns = c(`lm() estimate`, `sem() estimate`), decimals = 4)
+```
+
+結果が一致することから分かるように、**重回帰分析はパス解析（観測変数のみの SEM）と数学的に等価**である。lavaan で `~` のみを使ったモデル（`=~` なし）はパス解析であり、通常の回帰と同じ推定を行う。SEM の強みは、ここに `=~` で測定モデルを追加し、**測定誤差を考慮した潜在変数レベルの関係**を推定できる点にある。
+
+#### パス解析 → SEM への拡張
+
+パス解析では観測変数をそのまま使うため、測定誤差がパス係数を**減衰（attenuation）**させる。例えば、信頼性 .80 の尺度で測定した動機づけと英語力の間の真の相関が .50 であっても、観測レベルの相関は $.50 \times \sqrt{.80 \times .80} = .40$ に低下する。SEM（潜在変数モデル）はこの減衰を補正し、構成概念レベルの関係をより正確に推定する。これが、SLA 研究で尺度データを扱う際にパス解析よりも SEM が推奨される主な理由である[@kline2023]。
+
+### SLA データ例: 動機づけ → 努力 → 英語力
+
+D&ouml;rnyei の L2 動機づけ自己体系に基づき、「Ideal L2 Self → 学習努力（Intended Effort）→ 英語力（L2 Proficiency）」の媒介モデルを検証する。
+
+5潜在変数の相関構造は @papi2010 のイランEFL学習者データおよび @you2016 の中国EFL学習者データの相関パターンを参考に設定した。Ideal L2 Self と Effort の相関を $.55$ と比較的高く設定しているのは、複数の先行研究で一貫して報告されている強い正の関連を反映している。
+
+```{r}
+#| label: sem-data-simulation
+
+# Extend the CFA data with Effort and Proficiency indicators
+set.seed(2024)
+n_sem <- 400
+
+# Latent variables: IdealL2, OughtL2, LearnExp, Effort, Proficiency
+Phi_sem <- matrix(c(
+  1.0, 0.45, 0.35, 0.55, 0.40,
+  0.45, 1.0, 0.25, 0.30, 0.20,
+  0.35, 0.25, 1.0, 0.45, 0.35,
+  0.55, 0.30, 0.45, 1.0, 0.50,
+  0.40, 0.20, 0.35, 0.50, 1.0
+), nrow = 5)
+
+f_sem <- MASS::mvrnorm(n_sem, mu = rep(0, 5), Sigma = Phi_sem)
+
+# Motivation items (same structure) + Effort (3 items) + Proficiency (3 items)
+Lambda_mot <- Lambda_efa  # 18 x 3
+
+# Generate motivation items
+raw_mot <- f_sem[, 1:3] %*% t(Lambda_mot) + matrix(rnorm(n_sem * 18, sd = 0.5), nrow = n_sem)
+likert_mot <- apply(raw_mot, 2, function(x) pmin(pmax(round(scales::rescale(x, to = c(1, 6))), 1), 6))
+
+# Effort items (3 items)
+effort_raw <- cbind(
+  f_sem[, 4] * 0.80 + rnorm(n_sem, sd = 0.5),
+  f_sem[, 4] * 0.75 + rnorm(n_sem, sd = 0.5),
+  f_sem[, 4] * 0.70 + rnorm(n_sem, sd = 0.5)
+)
+effort_lik <- apply(effort_raw, 2, function(x) pmin(pmax(round(scales::rescale(x, to = c(1, 6))), 1), 6))
+
+# Proficiency items (3 test scores, continuous)
+prof_raw <- cbind(
+  f_sem[, 5] * 0.85 + rnorm(n_sem, sd = 0.4),
+  f_sem[, 5] * 0.78 + rnorm(n_sem, sd = 0.4),
+  f_sem[, 5] * 0.72 + rnorm(n_sem, sd = 0.4)
+)
+
+# Combine
+sem_data <- data.frame(likert_mot, effort_lik, prof_raw)
+names(sem_data) <- c(paste0("M", sprintf("%02d", 1:18)),
+                      paste0("E", 1:3),
+                      paste0("P", 1:3))
+```
+
+以下では、5つの潜在変数（IdealL2, OughtL2, LearnExp, Effort, Profic）を含む SEM を定義する。モデル式では、測定モデル（`=~`）で各潜在変数を観測変数に対応づけ、構造モデル（`~`）で潜在変数間の回帰パスを指定する。パス係数に `a1*IdealL2` のようにラベルを付けると、`:=` で間接効果（積）を定義できる。
+
+`lavaan::sem()` の主要引数:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `std.lv` | `TRUE` | 潜在変数の分散を 1 に固定（CFA と同様） |
+| `estimator` | `"MLR"` | **ロバスト最尤推定量**。Satorra-Bentler 補正により、正規性の仮定が厳密に成立しなくても頑健な標準誤差と適合度指標が得られる。Likert データや歪んだ分布に推奨 |
+
+```{r}
+#| label: sem-model-estimation
+
+# Define SEM model
+sem_model <- '
+  # Measurement model
+  IdealL2   =~ M01 + M02 + M03 + M04 + M05 + M06
+  OughtL2   =~ M07 + M08 + M09 + M10 + M11 + M12
+  LearnExp  =~ M13 + M14 + M15 + M16 + M17 + M18
+  Effort    =~ E1 + E2 + E3
+  Profic    =~ P1 + P2 + P3
+
+  # Structural model
+  Effort  ~ a1*IdealL2 + a2*OughtL2 + a3*LearnExp
+  Profic  ~ b*Effort + c1*IdealL2
+
+  # Indirect effects
+  ind_ideal  := a1 * b
+  tot_ideal  := c1 + (a1 * b)
+'
+```
+
+SLA 研究での媒介分析の典型例として、「L2 動機づけ → 学習努力 → 英語力」というモデルがある。単純回帰では動機づけと英語力の直接関係のみが検出されるが、SEM 媒介モデルでは「動機づけが学習努力を高め、それを通じて英語力が向上する」という因果経路を分解できる。
+
+```{r}
+#| label: sem-model-estimation-fit
+
+fit_sem <- lavaan::sem(sem_model, data = sem_data, std.lv = TRUE, estimator = "MLR")
+
+# Display SEM parameter estimates as gt table
+parameterEstimates(fit_sem, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "SEM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
+```
+
+SEM のパラメータ推定値テーブルでは、測定モデル部分（`=~`）の標準化負荷量が CFA と同様に十分な値を示すか確認する。構造パス部分（`~`）では、各パスの `std.all` 列が標準化回帰係数に対応する。例えば Ideal L2 Self から Effort への標準化パス係数が正で有意であれば、理想 L2 自己像が高い学習者ほど学習努力が大きいことを意味する。間接効果（`:=`）は、媒介経路を通じた効果の大きさを示す[@hayes2022]。
+
+### パラメータ推定値
+
+```{r}
+#| label: sem-coefficients
+
+coef_tbl <- parameterEstimates(fit_sem, standardized = TRUE) |>
+  as_tibble() |>
+  filter(op %in% c("~", "=~", ":=")) |>
+  transmute(
+    Term = paste(lhs, op, rhs),
+    Estimate = est, SE = se, z = z, p = pvalue, Std = std.all
+  )
+
+coef_tbl |>
+  gt() |>
+  tab_header(title = "SEM Parameter Estimates", subtitle = "Standardized and unstandardized") |>
+  fmt_number(columns = c(Estimate, SE, z, Std), decimals = 3) |>
+  fmt_scientific(columns = p, decimals = 3) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(columns = Std, rows = abs(Std) > 0.30)
+  )
+```
+
+パス係数の大きさと有意性を視覚的に比較するため、構造パスと間接効果をフォレストプロットで可視化する。
+
+```{r}
+#| label: sem-path-forest
+#| fig-width: 9
+#| fig-height: 5
+
+# Forest plot of structural paths
+struct_paths <- parameterEstimates(fit_sem, standardized = TRUE) |>
+  filter(op %in% c("~", ":=")) |>
+  mutate(
+    Path = paste(lhs, op, rhs),
+    Type = ifelse(op == ":=", "Indirect", "Direct"),
+    sig = ifelse(pvalue < .05, "p < .05", "n.s.")
+  )
+
+ggplot(struct_paths, aes(y = reorder(Path, std.all), x = std.all,
+                          xmin = ci.lower, xmax = ci.upper,
+                          color = Type, shape = sig)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_pointrange(size = 0.6) +
+  scale_color_manual(values = c("Direct" = "#2166ac", "Indirect" = "#b2182b")) +
+  scale_shape_manual(values = c("p < .05" = 16, "n.s." = 1)) +
+  labs(title = "SEM Structural Paths: Standardized Estimates with 95% CI",
+       subtitle = "Blue = direct effects; Red = indirect effects",
+       x = "Standardized Estimate (β)", y = NULL,
+       color = "Effect Type", shape = "Significance") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+フォレストプロットでは、0を示す垂直破線と信頼区間が交差しないパスが統計的に有意である。直接効果（青）と間接効果（赤）を区別して表示することで、媒介構造の全体像が一目で把握できる。
+
+### パス図
+
+```{r}
+#| label: sem-path-diagram
+#| fig-width: 12
+#| fig-height: 10
+
+semPlot::semPaths(fit_sem, whatLabels = "std", layout = "tree",
+                  nCharNodes = 0, edge.label.cex = 0.7,
+                  sizeMan = 5, sizeLat = 9)
+```
+
+SEM のパス図では、実線矢印は仮説された因果関係（回帰パス）を表す。パス係数には非標準化解（`est`）と標準化解（`std.all`）があり、前者は元のスケールでの効果量、後者は変数間の相対的な効果の比較に使う。論文報告では通常、標準化解を主に報告し、非標準化解を補足する。
+
+#### 直接効果・間接効果・総効果
+- **直接効果**: Ideal L2 Self → Proficiency のパス（$c_1$）
+- **間接効果**: Ideal L2 Self → Effort → Proficiency（$a_1 \times b$）
+- **総効果**: 直接 + 間接（$c_1 + a_1 \times b$）
+- `parameterEstimates()` で `:=` 行を確認する[@preacher2008]
+
+### ブートストラップによる間接効果の信頼区間
+
+間接効果（$a \times b$）の標本分布は正規分布に従わないため、通常の $z$ 検定は不適切である。ブートストラップ法は、データからの再抽出を繰り返して間接効果の経験的分布を構成し、そこからパーセンタイル信頼区間を算出する。**95% CI に 0 が含まれなければ、間接効果は有意**と判断する。
+
+ブートストラップに関する引数:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `se` | `"bootstrap"` | 標準誤差の計算にブートストラップ法を使用する |
+| `bootstrap` | `500` | 再抽出回数。500–5000 が推奨。論文投稿時は 5000 以上が望ましいが計算時間が増加する |
+| `estimator` | `"ML"` | ブートストラップ時は通常の ML を使用（MLR とブートストラップの併用は不要） |
+
+```{r}
+#| label: sem-bootstrap
+#| eval: true
+
+# Bootstrap CI for indirect effect
+fit_sem_boot <- lavaan::sem(
+  sem_model, data = sem_data,
+  std.lv = TRUE, estimator = "ML",
+  se = "bootstrap", bootstrap = 500
+)
+
+parameterEstimates(fit_sem_boot, boot.ci.type = "perc") |>
+  as_tibble() |>
+  filter(op == ":=") |>
+  dplyr::select(lhs, rhs, est, ci.lower, ci.upper) |>
+  gt() |>
+  tab_header(
+    title = "Bootstrap Confidence Intervals for Indirect Effects",
+    subtitle = "500 bootstrap samples, percentile method"
+  ) |>
+  fmt_number(columns = c(est, ci.lower, ci.upper), decimals = 3) |>
+  cols_label(lhs = "Effect", rhs = "Definition", est = "Estimate",
+             ci.lower = "95% CI Lower", ci.upper = "95% CI Upper") |>
+  tab_footnote(
+    footnote = "If CI does not include 0, the indirect effect is significant",
+    locations = cells_column_labels(columns = ci.lower)
+  )
+```
+
+ブートストラップ CI の判定は、信頼区間に 0 が含まれるか否かで行う。CI が 0 を含まなければ、間接効果は統計的に有意であり、Ideal L2 Self が学習努力を介して間接的に英語力に影響するという媒介仮説が支持される。パーセンタイル法（percentile method）はバイアス補正法と並んで推奨されるブートストラップ CI の算出法であり、正規性の仮定を必要としない点で標準的な Sobel 検定より頑健である[@preacher2008; @hayes2022]。
+
+信頼区間が 0 を含まない場合、その効果は統計的に有意と判定する。パーセンタイル法は間接効果の分布が非正規（正に歪んだ分布になりやすい）であっても正確なカバレッジを保つため、正規理論に基づく Sobel 検定よりも推奨される（@hayes2022）。
+
+```{r}
+#| label: sem-indirect-forest
+#| fig-width: 8
+#| fig-height: 4
+
+# Forest plot of indirect effects with bootstrap CI
+ind_effects <- parameterEstimates(fit_sem_boot, boot.ci.type = "perc") |>
+  as_tibble() |>
+  filter(op == ":=") |>
+  dplyr::select(lhs, est, ci.lower, ci.upper)
+
+ggplot(ind_effects, aes(y = lhs, x = est, xmin = ci.lower, xmax = ci.upper)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_pointrange(size = 0.8, color = "#2166ac") +
+  labs(title = "Indirect Effects with 95% Bootstrap CI",
+       subtitle = "Percentile method (500 bootstrap samples)",
+       x = "Estimate", y = "Effect") +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+フォレストプロットでは、各間接効果の推定値と95%ブートストラップ信頼区間を可視化している。信頼区間が 0 を示す垂直破線と交差しなければ、その間接効果は有意である。フォレストプロットでは、点推定値（丸）と 95% 信頼区間（横棒）を視覚的に比較できる。信頼区間が縦の破線（0）と重なる効果は統計的に有意でない。信頼区間の幅が狭いほど推定の精度が高い。
+
+### 順序尺度指標の推定（WLSMV）
+
+Likert 尺度のデータは厳密には連続変数ではない。カテゴリ数が5以下の場合、重み付き最小二乗法（WLSMV）が推奨される。WLSMV に関する引数:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `estimator` | `"WLSMV"` | 重み付き最小二乗法（平均・分散補正付き）。順序データに対してポリコリック相関を内部的に計算する |
+| `ordered` | 変数名のベクトル | **順序カテゴリカルとして扱う変数を明示的に指定する**。指定された変数は閾値モデルで推定される。指定しなければ全て連続変数として扱われる |
+
+```{r}
+#| label: sem-wlsmv
+
+# WLSMV estimation for ordinal indicators
+ordinal_vars <- c(paste0("M", sprintf("%02d", 1:18)), paste0("E", 1:3))
+fit_wlsmv <- lavaan::sem(
+  sem_model, data = sem_data,
+  std.lv = TRUE, estimator = "WLSMV",
+  ordered = ordinal_vars
+)
+
+# Compare fit indices: MLR vs WLSMV
+fit_mlr_idx <- fitMeasures(fit_sem, c("cfi", "tli", "rmsea", "srmr"))
+fit_wlsmv_idx <- fitMeasures(fit_wlsmv, c("cfi", "tli", "rmsea", "srmr"))
+
+data.frame(
+  Index = names(fit_mlr_idx),
+  MLR = as.numeric(fit_mlr_idx),
+  WLSMV = as.numeric(fit_wlsmv_idx)
+) |>
+  gt() |>
+  tab_header(title = "Estimator Comparison: MLR vs WLSMV") |>
+  fmt_number(columns = c(MLR, WLSMV), decimals = 3)
+```
+
+#### 推定法の選択ガイド
+- **ML / MLR**: 連続変数またはカテゴリ数 ≥ 6 の場合。MLR は非正規性にやや頑健。
+- **WLSMV**: カテゴリ数 ≤ 5 の順序変数。`ordered = ...` で変数を指定。
+- **ベイズ推定**: 小サンプルや複雑なモデルで有用（本書第7章参照）。
+
+### 2値データの CFA: テスト項目（正誤データ）への適用
+
+言語テスト研究では、テスト項目の反応（正答 = 1, 誤答 = 0）が2値データとして得られることが多い。2値データに対して CFA を適用する場合、通常の Pearson 相関ではなく**テトラコリック相関**を使用し、**WLSMV 推定量**で推定する必要がある。
+
+#### 閾値モデル（threshold model）: 2値・順序データの背後にある連続変数
+
+WLSMV は、観測される離散的な反応（0/1 や 1--5 の Likert）の背後に**連続的な正規分布する潜在反応変数** $y^*$ が存在すると仮定する。テスト項目の場合、受験者の潜在的な能力 $y^*$ が閾値 $\tau$ を超えれば正答（$y = 1$）、超えなければ誤答（$y = 0$）と解釈する。
+
+$$P(y_j = 1) = P(y^*_j > \tau_j) = \Phi\left(\frac{-\tau_j + \lambda_j \theta}{\sqrt{1 - \lambda_j^2}}\right)$$
+
+ここで $\lambda_j$ は因子負荷量、$\theta$ は潜在能力、$\tau_j$ は項目 $j$ の閾値（難易度に対応）、$\Phi$ は標準正規累積分布関数である。この式は **2パラメータ IRT（2PL）モデルの probit 版**と数学的に等価である。つまり、**2値データの CFA（WLSMV）は IRT の別表現**にほかならない。
+
+例えば、5件法の Likert 項目（1 = 全く当てはまらない 〜 5 = 非常に当てはまる）では 4 つの閾値が推定される。「全く当てはまらない」と「あまり当てはまらない」の境界が第1閾値であり、背後の連続変数がこの値を超えると回答カテゴリが変わると仮定する。
+
+以下のコードでは、英語読解テスト（12項目、2技能）のシミュレーションデータを使って、2値データの CFA を実装する。
+
+```{r}
+#| label: binary-cfa-simulation
+
+# Simulate binary test data (12 items, 2 skills: Reading & Grammar)
+set.seed(2024)
+n_test <- 500
+
+# Latent abilities (correlated: r = .60)
+theta <- MASS::mvrnorm(n_test, mu = c(0, 0),
+                       Sigma = matrix(c(1, 0.6, 0.6, 1), 2))
+
+# Item parameters (difficulty and discrimination)
+item_diff <- c(-1.0, -0.5, 0.0, 0.3, 0.7, 1.2,   # Reading items
+               -0.8, -0.3, 0.1, 0.5, 0.8, 1.5)     # Grammar items
+item_disc <- c(rep(0.8, 6), rep(0.75, 6))            # discrimination ~ loading
+
+# Generate binary responses using probit model
+binary_data <- matrix(NA, n_test, 12)
+for (j in 1:12) {
+  skill <- ifelse(j <= 6, 1, 2)
+  prob <- pnorm(item_disc[j] * theta[, skill] - item_diff[j])
+  binary_data[, j] <- rbinom(n_test, 1, prob)
+}
+colnames(binary_data) <- paste0("item", sprintf("%02d", 1:12))
+binary_data <- as.data.frame(binary_data)
+```
+
+```{r}
+#| label: binary-cfa-estimation
+
+# CFA model for binary test data (2-factor: Reading & Grammar)
+binary_cfa_model <- '
+  Reading =~ item01 + item02 + item03 + item04 + item05 + item06
+  Grammar =~ item07 + item08 + item09 + item10 + item11 + item12
+'
+
+# Estimate with WLSMV (ordered = TRUE for all binary items)
+fit_binary_cfa <- lavaan::cfa(
+  binary_cfa_model, data = binary_data,
+  std.lv = TRUE, estimator = "WLSMV",
+  ordered = TRUE  # treat ALL variables as ordered categorical
+)
+
+# Fit measures
+fitMeasures(fit_binary_cfa, c("chisq.scaled", "df.scaled", "pvalue.scaled",
+                               "cfi.scaled", "tli.scaled",
+                               "rmsea.scaled", "srmr")) |>
+  as.data.frame() |>
+  rownames_to_column("Index") |>
+  rename(Value = 2) |>
+  gt() |>
+  tab_header(
+    title = "CFA for Binary Test Data (WLSMV)",
+    subtitle = "2-factor model: Reading (6 items) + Grammar (6 items)"
+  ) |>
+  fmt_number(columns = Value, decimals = 3)
+```
+
+```{r}
+#| label: binary-cfa-loadings
+
+# Standardized loadings
+standardizedSolution(fit_binary_cfa) |>
+  filter(op == "=~") |>
+  dplyr::select(lhs, rhs, est.std, se, pvalue) |>
+  gt() |>
+  tab_header(
+    title = "Standardized Factor Loadings (Binary CFA)",
+    subtitle = "WLSMV estimation with tetrachoric correlations"
+  ) |>
+  fmt_number(columns = c(est.std, se), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(columns = est.std, rows = est.std > 0.50)
+  )
+```
+
+上記の結果では、WLSMV 推定量が自動的にテトラコリック相関を計算し、閾値モデルに基づいて因子負荷量を推定している。`est.std` 列の標準化負荷量は、2PL IRT モデルの識別力パラメータ $a$ と以下の関係にある。
+
+$$a_j = \frac{\lambda_j}{\sqrt{1 - \lambda_j^2}}$$
+
+つまり、**CFA の標準化負荷量が .70 の項目は、IRT の識別力 $a = 0.70 / \sqrt{1 - 0.49} \approx 0.98$ に対応する**。この変換を知っておくと、CFA と IRT の結果を相互に参照できる（第11章参照）。
+
+#### 2値データの CFA と IRT: いつどちらを使うか
+
+| 目的 | 推奨手法 | 理由 |
+|------|---------|------|
+| テストの因子構造（何次元か）を検証 | **CFA（WLSMV）** | 多因子モデルの適合度を直接評価できる |
+| 項目パラメータ（難易度・識別力）の推定 | **IRT** | 項目・受験者のパラメータ分離が IRT の本領 |
+| 受験者の能力推定（$\theta$ スコア） | **IRT** | 条件付き推定が可能 |
+| テストの測定不変性（DIF）検出 | **CFA（多群比較）** または **IRT（DIF分析）** | 両方有効。CFA は項目群レベル、IRT は項目レベル |
+| 尺度開発の構成概念妥当性 | **CFA → SEM** | 他の構成概念との関係も同時に検証できる |
+
+実務的には、テスト開発の初期段階で CFA（WLSMV）により因子構造を確認し、構造が確認された後に IRT で項目パラメータの精密な推定と能力推定を行う、という**二段階アプローチ**が推奨される。
+
+### 修正指標（Modification Indices）
+
+```{r}
+#| label: sem-modification-indices
+
+mi_tbl <- modindices(fit_sem) |>
+  as_tibble() |>
+  arrange(desc(mi)) |>
+  filter(mi > 10) |>
+  dplyr::select(lhs, op, rhs, mi, epc)
+
+mi_tbl |>
+  gt() |>
+  tab_header(title = "Modification Indices (MI > 10)") |>
+  fmt_number(columns = c(mi, epc), decimals = 2)
+```
+
+#### 修正指標と過適合
+MI はモデル改善のヒントだが「事後探索」に過ぎない。理論的妥当性がない関連を追加すると過適合に陥る。報告では、どの修正を、どんな根拠で採用 / 不採用にしたかを明記すること。
+
+### SEM のモデル比較: ネストモデルと情報量規準
+
+SEM では複数の競合モデルを比較してどのモデルがデータに最も適合するかを判断する場面が頻繁に生じる。例えば、「3因子モデル vs 1因子モデル」「完全媒介モデル vs 部分媒介モデル」「線形成長 vs 二次成長」などである。モデル比較の方法には**ネストモデルの検定**と**情報量規準**の2つのアプローチがある。
+
+#### ネストモデルのカイ二乗差検定（$\Delta \chi^2$）
+
+あるモデル（制約モデル）が別のモデル（自由モデル）にパラメータ制約を加えたものである場合、両モデルは**ネストしている**（nested）という。例えば、1因子 CFA は3因子 CFA に「因子間相関 = 1」の制約を加えたものであり、ネストモデルの関係にある。
+
+ネストモデルの場合、カイ二乗差検定（Likelihood Ratio Test; LRT）で比較できる。
+
+$$\Delta \chi^2 = \chi^2_{\text{制約}} - \chi^2_{\text{自由}}, \quad \Delta df = df_{\text{制約}} - df_{\text{自由}}$$
+
+```{r}
+#| label: sem-model-comparison
+
+# Compare nested CFA models: 1-factor vs 3-factor
+comparison_cfa <- anova(fit_cfa_1f, fit_cfa_3f)
+
+comparison_cfa |>
+  as_tibble() |>
+  gt() |>
+  tab_header(
+    title = "Nested Model Comparison: 1-Factor vs. 3-Factor CFA",
+    subtitle = "Chi-square difference test (Likelihood Ratio Test)"
+  ) |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
+```
+
+$\Delta \chi^2$ が有意（$p < .05$）であれば、制約の追加がモデル適合を有意に悪化させたことを意味し、**自由度の高い（複雑な）モデルが支持される**。上記の例では3因子モデルの適合が1因子モデルより有意に良好であれば、L2 動機づけは単一の構成概念ではなく3因子から成ることが支持される。
+
+#### MLR 推定量を使用した場合の注意
+MLR（ロバスト ML）で推定したモデルのカイ二乗値は Satorra-Bentler 補正されており、**通常のカイ二乗差検定は適用できない**。lavaan の `anova()` は自動的に Satorra-Bentler 補正付きの差検定（scaled $\Delta \chi^2$）を計算するため、`anova(model1, model2)` をそのまま使えばよい。手動で計算する場合は `lavaan::lavTestLRT()` を使う。
+
+#### 情報量規準（AIC / BIC）による比較
+
+ネストしていないモデル（例: 3因子モデル vs bifactor モデル）は $\Delta \chi^2$ 検定で比較できない。この場合は**情報量規準**を用いる。
+
+| 規準 | 式 | 特徴 |
+|------|-----|------|
+| **AIC** | $-2 \log L + 2k$ | パラメータ数 $k$ でペナルティ。予測精度を重視 |
+| **BIC** | $-2 \log L + k \log N$ | サンプルサイズ $N$ に依存するペナルティ。大標本で倹約的モデルを選好 |
+
+AIC / BIC とも**値が小さいモデルが望ましい**。
+
+```{r}
+#| label: sem-aic-bic-comparison
+
+# Compare AIC/BIC across CFA models
+aic_bic <- tibble(
+  Model = c("1-Factor CFA", "3-Factor CFA"),
+  AIC = c(fitMeasures(fit_cfa_1f, "aic"), fitMeasures(fit_cfa_3f, "aic")),
+  BIC = c(fitMeasures(fit_cfa_1f, "bic"), fitMeasures(fit_cfa_3f, "bic"))
+)
+
+aic_bic |>
+  gt() |>
+  tab_header(
+    title = "Information Criteria: AIC and BIC",
+    subtitle = "Lower values indicate better model fit"
+  ) |>
+  fmt_number(columns = c(AIC, BIC), decimals = 1) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(rows = AIC == min(AIC))
+  )
+```
+
+#### SEM のモデル比較 vs GLMM のモデル比較: 何が違うか
+
+本書第6章（混合効果モデル）では AIC を用いたモデル比較を扱っているが、SEM のモデル比較にはいくつかの重要な違いがある。
+
+| 観点 | GLMM（第6章） | SEM（本章） |
+|------|-------------|------------|
+| **主要な比較手段** | AIC / BIC（情報量規準） | $\Delta \chi^2$ 検定（ネストモデル） |
+| **AIC の利用可能性** | 常に利用可能 | ML / MLR 推定のみ。**WLSMV では AIC が定義されない** |
+| **ネスト関係** | ランダム効果の追加・削除で成立 | パス制約・因子構造の変更で成立 |
+| **比較の目的** | 予測精度の最適化（固定効果とランダム効果の選択） | 理論的仮説の検証（因子構造・因果経路の選択） |
+| **「最良モデル」の意味** | 予測と倹約のバランス | 理論的に最も妥当な構造 |
+| **典型的な比較** | `anova(model1, model2)` で LRT | `anova(model1, model2)` で $\Delta \chi^2$（+ 適合度指標の総合判断） |
+
+**最も重要な違い**は、SEM では AIC/BIC だけでなく**適合度指標（CFI, RMSEA, SRMR）を併用する**点である。GLMM では全体的なモデル適合度指標（CFI 等）が存在しないため AIC/BIC に依存するが、SEM では $\Delta \chi^2$、$\Delta$CFI、AIC/BIC、理論的妥当性を**総合的に判断**する。また、WLSMV 推定量を使用した場合は AIC/BIC が算出されないため、$\Delta \chi^2$（DIFFTEST）と $\Delta$CFI/$\Delta$RMSEA に基づいて比較する。
+
+SLA 研究で多い「測定不変性の段階的比較」も、$\Delta$CFI ≤ .010 という適合度変化量の基準[@chen2007]を用いるものであり、これは AIC に基づく比較とは異なるアプローチである。ΔCFI ≤ .010 という基準は @chen2007 のシミュレーション研究に基づく。サンプルサイズが小さい場合（$n < 200$）、この基準はやや保守的になりうるため、ΔRMSEA（≤ .015）やΔSRMR（≤ .030）との併用が推奨される。
+
+### 測定不変性（多群比較）
+
+群間（例: 男女、L1背景）で同じ測定モデルが成立するかを検証する。不変性が成立しなければ、群間のスコア比較は意味をなさない[@chen2007; @putnick2016]。
+
+測定不変性の3段階は以下の通りである。**等値不変性**（configural invariance）は各群で同じ因子構造（どの項目がどの因子に属するか）を仮定する。**計量不変性**（metric invariance）はさらに因子負荷量が群間で等しいことを仮定し、潜在変数の意味が群間で共通であることを保証する。**スカラー不変性**（scalar invariance）はさらに切片も群間で等しいことを仮定し、潜在変数の**平均値**を群間で比較する前提条件となる。
+
+多群 CFA では、`cfa()` に以下の引数を追加して段階的な制約を課す:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `group` | `"gender"` | グルーピング変数名。データ内のカテゴリ別に同時推定する |
+| `group.equal` | （なし） | **形態的不変性**（Configural）: 同じ因子構造だが全パラメータ自由 |
+| `group.equal` | `c("loadings")` | **弱不変性**（Metric）: 因子負荷量を群間で等値制約 |
+| `group.equal` | `c("loadings", "intercepts")` | **強不変性**（Scalar）: 負荷量＋切片を等値制約。これが成立すれば潜在平均の群間比較が可能 |
+
+```{r}
+#| label: sem-measurement-invariance
+
+# Create a grouping variable (simulate gender)
+set.seed(2024)
+sem_data$gender <- sample(c("Male", "Female"), n_sem, replace = TRUE)
+
+# Simple CFA model for invariance testing
+inv_model <- '
+  IdealL2   =~ M01 + M02 + M03 + M04 + M05 + M06
+  OughtL2   =~ M07 + M08 + M09 + M10 + M11 + M12
+  LearnExp  =~ M13 + M14 + M15 + M16 + M17 + M18
+'
+
+# Configural → Metric → Scalar invariance
+fit_cfg <- cfa(inv_model, data = sem_data, group = "gender", std.lv = TRUE)
+fit_met <- cfa(inv_model, data = sem_data, group = "gender", std.lv = TRUE,
+               group.equal = c("loadings"))
+fit_scl <- cfa(inv_model, data = sem_data, group = "gender", std.lv = TRUE,
+               group.equal = c("loadings", "intercepts"))
+
+# Model comparison
+anova(fit_cfg, fit_met, fit_scl) |>
+  as_tibble() |>
+  gt() |>
+  tab_header(
+    title = "Measurement Invariance Testing",
+    subtitle = "Configural → Metric → Scalar"
+  ) |>
+  fmt_number(decimals = 3)
+```
+
+測定不変性の結果は、Configural → Metric → Scalar の各段階で適合度の変化量（ΔCFI, ΔRMSEA）を確認して判断する[@chen2007; @putnick2016]。ΔCFI ≤ .010 かつ ΔRMSEA ≤ .015 であれば、その段階の不変性が支持される。Metric（弱）不変性が支持されれば因子の意味が群間で同等であり、Scalar（強）不変性まで支持されれば潜在平均の群間比較が可能になる。不変性が棄却された場合は、修正指標を参照して**部分不変性**（partial invariance）の検証を行い、どの項目の等値制約が不適切かを特定する。
+
+#### 実務ヒント: 識別性と健全性チェック
+
+**モデル識別**（identification）は SEM の成否を左右する基本条件である。モデルが識別されるとは、データからパラメータを一意に推定できることを意味する。
+
+- **t ルール**（必要条件）: 推定するパラメータ数 $t$ が、既知の情報量 $p(p+1)/2$（$p$ は観測変数の数）以下でなければならない。`lavInspect(fit, "npar")` でパラメータ数、`lavInspect(fit, "nobs")` で観測変数数を確認できる。
+- **各因子に最低3つの指標**が望ましい（3-indicator rule）。2つでも推定可能だが、局所的に識別不能になりやすく、モデルが脆弱になる。
+- **スケーリング**: 潜在変数には固有の尺度がないため、(a) 1つの負荷量を1に固定する（marker variable 法）か、(b) 潜在変数の分散を1に固定する（`std.lv = TRUE`）ことで識別する。
+- **Heywood ケース**（分散の負値、標準化負荷 > 1.0）が出たら、指標の見直し・制約追加・サンプル増・推定量変更を検討する。
+- `lavaan::lavInspect(fit, "post.check")` で推定後の健全性を確認できる。
+
+#### 測定不変性の段階
+1. **等値（Configural）**: 同じ因子構造が両群に成立
+2. **計量（Metric）**: 因子負荷量が等しい → 因子の意味が同じ
+3. **スカラー（Scalar）**: 切片も等しい → 潜在平均の群間比較が可能
+- ΔCFI ≤ .010 かつ ΔRMSEA ≤ .015 で不変性が支持される[@chen2007]
+
+#### 発展: ESEM と bifactor モデル
+
+CFA/SEM をさらに発展させた手法として、以下の2つが近年注目されている。
+
+- **ESEM（Exploratory Structural Equation Modeling）**: CFA では各項目を1つの因子にのみ負荷させるが、ESEM ではEFA のように**交差負荷（cross-loading）を自由に推定**しつつ、SEM の枠組みで構造パスの検証も行える[@marsh2014]。CFA で適合度が不良だが理論的に妥当な因子構造がある場合に有効であり、心理尺度研究で活用が広がっている。lavaan では `efa()` ブロックを用いた探索的 SEM として実装可能であり、Mplus でも標準的にサポートされている。
+- **Bifactor モデル**: 全項目に負荷する**一般因子**（general factor）と、項目のサブセットにのみ負荷する**グループ因子**（group factors）を同時に推定するモデルである[@reise2012]。例えば L2 動機づけ尺度では「全般的な動機づけ」という一般因子と「Ideal L2 Self」「Ought-to L2 Self」等のグループ因子を分離できる。McDonald の $\omega_h$（階層的オメガ）は bifactor モデルに基づく信頼性指標であり、一般因子が全分散のどの程度を説明するかを示す。
+
+#### 発展: CB-SEM と PLS-SEM — 2つの SEM アプローチ
+
+本章でこれまで扱ってきた SEM は、含意共分散行列 $\boldsymbol{\Sigma}(\boldsymbol{\theta})$ とデータの共分散行列 $\mathbf{S}$ の差を最小化する**共分散ベース SEM（CB-SEM: Covariance-Based SEM）**である。lavaan や Mplus はこの CB-SEM を実装している。一方、**PLS-SEM（Partial Least Squares SEM）**は異なるアプローチで潜在変数モデルを推定する手法であり、近年 SLA 研究でも注目が高まっている。
+
+**CB-SEM と PLS-SEM の比較**
+
+| 観点 | CB-SEM（lavaan 等） | PLS-SEM（seminr, SmartPLS 等） |
+|------|---------------------|-------------------------------|
+| **推定原理** | 共分散行列の適合最大化 | 潜在変数得点の分散説明最大化 |
+| **目的** | 理論モデルの確認・検定 | 予測・探索 |
+| **分布の仮定** | 多変量正規性（MLR で緩和可能） | 分布自由 |
+| **サンプルサイズ** | 大標本が必要（$N > 200$） | 小標本でも推定可能（$N > 50$） |
+| **適合度指標** | CFI, RMSEA, SRMR 等 | $R^2$, $Q^2$, SRMR |
+| **潜在変数の扱い** | 不確定（因子得点は事後推定） | 確定的（加重合成得点として計算） |
+| **測定モデル** | 反映指標（reflective）が前提 | 反映指標と形成指標（formative）の両方に対応 |
+| **因果仮説の検定** | カイ二乗検定、CI、p値 | ブートストラップ CI |
+
+**PLS-SEM が適している場面**:
+
+- サンプルサイズが小さい（$N < 100$）探索的研究
+- **形成指標（formative indicators）**を扱いたい場合。例えば「SES（社会経済的地位）」は収入・学歴・職業が SES を**構成**するのであり、SES が各指標を**生成**するわけではない。CB-SEM の因子モデル（反映指標）ではこの関係を適切にモデル化できない
+- 予測精度の最大化が目的の場合（$R^2$ の最大化）
+- 正規性の仮定が著しく侵害される場合
+
+**CB-SEM を使うべき場面**（本章の主要内容）:
+
+- 理論モデルの確認・検定（SLA 動機づけ研究の大半はこちら）
+- 適合度指標による包括的なモデル評価が必要な場合
+- 測定不変性（多群比較）の検証
+- 間接効果の統計的検定
+
+SLA 研究では @hair2019 が PLS-SEM の入門書として広く参照されている。R では `seminr` パッケージが PLS-SEM を実装しており、`SmartPLS`（GUI ベース）も利用者が多い。ただし、**SLA の動機づけ研究や尺度開発研究の大半は反映指標モデルであり、理論検証が目的であるため、CB-SEM（lavaan）が第一選択肢となる**。PLS-SEM は、形成指標を含むモデルや小標本の探索的研究など、CB-SEM の仮定を満たさない場面で検討する。
+
+両アプローチの選択に迷った場合は、以下の判断基準が参考になる。
+
+1. **指標が因子の原因か結果か？** → 原因（形成的）なら PLS-SEM、結果（反映的）なら CB-SEM
+2. **目的は予測か検定か？** → 予測なら PLS-SEM、検定なら CB-SEM
+3. **サンプルサイズは十分か？** → $N < 100$ なら PLS-SEM を検討
+4. **適合度検定が必要か？** → 必要なら CB-SEM
+
+### PLS-SEM の R 実装: seminr パッケージ
+
+以下では、先ほどの CB-SEM（lavaan）と同じ動機づけデータを用いて PLS-SEM を実装し、両手法の結果を比較する。`seminr` パッケージは PLS-SEM の標準的な R 実装であり、測定モデルと構造モデルを直感的な構文で定義できる。
+
+::: {.panel-tabset}
+
+#### seminr の基本構文
+
+`seminr` では、測定モデル（`constructs()`）と構造モデル（`relationships()`）を別々に定義し、`estimate_pls()` で推定する。
+
+```{r}
+#| label: pls-sem-estimation
+
+# --- Measurement model (reflective indicators) ---
+# sem_data columns: M01-M18, E1-E3, P1-P3
+pls_mm <- constructs(
+  reflective("IdealL2",   paste0("M", sprintf("%02d", 1:6))),
+  reflective("OughtL2",   paste0("M", sprintf("%02d", 7:12))),
+  reflective("LearnExp",  paste0("M", sprintf("%02d", 13:18))),
+  reflective("Effort",    paste0("E", 1:3)),
+  reflective("Profic",    paste0("P", 1:3))
+)
+
+# --- Structural model ---
+pls_sm <- relationships(
+  paths(from = c("IdealL2", "OughtL2", "LearnExp"), to = "Effort"),
+  paths(from = c("Effort", "IdealL2"),              to = "Profic")
+)
+
+# --- Estimate PLS-SEM ---
+fit_pls <- estimate_pls(
+  data       = sem_data,
+  measurement_model = pls_mm,
+  structural_model  = pls_sm
+)
+
+# Bootstrap for inference (500 resamples)
+boot_pls <- bootstrap_model(fit_pls, nboot = 500, seed = 2024)
+```
+
+`seminr` の構文は直感的で、`reflective()` で反映指標、`composite()` で形成指標（合成指標）を定義できる。`multi_items("M", 1:6)` は `M01`--`M06` に自動展開される。
+
+#### 結果の比較: CB-SEM vs PLS-SEM
+
+```{r}
+#| label: pls-vs-cb-comparison
+
+# --- Extract PLS-SEM path coefficients ---
+boot_summary <- summary(boot_pls)
+pls_paths_mat <- boot_summary$bootstrapped_paths
+pls_paths <- as.data.frame(pls_paths_mat) |>
+  rownames_to_column("Path") |>
+  as_tibble()
+# Use first 3 columns: Original Est., Bootstrap Mean, Bootstrap SD, then CIs
+pls_cols <- names(pls_paths)
+pls_display <- pls_paths |>
+  dplyr::select(Path,
+                Estimate = all_of(pls_cols[2]),
+                CI_lower = all_of(pls_cols[5]),
+                CI_upper = all_of(pls_cols[6]))
+
+# --- Extract CB-SEM path coefficients (standardized) ---
+cb_paths_raw <- parameterEstimates(fit_sem, standardized = TRUE) |>
+  filter(op == "~") |>
+  mutate(Path = paste0(lhs, "  ->  ", rhs)) |>
+  dplyr::select(Path, Estimate = std.all, CI_lower = ci.lower, CI_upper = ci.upper)
+
+# --- Side-by-side comparison ---
+comparison <- bind_rows(
+  pls_display |> mutate(Method = "PLS-SEM"),
+  cb_paths_raw |> mutate(Method = "CB-SEM (lavaan)")
+)
+
+comparison |>
+  dplyr::select(Method, Path, Estimate, CI_lower, CI_upper) |>
+  gt() |>
+  tab_header(
+    title = "Path Coefficient Comparison: CB-SEM vs. PLS-SEM",
+    subtitle = "Same data, same model structure — different estimation approaches"
+  ) |>
+  fmt_number(columns = c(Estimate, CI_lower, CI_upper), decimals = 3) |>
+  tab_style(
+    style = cell_fill(color = "#d1e5f0"),
+    locations = cells_body(rows = Method == "CB-SEM (lavaan)")
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#fddbc7"),
+    locations = cells_body(rows = Method == "PLS-SEM")
+  )
+```
+
+#### PLS-SEM の診断指標
+
+PLS-SEM では、CB-SEM の CFI/RMSEA に代わり、以下の指標でモデルを評価する。
+
+```{r}
+#| label: pls-sem-diagnostics
+
+# Model summary
+pls_summary <- summary(fit_pls)
+
+# Reliability and validity
+rel_mat <- pls_summary$reliability
+rel_tbl <- as.data.frame(rel_mat) |>
+  rownames_to_column("Construct") |>
+  as_tibble()
+
+rel_tbl |>
+  gt() |>
+  tab_header(
+    title = "PLS-SEM: Construct Reliability and Validity",
+    subtitle = "rhoC > .70 and AVE > .50 indicate acceptable measurement quality"
+  ) |>
+  fmt_number(columns = where(is.numeric), decimals = 3)
+```
+
+:::
+
+#### PLS-SEM の主要な診断指標
+
+| 指標 | 基準 | 意味 |
+|------|------|------|
+| **$\rho_C$（複合信頼性）** | > .70 | 構成概念の内的整合性（$\omega$ に類似） |
+| **AVE（平均分散抽出量）** | > .50 | 因子が指標の分散の50%以上を説明 |
+| **$R^2$** | .25 弱, .50 中, .75 強 | 構造モデルの説明力 |
+| **$Q^2$（Stone-Geisser）** | > 0 | 予測的妥当性（blindfolding で算出） |
+| **VIF（分散膨張係数）** | < 5（理想は < 3） | 構成概念間の多重共線性 |
+| **SRMR** | < .08 | モデルの近似的適合度 |
+
+CB-SEM では全体的適合度（CFI, RMSEA）を重視するが、PLS-SEM では**各内生変数の $R^2$** と**測定品質（$\rho_C$, AVE）**を中心に評価する。
+
+上記の比較から、反映指標のみのモデルでは CB-SEM と PLS-SEM のパス係数は概ね類似するが、PLS-SEM のほうが若干大きくなる傾向がある。これは PLS-SEM が測定誤差を完全には分離しないため、パス係数に正のバイアスが生じるからである（consistency at large: サンプルサイズが大きくなれば CB-SEM の推定値に収束する）。**理論検証が目的の場合は CB-SEM を、予測や探索が目的の場合は PLS-SEM を選択する**という原則は、この数理的性質に基づいている。
+
+## 縦断・カテゴリ・距離データへの拡張
+
+### 潜在成長曲線モデル（LGM）
+
+### SEM × 縦断データ: 個人差の変化を捉える
+
+ここまでの SEM は**横断データ**（1時点）を扱ってきた。しかし、英語教育研究や心理言語学研究では**縦断データ**（同一参加者を複数時点で測定）が不可欠である。たとえば「語彙力は学期を通じてどの程度伸びるか」「伸びの速さに個人差はあるか」「動機づけの高さが成長率を予測するか」といった問いは、横断 SEM では回答できない。
+
+SEM の潜在変数の枠組みを時間軸に拡張したのが LGM である。CFA/SEM では潜在変数が「直接観測できない心理特性」を表したのに対し、LGM では潜在変数が「成長の初期値（切片）」と「変化率（傾き）」を表す。
+
+潜在成長曲線モデル（Latent Growth Curve Model; LGM）は、SEM の枠組みで**個人の成長軌跡**をモデリングする手法である[@bollen2006; @duncan2006; @grimm2017; @meredith1990]。直感的には、各個人に線形回帰を当てはめ、その**切片（初期水準）と傾き（成長率）を潜在変数**として扱う。これにより、個人間のばらつき（分散）や予測変数との関係（回帰パス）を同時に推定できる。
+
+#### 最初にここだけ（LGM）
+1. LGM は「個人ごとの変化」を SEM で捉える手法である。
+2. **切片因子**（intercept）= 初期水準の個人差、**傾き因子**（slope）= 成長率の個人差。
+3. lavaan の `growth()` 関数で簡潔に推定できる。
+4. 第13章（時系列分析 / ARIMA）は**集団レベルの時間パターン**を扱う。LGM は**個人レベルの変化**に焦点を当てる。
+
+### 時系列データの基礎概念
+
+LGM に入る前に、縦断データの基本的な性質を確認しておく。本書第13章では ARIMA やベクトル自己回帰（VAR）といった**集団レベルの時系列分析**を扱うが、ここでは LGM に必要な最小限の基礎概念に絞る。
+
+#### 横断データと縦断データの違い
+
+```{r}
+#| label: lgm-cross-vs-long
+#| fig-width: 9
+#| fig-height: 4
+
+# Demonstrate cross-sectional vs longitudinal data
+set.seed(2024)
+n_lgm <- 20  # Number of learners (for illustration)
+
+# Simulate individual growth trajectories
+lgm_demo <- tibble(
+  id = rep(1:n_lgm, each = 4),
+  time = rep(0:3, n_lgm),
+  intercept = rep(rnorm(n_lgm, mean = 50, sd = 8), each = 4),
+  slope = rep(rnorm(n_lgm, mean = 5, sd = 3), each = 4),
+  vocab = intercept + slope * time + rnorm(n_lgm * 4, sd = 3)
+) |>
+  mutate(
+    id = factor(id),
+    semester = factor(time, labels = c("Sem 1", "Sem 2", "Sem 3", "Sem 4"))
+  )
+
+# Panel A: Cross-sectional snapshot (boxplot at each time)
+p_cross <- lgm_demo |>
+  ggplot(aes(x = semester, y = vocab)) +
+  geom_boxplot(fill = "#dee2e6", outlier.alpha = 0.5) +
+  labs(title = "A: Cross-sectional View",
+       subtitle = "Group means hide individual trajectories",
+       x = "Semester", y = "Vocabulary Score")
+
+# Panel B: Longitudinal view (spaghetti plot)
+p_long <- lgm_demo |>
+  ggplot(aes(x = semester, y = vocab, group = id, color = id)) +
+  geom_line(alpha = 0.5) +
+  geom_point(size = 1.5, alpha = 0.6) +
+  labs(title = "B: Longitudinal View",
+       subtitle = "Individual growth trajectories vary",
+       x = "Semester", y = "Vocabulary Score") +
+  theme(legend.position = "none")
+
+library(patchwork)
+p_cross + p_long
+```
+
+横断データ（パネル A）ではグループ平均のみが見え、個人の成長軌跡の多様性は隠されている。縦断データ（パネル B）では「全員が同じ速度で成長しているわけではない」ことが可視化される。教育学的には、この個人差こそが指導法の効果検証や早期介入の根拠となる。
+
+#### 横断データの限界
+パネル A のようにグループ平均だけを見ると「語彙力は学期ごとに上昇する」としか分からない。パネル B のスパゲッティプロットでは、**成長の速い学習者と遅い学習者が混在**していることが明確になる。この「個人差のモデリング」が LGM の核心である。
+
+#### 縦断データに必要な構造
+
+LGM で扱う縦断データには以下の特徴がある[@singer2003; @mcarthur2006]。
+
+| 特徴 | 内容 |
+|---|---|
+| ワイド形式 | 各時点が別の列（`Y1`, `Y2`, `Y3`, `Y4`）になる。lavaan はワイド形式を前提とする |
+| 等間隔 | 時間コーディングは等間隔（0, 1, 2, 3）が基本。不等間隔も可能だがコーディングを調整する |
+| 同一測定 | 各時点で同じ測定ツールを使用（測定不変性の前提） |
+| サンプルサイズ | 目安: 100名以上、時点数は3以上（2時点では傾きの分散が推定不能） |
+
+LGM には最低 3 時点のデータが必要である。2 時点では傾きの分散を推定できず（自由度不足）、成長の個人差を検証できない。4 時点以上あれば二次（曲線的）成長モデルの検討も可能になる。
+
+#### LGM と ARIMA の使い分け（第13章との接続）
+| 観点 | LGM（本章） | ARIMA / VAR（第13章） |
+|---|---|---|
+| 分析単位 | 個人（個人差をモデル化） | 集団 / 単一時系列 |
+| 時点数 | 3〜10 程度（少数時点） | 20 以上（多時点） |
+| データ構造 | N人 × T時点 | 1系列 × T時点（長い） |
+| 関心 | 成長の個人差と予測因子 | 時間的パターン・トレンド・季節性 |
+| SLA の例 | 語彙力の学期別成長 | 発話速度の授業ごと変動 |
+| R パッケージ | lavaan | forecast, tseries |
+
+語彙テストを学期ごと（4時点）に実施 → LGM。授業の音声録音から発話速度を毎回（50時点以上）抽出 → ARIMA。
+
+### LGM の概念的枠組み
+
+#### 線形成長モデルの数式
+
+$T$ 時点で測定された観測変数 $Y_{it}$（個人 $i$、時点 $t$）に対して、線形 LGM は以下の2つのレベルで構成される。
+
+**レベル1（個人内）**: 各個人の変化を記述する
+
+$$Y_{it} = \eta_{0i} + \eta_{1i} \cdot \lambda_t + \varepsilon_{it}$$
+
+ここで $\eta_{0i}$ は個人 $i$ の**切片**（初期水準）、$\eta_{1i}$ は個人 $i$ の**傾き**（成長率）、$\lambda_t$ は時間コーディング（例: 0, 1, 2, 3）、$\varepsilon_{it}$ は時点固有の残差である。
+
+**レベル2（個人間）**: 切片と傾きの個人差を記述する
+
+$$\eta_{0i} = \mu_0 + \zeta_{0i}, \qquad \eta_{1i} = \mu_1 + \zeta_{1i}$$
+
+ここで $\mu_0, \mu_1$ はそれぞれ切片と傾きの**母平均**、$\zeta_{0i}, \zeta_{1i}$ は個人のずれ（偏差）である。
+
+#### SEM の言葉で読む LGM
+LGM は以下の測定モデルとして表現できる。
+
+$$\begin{pmatrix} Y_1 \\ Y_2 \\ Y_3 \\ Y_4 \end{pmatrix} = \begin{pmatrix} 1 & 0 \\ 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{pmatrix} \begin{pmatrix} \eta_0 \\ \eta_1 \end{pmatrix} + \begin{pmatrix} \varepsilon_1 \\ \varepsilon_2 \\ \varepsilon_3 \\ \varepsilon_4 \end{pmatrix}$$
+
+切片因子の負荷量はすべて 1（全時点に等しく影響）、傾き因子の負荷量は時間コーディング（0, 1, 2, 3）に固定される。これは CFA における**因子負荷の固定**と同じ考え方である。
+
+#### パス図
+
+このモデルでは、切片因子（\(\eta_0\)）が全時点 \(Y_1\)〜\(Y_4\) に等しく負荷し、負荷量はすべて 1 に固定されます。傾き因子（\(\eta_1\)）の負荷量は時点に応じて \(0, 1, 2, 3\) と固定され、時間の進行に伴う変化率を表現します。各観測値には対応する残差 \(\varepsilon_1\)〜\(\varepsilon_4\) が割り当てられ、さらに切片因子と傾き因子の共分散を推定することで「初期水準と成長率の関連」を評価します。
+
+### SLA 応用例: 語彙力の縦断的成長
+
+#### データのシミュレーション
+
+日本人 EFL 学習者 300 名を対象に、4学期にわたって語彙サイズテスト（同一テスト）を実施したという設定でデータを生成する。動機づけ（`motivation`）を時間不変の共変量として含め、成長率への影響を検証する。この種の縦断的語彙成長研究は、@zheng2022 が SSLA 誌で L2 研究における LGM の方法論的チュートリアルとして体系化しており、@hiver2020 は複雑系理論の観点から縦断データの分析法を論じている。
+
+語彙力以外にも、読解力（例: @zheng2022 が報告した長期的な読解ストラテジーの発達）、発音精度、作文の複雑さ（syntactic complexity）など、時間経過に伴う変化を示す SLA の現象はすべて LGM の分析対象となりうる。
+
+切片の平均 $55$ は標準的な語彙サイズテスト（例: Vocabulary Levels Test）のスコア範囲を模擬し、傾き平均 $4.5$（各学期4.5点の伸び）は1学期あたりの典型的な語彙成長量に対応する。切片-傾き相関を $.30$ としたのは、初期値が低い学習者ほど成長率が大きいという「追いつき効果」を反映するためである。
+
+```{r}
+#| label: lgm-data-simulation
+
+# --- Simulate longitudinal vocabulary data ---
+set.seed(2024)
+n_lgm_full <- 300
+
+# Time-invariant covariate: motivation (standardized)
+motiv <- rnorm(n_lgm_full)
+
+# Individual intercepts and slopes
+mu_intercept <- 55    # Mean initial vocabulary score
+mu_slope     <- 4.5   # Mean growth per semester
+sigma_int    <- 8     # SD of intercepts
+sigma_slp    <- 3     # SD of slopes
+rho_is       <- 0.3   # Intercept-slope correlation
+
+# Generate correlated intercepts and slopes
+library(MASS)
+Sigma_lgm <- matrix(c(sigma_int^2, rho_is * sigma_int * sigma_slp,
+                       rho_is * sigma_int * sigma_slp, sigma_slp^2), 2, 2)
+eta <- mvrnorm(n_lgm_full, mu = c(0, 0), Sigma = Sigma_lgm)
+
+# Add covariate effects
+intercept_i <- mu_intercept + eta[, 1] + 2.0 * motiv   # Motivation → initial level
+slope_i     <- mu_slope     + eta[, 2] + 1.5 * motiv   # Motivation → growth rate
+
+# Generate observed scores (wide format for lavaan)
+lgm_data <- tibble(
+  id = 1:n_lgm_full,
+  motivation = motiv,
+  vocab_T1 = intercept_i + slope_i * 0 + rnorm(n_lgm_full, sd = 4),
+  vocab_T2 = intercept_i + slope_i * 1 + rnorm(n_lgm_full, sd = 4),
+  vocab_T3 = intercept_i + slope_i * 2 + rnorm(n_lgm_full, sd = 4),
+  vocab_T4 = intercept_i + slope_i * 3 + rnorm(n_lgm_full, sd = 4)
+)
+
+# Quick descriptives
+lgm_data |>
+  dplyr::select(starts_with("vocab")) |>
+  pivot_longer(everything(), names_to = "Time", values_to = "Score") |>
+  group_by(Time) |>
+  summarise(
+    M  = round(mean(Score), 1),
+    SD = round(sd(Score), 1),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Vocabulary Scores across 4 Semesters",
+    subtitle = "Simulated data: N = 300 Japanese EFL learners"
+  )
+```
+
+#### スパゲッティプロット: 個人の成長軌跡
+
+```{r}
+#| label: lgm-spaghetti-plot
+#| fig-width: 8
+#| fig-height: 5
+
+# Spaghetti plot with group mean overlay
+lgm_long <- lgm_data |>
+  dplyr::select(id, motivation, starts_with("vocab")) |>
+  pivot_longer(cols = starts_with("vocab"),
+               names_to = "time_label",
+               values_to = "score") |>
+  mutate(time = as.numeric(gsub("vocab_T", "", time_label)) - 1)
+
+# Randomly sample 50 individuals for visibility
+set.seed(2024)
+sample_ids <- sample(unique(lgm_long$id), 50)
+
+lgm_long |>
+  filter(id %in% sample_ids) |>
+  ggplot(aes(x = time, y = score, group = id)) +
+  geom_line(alpha = 0.25, color = "grey50") +
+  geom_point(alpha = 0.3, size = 1, color = "grey50") +
+  # Group mean trajectory
+  stat_summary(data = lgm_long, aes(group = 1),
+               fun = mean, geom = "line",
+               color = "#c0392b", linewidth = 1.5) +
+  stat_summary(data = lgm_long, aes(group = 1),
+               fun = mean, geom = "point",
+               color = "#c0392b", size = 3) +
+  scale_x_continuous(breaks = 0:3, labels = paste0("T", 1:4)) +
+  labs(title = "Individual Vocabulary Growth Trajectories",
+       subtitle = "Grey = 50 individual trajectories; Red = group mean",
+       x = "Semester", y = "Vocabulary Score")
+```
+
+赤い太線は全体の平均軌跡を、灰色の細線は各個人の成長軌跡を表す。個人間の傾きのばらつき（灰色線の扇形の広がり）が大きいほど、傾きの分散が統計的に有意になりやすい。この図から、初期語彙力が低い学習者は急速に成長し（急な傾き）、高い学習者は緩やかに成長する（緩い傾き）パターンが読み取れる。
+
+#### 無条件成長モデル（Unconditional Growth Model）
+
+まず共変量なしの基本モデル（無条件成長モデル）を推定する。このモデルでは、全参加者に共通の「平均的な成長」（固定効果）と、そこからの個人ごとのずれ（ランダム効果）を分離する。
+
+`lavaan::growth()` は LGM 専用のラッパーで、`sem()` と同じ推定エンジンを内部で使用するが、以下の点が自動設定される:
+
+- 潜在変数の平均（`intercept ~ 1`, `slope ~ 1`）を自動的に推定する
+- 観測変数の切片をゼロに固定する（成長因子が切片を吸収するため）
+- `sem()` でも同じモデルを書けるが、`growth()` を使うとモデル式が簡潔になる
+
+**LGM のモデル式の読み方**: LGM では CFA/SEM と同じ lavaan 構文を使うが、因子負荷を数値で**固定**する点が異なる。
+
+| モデル式 | 意味 |
+|----------|------|
+| `intercept =~ 1*T1 + 1*T2 + 1*T3 + 1*T4` | 全時点の負荷を `1` に固定 → 切片因子は「ベースラインの水準」を表す |
+| `slope =~ 0*T1 + 1*T2 + 2*T3 + 3*T4` | 負荷を `0, 1, 2, 3` に固定 → 傾き因子は「1時点あたりの変化量」を表す |
+| `intercept ~ 1` / `slope ~ 1` | 潜在平均の推定を指定 |
+| `intercept ~~ slope` | 切片と傾きの共分散（初期値が高い人ほど成長が速い/遅いか？） |
+
+出力テーブルの読み方:
+
+| 行の種類 | op 列 | 確認すべき値 |
+|---|---|---|
+| 因子負荷（固定） | `=~` | 値が 1, 0, 1, 2, 3 に固定されているか |
+| 潜在平均 | `~1` | 切片の平均 $\hat{\mu}_0$、傾きの平均 $\hat{\mu}_1$ |
+| 潜在分散・共分散 | `~~` | 切片・傾きの分散が有意か（個人差の存在） |
+
+```{r}
+#| label: lgm-unconditional
+
+# --- Unconditional Linear Growth Model ---
+lgm_uncond <- '
+  # Intercept and slope latent factors
+  intercept =~ 1*vocab_T1 + 1*vocab_T2 + 1*vocab_T3 + 1*vocab_T4
+  slope     =~ 0*vocab_T1 + 1*vocab_T2 + 2*vocab_T3 + 3*vocab_T4
+
+  # Estimate latent means
+  intercept ~ 1
+  slope     ~ 1
+
+  # Estimate latent variances and covariance
+  intercept ~~ intercept
+  slope     ~~ slope
+  intercept ~~ slope
+'
+
+fit_lgm_uncond <- growth(lgm_uncond, data = lgm_data)
+
+# Display unconditional LGM parameter estimates as gt table
+parameterEstimates(fit_lgm_uncond, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "Unconditional LGM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
+```
+
+```{r}
+#| label: lgm-unconditional-fit
+
+# Extract and display fit measures
+fitmeasures(fit_lgm_uncond, c("chisq", "df", "pvalue",
+                               "cfi", "tli", "rmsea",
+                               "rmsea.ci.lower", "rmsea.ci.upper",
+                               "srmr")) |>
+  enframe(name = "Index", value = "Value") |>
+  mutate(Value = round(as.numeric(Value), 3)) |>
+  gt() |>
+  tab_header(title = "Unconditional LGM: Fit Indices")
+```
+
+#### 結果の読み方（無条件モデル）
+- **切片の平均** ($\hat{\mu}_0$): 全参加者の**初期語彙力の平均**。
+- **傾きの平均** ($\hat{\mu}_1$): **1学期あたりの平均成長量**。正の値ならば学期を追うごとに語彙力が向上。
+- **切片の分散** ($\hat{\sigma}^2_0$): 初期水準の**個人差の大きさ**。有意ならば学習者間で出発点が異なる。
+- **傾きの分散** ($\hat{\sigma}^2_1$): 成長率の**個人差の大きさ**。有意ならば「伸びが速い人」と「遅い人」がいる。
+- **切片-傾きの共分散**: 正ならば「初期水準が高い人ほど成長も速い」、負ならば「追いつき効果」。
+
+切片の平均（55.08 付近の値）は Time 1 における語彙サイズの推定平均を、傾きの平均（4.52 付近の値）は各時点間の平均的な語彙成長を表す。傾きの分散が有意であるということは、学習者によって成長速度が異なることを意味する。切片-傾き間の共分散が負の場合は「初期値が低い学習者ほど速く成長する」キャッチアップ効果を示す。
+
+無条件 LGM の構造をパス図で可視化すると、切片因子（intercept）と傾き因子（slope）が4時点の観測変数にどのように接続しているかが一目で理解できる。
+
+```{r}
+#| label: lgm-path-diagram
+#| fig-width: 10
+#| fig-height: 6
+
+semPlot::semPaths(fit_lgm_uncond, whatLabels = "est", layout = "tree2",
+                  rotation = 2, edge.label.cex = 0.8,
+                  sizeMan = 7, sizeLat = 10, nCharNodes = 0,
+                  mar = c(3, 3, 3, 3))
+```
+
+パス図では、Intercept から各時点への固定負荷（全て1）と、Slope からの固定負荷（0, 1, 2, 3）が線形成長を表現している。Intercept と Slope の間の双方向矢印が切片-傾きの共分散を示す。
+
+このパス図は CFA のパス図と構造が似ているが、決定的な違いは因子負荷量が**データから推定される自由パラメータではなく、時間コーディングによる固定値**（0, 1, 2, 3）である点にある。これにより、潜在変数は「成長の初期値」と「成長率」という時間的な意味を持つ。
+
+#### 条件付き成長モデル（Conditional Growth Model）
+
+成長率の個人差が確認されたら、その個人差を予測する共変量を追加する。ここでは**動機づけ**が初期水準と成長率に影響するかを検証する。モデル式は無条件モデルに `intercept ~ motivation` と `slope ~ motivation` を追加するだけでよい。これにより、動機づけが「初期語彙力」と「成長率」の両方を予測するかを同時に検証できる。
+
+```{r}
+#| label: lgm-conditional
+
+# --- Conditional Growth Model: Motivation as predictor ---
+lgm_cond <- '
+  # Measurement model (same as unconditional)
+  intercept =~ 1*vocab_T1 + 1*vocab_T2 + 1*vocab_T3 + 1*vocab_T4
+  slope     =~ 0*vocab_T1 + 1*vocab_T2 + 2*vocab_T3 + 3*vocab_T4
+
+  # Structural model: motivation predicts intercept and slope
+  intercept ~ motivation
+  slope     ~ motivation
+'
+
+fit_lgm_cond <- growth(lgm_cond, data = lgm_data)
+
+# Display conditional LGM parameter estimates as gt table
+parameterEstimates(fit_lgm_cond, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "Conditional LGM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
+```
+
+```{r}
+#| label: lgm-conditional-results
+
+# Display structural paths
+parameterEstimates(fit_lgm_cond) |>
+  filter(op == "~") |>
+  dplyr::select(lhs, rhs, est, se, z, pvalue, ci.lower, ci.upper) |>
+  mutate(across(c(est, se, z, ci.lower, ci.upper), ~round(.x, 3)),
+         pvalue = ifelse(pvalue < .001, "< .001", round(pvalue, 3))) |>
+  gt() |>
+  tab_header(
+    title = "Conditional LGM: Structural Paths",
+    subtitle = "Motivation → Intercept / Slope"
+  ) |>
+  cols_label(
+    lhs = "DV", rhs = "Predictor", est = "B",
+    se = "SE", z = "z", pvalue = "p",
+    ci.lower = "CI Lower", ci.upper = "CI Upper"
+  )
+```
+
+動機づけ → 切片の正の係数は、動機づけが高い学習者ほど初期語彙力も高いことを意味する。動機づけ → 傾きの正の係数は、動機づけが高い学習者ほど成長が速いことを示す。これらの結果は、動機づけが語彙習得の出発点だけでなく成長の加速にも寄与することを示唆しており、早期の動機づけ介入の重要性を裏付ける。
+
+#### 条件付きモデルの解釈
+- **Motivation → Intercept**: 動機づけが高い学習者は、初期の語彙力も高い傾向がある（正の係数の場合）。
+- **Motivation → Slope**: 動機づけが高い学習者は、学期ごとの語彙力の伸びも大きい傾向がある。これは教育的介入の根拠となりうる知見である。
+- $R^2$ の変化量を確認することで、動機づけが成長率の個人差をどの程度説明するかを定量化できる。
+
+#### モデル比較: 無成長 vs 線形成長 vs 二次成長
+
+モデルの妥当性を検証するため、3つの入れ子モデルを比較する。各タブでモデル定義と比較結果を確認する。
+
+::: {.panel-tabset}
+
+##### 無成長モデル
+
+切片因子のみで傾きを含まない。「語彙力は変化しない」という帰無仮説に対応する。
+
+```r
+lgm_no_growth <- '
+  intercept =~ 1*vocab_T1 + 1*vocab_T2 + 1*vocab_T3 + 1*vocab_T4
+  intercept ~ 1
+'
+```
+
+##### 線形成長モデル
+
+切片と傾きの2因子。「語彙力は学期ごとに一定量ずつ変化する」と仮定する。前節で推定済みの無条件モデルがこれに対応する。
+
+```r
+lgm_uncond <- '
+  intercept =~ 1*vocab_T1 + 1*vocab_T2 + 1*vocab_T3 + 1*vocab_T4
+  slope     =~ 0*vocab_T1 + 1*vocab_T2 + 2*vocab_T3 + 3*vocab_T4
+'
+```
+
+##### 二次成長モデル
+
+切片・傾き・二次項の3因子。「成長速度が時間とともに加速・減速する」パターンを許容する。4時点では自由度が非常に少なくなる点に注意。
+
+```r
+lgm_quad <- '
+  intercept =~ 1*vocab_T1 + 1*vocab_T2 + 1*vocab_T3 + 1*vocab_T4
+  slope     =~ 0*vocab_T1 + 1*vocab_T2 + 2*vocab_T3 + 3*vocab_T4
+  quad      =~ 0*vocab_T1 + 1*vocab_T2 + 4*vocab_T3 + 9*vocab_T4
+'
+```
+
+##### モデル比較結果
+
+尤度比検定（$\chi^2$ 差検定）で、モデルの追加パラメータが有意な改善をもたらすかを判定する。$p < .05$ ならばより複雑なモデルが支持される。
+
+```{r}
+#| label: lgm-model-comparison
+
+# --- No-growth model (intercept only) ---
+lgm_no_growth <- '
+  intercept =~ 1*vocab_T1 + 1*vocab_T2 + 1*vocab_T3 + 1*vocab_T4
+  intercept ~ 1
+'
+fit_no_growth <- growth(lgm_no_growth, data = lgm_data)
+
+# --- Quadratic growth model ---
+lgm_quad <- '
+  intercept =~ 1*vocab_T1 + 1*vocab_T2 + 1*vocab_T3 + 1*vocab_T4
+  slope     =~ 0*vocab_T1 + 1*vocab_T2 + 2*vocab_T3 + 3*vocab_T4
+  quad      =~ 0*vocab_T1 + 1*vocab_T2 + 4*vocab_T3 + 9*vocab_T4
+  intercept ~ 1
+  slope     ~ 1
+  quad      ~ 1
+'
+fit_quad <- growth(lgm_quad, data = lgm_data)
+
+# Compare models
+anova(fit_no_growth, fit_lgm_uncond, fit_quad) |>
+  as_tibble() |>
+  gt() |>
+  tab_header(
+    title = "LGM Model Comparison",
+    subtitle = "No-growth vs Linear vs Quadratic"
+  ) |>
+  fmt_number(decimals = 3)
+```
+
+モデル比較結果の読み方: `anova()` の出力では、ネストされたモデル間のカイ二乗差検定が行われる。**カイ二乗差が有意（p < .05）ならば、より複雑なモデルが有意に適合を改善した**と判断する。一般的な解釈の流れ:
+
+1. 無成長 vs 線形: 有意 → 時間経過による変化が存在する
+2. 線形 vs 二次: 有意 → 成長パターンが直線ではなく曲線（加速・減速）を含む
+3. 有意でない場合 → より単純なモデル（節約の原則）を採用する
+
+AIC / BIC が表示される場合は、値が**小さいほど良いモデル**である。
+
+:::
+
+#### 二次成長モデルの注意点
+- 4時点のデータで二次（曲線）モデルを推定すると、自由度が非常に少なくなる。**5時点以上**が望ましい。
+- 二次成長の係数が有意でなければ、線形モデルを採用する（節約の原則）。
+- 二次項を追加する理論的根拠があるか（例: 初期に急成長し後半でプラトー）を事前に検討する。
+
+### 心理言語学応用: 視線計測データの成長モデル
+
+LGM は SLA だけでなく、心理言語学の実験研究にも広く応用される。ここでは**視線計測（eye-tracking）データ**を用いた例を示す[@conklin2018; @godfroid2020; @jegerski2014]。
+
+#### 視線計測の主要指標
+
+視線計測研究では、読解中の認知処理を反映する多様な指標が用いられる。LGM で縦断的な変化を追跡する場合、以下の指標が候補となる。
+
+| 指標 | 英語 | 測定内容 | LGM での用途例 |
+|---|---|---|---|
+| 初回注視時間 | First fixation duration | 最初の注視の長さ | 語彙アクセスの自動化 |
+| 注視時間 | Gaze duration | 関心領域の初回通過時の総注視時間 | 初期処理の効率変化 |
+| 総注視時間 | Total fixation duration | 全注視の合計時間 | 全体的な処理負荷の変化 |
+| 回帰パス時間 | Regression path duration | 回帰を含む初回通過時間 | 統合処理・再分析の変化 |
+| 瞳孔径 | Pupil dilation | 瞳孔サイズの変化 | 認知負荷の変化 |
+
+#### データのシミュレーション
+
+L2 学習者 200 名が 4 回のセッション（4週間間隔）で同じ読解実験に参加し、ターゲット領域（関係代名詞構文）の**注視時間**（gaze duration, ms）を測定したという設定で考える。セッションを重ねるにつれ、処理が自動化し注視時間が短縮されるか（＝学習効果）を検証する。
+
+```{r}
+#| label: lgm-eyetracking-simulation
+
+# --- Simulate eye-tracking longitudinal data ---
+set.seed(2024)
+n_et <- 200
+
+# Proficiency as time-invariant covariate (standardized)
+proficiency <- rnorm(n_et)
+
+# Individual parameters
+# Note: slopes are negative (gaze duration decreases with practice)
+mu_int_et  <- 350   # Mean initial gaze duration (ms)
+mu_slp_et  <- -25   # Mean decrease per session
+sigma_int_et <- 50
+sigma_slp_et <- 15
+rho_et <- -0.2      # Higher initial GD → faster decrease (catch-up)
+
+Sigma_et <- matrix(c(sigma_int_et^2, rho_et * sigma_int_et * sigma_slp_et,
+                      rho_et * sigma_int_et * sigma_slp_et, sigma_slp_et^2), 2, 2)
+eta_et <- mvrnorm(n_et, mu = c(0, 0), Sigma = Sigma_et)
+
+intercept_et <- mu_int_et + eta_et[, 1] + (-20) * proficiency  # Higher proficiency → shorter initial GD
+slope_et     <- mu_slp_et + eta_et[, 2] + (-8) * proficiency   # Higher proficiency → faster decrease
+
+et_data <- tibble(
+  id = 1:n_et,
+  proficiency = proficiency,
+  GD_S1 = intercept_et + slope_et * 0 + rnorm(n_et, sd = 30),
+  GD_S2 = intercept_et + slope_et * 1 + rnorm(n_et, sd = 30),
+  GD_S3 = intercept_et + slope_et * 2 + rnorm(n_et, sd = 30),
+  GD_S4 = intercept_et + slope_et * 3 + rnorm(n_et, sd = 30)
+)
+
+# Descriptives
+et_data |>
+  dplyr::select(starts_with("GD")) |>
+  pivot_longer(everything(), names_to = "Session", values_to = "GD_ms") |>
+  group_by(Session) |>
+  summarise(M = round(mean(GD_ms), 1),
+            SD = round(sd(GD_ms), 1),
+            .groups = "drop") |>
+  gt() |>
+  tab_header(
+    title = "Gaze Duration across 4 Sessions",
+    subtitle = "Simulated data: N = 200 L2 readers, target = relative clauses"
+  )
+```
+
+#### 条件付き LGM: 習熟度が処理の自動化を予測するか
+
+```{r}
+#| label: lgm-eyetracking-model
+
+# --- Conditional LGM for eye-tracking data ---
+lgm_et <- '
+  # Latent growth factors
+  intercept =~ 1*GD_S1 + 1*GD_S2 + 1*GD_S3 + 1*GD_S4
+  slope     =~ 0*GD_S1 + 1*GD_S2 + 2*GD_S3 + 3*GD_S4
+
+  # Proficiency predicts intercept and slope
+  intercept ~ proficiency
+  slope     ~ proficiency
+'
+
+fit_et <- growth(lgm_et, data = et_data)
+
+# Display eye-tracking LGM parameter estimates as gt table
+parameterEstimates(fit_et, standardized = TRUE) |>
+  filter(op %in% c("=~", "~", "~~")) |>
+  dplyr::select(lhs, op, rhs, est, se, z, pvalue, std.all) |>
+  gt() |>
+  tab_header(title = "Eye-tracking LGM: Parameter Estimates") |>
+  fmt_number(columns = c(est, se, z, std.all), decimals = 3) |>
+  fmt_number(columns = pvalue, decimals = 4)
+```
+
+```{r}
+#| label: lgm-eyetracking-results
+
+# Structural paths
+parameterEstimates(fit_et) |>
+  filter(op == "~") |>
+  dplyr::select(lhs, rhs, est, se, z, pvalue) |>
+  mutate(across(c(est, se, z), ~round(.x, 3)),
+         pvalue = ifelse(pvalue < .001, "< .001", round(pvalue, 3))) |>
+  gt() |>
+  tab_header(
+    title = "Eye-tracking LGM: Structural Paths",
+    subtitle = "Proficiency → Initial gaze duration / Rate of decrease"
+  ) |>
+  cols_label(lhs = "DV", rhs = "Predictor", est = "B",
+             se = "SE", z = "z", pvalue = "p")
+```
+
+#### 視線計測 LGM の解釈
+- **傾きの平均が負**: セッションを重ねるごとに注視時間が短縮 → 処理の自動化。
+- **Proficiency → Intercept（負）**: 習熟度が高い学習者は、初回から注視時間が短い。
+- **Proficiency → Slope（負）**: 習熟度が高い学習者は、自動化のペースも速い。
+- 教育的示唆: 多読プログラムなどの介入前後で視線計測データを収集し、LGM で処理効率の変化を追跡できる[@godfroid2020]。
+
+#### 可視化: 習熟度別の成長軌跡
+
+```{r}
+#| label: lgm-eyetracking-trajectories
+#| fig-width: 8
+#| fig-height: 5
+
+# Visualize trajectories by proficiency group
+et_long <- et_data |>
+  mutate(prof_group = case_when(
+    proficiency > 0.5  ~ "High",
+    proficiency < -0.5 ~ "Low",
+    TRUE ~ "Mid"
+  )) |>
+  pivot_longer(cols = starts_with("GD"),
+               names_to = "session_label",
+               values_to = "gaze_duration") |>
+  mutate(session = as.numeric(gsub("GD_S", "", session_label)) - 1,
+         prof_group = factor(prof_group, levels = c("Low", "Mid", "High")))
+
+et_long |>
+  group_by(prof_group, session) |>
+  summarise(M = mean(gaze_duration),
+            SE = sd(gaze_duration) / sqrt(n()),
+            .groups = "drop") |>
+  ggplot(aes(x = session, y = M, color = prof_group, fill = prof_group)) +
+  geom_ribbon(aes(ymin = M - SE, ymax = M + SE), alpha = 0.15, color = NA) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  scale_x_continuous(breaks = 0:3, labels = paste0("S", 1:4)) +
+  scale_color_manual(values = c("Low" = "#e74c3c", "Mid" = "#f39c12", "High" = "#27ae60")) +
+  scale_fill_manual(values = c("Low" = "#e74c3c", "Mid" = "#f39c12", "High" = "#27ae60")) +
+  labs(title = "Gaze Duration Trajectories by Proficiency Group",
+       subtitle = "Ribbon = ± 1 SE; L2 readers processing relative clauses",
+       x = "Session", y = "Gaze Duration (ms)",
+       color = "Proficiency", fill = "Proficiency")
+```
+
+この図は、習熟度グループ（高群・低群）ごとの注視時間の縦断的変化を示す。リボン（帯）は標準誤差の範囲を表し、帯が重ならない区間では群間差が統計的に有意である可能性が高い。高習熟度群は早い段階で注視時間が短くなる（効率的な処理）のに対し、低習熟度群は緩やかに減少する傾向が読み取れる。セッションが進むにつれて両群の軌跡が収束するか乖離するかは、指導効果の持続性を評価する重要な指標となる。
+
+### LGM の発展と注意点
+
+#### LGM を使う際のチェックリスト
+1. **時点数**: 最低3時点（線形）。曲線成長には4時点以上。
+2. **測定不変性**: 各時点で同じ測定ツールを使い、前節の測定不変性検証を行うことが理想。
+3. **欠損データ**: lavaan は FIML（完全情報最尤法）で欠損を自動処理する。`missing = "fiml"` を指定。
+4. **非線形成長**: 二次項の追加、または自由推定（freed loading）で対応可能。
+5. **時変共変量**: 各時点で異なる共変量（例: その学期の学習時間）を追加できる。
+6. **多変量 LGM**: 複数のアウトカム（例: 語彙力と読解力）の成長を同時にモデリングし、成長率の相関を推定する。
+
+#### 発展モデルへのポインタ
+| モデル | 概要 | 参照 |
+|---|---|---|
+| 区分的 LGM | 成長パターンが途中で変化（例: 介入前後で傾きが異なる） | @bollen2006 |
+| 多変量 LGM | 複数アウトカムの並行成長をモデリング | @duncan2006 |
+| 二次 LGM | 曲線的成長パターンのモデリング | @curran2010 |
+| 潜在クラス成長分析（LCGA） | 異質な成長パターンのサブグループを発見 | @vanlissa2023 |
+| ALT モデル（Autoregressive LGM） | 自己回帰効果と成長曲線を統合 | @bollen2006 |
+| LGM + 媒介 | 成長率が別のアウトカムを媒介 | @preacher2008lgm |
+
+これらの発展モデルは、基本的な線形 LGM を理解した上で段階的に学ぶとよい。SLA 応用例は @zheng2022 を参照。
+
+### LGM の報告テンプレート（APA 形式）
+
+```{r}
+#| label: report-lgm
+#| results: asis
+
+# LGM reporting template — unconditional + conditional models
+lgm_fit_uncond <- fitmeasures(fit_lgm_uncond, c("chisq", "df", "pvalue",
+                                                  "cfi", "tli", "rmsea", "srmr"))
+lgm_fit_cond <- fitmeasures(fit_lgm_cond, c("chisq", "df", "pvalue",
+                                              "cfi", "tli", "rmsea", "srmr"))
+
+lgm_paths <- parameterEstimates(fit_lgm_cond) |>
+  filter(op == "~", rhs == "motivation")
+
+lgm_report <- glue::glue(
+  "A latent growth curve model was estimated using lavaan [@rosseel2012] ",
+  "to examine vocabulary growth across four semesters (N = {n_lgm_full}). ",
+  "The unconditional linear growth model showed {ifelse(as.numeric(lgm_fit_uncond['cfi']) > 0.95, 'good', 'adequate')} fit: ",
+  "chi-square({lgm_fit_uncond['df']}) = {round(as.numeric(lgm_fit_uncond['chisq']), 1)}, ",
+  "CFI = {round(as.numeric(lgm_fit_uncond['cfi']), 3)}, ",
+  "TLI = {round(as.numeric(lgm_fit_uncond['tli']), 3)}, ",
+  "RMSEA = {round(as.numeric(lgm_fit_uncond['rmsea']), 3)}, ",
+  "SRMR = {round(as.numeric(lgm_fit_uncond['srmr']), 3)}. ",
+  "Next, a conditional model was estimated by adding motivation as a predictor ",
+  "(CFI = {round(as.numeric(lgm_fit_cond['cfi']), 3)}, ",
+  "RMSEA = {round(as.numeric(lgm_fit_cond['rmsea']), 3)}). ",
+  "Motivation significantly predicted the growth slope ",
+  "(B = {round(lgm_paths$est[lgm_paths$lhs == 'slope'], 2)}, ",
+  "SE = {round(lgm_paths$se[lgm_paths$lhs == 'slope'], 2)}, ",
+  "p {ifelse(lgm_paths$pvalue[lgm_paths$lhs == 'slope'] < .001, '< .001', paste0('= ', round(lgm_paths$pvalue[lgm_paths$lhs == 'slope'], 3)))}), ",
+  "indicating that higher motivation was associated with faster vocabulary growth."
+)
+
+cat(lgm_report)
+```
+
+
+潜在変数モデリングの標準手順は、まずデータ収集後にサンプルを分割し、探索用データで EFA、検証用データで CFA を行う流れです。EFA で得た因子数と負荷パターンを CFA で確認した後、信頼性（\(\omega\) / \(\alpha\)）を評価します。次に SEM で構造パスを検証し、縦断データがある場合は LGM に拡張します。最終的には SEM と LGM の結果を統合して報告します。
+
+#### 同一データで EFA → CFA は禁止
+同じデータで探索と確認を行うと、確認が単なる「再現」になり、検定の意味がなくなる。**サンプルを分割する**（例: 2/3 を EFA、1/3 を CFA）か、**独立した新規サンプル**を使うこと。
+
+#### サンプル分割の実践例
+
+サンプルサイズが十分にある場合（400名以上）、ランダムに2つのサブサンプルに分割して分析する方法が一般的である。
+
+```{r}
+#| label: sample-split-procedure
+#| eval: false
+
+# Example: random split into exploration and confirmation samples
+set.seed(2024)
+n_total <- nrow(full_data)
+idx_explore <- sample(n_total, size = floor(n_total * 0.6))
+idx_confirm <- setdiff(seq_len(n_total), idx_explore)
+
+data_explore <- full_data[idx_explore, ]
+data_confirm <- full_data[idx_confirm, ]
+
+# Step 1: EFA on exploration sample
+fit_efa <- psych::fa(data_explore, nfactors = 3, fm = "ml", rotate = "promax")
+
+# Step 2: CFA on confirmation sample (based on EFA results)
+cfa_model <- '
+  F1 =~ item1 + item2 + item3 + item4
+  F2 =~ item5 + item6 + item7 + item8
+  F3 =~ item9 + item10 + item11 + item12
+'
+fit_cfa <- lavaan::cfa(cfa_model, data = data_confirm, std.lv = TRUE)
+```
+
+サンプルサイズが限られている場合は、**異なる時期に収集したデータ**を探索用と確認用に分ける方法も有効である。また、@plonsky2015 が指摘するように、SLA 研究ではサンプルサイズの制約が大きいため、EFA の段階で理論的根拠を十分に吟味し、CFA への移行を慎重に行うことが重要である。
+
+#### 各段階でやめてよいタイミング
+- **尺度開発の初期段階**: EFA で因子構造を提案して終了でもよい
+- **妥当性検証**: CFA + 信頼性まで
+- **理論検証（因果仮説）**: SEM まで進む
+- **群間比較**: 測定不変性の検証が必須
+
+ここまでは連続変数や Likert 尺度データの潜在構造を扱う手法（PCA・EFA・CFA・SEM・LGM）を学んできた。しかし SLA 研究では、エラータイプ・学習方略・L1背景などの**カテゴリカルデータ**も頻繁に登場する。CA（コレスポンデンス分析）と MCA（多重対応分析）は、こうしたカテゴリカルデータに対して PCA と同様の次元縮約を行い、カテゴリ間の関連構造を低次元空間に可視化する手法である。
+
+### コレスポンデンス分析（CA / MCA）
+
+### コンセプト
+
+コレスポンデンス分析（CA）は、クロス集計表（行カテゴリ × 列カテゴリ）の関係を低次元空間に写像して可視化する手法である[@greenacre2017]。連続変数に対する PCA の役割を、カテゴリカルデータに対して果たす。
+
+ここまでの EFA・CFA・SEM・LGM は連続変数を扱う潜在変数モデルであった。ここからは、カテゴリカルデータ（名義尺度・順序尺度）の関連構造を低次元空間に可視化する手法に転じる。コレスポンデンス分析（CA）はクロス集計表を対象とし、行カテゴリと列カテゴリの関連パターンを 2 次元平面上に布置する。
+
+言語学・SLA 研究では CA が多様な場面で活用されている。@glynn2014 はコーパス意味論の分野で、多義語や類義語の用法パターンをクロス集計表としてまとめ、CA で視覚的に探索する手法を体系的に解説した。この方法により、例えば動詞 *run* の多義的用法がどのような文脈変数と結びつくかを2次元平面上で一望できる。@gries2014 は学習者コーパス研究で MuPDAR（Multifactorial Prediction and Deviation Analysis using Regressions）を提案し、ネイティブ話者と学習者の言語使用偏差を回帰と CA の組み合わせで多角的に分析する枠組みを示した。@levshina2015 は応用言語学者向けの R 統計入門書で、CA と MCA をそれぞれ専用の章で扱い、構文文法やポリセミー研究への適用例を豊富に紹介しており、言語学における CA の標準的な参照文献となっている。
+
+#### 最初にここだけ（CA / MCA）
+1. CA はクロス集計表の入力。行 / 列プロファイルのカイ二乗距離を分解する。R では `FactoMineR::CA()`[@le2008] を使う。
+2. MCA は個票データ（複数カテゴリ変数）の入力。ダミー展開して CA を適用。`FactoMineR::MCA()` が対応[@le2008]。
+3. 慣性（inertia）= $\chi^2 / n$。軸ごとの寄与率で次元数を決める。
+4. まれなカテゴリは結果を不安定にするので併合を検討する。
+
+#### 数学的背景
+
+$r \times c$ のクロス集計表 $\mathbf{N}$ に対し、対応行列 $\mathbf{P} = \mathbf{N} / n$、行質量 $\mathbf{r} = \mathbf{P} \mathbf{1}$、列質量 $\mathbf{c} = \mathbf{P}^\top \mathbf{1}$ とする。CA は次の標準化残差行列を**特異値分解**（SVD: Singular Value Decomposition）する。SVD とは、任意の行列を3つの行列の積 $\mathbf{U} \mathbf{D} \mathbf{V}^\top$ に分解する線形代数の手法であり、PCA の固有値分解を一般化したものと位置づけられる。
+
+$$\mathbf{D}_r^{-1/2} (\mathbf{P} - \mathbf{r} \mathbf{c}^\top) \mathbf{D}_c^{-1/2} = \mathbf{U} \mathbf{D}_\alpha \mathbf{V}^\top$$
+
+この式の直感的な意味は次の通りである。まず $\mathbf{P} - \mathbf{r} \mathbf{c}^\top$ は「期待度数からの偏差」を表す残差行列であり、行・列カテゴリ間に独立性からどれだけのズレがあるかを示す。$\mathbf{D}_r^{-1/2}$ と $\mathbf{D}_c^{-1/2}$ はそれぞれ行と列の質量（周辺頻度）による重み付けであり、頻度の少ないカテゴリにより大きな重みを与えて標準化する役割を果たす。SVD の結果、$\mathbf{U}$ が行カテゴリ（例: L1背景）の座標、$\mathbf{V}$ が列カテゴリ（例: エラータイプ）の座標、$\mathbf{D}_\alpha$ の対角要素（特異値）が各次元の重要度を表す。
+
+得られた座標により、行カテゴリと列カテゴリを同一空間に配置できる。**総慣性**（total inertia）は $\chi^2 / n$ に等しい。慣性は CA における「分散」に相当する概念である。総慣性が大きいほど、行カテゴリと列カテゴリの間に強い関連がある。各次元の慣性の比率（寄与率）は PCA の累積寄与率と同様に解釈でき、第1・第2次元でどの程度の関連構造を捉えられているかを示す。
+
+慣性（inertia）は PCA における分散に相当するが、計算の基礎が異なる。PCA はピアソン相関行列の固有値を用いるのに対し、CA はカイ二乗距離に基づくプロファイル行列の固有値を用いる。したがって、CA の慣性は「期待度数からのずれ（カイ二乗統計量）を行・列の周辺度数で重み付けしたもの」と理解できる。
+
+### CA の例: L1 背景 × エラータイプ
+
+英語学習者のエラーパターンが母語（L1）によってどう異なるかを CA で可視化する。この種の分析は、学習者コーパス研究で広く行われている。@gries2014 は MuPDAR（Multifactorial Prediction and Deviation Analysis using Regressions）を提案し、フランス語/中国語 L1 話者による英語法助動詞の使用偏向を CA と回帰の組み合わせで分析した。CA は、こうしたクロス集計型の中間言語データにおいてカテゴリ間の関連パターンを直感的に把握するための有力なツールである[@greenacre2017]。
+
+学習者コーパス研究では、CA を用いて L1 背景とエラーパターンの関連を探索することが一般的である。例えば、品詞タグの分布と習熟度レベルのクロス集計に CA を適用し、初級者と上級者で異なる品詞使用パターンを 2 次元空間で可視化する研究がある。
+
+クロス集計表の値は、L1転移研究の知見を反映して設定した。日本語にはL1に冠詞体系がないため冠詞エラーを多く（45件）、中国語はトピック卓立言語であるため語順エラーを多く（25件）設定している。スペイン語話者は前置詞・時制の干渉が大きく、アラビア語話者は動詞一致と時制に困難を示す傾向がある（Odlin, 1989; Ringbom, 2007）。
+
+```{r}
+#| label: ca-data-simulation
+
+# Simulate L1 background x Error type cross-tabulation
+set.seed(2024)
+
+# Row profiles differ by L1 (realistic patterns)
+ca_data <- matrix(c(
+  # Article, Preposition, Tense, Agreement, WordOrder
+  45, 30, 25, 15, 10,  # Japanese (article difficulty)
+  35, 25, 20, 20, 25,  # Chinese (word order difficulty)
+  30, 28, 22, 25, 20,  # Korean (similar to Japanese but less article error)
+  15, 35, 30, 25, 18,  # Spanish (preposition/tense difficulty)
+  20, 20, 35, 30, 15   # Arabic (tense/agreement difficulty)
+), nrow = 5, byrow = TRUE)
+
+rownames(ca_data) <- c("Japanese", "Chinese", "Korean", "Spanish", "Arabic")
+colnames(ca_data) <- c("Article", "Preposition", "Tense", "Agreement", "WordOrder")
+
+# Display contingency table
+as.data.frame(ca_data) |>
+  rownames_to_column("L1 Background") |>
+  gt() |>
+  tab_header(
+    title = "Contingency Table: L1 Background × Error Type",
+    subtitle = "Frequency of errors by L1 group (simulated)"
+  ) |>
+  tab_spanner(label = "Error Type", columns = -`L1 Background`)
+```
+
+`FactoMineR::CA()` でクロス集計表を CA に投入する。入力はクロス集計表（行名 = L1 背景、列 = エラータイプ）であり、個票データではない点に注意。`graph = FALSE` で自動プロットを抑制し、`factoextra::fviz_ca_biplot()` で可視化する。バイプロットでは、L1 背景（青三角）とエラータイプ（赤丸）が同じ空間に配置され、近い点同士は関連が強いことを示す。
+
+```{r}
+#| label: ca-analysis
+#| fig-width: 9
+#| fig-height: 7
+
+# Perform CA
+res_ca <- FactoMineR::CA(ca_data, graph = FALSE)
+
+# Biplot
+fviz_ca_biplot(res_ca, repel = TRUE,
+               title = "CA Biplot: L1 Background × Error Type")
+```
+
+バイプロットでは、原点（0, 0）は独立性（行と列が無関係）を表す。原点から離れたカテゴリほど特徴的な分布パターンを持つ。同じ方向にある行カテゴリと列カテゴリは関連が強い — 例えば、Japanese（日本語母語話者）と Article errors（冠詞エラー）が同じ象限にある場合、日本語母語話者に冠詞エラーが多いことを示唆する。
+
+バイプロットの解釈に際しては、以下の点に注目する。
+
+**第1次元（横軸）の解釈**: バイプロットの横軸は最も多くの慣性を説明する次元である。横軸の左端・右端に位置する L1 グループとエラータイプが、この次元を特徴づけている。例えば、Japanese と Article が右側に近接していれば、日本人学習者のエラープロファイルが冠詞エラーに偏っていることを示す。これは日本語に冠詞体系が存在しないという L1 転移の知見と整合する。
+
+**第2次元（縦軸）の解釈**: 第2次元は第1次元では捉えきれない追加的な関連構造を表す。例えば、Spanish と Tense が第2次元の同じ方向にあれば、スペイン語話者は時制エラーにおいて他の L1 グループと異なるプロファイルを持つことを示す。
+
+**原点付近の解釈**: 原点に近い L1 グループやエラータイプは「平均的なプロファイル」を持ち、特徴的な偏りがないことを意味する。Korean が原点付近にあれば、韓国語話者のエラー分布は全体平均に近いことを示す。
+
+#### CA バイプロットの読み方
+- **原点付近**: 平均的なプロファイル。特徴がないことを意味する。
+- **外側のポイント**: その軸への寄与（contribution）が大きく、特徴的。
+- **行点と列点の近接**: 当該 L1 グループと当該エラータイプの結びつきが強い傾向。ただし行点同士の距離は正確に解釈でき、列点同士の距離も正確に解釈できるが、**行点と列点間のユークリッド距離そのものはスケーリングに依存するため厳密に解釈しない**。
+- **対角位置**: 原点を挟んで反対側に位置する行カテゴリと列カテゴリは、**負の関連**（その L1 グループはそのエラータイプが相対的に少ない）を示す。
+- **cos²（表現品質）**: 各点の cos² が高いほど、その次元での位置が信頼できる。cos² が低い点は、表示されている2次元平面では十分に表現されていない。
+
+```{r}
+#| label: ca-eigenvalues
+
+# Eigenvalues and inertia
+ca_eig <- as_tibble(res_ca$eig) |>
+  mutate(Dimension = row_number()) |>
+  dplyr::select(Dimension, everything())
+
+ca_eig |>
+  gt() |>
+  tab_header(title = "CA Eigenvalues and Inertia", subtitle = "Decomposition of total inertia") |>
+  fmt_number(columns = -Dimension, decimals = 3) |>
+  cols_label(
+    Dimension = "Dim", eigenvalue = "Eigenvalue",
+    `percentage of variance` = "% Inertia",
+    `cumulative percentage of variance` = "Cumulative %"
+  ) |>
+  tab_footnote(
+    footnote = "Total inertia = chi-square / n",
+    locations = cells_column_labels(columns = eigenvalue)
+  )
+```
+
+固有値テーブルでは、各次元の慣性（eigenvalue）と累積寄与率（cumulative %）を確認する。第1・第2次元の累積寄与率が総慣性の70%以上を説明していれば、2次元のバイプロットで行・列カテゴリ間の関連構造を十分に捉えられていると判断できる[@greenacre2017]。寄与率が低い場合は、第3次元以降も検討するか、まれなカテゴリの併合を検討する。
+
+第1次元と第2次元の累積寄与率が 70% を超えているかどうかが、2次元でのバイプロットが十分にデータを表現しているかの目安となる。70% 未満の場合は第3次元以降の検討が必要であり、バイプロットだけで結論を出すべきではない。
+
+```{r}
+#| label: ca-cos2-contrib
+
+# Row cos2 (quality of representation)
+row_cos2 <- as_tibble(res_ca$row$cos2[, 1:2], rownames = "Category") |>
+  rename(cos2_Dim1 = `Dim 1`, cos2_Dim2 = `Dim 2`)
+
+row_cos2 |>
+  gt() |>
+  tab_header(title = "Row cos²", subtitle = "Quality of representation on Dim 1 / Dim 2") |>
+  fmt_number(columns = c(cos2_Dim1, cos2_Dim2), decimals = 3)
+
+# Column contributions
+col_contrib <- as_tibble(res_ca$col$contrib[, 1:2], rownames = "Error Type") |>
+  rename(Contrib_Dim1 = `Dim 1`, Contrib_Dim2 = `Dim 2`)
+
+col_contrib |>
+  gt() |>
+  tab_header(title = "Column Contributions", subtitle = "Contribution to Dim 1 / Dim 2 (%)") |>
+  fmt_number(columns = c(Contrib_Dim1, Contrib_Dim2), decimals = 2)
+```
+
+#### 寄与率と $\cos^2$ の違い（CA）
+- **寄与率**: 各点が「その次元の形成」にどれだけ寄与したか（次元側の説明）。次元ごとに合計 100%。
+- **$\cos^2$**: 各点が「その平面でどれだけ再現されているか」（点側の品質）。1 に近いほど信頼できる。
+- 手順: 寄与率で軸の主要因を把握 → $\cos^2$ で信頼できる点のみ解釈。
+
+#### $\cos^2$ ヒートマップ
+
+```{r}
+#| label: ca-cos2-heatmap
+#| fig-width: 7
+#| fig-height: 5
+
+row_cos2_long <- as_tibble(res_ca$row$cos2[, 1:2], rownames = "Category") |>
+  pivot_longer(cols = c(`Dim 1`, `Dim 2`), names_to = "Dim", values_to = "cos2")
+
+ggplot(row_cos2_long, aes(Dim, Category, fill = cos2)) +
+  geom_tile() +
+  geom_text(aes(label = round(cos2, 3)), size = 3.5) +
+  scale_fill_gradient(low = "white", high = "#2b8cbe") +
+  labs(title = "Row cos² Heatmap", subtitle = "Quality of representation by L1 group", fill = "Cos2")
+```
+
+行カテゴリの $\cos^2$ ヒートマップは、各 L1 背景が 2 次元空間上でどの程度正確に表現されているかを示す。$\cos^2$ が高い（濃い色の）カテゴリは、バイプロット上の位置を信頼して解釈できる。$\cos^2$ が低いカテゴリは、第 3 次元以降に情報が分散しているため、バイプロットだけでは不十分な表現にとどまっている。
+
+#### 列カテゴリの $\cos^2$ ヒートマップ
+
+```{r}
+#| label: ca-col-cos2-heatmap
+#| fig-width: 7
+#| fig-height: 5
+
+col_cos2_long <- as_tibble(res_ca$col$cos2[, 1:2], rownames = "ErrorType") |>
+  pivot_longer(cols = c(`Dim 1`, `Dim 2`), names_to = "Dim", values_to = "cos2")
+
+ggplot(col_cos2_long, aes(Dim, ErrorType, fill = cos2)) +
+  geom_tile() +
+  geom_text(aes(label = round(cos2, 3)), size = 3.5) +
+  scale_fill_gradient(low = "white", high = "#e6550d") +
+  labs(title = "Column cos² Heatmap", subtitle = "Quality of representation by error type", fill = "Cos2")
+```
+
+cos² が高い（濃い青の）カテゴリは、この 2 次元空間で十分に表現されており、バイプロット上の位置を信頼して解釈できる。cos² が低い（淡い色の）カテゴリは、表示されていない第3次元以降に情報が分散しているため、バイプロット上の位置だけでは不十分である。
+
+#### CA バイプロット（tidyverse 版）
+
+```{r}
+#| label: ca-biplot-tidyverse
+#| fig-width: 9
+#| fig-height: 7
+
+row_coords <- as_tibble(res_ca$row$coord, rownames = "Category")
+col_coords <- as_tibble(res_ca$col$coord, rownames = "Category")
+
+ggplot() +
+  geom_point(data = row_coords, aes(`Dim 1`, `Dim 2`), color = "blue", size = 4, shape = 17) +
+  geom_text(data = row_coords, aes(`Dim 1`, `Dim 2`, label = Category),
+            vjust = -1.5, color = "blue", size = 4) +
+  geom_point(data = col_coords, aes(`Dim 1`, `Dim 2`), color = "red", size = 4, shape = 16) +
+  geom_text(data = col_coords, aes(`Dim 1`, `Dim 2`, label = Category),
+            vjust = -1.5, color = "red", size = 4) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.5) +
+  labs(
+    title = "CA Biplot (tidyverse)",
+    subtitle = "Blue triangles: L1 groups; Red circles: Error types",
+    x = paste0("Dim 1 (", round(res_ca$eig[1, 2], 1), "%)"),
+    y = paste0("Dim 2 (", round(res_ca$eig[2, 2], 1), "%)")
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+ただし、バイプロット上の行点（L1背景）と列点（エラータイプ）の間の距離を直接的な類似度として解釈してはならない。行点間の距離と列点間の距離はそれぞれ解釈可能だが、行-列間の距離はカイ二乗距離の近似にすぎない。「近いから関連がある」という解釈は、同じ象限にあるかどうかを主な根拠とすべきである（@greenacre2017）。
+
+### MCA（多重対応分析）の例
+
+個票データ（複数のカテゴリカル変数）に対しては、MCA（多重対応分析）を用いる。MCA は指標行列（ダミー展開: 各カテゴリを 0/1 の列に変換）に CA を適用したものと解釈できる。
+
+MCA は CA を個票データに拡張した手法である。CA がクロス集計表（集約済みデータ）を入力とするのに対し、MCA は個人ごとの回答パターン（指示行列または Burt 行列）を直接分析する。これにより、各回答者を低次元空間に布置し、回答パターンの類似した個人がどのようにクラスタを形成するかを可視化できる。
+
+言語研究における MCA の応用は多岐にわたる。例えば、学習者コーパス研究では**品詞タグ分布×習熟度レベル×L1背景**のような多元カテゴリカルデータを MCA で探索し、習熟度の異なる学習者がどのような言語パターンを示すかを一望できる。構文研究では、**関係節のタイプ（主格・目的格・所有格）×動詞の種類×学習者の L1**をコーディングし、L1 や構文タイプの組み合わせが多次元空間でどのように布置されるかを視覚化できる。@levshina2015 は構文文法やポリセミー研究での MCA の活用を詳しく論じており、応用言語学における標準的な参照文献である。また、言語テスト研究では、**受験者の解答パターン（正答・誤答・無回答）×問題特性（難易度・弁別力カテゴリ）**を MCA で分析することで、テスト項目と受験者集団の関係を同時に可視化できる。
+
+SLA 研究では、学習者の背景変数（L1、学習環境、動機づけタイプ）が複数のカテゴリ変数として収集されることが多い。MCA はこれらのカテゴリ変数間の関連パターンを探索的に把握するのに適している。例えば、@levshina2015 は構文選択の規定因子をMCA で探索し、文脈変数とL1背景が構文使用にどのように関連するかを可視化した。
+
+カテゴリの出現確率は日本の EFL 環境を反映した設定である。学習コンテキストは教室内が最多（50%）、自習が35%、海外が15%とした。
+
+```{r}
+#| label: mca-data-simulation
+
+# Simulate learner strategy questionnaire
+set.seed(2024)
+n_mca <- 200
+
+df_mca <- data.frame(
+  Context   = sample(c("Classroom", "Self-study", "Abroad"), n_mca, replace = TRUE,
+                     prob = c(0.5, 0.35, 0.15)),
+  Modality  = sample(c("Reading", "Listening", "Speaking", "Writing"), n_mca, replace = TRUE),
+  Frequency = sample(c("Daily", "Weekly", "Monthly"), n_mca, replace = TRUE,
+                     prob = c(0.3, 0.5, 0.2)),
+  Efficacy  = sample(c("High", "Medium", "Low"), n_mca, replace = TRUE,
+                     prob = c(0.25, 0.5, 0.25))
+)
+```
+
+`FactoMineR::MCA()` で MCA を実行する。CA との違いは、入力がクロス集計表ではなく**個票データ**（各行が1人の学習者、各列がカテゴリカル変数）である点である。内部的にはダミー変数に展開してから CA を適用する。`graph = FALSE` で自動プロットを抑制する。バイプロットでは、個体（学習者）が点として、変数カテゴリ（例: "Classroom", "Daily", "High"）がラベルとして配置される。近くにある個体とカテゴリは互いに関連が強い。
+
+```{r}
+#| label: mca-analysis
+#| fig-width: 10
+#| fig-height: 8
+
+# Perform MCA
+res_mca <- FactoMineR::MCA(df_mca, graph = FALSE)
+
+# Biplot
+fviz_mca_biplot(res_mca, repel = TRUE,
+                title = "MCA Biplot: Learner Strategy Questionnaire")
+```
+
+MCA バイプロットでは、点（個人）とラベル（カテゴリ）の位置関係が重要である。ある個人がカテゴリラベルの近くに位置する場合、その個人はそのカテゴリを選択する確率が高い。また、複数のカテゴリラベルが同じ方向に集まっている場合、それらのカテゴリを同時に選択する傾向があることを示す。
+
+```{r}
+#| label: mca-eigenvalues
+
+# MCA eigenvalues
+mca_eig <- as_tibble(res_mca$eig) |>
+  mutate(Dimension = row_number()) |>
+  dplyr::select(Dimension, everything()) |>
+  slice(1:6)
+
+mca_eig |>
+  gt() |>
+  tab_header(title = "MCA Eigenvalues and Inertia", subtitle = "Top 6 dimensions") |>
+  fmt_number(columns = -Dimension, decimals = 3) |>
+  cols_label(
+    Dimension = "Dim", eigenvalue = "Eigenvalue",
+    `percentage of variance` = "% Inertia",
+    `cumulative percentage of variance` = "Cumulative %"
+  ) |>
+  tab_footnote(
+    footnote = "MCA typically requires more dimensions than CA due to many categories",
+    locations = cells_column_labels(columns = `cumulative percentage of variance`)
+  )
+```
+
+MCA は CA よりも多くの次元を必要とする傾向がある。これは、指示行列のダミーコーディングにより固有値が分散するためである。@greenacre2017 は、平均以上の固有値のみを解釈対象とする修正基準を提案している。
+
+```{r}
+#| label: mca-variable-plot
+#| fig-width: 9
+#| fig-height: 7
+
+# Variable categories plot colored by contribution
+fviz_mca_var(res_mca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             title = "MCA Variable Categories (colored by contribution)")
+```
+
+#### MCA のポイント
+- 個票データの各変数をダミー展開（指標行列）し、CA の枠組みで分解する。
+- 次元数は CA より多く必要なことが多い（カテゴリ数が増えるほど）。
+- まれなカテゴリ（度数が全体の 5% 未満）は結果を不安定にするため、隣接カテゴリとの併合を検討する。
+- Greenacre の修正慣性を用いると、次元の説明率がより適切に評価される。
+
+MCA のバイプロットでは、**同じ変数の異なるカテゴリが離れているほど、その変数が学習者のプロファイルを弁別する力が強い**ことを意味する。例えば、Context 変数の "Classroom" と "Abroad" が第1次元上で大きく離れていれば、学習コンテキストが学習者プロファイルの主要な差異化要因であることを示す。一方、同じ変数のカテゴリが近接していれば、その変数は学習者の弁別にあまり寄与していない。
+
+色で表現された寄与率（contribution）は、各カテゴリが次元の慣性にどれだけ貢献しているかを示す。暖色（赤・黄）のカテゴリが次元を定義する主要な要素であり、寒色（青）のカテゴリは次元への寄与が小さい。原点付近の低寄与カテゴリは、その次元では特徴的でないことを意味する。
+
+なお、MCA は CA と異なり、累積慣性が低くなる傾向がある（変数×カテゴリ数の増加に伴い次元数が増える）。累積寄与率が50%程度でも2次元の解釈は有用な場合が多く、Greenacre の修正慣性を用いると、より適切な寄与率が得られる。
+
+#### MCA 個体プロット（グループ別）
+
+```{r}
+#| label: mca-individual-plot
+#| fig-width: 10
+#| fig-height: 8
+
+# Individual plot colored by learning context
+fviz_mca_ind(res_mca,
+             col.ind = df_mca$Context,
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE,
+             ellipse.type = "confidence",
+             legend.title = "Learning Context",
+             repel = TRUE,
+             title = "MCA: Individuals by Learning Context")
+```
+
+個人プロットでは、各回答者が MCA 空間上に点として布置される。楕円は学習環境グループ（教室学習・自主学習・海外経験）ごとの 95% 信頼楕円であり、楕円が重ならない場合はグループ間で回答パターンが異なることを示唆する。同じ楕円内に密集する個人は類似した回答パターンを持ち、楕円の外側に位置する個人は当該グループの典型的なパターンから逸脱している。
+
+#### MCA バイプロット（tidyverse 版）
+
+```{r}
+#| label: mca-biplot-tidyverse
+#| fig-width: 10
+#| fig-height: 8
+
+# Extract coordinates
+ind_coords_mca <- as_tibble(res_mca$ind$coord[, 1:2]) |>
+  mutate(Context = df_mca$Context)
+
+var_coords_mca <- as_tibble(res_mca$var$coord[, 1:2], rownames = "Category")
+
+ggplot() +
+  geom_point(data = ind_coords_mca,
+             aes(`Dim 1`, `Dim 2`, color = Context),
+             alpha = 0.4, size = 2) +
+  geom_point(data = var_coords_mca,
+             aes(`Dim 1`, `Dim 2`),
+             color = "black", size = 3, shape = 15) +
+  geom_text(data = var_coords_mca,
+            aes(`Dim 1`, `Dim 2`, label = Category),
+            vjust = -1, size = 3) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+  geom_vline(xintercept = 0, linetype = "dashed", alpha = 0.5) +
+  labs(
+    title = "MCA Biplot (tidyverse)",
+    subtitle = "Points: individuals; Squares: variable categories",
+    x = paste0("Dim 1 (", round(res_mca$eig[1, 2], 1), "%)"),
+    y = paste0("Dim 2 (", round(res_mca$eig[2, 2], 1), "%)")
+  ) +
+  scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07")) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+#### CA / MCA の解釈の注意
+- 行点と列点の「ユークリッド距離」を直接解釈してはならない。スケーリング（対称 / 非対称）に依存する。
+- $\cos^2$ が低い点は、この平面上での表現が不十分であり、位置の解釈は控えめにする。
+- 外れ的なカテゴリ（非常にまれな回答）が全体の構造を歪めることがある。外れ的なカテゴリ（低頻度カテゴリ）がバイプロットの構造を歪める場合は、低頻度カテゴリを隣接カテゴリに統合するか、補助変数として投影する（分析には含めず可視化のみ行う）方法がある。
+
+CA/MCA はカテゴリカルデータのカイ二乗距離に基づく可視化であった。次に学ぶ**多次元尺度法（MDS）**は、任意の距離・類似度行列を入力として低次元空間に配置する、より汎用的な次元縮約手法である。音声知覚の類似度判断や語彙の意味的距離など、SLA/心理言語学で「対象間の距離」がデータとして得られる場面で広く用いられる。
+
+### 多次元尺度法（MDS）
+
+### コンセプト
+
+CA/MCA がカテゴリカル変数間の関連構造を可視化したのに対し、MDS は「距離」または「類似度」データを入力として、対象間の関係を低次元空間に再現する。入力データの形式が根本的に異なる点が MDS の特徴である。
+
+多次元尺度法（MDS）は、対象間の距離や類似度を入力として、低次元の座標空間に配置する手法である[@borg2005]。PCA が共分散 / 相関構造を入力とするのに対し、MDS は**距離行列**を直接扱う点が特徴的である。心理言語学では、@iverson1995 が MDS を用いて母音知覚における「知覚マグネット効果」を可視化し、カテゴリプロトタイプ付近で知覚空間が圧縮される現象を示した。また @foxflege1995 は、英語/スペイン語バイリンガルの母音知覚空間を MDS で再構成し、L2 習熟度に応じた知覚カテゴリの再編を実証した。言語類型論では @croft2008 が MDS を不定代名詞の意味地図や時制・アスペクトの類型分析に適用し、言語普遍性の幾何学的推論に道を開いた。
+
+#### 最初にここだけ（MDS）
+1. 計量 MDS: 距離そのものを再現する（固有値ベース）
+2. 非計量 MDS: 距離の順位のみ保つ（外れ値やスケールに頑健）
+3. ストレス（stress）で適合度を評価。< 0.10 で良好[@kruskal1964]
+4. 距離の選択（ユークリッド、マンハッタン、相関距離など）が結果に大きく影響する
+
+SLA データに対して計量 MDS と非計量 MDS のどちらを選ぶかは入力データの性質による。音響測定値（F1, F2 のヘルツ値）のように比率尺度のデータには計量 MDS が、類似度評定（Likert スケール）のように順序尺度のデータには非計量 MDS が適している。
+
+#### 計量 MDS vs 非計量 MDS
+
+- **計量 MDS（classical MDS）**: 距離行列を**二重中心化**（double centering）し、固有値分解で座標を得る。二重中心化とは、距離の二乗行列の各要素から行平均・列平均を引き、全体平均を加える操作であり、これにより距離行列を内積行列（Gram 行列）に変換できる。この変換後に固有値分解を行うことで座標が得られる。PCA と数学的に等価（入力がユークリッド距離の場合）。
+- **非計量 MDS（ordinal MDS）**: 距離の順位情報のみ保持する。反復最適化でストレスを最小化[@kruskal1964]。R では `smacof` パッケージが代表的[@deleeuw2009]。外れ値やスケールの不確かさに頑健。
+
+@foxflege1995 は、英語母語話者と非母語話者の母音知覚空間を MDS で比較し、L1 の音韻カテゴリが L2 知覚空間を歪めることを示した。この知見は後続の Speech Learning Model（@flege1995）の実証的根拠となり、L2 音声習得研究における MDS の有用性を確立した。
+
+#### 距離の基本
+- **ユークリッド距離**: $d(x, y) = \sqrt{\sum_j (x_j - y_j)^2}$。スケールの影響大 → 標準化推奨。
+- **マンハッタン距離**: $\sum_j |x_j - y_j|$。外れ値にやや頑健。
+- **相関距離**: $1 - r_{xy}$。方向の類似性重視。スケール差を無視したいときに有効。
+- **マハラノビス距離**: $\sqrt{(x-y)^\top \Sigma^{-1} (x-y)}$。共分散構造を補正した距離。
+
+マハラノビス距離はユークリッド距離と異なり、変数間の共分散構造を考慮する。例えば、F1 と F2 が強く相関する母音空間では、ユークリッド距離は相関の方向に沿った差を過大評価してしまう。マハラノビス距離はこの歪みを補正し、変数間の相関を考慮した「標準化された」距離を返す。
+
+### SLA データ例: 英語母音の知覚類似度
+
+日本人英語学習者が10個の英語母音ペアの「聞き取りやすさの類似度」を評定した非類似度行列をシミュレーションする。L2 母音知覚の MDS 研究は、@flege1999 のイタリア語話者による英語母音知覚・産出研究や、@foxflege1995 のスペイン語-英語バイリンガルの知覚空間分析に端を発する。これらの研究は、L1 の母音カテゴリ構造が L2 知覚空間をどのように制約するかを MDS で視覚的に示した。@iverson1995 の知覚マグネット効果の研究も、MDS が音声知覚研究で果たす役割を象徴的に示している。
+
+母音の座標は IPA の母音チャートにおける F1（開口度）-F2（前後位置）空間をおおまかに反映した設定である。第1次元は前舌-後舌、第2次元は高さに対応し、/iː/ を高前舌、/ɑː/ を低後舌に配置している。ノイズの標準偏差 $.30$ は、日本人学習者が L1 に存在しない母音対立（特に /ɪ/-/iː/ や /l/-/ɹ/）の弁別に困難を示すことを模擬するための設定である。
+
+```{r}
+#| label: mds-data-simulation
+
+# Simulate vowel dissimilarity matrix (10 English vowels)
+set.seed(2024)
+vowels <- c("/iː/", "/ɪ/", "/eɪ/", "/ɛ/", "/æ/",
+            "/ɑː/", "/ɔː/", "/oʊ/", "/ʊ/", "/uː/")
+
+# Create a realistic dissimilarity matrix based on vowel space
+# Front vowels cluster, back vowels cluster
+coords_true <- matrix(c(
+  2.0, 3.0,  # /iː/ (high front)
+  1.8, 2.5,  # /ɪ/  (high front, lax)
+  1.5, 2.0,  # /eɪ/ (mid front)
+  1.2, 1.5,  # /ɛ/  (mid front, lax)
+  0.8, 1.0,  # /æ/  (low front)
+  0.5, 0.5,  # /ɑː/ (low back)
+  -0.5, 1.0, # /ɔː/ (mid back)
+  -1.0, 2.0, # /oʊ/ (mid back)
+  -1.5, 2.8, # /ʊ/  (high back, lax)
+  -1.8, 3.2  # /uː/ (high back)
+), ncol = 2, byrow = TRUE)
+
+# Add noise to simulate perceptual judgments
+dist_mat_vowel <- as.matrix(dist(coords_true)) + matrix(abs(rnorm(100, sd = 0.3)), 10, 10)
+dist_mat_vowel <- (dist_mat_vowel + t(dist_mat_vowel)) / 2  # Symmetrize
+diag(dist_mat_vowel) <- 0
+rownames(dist_mat_vowel) <- vowels
+colnames(dist_mat_vowel) <- vowels
+
+dist_obj <- as.dist(dist_mat_vowel)
+```
+
+### 計量 MDS（Classical MDS）
+
+```{r}
+#| label: mds-classical
+#| fig-width: 8
+#| fig-height: 7
+
+# Classical MDS
+fit_cmd <- cmdscale(dist_obj, k = 2, eig = TRUE)
+
+cmd_df <- as_tibble(fit_cmd$points) |>
+  setNames(c("Dim1", "Dim2")) |>
+  mutate(Vowel = vowels)
+
+# Eigenvalues
+cmd_eig_df <- tibble(
+  Dimension = seq_along(fit_cmd$eig),
+  Eigenvalue = fit_cmd$eig
+) |>
+  slice(1:10)
+
+cmd_eig_df |>
+  gt() |>
+  tab_header(title = "Classical MDS Eigenvalues", subtitle = "English vowel dissimilarity") |>
+  fmt_number(columns = Eigenvalue, decimals = 3) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(columns = Eigenvalue, rows = Eigenvalue > 0)
+  ) |>
+  tab_footnote(
+    footnote = "Negative eigenvalues indicate non-Euclidean distances",
+    locations = cells_column_labels(columns = Eigenvalue)
+  )
+
+# Visualization
+ggplot(cmd_df, aes(Dim1, Dim2, label = Vowel)) +
+  geom_point(size = 4, color = "#1f77b4") +
+  geom_text(vjust = -1.2, size = 4) +
+  labs(
+    title = "Classical MDS: English Vowel Perceptual Space",
+    subtitle = "2D representation of dissimilarity judgments by Japanese learners",
+    x = "Dimension 1 (Front-Back)", y = "Dimension 2 (Height)"
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+2次元 MDS 空間の配置は、母音の音響空間（F1-F2 平面）をよく再現している。/iː/ と /ɪ/ が近接しているのは、日本語母語話者にとって弁別が困難な母音ペアであることを反映しており、知覚同化モデル（Perceptual Assimilation Model; @best1995）の予測と一致する。
+
+#### Classical MDS の注意
+- 負の固有値は非ユークリッド距離の兆候。前処理のスケーリングや距離の選択を検討する。
+- 2次元で分離が不十分なら3次元も候補。解釈可能性とのトレードオフを考える。
+
+### 非計量 MDS（Non-metric MDS）
+
+非計量 MDS は距離の**順位のみ**を保存する。`smacof::mds()` の主要引数:
+
+| 引数 | 設定値 | 意味 |
+|------|--------|------|
+| `type` | `"ordinal"` | **非計量 MDS**。距離の大小順序のみを保存する。知覚データのように距離の絶対値に意味がない場合に適切 |
+| `type` | `"ratio"` | 計量 MDS。距離の比率関係を保存。物理的距離データ向け |
+| `type` | `"interval"` | 距離の間隔関係を保存。ratio と ordinal の中間 |
+| `ndim` | `2`（既定） | 埋め込み次元数。後述のストレス分析で最適次元を判断する |
+
+```{r}
+#| label: mds-nonmetric
+#| fig-width: 8
+#| fig-height: 7
+
+# Non-metric MDS using smacof
+fit_nmds <- smacof::mds(dist_obj, type = "ordinal")
+
+mds_df <- as_tibble(fit_nmds$conf) |>
+  setNames(c("Dim1", "Dim2")) |>
+  mutate(Vowel = vowels)
+
+# Visualization
+ggplot(mds_df, aes(Dim1, Dim2, label = Vowel)) +
+  geom_point(size = 4, color = "#d62728") +
+  geom_text(vjust = -1.2, size = 4) +
+  labs(
+    title = "Non-metric MDS: English Vowel Perceptual Space",
+    subtitle = paste("Stress =", round(fit_nmds$stress, 3)),
+    x = "Dimension 1", y = "Dimension 2"
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+図のサブタイトルにストレス値が表示される。図中の母音配置を見ると、前舌母音（/iː/, /ɪ/, /eɪ/ 等）と後舌母音（/uː/, /ʊ/, /oʊ/ 等）が左右に分離し、高低（/iː/ vs /æ/）が上下に展開されることが期待される。日本人学習者の知覚空間では /l/-/r/ と同様に /ɪ/-/iː/ の弁別が困難なため、これらの母音が近接する可能性がある。
+
+非計量 MDS は距離の順序関係のみを保存するため、順序尺度の類似度データ（例: 「非常に似ている」〜「全く似ていない」の 7 件法評定）に適している。計量 MDS が比率尺度の距離を仮定するのに対し、非計量 MDS はより緩い仮定で同様の空間配置を得られる。
+
+### ストレスの解釈
+
+ストレス（stress）は MDS の適合度を示す中心的な指標であり、「元の距離行列と MDS による再構成距離との乖離度」を測定する。直感的には、**高次元の距離関係を低次元に押し込んだときの歪みの大きさ**である。ストレスが 0 に近いほど、低次元空間での配置が元の距離をよく再現している。たとえば、10個の英語母音の知覚的類似度を2次元平面上に配置する場合、ストレスが低ければ、元の類似度判断（「/ɪ/ と /iː/ は近い」など）が平面上の距離で忠実に再現されていることを意味する。以下のテーブルでは Stress-1 と距離相関を表示する。
+
+```{r}
+#| label: mds-stress-table
+
+# GOF statistics
+mds_dist <- dist(fit_nmds$conf)
+dist_cor <- cor(as.vector(as.matrix(dist_obj)), as.vector(as.matrix(mds_dist)))
+
+data.frame(
+  Metric = c("Stress-1", "Distance Correlation", "N Objects", "N Dimensions"),
+  Value = c(fit_nmds$stress, dist_cor, nrow(fit_nmds$conf), ncol(fit_nmds$conf))
+) |>
+  gt() |>
+  tab_header(title = "Non-metric MDS Goodness of Fit") |>
+  fmt_number(columns = Value, rows = Metric %in% c("Stress-1", "Distance Correlation"), decimals = 3) |>
+  fmt_number(columns = Value, rows = Metric %in% c("N Objects", "N Dimensions"), decimals = 0) |>
+  tab_style(
+    style = cell_fill(color = "#e6ffe6"),
+    locations = cells_body(columns = Value, rows = Metric == "Stress-1" & Value < 0.1)
+  ) |>
+  tab_footnote(
+    footnote = "Kruskal: < .05 excellent, < .10 good, < .20 fair",
+    locations = cells_body(columns = Value, rows = Metric == "Stress-1")
+  )
+```
+
+#### Kruskal のストレス基準
+| ストレス値 | 評価 |
+|---|---|
+| < 0.05 | Excellent |
+| 0.05 -- 0.10 | Good |
+| 0.10 -- 0.20 | Fair |
+| > 0.20 | Poor |
+
+ストレス値の解釈は @borg2005 の以下の基準が参考になる。0.20 以上 = 不良（結果は信頼できない）、0.10-0.20 = 可（慎重な解釈が必要）、0.05-0.10 = 良好、0.025-0.05 = 優秀、0.025 未満 = 完全に近い再現。
+
+### 次元数とストレスの関係
+
+```{r}
+#| label: mds-stress-vs-dim
+#| fig-width: 7
+#| fig-height: 5
+
+dims <- 1:5
+stress_tbl <- purrr::map_dfr(dims, ~{
+  fit <- smacof::mds(dist_obj, type = "ordinal", ndim = .x)
+  tibble(Dim = .x, Stress = fit$stress)
+})
+
+ggplot(stress_tbl, aes(Dim, Stress)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 3) +
+  geom_hline(yintercept = 0.10, linetype = "dashed", color = "red") +
+  annotate("text", x = 4.5, y = 0.12, label = "Good fit threshold", color = "red", size = 3.5) +
+  labs(title = "Stress vs. Number of Dimensions", subtitle = "Look for the elbow")
+```
+
+ストレス-次元数プロットでは、次元数を増やすごとにストレスが減少する。肘の位置（ストレスの減少が緩やかになる点）が適切な次元数の目安となる。この図では 2 次元でストレスが大きく低下し、3 次元以降は改善が緩やかであることから、2 次元解が適正と判断できる。@borg2005 の基準（ストレス < 0.10 = 良好）と照合して、最終的な次元数を決定する。
+
+### シェパード図
+
+```{r}
+#| label: mds-shepard
+#| fig-width: 7
+#| fig-height: 6
+
+# Shepard diagram
+plot(fit_nmds, plot.type = "Shepard", main = "Shepard Diagram: Vowel Dissimilarity")
+```
+
+シェパード図は、元の距離（横軸）と MDS 空間での距離（縦軸）の関係を示す。非計量 MDS では、点が階段状の単調回帰線（ステップ関数）に沿って並ぶのが理想である。点が回帰線から大きく離れている場合、その対象ペアの距離が MDS 空間で十分に再現されていないことを示す。
+
+シェパード図では、点が 45 度の対角線に近いほど MDS による距離の再現が良好である。点が対角線から大きくずれる場合は、その対象ペアの距離関係が低次元空間でうまく表現できていないことを示す。
+
+#### シェパード図の読み方
+- **点が回帰線に近い**: 距離の再現が良好（ストレスが低い）
+- **外れ点**: 特定のペアの距離が再現困難。外れ値や測定ノイズの可能性
+- **S字カーブ**: 非線形の距離変換が起きている。計量 MDS との比較を推奨
+
+### 距離ごとの埋め込み比較
+
+異なる距離指標を用いると、MDS の結果は大きく変わりうる。以下は英語技能テストデータ（PCA 節で使用）について、3種類の距離で MDS を実行した比較である。
+
+```{r}
+#| label: mds-distance-comparison
+#| fig-width: 12
+#| fig-height: 5
+
+# Use the PCA data for distance comparison
+x_mds <- as.matrix(pca_data)
+
+embeds <- list(
+  Euclidean   = cmdscale(dist(x_mds, method = "euclidean"), k = 2),
+  Manhattan   = cmdscale(dist(x_mds, method = "manhattan"), k = 2),
+  Correlation = cmdscale(as.dist(1 - cor(t(x_mds))), k = 2)
+)
+
+emb_df <- purrr::imap_dfr(embeds, ~{
+  as_tibble(.x) |>
+    setNames(c("Dim1", "Dim2")) |>
+    mutate(Method = .y)
+})
+
+ggplot(emb_df, aes(Dim1, Dim2)) +
+  geom_point(alpha = 0.5, size = 1.5, color = "#1f77b4") +
+  facet_wrap(~ Method, scales = "free") +
+  labs(title = "MDS Embeddings by Distance Type", subtitle = "Same data, different distance metrics")
+```
+
+3 つの距離指標による MDS 配置を比較すると、全体的な母音の空間配置は類似しているが、細部に違いが見られる。ユークリッド距離は各次元を等しく重み付けし、マンハッタン距離は外れ値に対してよりロバストであり、マハラノビス距離は変数間の共分散を考慮する。音響データのように F1 と F2 が相関する場合はマハラノビス距離が理論的に最も適切であるが、結果の解釈可能性も含めて総合的に判断する。
+
+### マハラノビス距離による MDS
+
+マハラノビス距離は、変数間の相関構造を考慮した距離指標である。相関の強い方向（実質的に同じ情報）が距離に過剰に効かないよう自動補正され、スケールの大きい変数も共分散で正規化される。
+
+$$d_M(\mathbf{x}, \mathbf{y}) = \sqrt{(\mathbf{x} - \mathbf{y})^\top \boldsymbol{\Sigma}^{-1} (\mathbf{x} - \mathbf{y})}$$
+
+```{r}
+#| label: mds-mahalanobis
+#| fig-width: 8
+#| fig-height: 7
+
+# Mahalanobis distance MDS on proficiency test data
+x_mah <- as.matrix(pca_data)
+mu_mah <- colMeans(x_mah)
+S_mah  <- cov(x_mah)
+eig_mah <- eigen(S_mah)
+S_inv_sqrt <- eig_mah$vectors %*% diag(1 / sqrt(eig_mah$values)) %*% t(eig_mah$vectors)
+
+# Whitened data → Euclidean distance = Mahalanobis distance
+x_wh <- scale(x_mah, center = mu_mah, scale = FALSE) %*% S_inv_sqrt
+dist_mah <- dist(x_wh)
+
+fit_cmd_mah <- cmdscale(dist_mah, k = 2, eig = TRUE)
+cmd_mah_df <- as_tibble(fit_cmd_mah$points) |>
+  setNames(c("Dim1", "Dim2")) |>
+  mutate(id = row_number())
+
+ggplot(cmd_mah_df, aes(Dim1, Dim2)) +
+  geom_point(alpha = 0.5, size = 2, color = "#2ca02c") +
+  labs(
+    title = "Classical MDS (Mahalanobis Distance)",
+    subtitle = "Whitened by covariance: robust to scale and correlation differences",
+    x = "Dimension 1", y = "Dimension 2"
+  ) +
+  theme(plot.title = element_text(face = "bold"))
+```
+
+#### マハラノビス距離の直感
+- 相関の強い方向は「実質的に同じ情報」なので、距離への寄与が抑えられる。
+- スケールの大きい変数も共分散で正規化されるため、変数間の「公平な」距離になる。
+- 多変量外れ値の検出にも利用できる（中心からのマハラノビス距離が大きい個体が外れ値候補）。
+
+#### MDS の解釈の注意
+- 距離の選択で結果が大きく変わる。複数の距離で感度分析を行い、結果の頑健性を確認する。
+- MDS の座標軸には PCA のような「固有ベクトル」の解釈がない。軸の意味は研究者が外部情報から付与する。
+- 外れ値が座標空間全体を引き伸ばすことがある。事前に外れ値を確認する。
+
+## 実務ガイド
+
+### SEM を中心とした統一的な枠組み
+
+本章で扱った手法のうち、EFA・CFA・SEM・LGM は**構造方程式モデリング（SEM）の一般的枠組みの中で統一的に理解**できる。以下では、これらの手法がどのような入れ子構造になっているかを整理する。
+
+### SEM の特殊ケースとしての各手法
+
+```{mermaid}
+%%| fig-width: 9
+%%| label: fig-sem-hierarchy
+%%| fig-cap: "SEM ファミリーの階層構造"
+flowchart TD
+    SEM["<b>SEM（一般モデル）</b><br/>測定モデル＋構造モデル<br/>lavaan::sem()"]
+    CFA["<b>CFA</b><br/>測定モデルのみ<br/>構造パスなし<br/>lavaan::cfa()"]
+    PATH["<b>パス解析</b><br/>構造モデルのみ<br/>観測変数のみ（=~ なし）<br/>lavaan::sem()"]
+    LGM["<b>LGM</b><br/>時間を因子負荷で表現<br/>成長＝潜在変数<br/>lavaan::growth()"]
+    REG["<b>回帰分析</b><br/>パス1本<br/>y ~ x1 + x2<br/>lm()"]
+    MIMIC["<b>MIMIC モデル</b><br/>観測変数→潜在変数<br/>+ 潜在変数→指標"]
+    MG["<b>多群 SEM</b><br/>group = 'var'<br/>測定不変性"]
+    EFA["<b>EFA</b><br/>探索的：因子数・<br/>負荷パターン未指定<br/>psych::fa()"]
+
+    SEM --> CFA
+    SEM --> PATH
+    SEM --> LGM
+    SEM --> MIMIC
+    SEM --> MG
+    PATH --> REG
+    EFA -.->|"構造を仮説化"| CFA
+    CFA -.->|"構造パスを追加"| SEM
+
+    style SEM fill:#2166ac,color:#fff,stroke:#333
+    style CFA fill:#67a9cf,color:#fff
+    style PATH fill:#67a9cf,color:#fff
+    style LGM fill:#67a9cf,color:#fff
+    style REG fill:#d1e5f0,color:#333
+    style EFA fill:#fddbc7,color:#333
+    style MIMIC fill:#67a9cf,color:#fff
+    style MG fill:#67a9cf,color:#fff
+```
+
+上図が示すように、SEM は多様な分析手法を包含する一般的な枠組みである。各手法は SEM に特定の制約を加えたものとして位置づけられる。
+
+| 手法 | SEM との関係 | 制約の内容 |
+|------|------------|-----------|
+| **CFA** | 構造パスなし | $\mathbf{B} = \mathbf{0}$, $\boldsymbol{\Gamma} = \mathbf{0}$（潜在変数間の回帰なし） |
+| **パス解析** | 測定モデルなし | $\boldsymbol{\Lambda} = \mathbf{I}$（因子負荷 = 単位行列、観測変数 = 潜在変数） |
+| **回帰分析** | 測定モデルなし + パス1本 | パス解析の最も単純なケース |
+| **LGM** | 因子負荷を時間で固定 | $\boldsymbol{\Lambda}$ の値を 0, 1, 2, ... に固定し、成長を表現 |
+| **MIMIC モデル** | 共変量が潜在変数を直接予測 | 観測変数→潜在因子の回帰パスを追加 |
+| **多群 SEM** | 群間で等値制約を段階的に追加 | 測定不変性の検証（Configural → Metric → Scalar） |
+| **EFA** | SEM の外（探索的） | 因子数・負荷パターンを事前に指定しない。CFA の仮説生成に使う |
+
+この統一的理解により、「EFA で構造を探索 → CFA で構造を確認 → SEM で因果関係を検証 → LGM で縦断的変化を追跡」という段階的な分析の流れが、**同一の潜在変数モデリング枠組みの中で段階的に複雑さを増していく過程**であることが分かる。
+
+### 実践的な含意: 分析手法の選択
+
+この枠組みを理解していると、研究の問いに応じた最適な手法選択が容易になる。
+
+#### 研究の問いと手法選択
+
+- **「この尺度はどんな因子構造を持つか？」** → EFA（仮説なし）→ CFA（仮説あり）
+- **「動機づけと英語力の関係は？」**
+  - 測定誤差を無視してよい場合 → **パス解析**（合成変数 + 回帰）
+  - 測定誤差を考慮したい場合 → **SEM**（潜在変数レベル）
+- **「男女でテスト項目の機能は同じか？」** → **多群 CFA**（測定不変性）
+- **「語彙力は学期ごとにどう変化するか？」** → **LGM**
+- **「学習者の背景変数が潜在能力に直接影響するか？」** → **MIMIC モデル**
+
+いずれも lavaan で `cfa()`, `sem()`, `growth()` のいずれかの関数を呼ぶだけで推定できる。モデル構文（`=~`, `~`, `~~`）を変えるだけで、同一の枠組みの中で異なる問いに答えられるのが SEM の強みである。
+
+### 手法比較ガイド
+
+本章で扱った7つの手法を総合的に比較する。
+
+**手法比較ガイド**（7つの手法の入力・目的・性質・用途の比較）
+
+| 観点 | PCA | EFA | CFA | SEM | LGM | CA/MCA | MDS |
+|------|-----|-----|-----|-----|-----|--------|-----|
+| 入力データ | 連続変数 | 連続 / 順序 | 連続 / 順序 | 連続 / 順序 | 縦断（連続） | カテゴリカル | 距離・類似度行列 |
+| 目的 | 次元縮約・可視化 | 潜在因子の探索 | 測定仮説の検証 | 因果・媒介の検証 | 個人の成長軌跡 | カテゴリ関係の可視化 | 距離の低次元可視化 |
+| モデルの性質 | 記述的（変換） | 確率モデル | 確率モデル | 確率モデル | 確率モデル | 記述的（SVD） | 記述的（最適化） |
+| 適合度検定 | なし | χ² 適合度 | CFI/RMSEA 等 | CFI/RMSEA 等 | CFI/RMSEA 等 | なし | ストレス |
+| SLA の典型用途 | テスト得点の要約 | 尺度開発・項目分析 | 妥当性検証 | 理論モデルの検証 | 語彙成長・視線計測 | エラー分析・方略分析 | 知覚空間の分析 |
+| R パッケージ | FactoMineR | psych | lavaan | lavaan | lavaan | FactoMineR | smacof |
+
+### 唯一の「最良の手法」はない
+手法の選択は研究の問いに依存する[@bandalos2018]。構成概念の妥当性を検証したければ CFA / SEM[@innami2011]、カテゴリカルデータの探索なら CA / MCA[@greenacre2017; @glynn2014]、距離データの可視化なら MDS[@borg2005] を選ぶ。縦断的な成長の個人差に関心があれば LGM が適切である[@bollen2006]。複数の手法を組み合わせることで、多角的な知見が得られる。
+
+### 手法の組み合わせ例
+
+SLA 研究では、複数の手法を段階的に組み合わせることが多い。以下に代表的な組み合わせを示す。
+
+**例1: 尺度開発プロジェクト**
+
+1. EFA で因子構造を探索（パイロットデータ）
+2. CFA で構造を確認（本データ）
+3. 信頼性を $\omega$ で報告
+4. SEM で構成概念間の関係を検証
+
+**例2: テスト分析プロジェクト**
+
+1. PCA でテスト項目の次元構造を概観
+2. EFA で因子構造を探索（必要に応じてポリコリック相関を使用）
+3. CFA で測定モデルを検証
+4. 測定不変性で群間比較の妥当性を確認
+
+**例3: 縦断的成長プロジェクト**
+
+1. CFA で各時点の測定モデルを確認（測定不変性の検証）
+2. LGM で語彙力の成長軌跡をモデリング
+3. 条件付き LGM で動機づけ・学習時間が成長率を予測するか検証
+4. 第13章の ARIMA と組み合わせ、個人レベル（LGM）とクラスレベル（時系列）の変化を多角的に分析
+
+**例4: 学習者プロファイル分析**
+
+1. MCA で学習者の方略パターンを可視化
+2. CA で L1 背景とエラータイプの関係を探索
+3. MDS で学習者間の類似度を低次元空間に写像
+
+### どの質問にどの手法？
+- 「このテストは何を測っているのか？」→ EFA → CFA
+- 「動機づけが英語力に影響するか？」→ SEM
+- 「語彙力は学期ごとにどう伸びるか？個人差は？」→ LGM
+- 「テスト項目を少なくまとめたい」→ PCA
+- 「L1 別のエラーパターンの違いは？」→ CA
+- 「学習者の知覚的近さを可視化したい」→ MDS
+
+#### 実データリソース
+本章ではシミュレーションデータを使用したが、実際の SLA 研究データで練習したい場合は以下のリソースが有用である。
+
+- **IRIS** (Instruments for Research into Second Languages; <https://www.iris-database.org>): SLA 研究で使用された質問紙・テスト・コーパスデータが公開されている。EFA/CFA の練習には、動機づけ尺度や言語不安尺度のデータセットが適している。
+- **Open Science Framework (OSF)**: SLA 研究者が分析データを公開するプラットフォーム。「L2 motivation」「language aptitude」等で検索すると、因子分析や SEM に適したデータが見つかる。
+- **CHILDES** (<https://childes.talkbank.org>): 言語習得コーパス。MCA や CA の練習に、発話データのカテゴリカルコーディングが利用できる。
+
+### 報告テンプレート（APA 形式）
+
+研究論文での報告を支援するため、各手法の結果を APA 形式で記述するテンプレートを提供する。
+
+### EFA の報告テンプレート
+
+```{r}
+#| label: report-efa
+#| results: asis
+
+# EFA reporting template
+n_items_efa <- ncol(motivation)
+n_factors_efa <- fit_efa$factors
+var_explained <- sum(fit_efa$Vaccounted["Proportion Var", ]) * 100
+
+efa_report <- glue::glue(
+  "An exploratory factor analysis with promax rotation (extraction: maximum likelihood) ",
+  "was conducted on {n_items_efa} items measuring L2 motivation (N = {n_efa}). ",
+  "Parallel analysis and scree plot inspection suggested {n_factors_efa} factors. ",
+  "The {n_factors_efa}-factor solution explained {round(var_explained, 1)}% of the common variance. ",
+  "Factor loadings ranged from {round(min(abs(efa_summary$Loading)), 2)} to ",
+  "{round(max(abs(efa_summary$Loading)), 2)}. ",
+  "Internal consistency (McDonald's omega) ranged from {round(min(rel_tbl$`McDonald's ω`), 2)} ",
+  "to {round(max(rel_tbl$`McDonald's ω`), 2)} across the three factors."
+)
+
+cat(efa_report)
+```
+
+### CFA の報告テンプレート
+
+```{r}
+#| label: report-cfa
+#| results: asis
+
+# CFA reporting template
+fit_vals <- fitMeasures(fit_cfa_3f, c("chisq", "df", "pvalue", "cfi", "tli", "rmsea",
+                                       "rmsea.ci.lower", "rmsea.ci.upper", "srmr"))
+
+cfa_report <- glue::glue(
+  "A confirmatory factor analysis was conducted using lavaan (Rosseel, 2012) to evaluate ",
+  "the three-factor measurement model of L2 motivation (N = {n_cfa}). ",
+  "The model showed {ifelse(fit_vals['cfi'] > 0.95, 'good', 'adequate')} fit: ",
+  "chi-square({fit_vals['df']}) = {round(fit_vals['chisq'], 1)}, ",
+  "p {ifelse(fit_vals['pvalue'] < .001, '< .001', paste0('= ', round(fit_vals['pvalue'], 3)))}, ",
+  "CFI = {round(fit_vals['cfi'], 3)}, TLI = {round(fit_vals['tli'], 3)}, ",
+  "RMSEA = {round(fit_vals['rmsea'], 3)} ",
+  "[90% CI: {round(fit_vals['rmsea.ci.lower'], 3)}, {round(fit_vals['rmsea.ci.upper'], 3)}], ",
+  "SRMR = {round(fit_vals['srmr'], 3)}."
+)
+
+cat(cfa_report)
+```
+
+### PCA の報告テンプレート
+
+```{r}
+#| label: report-pca
+#| results: asis
+
+# PCA reporting template
+n_comp <- sum(res_pca$eig[, 1] > 1)
+cum_var <- round(res_pca$eig[n_comp, 3], 1)
+
+pca_report <- glue::glue(
+  "A principal component analysis was conducted on {ncol(pca_data)} English proficiency test items ",
+  "(N = {n_pca}). The correlation matrix was used for extraction. ",
+  "Based on the Kaiser criterion (eigenvalue > 1) and scree plot inspection, ",
+  "{n_comp} components were retained, explaining {cum_var}% of the total variance. ",
+  "The analysis was performed using FactoMineR (Le et al., 2008)."
+)
+
+cat(pca_report)
+```
+
+### SEM の報告テンプレート
+
+```{r}
+#| label: report-sem
+#| results: asis
+
+# SEM reporting template — using bootstrap CI for indirect effects
+sem_fit <- fitMeasures(fit_sem, c("cfi", "tli", "rmsea", "srmr"))
+ind_boot <- parameterEstimates(fit_sem_boot, boot.ci.type = "perc") |>
+  filter(lhs == "ind_ideal")
+
+sem_report <- glue::glue(
+  "A structural equation model was estimated to test the mediation hypothesis that ",
+  "Ideal L2 Self influences L2 proficiency both directly and indirectly through intended effort. ",
+  "The model fit was {ifelse(sem_fit['cfi'] > 0.90, 'acceptable', 'poor')}: ",
+  "CFI = {round(sem_fit['cfi'], 3)}, TLI = {round(sem_fit['tli'], 3)}, ",
+  "RMSEA = {round(sem_fit['rmsea'], 3)}, SRMR = {round(sem_fit['srmr'], 3)}. ",
+  "The indirect effect of Ideal L2 Self on Proficiency through Effort was ",
+  "{round(ind_boot$est, 3)}, 95% bootstrap CI [{round(ind_boot$ci.lower, 3)}, ",
+  "{round(ind_boot$ci.upper, 3)}] (500 bootstrap samples, percentile method)."
+)
+
+cat(sem_report)
+```
+
+### 論文報告のコピペ用テンプレート
+
+以下は各手法の報告文をそのまま論文に貼り付けられるテンプレートである。`X.XX` の部分を実際の数値に置き換える。
+
+**EFA（Method 最短版）**:
+
+> An exploratory factor analysis with promax rotation (extraction: maximum likelihood) was conducted on 18 items measuring L2 motivation (*N* = 500). Parallel analysis suggested three factors.
+
+**EFA（固定効果1予測子版）**:
+
+> Factor loadings ranged from X.XX to X.XX. Items M01--M06 loaded on Factor 1 (Ideal L2 Self; loadings .XX--.XX), M07--M12 on Factor 2 (Ought-to L2 Self; .XX--.XX), and M13--M18 on Factor 3 (L2 Learning Experience; .XX--.XX). McDonald's $\omega$ ranged from .XX to .XX across the three factors.
+
+**CFA（Method 最短版）**:
+
+> A confirmatory factor analysis was conducted using lavaan [@rosseel2012] to evaluate the three-factor model (*N* = 400).
+
+**CFA（適合度報告版）**:
+
+> The three-factor model showed good fit: $\chi^2$(X) = X.X, CFI = .XXX, TLI = .XXX, RMSEA = .XXX [90% CI: .XXX, .XXX], SRMR = .XXX. All standardized factor loadings exceeded .50.
+
+**SEM（媒介効果版）**:
+
+> The indirect effect of Ideal L2 Self on Proficiency through Effort was X.XX (*SE* = X.XX, 95% bootstrap CI [X.XX, X.XX]), indicating significant mediation.
+
+**LGM（Method 最短版）**:
+
+> A latent growth curve model was estimated using lavaan to examine vocabulary growth across four semesters (*N* = 300, FIML for missing data).
+
+**LGM（結果版）**:
+
+> The mean intercept was X.XX (*SE* = X.XX, *p* < .001) and the mean slope was X.XX (*SE* = X.XX, *p* < .001), indicating significant growth. Slope variance was significant ($\hat{\sigma}^2$ = X.XX, *p* = .XXX), suggesting individual differences in growth rates. Motivation significantly predicted the slope (*B* = X.XX, *SE* = X.XX, *p* < .001).
+
+**共通（R パッケージ引用）**:
+
+> All analyses were conducted in R (version X.X.X) using psych (version X.X; Revelle, 2024), lavaan (version X.X; Rosseel, 2012), and FactoMineR (version X.X; L&ecirc; et al., 2008).
+
+### 論文報告の確認事項
+
+**EFA**: サンプルサイズと変数数 / 因子数決定の根拠（平行分析 + スクリー） / 回転法と推定法 / 因子負荷量表（交差負荷含む） / 共通性と独自性 / 信頼性（$\omega$ 推奨）
+
+**CFA / SEM**: 適合度指標を複数（CFI, TLI, RMSEA + CI, SRMR） / 標準化解 / 修正指標の使用有無と根拠 / 媒介効果にはブートストラップ CI / R パッケージのバージョンと引用
+
+**LGM**: 時点数・測定間隔・サンプルサイズ / 無条件モデルの切片・傾きの平均と分散 / モデル比較（無成長 vs 線形 vs 二次） / 条件付きモデルで共変量の効果（B, SE, p） / 適合度指標 / 欠損データの処理法（FIML 等）
+
+#### 実務上のアドバイス: 分析ノートの構成
+
+次元削減や潜在変数モデルの分析結果を共有する際は、以下の順でノート化しておくと再現性と可読性が高まる。
+
+1. **前処理**: 標準化・欠損処理・カテゴリ結合の妥当性を記録
+2. **推定**: パラメータ設定（推定法、回転法、因子数決定の根拠）
+3. **可視化**: 散布図・ヒートマップ・パス図で結果を視覚的に確認
+4. **要約表**: `gt` パッケージで因子負荷量表、適合度指標表を作成
+5. **解釈メモ**: 各因子 / 成分の意味、理論との整合性を記述
+6. **報告テンプレート**: APA 形式の記述文を自動生成
+
+この順序に沿って分析ノートを構成すると、共同研究者へのフィードバックや論文執筆がスムーズになる。
+
+#### 解釈の落とし穴（総まとめ）
+- **PCA**: 2次元で十分とは限らない。累積寄与率と $\cos^2$ の確認を怠らない。
+- **EFA**: 因子数の過少・過多に注意。平行分析を第一基準に。同じデータで CFA に進まない。
+- **CFA / SEM**: 適合度指標の「カットオフ」は目安であり絶対基準ではない。理論との整合性を重視する。
+- **LGM**: 時点数が少ないと推定が不安定。3時点で線形、5時点以上で曲線。傾きの分散が有意でなければ共変量追加の意味が薄い。
+- **CA / MCA**: 行点と列点の距離を直接解釈しない（スケーリング依存）。$\cos^2$ が低い点は控えめに。
+- **MDS**: 距離の選択で結果が大きく変わる。感度分析で妥当性を点検する。
+- **すべて**: まれなカテゴリや外れ値が図を歪める。併合・ロバスト化を検討する。
+
+### トラブルシューティング
+
+分析中に頻出するエラーや診断上の問題を、症状・原因・修正の構造で整理する。
+
+### Heywood ケース（CFA / SEM）
+
+**症状**: `lavaan WARNING: some estimated ov variances are negative` と表示される。または標準化因子負荷量が 1.0 を超える。
+
+**原因**: 指標変数の数が少ない（1因子あたり2項目以下）、サンプルサイズが不十分（< 150）、モデルの誤特定（本来2因子を1因子にまとめている等）。
+
+**修正**:
+
+| 対応策 | 具体的操作 |
+|---|---|
+| 問題の分散に下限制約 | モデル式に `M01 ~~ a*M01; a > 0.001` を追加 |
+| 指標を増やす | 1因子あたり最低3項目を確保 |
+| サンプルを増やす | 200名以上を目標 |
+| モデルを見直す | EFA に戻り、因子構造を再検討 |
+
+### 収束失敗（SEM / LGM）
+
+**症状**: `WARNING: the model has NOT converged` または `WARNING: the optimizer warns that a solution has NOT been found`.
+
+**原因**: 開始値が不適切、モデルが過度に複雑（推定パラメータ数に対してサンプルが少ない）、識別不能なモデル。
+
+**修正**:
+
+| 対応策 | 具体的操作 |
+|---|---|
+| 最適化手法の変更 | `optim.method = "nlminb"` を試す |
+| 反復回数の増加 | `control = list(iter.max = 10000)` |
+| モデルの簡素化 | 不要なパスや自由パラメータを削除 |
+| 開始値の指定 | `start = "simple"` または手動指定 |
+| `lavaan::lavInspect(fit, "post.check")` で健全性を確認 | |
+
+### EFA で交差負荷が多い
+
+**症状**: 多くの項目（4項目以上）が複数の因子に .30 以上の負荷を示す。単純構造が得られない。
+
+**原因**: 因子数が不適切（多すぎるまたは少なすぎる）、項目の弁別性が低い（似た内容を聞いている）、回転法の選択が不適切。
+
+**修正**:
+
+| 対応策 | 具体的操作 |
+|---|---|
+| 因子数を変える | 1つ多く / 1つ少なく推定して比較 |
+| 回転法を変える | promax → oblimin、または直交回転も試す |
+| 問題項目の除外 | 交差負荷が大きく理論的に曖昧な項目を除外して再推定 |
+| 項目内容の見直し | 質問文の重複・曖昧さを検討（次回調査への改善） |
+
+### Kaiser 基準と平行分析の不一致
+
+**症状**: Kaiser 基準では5因子だが、平行分析では3因子を推奨する。
+
+**原因**: Kaiser 基準（固有値 > 1）は因子数を過大評価する傾向がある。特に項目数が多い場合（20項目以上）に顕著。
+
+**修正**: 平行分析の結果を第一に参照する。理論的予測と照合し、因子数 ± 1 の解も比較して、解釈可能性と統計的基準を総合判断する。Kaiser 基準は参考情報として報告するにとどめる。
+
+### CFA の適合度が不良（CFI < .90）
+
+**症状**: CFI, TLI がいずれも .90 を下回り、RMSEA が .10 を超える。全ての適合度指標が基準未達。
+
+**原因**: EFA で得た因子構造がこのデータに当てはまらない、重要な交差負荷の無視、項目の質の問題。
+
+**修正**:
+
+| 対応策 | 具体的操作 |
+|---|---|
+| EFA に戻る | 検証データで再度 EFA を行い、構造を確認 |
+| 修正指標の確認 | `modindices(fit)` で MI > 10 のパスを確認（理論的根拠がある場合のみ追加） |
+| 項目の見直し | 残差共分散が大きい項目ペアを検討 |
+| 代替モデル | 2因子モデルや階層モデル（二次因子）を検討 |
+
+### LGM で傾きの分散が非有意
+
+**症状**: 傾き因子の分散推定値の $p > .05$。「成長率に個人差がある」とは言えない。
+
+**原因**: 実際に個人差が小さい、時点数が少なすぎる（3時点は線形モデルの最小限）、測定誤差が大きい。
+
+**修正**: 傾きの分散が有意でなければ、共変量を追加する意味は薄い（予測すべき個人差がない）。時点数を増やす（5時点以上が理想）、測定の信頼性を改善する、または「成長率に有意な個人差は見られなかった」と報告する。
+
+### MDS のストレスが高い（> .20）
+
+**症状**: ストレス値が .20 を超え、シェパード図で点が回帰線から大きく散逸する。
+
+**原因**: 2次元では距離構造を再現できない、外れ値が全体を引き伸ばしている、距離指標の選択が不適切。
+
+**修正**:
+
+| 対応策 | 具体的操作 |
+|---|---|
+| 次元数の増加 | 3次元で試す（ストレス vs 次元数プロットの肘を確認） |
+| 外れ値の除去 | 極端に大きい距離を持つ対象を一時的に除外 |
+| 距離の変更 | ユークリッド → 相関距離やマンハッタン距離を試す |
+| 非計量 MDS | 計量 MDS で上手くいかない場合、順位情報のみ保持する非計量 MDS を使う |
+
+### CA でまれなカテゴリが結果を支配する
+
+**症状**: バイプロットで1つのカテゴリだけが極端に外側に配置され、他のカテゴリが原点付近に圧縮される。
+
+**原因**: 頻度が全体の 5% 未満のまれなカテゴリが、少数の観測値に引き寄せられて極端な座標を取る。
+
+**修正**: 当該カテゴリを隣接する意味的に近いカテゴリと併合する。例: "Strongly Disagree"（n = 8）と "Disagree"（n = 45）を "Disagree" に統合。併合前後の慣性と解釈の変化を比較し、妥当性を確認する。
+
+## 参考文献
+
+::: {#refs}
+:::
+
+## セッション情報
+
+```{r}
+#| label: session-info
+sessionInfo()
+```

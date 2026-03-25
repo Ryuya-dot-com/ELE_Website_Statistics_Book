@@ -1,0 +1,2585 @@
+---
+title: "音声時系列分析：Praat・rPraat・音響分析"
+prefer-html: true
+always_allow_html: true
+bibliography: references_timeseries.bib
+nocite: |
+  @hyndman2021, @shin2016, @shumway2017, @ortega2005, @verspoor2008, @gu2015, @debot2007, @turner2021, @bernal2017, @li2025, @fant1960, @boersma2023, @thomas2007, @cohen1988_ts, @hillenbrand1995, @flege1995, @dejong2009, @derwing2009, @saito2022, @bores2023rpraat, @coretta2023speakr
+---
+
+```{r}
+#| label: setup-speech-time-series
+#| message: false
+#| warning: false
+#| echo: false
+pacman::p_load(
+  tidyverse,
+  DT,
+  tuneR,
+  seewave,
+  rPraat,
+  phonTools,
+  lme4,
+  mgcv
+)
+
+if (requireNamespace("speakr", quietly = TRUE)) library(speakr)
+
+theme_speech <- function(base_size = 12) {
+  theme_bw(base_size = base_size, base_family = "HiraginoSans-W3") +
+    theme(legend.position = "bottom")
+}
+
+theme_set(theme_speech())
+set.seed(2024)
+
+strip_md <- function(x) {
+  x <- as.character(x)
+  x <- gsub("\\*\\*", "", x)
+  x <- gsub("^`|`$", "", x)
+  x
+}
+
+book_table <- function(data) {
+  structure(
+    list(
+      data = as.data.frame(data),
+      title = NULL,
+      subtitle = NULL,
+      footnotes = character()
+    ),
+    class = "book_table"
+  )
+}
+
+gt <- function(data, ...) book_table(data)
+md <- function(text) strip_md(text)
+
+tab_header <- function(data, title = NULL, subtitle = NULL, ...) {
+  if (!is.null(title)) {
+    data$title <- strip_md(title)
+  }
+  if (!is.null(subtitle)) {
+    data$subtitle <- strip_md(subtitle)
+  }
+  data
+}
+
+tab_footnote <- function(data, footnote, ...) {
+  data$footnotes <- c(data$footnotes, strip_md(footnote))
+  data
+}
+
+resolve_table_columns <- function(data, expr) {
+  idx <- tidyselect::eval_select(rlang::enquo(expr), data = data)
+  names(idx)
+}
+
+fmt_number <- function(data, columns, decimals = 0, ...) {
+  cols <- resolve_table_columns(data$data, {{ columns }})
+  for (col in cols) {
+    if (is.numeric(data$data[[col]]) || is.integer(data$data[[col]])) {
+      vals <- data$data[[col]]
+      data$data[[col]] <- ifelse(
+        is.na(vals),
+        NA_character_,
+        format(round(vals, decimals), nsmall = decimals, scientific = FALSE, trim = TRUE)
+      )
+    }
+  }
+  data
+}
+
+tab_style <- function(data, ...) data
+
+cell_text <- function(...) NULL
+cells_body <- function(...) NULL
+
+print.book_table <- function(x, ...) {
+  caption_parts <- c(x$title, x$subtitle)
+  if (length(x$footnotes) > 0) {
+    caption_parts <- c(caption_parts, paste("Note:", paste(x$footnotes, collapse = "; ")))
+  }
+  caption_parts <- caption_parts[nzchar(caption_parts)]
+  caption <- if (length(caption_parts) > 0) paste(caption_parts, collapse = " - ") else NULL
+
+  print(knitr::kable(x$data, format = "pipe", caption = caption, escape = FALSE))
+  invisible(x)
+}
+
+knit_print.book_table <- function(x, ...) {
+  caption_parts <- c(x$title, x$subtitle)
+  if (length(x$footnotes) > 0) {
+    caption_parts <- c(caption_parts, paste("Note:", paste(x$footnotes, collapse = "; ")))
+  }
+  caption_parts <- caption_parts[nzchar(caption_parts)]
+  caption <- if (length(caption_parts) > 0) paste(caption_parts, collapse = "<br>") else NULL
+
+  out <- knitr::kable(
+    x$data,
+    format = "html",
+    caption = caption,
+    escape = FALSE,
+    booktabs = TRUE
+  )
+  knitr::asis_output(out)
+}
+```
+
+## はじめに
+
+前2章では、テストスコアや複数系列の変動を対象に、週次・月次レベルの時系列を扱ってきました。本章では視点を一気に細かくし、**音声波形というミクロな時系列**を対象にします。ここでの目的は、音響音声学の基礎概念を、`Praat` と `rPraat` を使った実際の分析作業へ橋渡しすることです。
+
+本章は、次の順に進みます。
+
+1. 周期波・スペクトル・フォルマントといった音響音声学の基本を押さえる。
+2. `tuneR` / `seewave` で波形・スペクトログラム・F0・スペクトルを扱う。
+3. `Praat` / `rPraat` / `speakr` の役割分担を理解する。
+4. `TextGrid` やフォルマント抽出結果を、LMM / GAMM / 時系列的な見方へ接続する。
+
+### 3つの読者ルート
+
+- **最短理解**: [17.2 マクロ→ミクロ](#sec-macro-micro) → [17.3 音響音声学の基礎](#sec-acoustic-basics) → [17.6 Praat / rPraat ガイド](#sec-praat-r-guide) → [17.7 実データ連携](#sec-textgrid-template)
+- **Praat 実務**: [17.6 Praat / rPraat ガイド](#sec-praat-r-guide) → [17.7 TextGrid と F1/F2 抽出](#sec-textgrid-template) → [17.8 報告テンプレート](#sec-report-templates)
+- **統計モデル**: [17.3 音響概念の整理](#sec-acoustic-basics) → [17.6 音響概念を Praat オブジェクトへ翻訳](#sec-acoustic-to-praat) → [17.7 実データ連携](#sec-textgrid-template)
+
+### 学習ルートと優先度
+
+| 節 | 優先度 | 読む目的 |
+|---|---|---|
+| `17.2` マクロ時系列からミクロ時系列へ | **必修** | この章が時系列分析の本の中で何をしているかを掴む |
+| `17.3` 音響音声学の基礎語彙〜F0推定 | **必修** | 周期波・スペクトル・F0・フォルマントの最小語彙を身につける |
+| `17.4` Rでwav処理入門 | **必修** | `tuneR` / `seewave` の基本操作を体験する |
+| `17.6` Praat ユーザーのための R パッケージガイド | **実務** | `Praat`・`rPraat`・`speakr` の役割分担を理解する |
+| `17.7` TextGrid と F1/F2 抽出 | **実務** | 研究データに近いワークフローへ接続する |
+| `17.5` 生成データパイプライン | **発展** | バッチ処理や再現可能パイプラインを見たい読者向け |
+| `17.6.10` speakr | **発展** | Praat スクリプトを R から実行したい読者向け |
+| `17.8` 報告テンプレート集 | **補助** | 書き方のひな形が欲しいときに参照する |
+
+### この章の到達目標
+
+1. 音声波形を「高頻度の時系列データ」として説明できる。
+2. 周期波・スペクトル・スペクトログラム・F0・倍音・フォルマントの関係を、図を使って解釈できる。
+3. `Praat` と `rPraat` の役割分担を理解し、どの作業を GUI で行い、どの作業を R に渡すべきか説明できる。
+4. duration / F0 / intensity / formants を、LMM・GAMM・縦断時系列のいずれで扱うべきか判断できる。
+
+### 最初に区別したい用語
+
+| よく混同する組 | 初心者向けの最短説明 |
+|---|---|
+| **pitch** と **F0** | `pitch` は聞こえ方、`F0` は基本周波数という測定値です。論文やRコードでは、多くの場合 `F0` を測って pitch の代理にします。 |
+| **spectrum** と **spectrogram** | `spectrum` は「ある短い区間の周波数分布」、`spectrogram` は「その分布の時間変化」です。 |
+| **harmonics** と **formants** | `harmonics` は F0 の整数倍に並ぶピーク列、`formants` は声道の共鳴による強調帯域です。 |
+| **Pitch** と **PitchTier** | `Pitch` はフレームごとの候補を複数持つ Praat オブジェクト、`PitchTier` は「1本に決めたF0輪郭の点列」です。`rPraat` では前者を `pitch.read()`、後者を `pt.read()` で読みます。 |
+| **Intensity** と **IntensityTier** | `Intensity` は sampled contour、`IntensityTier` は点列として扱う強度輪郭です。`rPraat::it.read()` が読むのは後者です。 |
+
+## マクロ時系列からミクロ時系列へ：テストスコアから音声波形へ {#sec-macro-micro}
+
+前章まででは、**週単位・月単位**のテストスコアという「マクロな時系列」を分析してきました。本章では、**毎秒16,000回**でサンプリングされる音声波形という「ミクロな時系列」に目を向けます。
+
+一見まったく異なるデータに見えますが、実は**同じ数学的原理**が貫いています。
+
+```{r}
+#| label: macro-micro-table
+tibble(
+  Feature = c("Sampling rate", "Autocorrelation reveals...",
+              "Periodicity", "Decomposition",
+              "Stationarity needed for..."),
+  `Macro (test scores)` = c("1/week or 1/month", "Score dependency (AR structure)",
+                              "Academic calendar (exams)", "Trend + seasonal + remainder",
+                              "ARIMA modeling"),
+  `Micro (speech)` = c("16,000/second", "F0: fundamental frequency (pitch)",
+                         "Vocal fold vibration", "Source (F0) + filter (formants) + noise",
+                         "Spectral analysis within a frame")
+) |>
+  gt() |>
+  tab_header(title = "Macro vs. micro time series: conceptual parallels")
+```
+
+具体的な対応関係：
+
+- テストスコアの**自己相関**（今週の点数は先週に依存）→ 音声波形の**自己相関**でF0（声帯振動の周期）を推定する（本章中盤で実演）
+- テストスコアの**周期性**（試験サイクル）→ 音声の**周期性**（声帯振動の繰り返し）
+- STLによる**トレンド＋季節＋残差の分解** → 音声の**ソース（声帯振動）＋フィルタ（声道の共鳴 = フォルマント）＋ノイズ**への分離
+- テストスコアの**定常化**（差分を取ってARIMAを適用）→ 音声フレーム内の**定常性**を仮定したスペクトル分析
+
+英語教育研究者にとって、音声分析は以下の場面で重要です：
+
+1. **L2発音研究**：学習者と母語話者の母音空間（F1/F2散布図）を比較 — @flege1995 の Speech Learning Model (SLM) は、L1とL2の母音がフォルマント空間上で近いほど習得が困難であると予測しています
+2. **韻律研究**：F0のcontour（抑揚パターン）を流暢性の指標として分析
+3. **スピーキング流暢性研究**：ポーズの数・長さ・分布、発話速度（syllables per second）、調音速度（articulation rate）など、Praatのスクリプト [@dejong2009] で自動測定可能な指標を分析
+4. **縦断的研究**：学習者の音響特徴を時間経過で追跡 — これはまさに「マクロな時系列」と「ミクロな時系列」の交差点。@saito2022 は、L2発音の理解容易性 (comprehensibility) と分節音・超分節音の音響特徴との関係を検討しています
+
+#### スピーキング研究における目的変数の例
+
+スピーキング研究では、Praatなどの音響分析ソフトでタグ付けした以下の変数が目的変数や指標として用いられます。これらを定期的に測定すれば「マクロな時系列」として ITS 分析や ARIMA で経時変化を追跡できます。
+
+| 指標カテゴリ | 変数 | 測定方法 | 時系列分析への接続 |
+|---|---|---|---|
+| **流暢性** | ポーズ数・ポーズ長 | Praat TextGrid で無音区間にアノテーション | 週ごとのポーズ率を ITS で発音訓練効果の検証に |
+| | 発話速度 (speech rate) | `@dejong2009` のPraatスクリプトで自動算出 | 月ごとの発話速度を ARIMA で予測 |
+| | 調音速度 (articulation rate) | ポーズを除いた発話区間の音節数/秒 | |
+| | phonation-time ratio | 有声区間の割合 | |
+| **分節音** | F1/F2（母音フォルマント） | Praat Formant tracking / LPC | 学習者の母音空間の縮小をGAMMでモデル化 |
+| | VOT (voice onset time) | Praatで破裂音のリリースから有声開始までを計測 | |
+| **超分節音** | F0 range / F0 SD | Praat Pitch tracking | F0変動幅の経時変化で韻律習得を追跡 |
+| | intensity variability | Praat Intensity tracking | |
+
+@derwing2009 は、L2発音指導の効果を測定する際に、これらの音響指標とリスナー評定（理解容易性・外国語なまり度）を組み合わせるアプローチを推奨しています。
+
+------------------------------------------------------------------------
+
+## 音声波形の時系列分析（英語母音の例） {#sec-acoustic-basics}
+
+英語教育・応用言語学では、英語母音の産出に関する研究で**基本周波数（F0）**や**フォルマント（F1/F2/F3）**が頻繁に分析されます。母音はおおむね**周期的な声帯振動**（F0）と、**声道の共鳴**（フォルマント）によってスペクトル上に調波列＋ピーク（F1/F2/…）として現れます。
+
+**なぜ音声波形が「時系列」なのか**：音声波形は、サンプリングレート（例：16,000 Hz）で毎秒16,000回記録された**超高頻度の時系列データ**です。前2章で学んだ「テストスコアの週次推移」と原理的に同じですが、時間スケールが桁違いに細かいという違いがあります。重要なのは、これまで扱った自己相関や時系列的な分解の発想が、ここでもそのまま適用できるということです。
+
+| 概念 | テストスコア（マクロ） | 音声波形（ミクロ） |
+|------|----------------------|-------------------|
+| 周期性 | 学期ごとの試験サイクル | 声帯振動の周期（F0） |
+| 自己相関 | 今週のスコアは先週に似る | 隣接サンプルは相関する |
+| トレンド | 学習効果による上昇 | F0の下降（declination） |
+| 分解の対象 | トレンド + 季節 + 残差 | ソース（声帯）+ フィルタ（声道）+ ノイズ |
+
+ここでは、**ソース–フィルタ・モデル**で母音ライクな波形を合成し、F0を**自己相関**・**ケプストラム**で推定し、スペクトルから**調波構造**を確認する例を示します。合成データを用いることで、完全に再現可能な環境で音声分析の基礎を体験できます。
+
+#### 音声 R パッケージの公式ドキュメント（参照先）
+- `tuneR`（`Wave` クラス, `readWave()` など）: <https://cran.r-project.org/web/packages/tuneR/tuneR.pdf>
+- `seewave`（`spectro()`, `meanspec()`, `fund()` など）: <https://cran.r-project.org/web/packages/seewave/seewave.pdf>
+- 実務上は、**`plot = FALSE` で数値を取り出してから `ggplot2` で注釈する**と、教育用の図を作りやすくなります。
+
+### 音響音声学の基礎語彙
+
+#### まず4つの概念だけ押さえる
+
+| 用語 | 一言でいうと | 音声研究での典型例 |
+|---|---|---|
+| **周期波** | 同じ形がほぼ一定間隔で繰り返される波 | 有声音の母音区間、安定したF0を持つ発話 |
+| **非周期波** | 同じ形が規則的に繰り返されない波 | /s/ などの無声摩擦音、雑音 |
+| **スペクトル** | 「どの周波数がどれだけ含まれているか」の分布 | 倍音列、フォルマント帯域 |
+| **スペクトログラム** | スペクトルの時間変化 | F0の変化、フォルマント遷移、摩擦音の高周波ノイズ |
+
+#### 周期波・非周期波・正弦波
+
+音声学では、まず「波が**繰り返しているか**」を見るのが基本です。**周期波** (periodic wave) は、ある時間間隔ごとに似た形が繰り返される波です。母音のような有声音では、声帯振動がほぼ一定の周期で起こるため、波形にも繰り返しが現れます。これに対して **非周期波** (aperiodic wave) は、同じ形が規則正しく繰り返されません。無声摩擦音や雑音では、波形はギザギザしていても一定周期を持ちません [@fant1960; @boersma2023]。
+
+**正弦波** (sine wave) は、最も単純な周期波です。自然音声はふつう正弦波そのものではありませんが、フーリエ変換の考え方では「複雑な周期波も、たくさんの正弦波の足し算として表せる」と考えます。したがって、正弦波は音響音声学の最小単位です。
+
+```{r acoustic-basic-waveforms}
+fs_basic <- 16000
+dur_basic <- 0.03
+t_basic <- seq(0, dur_basic, by = 1 / fs_basic)
+set.seed(123)
+
+sine_basic <- sin(2 * pi * 120 * t_basic)
+periodic_basic <- sin(2 * pi * 120 * t_basic) +
+  0.5 * sin(2 * pi * 240 * t_basic) +
+  0.3 * sin(2 * pi * 360 * t_basic)
+aperiodic_basic <- rnorm(length(t_basic), mean = 0, sd = 0.45)
+
+wave_basic_tbl <- bind_rows(
+  tibble(Time_ms = t_basic * 1000, Amplitude = sine_basic, Signal = "Sine wave (single frequency)"),
+  tibble(Time_ms = t_basic * 1000, Amplitude = periodic_basic / max(abs(periodic_basic)), Signal = "Periodic complex wave"),
+  tibble(Time_ms = t_basic * 1000, Amplitude = aperiodic_basic / max(abs(aperiodic_basic)), Signal = "Aperiodic noise")
+)
+
+ggplot(wave_basic_tbl, aes(x = Time_ms, y = Amplitude)) +
+  geom_line(color = "#08519c", linewidth = 0.7) +
+  facet_wrap(~ Signal, ncol = 1) +
+  labs(
+    title = "Periodic vs aperiodic waveforms",
+    x = "Time (ms)",
+    y = "Amplitude"
+  ) +
+  theme_speech(12)
+```
+
+この図では、上段の正弦波は**なめらかな繰り返し**、中段の複合周期波は**複雑だが規則的な繰り返し**、下段のノイズは**繰り返しが見えない**状態です。音声の母音波形はしばしば中段に近く、正弦波より複雑でも周期性は保たれます。
+
+#### スペクトル・フーリエ変換・振幅・周波数
+
+波形を時間軸で見ると「いつ大きく振れたか」は分かりますが、「どんな高さの音が含まれているか」は分かりにくいです。そこで使うのが **フーリエ変換** (Fourier transform) です。これは信号を「どの周波数の正弦波がどれくらい含まれているか」に分解する操作で、結果を図にしたものが **スペクトル** です [@fant1960; @moroz2022phonetics]。
+
+- **周波数** (frequency): 1秒間に何回繰り返すか。単位は Hz。
+- **振幅** (amplitude): 波の大きさ。スペクトルでは、その周波数成分がどれだけ強いかを表します。
+
+```{r acoustic-basic-spectra}
+fft_basic_tbl <- function(x, fs, label) {
+  X <- fft(x)
+  tibble(
+    Frequency_Hz = (0:(length(X) - 1)) * fs / length(X),
+    Amplitude = Mod(X)
+  ) |>
+    filter(Frequency_Hz <= 1000) |>
+    mutate(
+      Amplitude = Amplitude / max(Amplitude),
+      Signal = label
+    )
+}
+
+spectra_basic_tbl <- bind_rows(
+  fft_basic_tbl(sine_basic, fs_basic, "Sine wave (single frequency)"),
+  fft_basic_tbl(periodic_basic, fs_basic, "Periodic complex wave"),
+  fft_basic_tbl(aperiodic_basic, fs_basic, "Aperiodic noise")
+)
+
+ggplot(spectra_basic_tbl, aes(x = Frequency_Hz, y = Amplitude)) +
+  geom_line(color = "#d94801", linewidth = 0.7) +
+  facet_wrap(~ Signal, ncol = 1, scales = "free_y") +
+  labs(
+    title = "How the same signals look in the frequency domain",
+    x = "Frequency (Hz)",
+    y = "Normalized amplitude"
+  ) +
+  theme_speech(12)
+```
+
+上段の正弦波では、**ほぼ1本のピーク**しか立ちません。つまり「1つの周波数だけを含む音」です。中段の複合周期波では、120 Hz, 240 Hz, 360 Hz 付近に複数のピークが立ち、**複数の正弦波の和**になっていることが分かります。下段のノイズでは、広い周波数帯にエネルギーが散らばっており、これが「非周期波は広帯域になりやすい」という基本的な見え方です。
+
+#### スペクトログラム
+
+スペクトルは、ある時点の信号を「周波数の分布」として見せる図です。ただし、音声は時間とともに変化します。母音から子音へ移るとフォルマントも変わり、イントネーションが変わるとF0も変わります。そのため、音声研究では **スペクトルの時間変化** を示す **スペクトログラム** が特に重要です。
+
+スペクトログラムは、
+
+- 横軸: 時間
+- 縦軸: 周波数
+- 色の濃さ: その時間・周波数でのエネルギーの強さ
+
+を表します。言い換えると、「短い窓ごとにスペクトルを計算して横に並べた図」です [@boersma2023]。
+
+```{r acoustic-basic-spectrogram}
+dur_spec_basic <- 0.4
+t_spec_basic <- seq(0, dur_spec_basic, by = 1 / fs_basic)
+
+signal_spec_basic <- ifelse(
+  t_spec_basic <= 0.2,
+  sin(2 * pi * 120 * t_spec_basic) + 0.5 * sin(2 * pi * 240 * t_spec_basic),
+  sin(2 * pi * 220 * t_spec_basic) + 0.5 * sin(2 * pi * 440 * t_spec_basic)
+)
+signal_spec_basic <- signal_spec_basic / max(abs(signal_spec_basic))
+
+w_spec_basic <- tuneR::Wave(
+  left = as.integer(signal_spec_basic * 32767),
+  samp.rate = as.integer(fs_basic),
+  bit = 16L
+)
+
+sp_basic <- seewave::spectro(
+  w_spec_basic,
+  f = fs_basic,
+  wl = 256,
+  ovlp = 75,
+  flim = c(0, 1),
+  scale = FALSE,
+  plot = FALSE
+)
+
+spectro_basic_tbl <- tibble(
+  time = rep(sp_basic$time, each = length(sp_basic$freq)),
+  freq_khz = rep(sp_basic$freq, times = length(sp_basic$time)),
+  amp_db = as.vector(sp_basic$amp)
+)
+
+ggplot(spectro_basic_tbl, aes(x = time, y = freq_khz, fill = amp_db)) +
+  geom_raster() +
+  geom_vline(xintercept = 0.2, linetype = "dashed", color = "white", linewidth = 0.7) +
+  annotate("text", x = 0.1, y = 0.9, label = "120 Hz region", color = "white", size = 3.2) +
+  annotate("text", x = 0.3, y = 0.9, label = "220 Hz region", color = "white", size = 3.2) +
+  scale_fill_viridis_c(option = "C") +
+  labs(
+    title = "A spectrogram shows how frequency content changes over time",
+    x = "Time (s)",
+    y = "Frequency (kHz)",
+    fill = "Amplitude\n(dB)"
+  ) +
+  theme_speech(12)
+```
+
+この図では、0.2秒を境に低い周期（120 Hz 付近）から高い周期（220 Hz 付近）へ変わっています。もしスペクトルだけを1枚出すと、120 Hz と 220 Hz が両方含まれていることは分かっても、**いつ切り替わったか** は分かりません。スペクトログラムは、その時間的位置を教えてくれる図です。
+
+#### 基音・倍音・基本周波数
+
+有声音の周期波をスペクトルで見ると、ピークが等間隔に並ぶことがあります。このとき、最も低い周波数の成分が **基音** (fundamental) で、その整数倍に並ぶ成分が **倍音** (harmonics) です。
+
+- **基音**: いちばん低い周波数成分
+- **倍音**: 基音の整数倍の周波数成分
+- **基本周波数 F0**: 声帯振動の繰り返し速度
+
+初心者向けには、**「F0 は基音の周波数」** と覚えておいてほぼ問題ありません。たとえば F0 = 120 Hz なら、倍音は 240 Hz, 360 Hz, 480 Hz ... に現れます。母音のような有声音ではこの等間隔のピーク列が見えやすく、無声子音では安定したF0が存在しないか、非常に見えにくくなります。
+
+```{r acoustic-basic-harmonics}
+harmonic_basic_tbl <- tibble(
+  Harmonic = 1:8,
+  Frequency_Hz = 120 * (1:8),
+  Type = c("Fundamental (F0)", rep("Harmonic", 7))
+)
+
+ggplot(harmonic_basic_tbl, aes(x = Frequency_Hz, y = Harmonic)) +
+  geom_segment(aes(xend = Frequency_Hz, y = 0, yend = Harmonic, color = Type), linewidth = 1) +
+  geom_point(aes(color = Type), size = 2.5) +
+  geom_text(aes(label = Harmonic), vjust = -0.6, size = 3.2, show.legend = FALSE) +
+  scale_color_manual(values = c("Fundamental (F0)" = "#d32f2f", "Harmonic" = "#1565c0")) +
+  labs(
+    title = "Fundamental frequency and harmonics when F0 = 120 Hz",
+    x = "Frequency (Hz)",
+    y = "Harmonic number",
+    color = NULL
+  ) +
+  theme_speech(12)
+```
+
+この図では、1本目が **基音 = F0**、2本目以降がその整数倍の **倍音** です。後で見る母音のスペクトルでは、この等間隔のピーク列が声道のフォルマントによって部分的に強調されます。つまり、**F0 はピーク間隔を決め、フォルマントはどの周波数帯が目立つかを決める** と理解すると、その後のスペクトログラムやフォルマント分析が読みやすくなります。
+
+#### 持続時間・ピッチ・インテンシティ
+
+音響音声学で最もよく使う指標は、**持続時間** (duration)、**ピッチ** (pitch)、**インテンシティ** (intensity) です。持続時間は「どれだけ長く続いたか」、ピッチは知覚的な声の高さ、インテンシティは音の強さです。ただし、統計分析ではこの3つをそのまま同じように扱うわけではありません。
+
+- **持続時間**：子音・母音・音節・ポーズなどの開始点と終了点を区切って、ミリ秒単位で測ります。流暢性研究では発話速度、ポーズ長、音節長といった形で頻繁に使われます [@dejong2009]。
+- **ピッチ**：知覚概念としての pitch と、音響指標としての **F0** は厳密には同じではありませんが、実務上は F0 をその代理として分析することが多いです。韻律、抑揚、フォーカス、流暢性の研究で中心的です [@boersma2023; @cole2019]。
+- **インテンシティ**：Praat では通常 dB で出力される音圧レベルです。強調や prominence の手がかりになりますが、マイク位置や録音ゲインの影響も強く受けます [@boersma2023; @cole2019]。
+
+統計的には、duration は 0 未満を取れないため**右裾の長い分布**になりやすく、対数変換や Gamma / lognormal 系のモデルがしばしば使われます。F0 は話者差が大きいため、Hz のまま比較するより **セミトーン変換**や話者内中心化を行う方が解釈しやすいことが多いです。intensity は録音条件の影響を受けやすいため、セッション内・話者内での基準化が実務上よく行われます。ここでの「よく行われる」は、混合効果モデルと動的音声分析の方法論 [@baayen2008crossed; @wieling2018gamm] に基づく実務的要約です。
+
+```{r acoustic-cues-schematic}
+dur_cue_tbl <- tibble(
+  Token = c("Short token", "Long token"),
+  start = 0,
+  end = c(0.12, 0.24),
+  y = c(2, 1)
+)
+
+p_dur_cue <- ggplot(dur_cue_tbl) +
+  geom_segment(
+    aes(x = start, xend = end, y = y, yend = y, color = Token),
+    linewidth = 7,
+    lineend = "round"
+  ) +
+  geom_text(
+    aes(x = end + 0.015, y = y, label = sprintf("%.0f ms", end * 1000), color = Token),
+    hjust = 0,
+    size = 3.4,
+    show.legend = FALSE
+  ) +
+  scale_y_continuous(breaks = dur_cue_tbl$y, labels = dur_cue_tbl$Token) +
+  scale_x_continuous(limits = c(0, 0.32), expand = expansion(mult = c(0, 0.02))) +
+  labs(
+    title = "Duration is read on the time axis",
+    x = "Time (s)",
+    y = NULL,
+    color = NULL
+  ) +
+  theme_speech(11) +
+  guides(color = "none")
+
+time_norm_cue <- seq(0, 1, length.out = 120)
+
+f0_cue_tbl <- bind_rows(
+  tibble(
+    time_norm = time_norm_cue,
+    value = 185 + 8 * sin(pi * time_norm),
+    Contour = "Flat-ish contour"
+  ),
+  tibble(
+    time_norm = time_norm_cue,
+    value = 165 + 55 * time_norm + 8 * sin(2 * pi * time_norm),
+    Contour = "Rising contour"
+  )
+)
+
+p_f0_cue <- ggplot(f0_cue_tbl, aes(x = time_norm, y = value, color = Contour)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Pitch is usually analyzed as an F0 contour",
+    x = "Normalized time",
+    y = "F0 (Hz)",
+    color = NULL
+  ) +
+  theme_speech(11)
+
+int_cue_tbl <- bind_rows(
+  tibble(
+    time_norm = time_norm_cue,
+    value = 66 + 2 * sin(pi * time_norm),
+    Contour = "Weaker token"
+  ),
+  tibble(
+    time_norm = time_norm_cue,
+    value = 73 + 3 * sin(pi * time_norm),
+    Contour = "Stronger token"
+  )
+)
+
+p_int_cue <- ggplot(int_cue_tbl, aes(x = time_norm, y = value, color = Contour)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Intensity is tracked as a dB contour",
+    x = "Normalized time",
+    y = "Intensity (dB)",
+    color = NULL
+  ) +
+  theme_speech(11)
+
+gridExtra::grid.arrange(
+  p_dur_cue,
+  p_f0_cue,
+  p_int_cue,
+  ncol = 1,
+  top = grid::textGrob(
+    "Duration, F0, and intensity are related but distinct acoustic cues",
+    gp = grid::gpar(fontsize = 13, fontface = "bold")
+  )
+)
+```
+
+この図で重要なのは、3つの指標が**別々の軸**で読まれることです。duration は時間軸上の長さ、F0 は輪郭の高さと形、intensity は dB 輪郭の上下として解釈します。たとえば「強調された発話」は duration が長いのか、F0 が高いのか、intensity が強いのか、その全部なのかを分けて考える必要があります。@cole2019 のような prominence 研究では、こうした複数の音響手がかりを同時にモデルへ入れて、どの手がかりが知覚判断に効いているかを検討します。
+
+#### 有声音・無声音・声帯振動・フォルマント遷移
+
+**有声音** (voiced) は、区間中に規則的な**声帯振動**が生じている音です。波形には周期性が現れ、スペクトルでは等間隔の倍音列が見えやすくなります。これに対し **無声音** (voiceless) は、その区間に安定した周期的振動がないか、少なくとも主要なエネルギー源が声帯振動ではない音です。/s/ のような無声摩擦音では、広帯域のノイズが主になります [@fant1960; @boersma2023]。
+
+破裂音の研究では、破裂の release から周期的な voicing の開始までの時間差を **VOT** (voice onset time) と呼びます。@lisker1964 は、この VOT を使って複数言語の語頭破裂音の対立を古典的に整理しました。@abramson2017 は、その後 50 年分の研究を踏まえ、VOT が単純な「1つの値」ではあっても、測定窓・事前有声化・言語ごとの対立体系に敏感であることを整理しています。さらに @dmitrieva2015 は、英語とスペイン語で onset F0 が voicing の**二次的手がかり**として使われうることを示しており、「有声 / 無声」は VOT だけで完結しないことが分かります。
+
+**フォルマント遷移**は、子音から母音、あるいは母音から母音へ移るときに F1 や F2 が時間とともにどう変化するかを指します。母音を 1 点の F1/F2 で代表させると記述は簡潔になりますが、実際には onset, midpoint, offset の違いや、曲線の傾きそのものが重要なことがあります。@hillenbrand1995 は母音の複数時点測定を用いて動的情報の重要性を示しており、近年の方法論では、このような輪郭データをそのまま扱うために GAMM や functional data analysis が推奨されます [@wieling2018gamm; @soskuthy2021gamm]。
+
+```{r acoustic-formant-transition-schematic}
+time_ms_transition <- seq(0, 120, by = 2)
+
+transition_tbl <- bind_rows(
+  tibble(
+    Time_ms = time_ms_transition,
+    Track = "F1",
+    Syllable = "/ba/",
+    Hz = 220 + (730 - 220) * (1 - exp(-time_ms_transition / 18))
+  ),
+  tibble(
+    Time_ms = time_ms_transition,
+    Track = "F2",
+    Syllable = "/ba/",
+    Hz = 1600 + (1100 - 1600) * (1 - exp(-time_ms_transition / 20))
+  ),
+  tibble(
+    Time_ms = time_ms_transition,
+    Track = "F1",
+    Syllable = "/bi/",
+    Hz = 220 + (300 - 220) * (1 - exp(-time_ms_transition / 18))
+  ),
+  tibble(
+    Time_ms = time_ms_transition,
+    Track = "F2",
+    Syllable = "/bi/",
+    Hz = 1600 + (2200 - 1600) * (1 - exp(-time_ms_transition / 20))
+  )
+)
+
+ggplot(transition_tbl, aes(x = Time_ms, y = Hz, color = Syllable)) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = 20, linetype = "dashed", color = "gray50") +
+  annotate("text", x = 20, y = 2350, label = "Consonant release region", vjust = -0.3, size = 3.1) +
+  facet_wrap(~ Track, scales = "free_y", ncol = 1) +
+  labs(
+    title = "Formant transitions are trajectories, not just single numbers",
+    x = "Time from consonant release (ms)",
+    y = "Frequency (Hz)",
+    color = NULL
+  ) +
+  theme_speech(12)
+```
+
+この図はあくまで**模式図**ですが、/ba/ と /bi/ で F2 が異なる方向へ移動することを直感的に示しています。midpoint の F2 だけを抜き出せば最終的な母音ターゲットは見えますが、「どれくらい急に移行したか」「どの時点でカテゴリ差が立ち上がるか」は失われます。したがって、研究課題が**母音カテゴリの位置**なら1点抽出でもよい一方、**共調音や遷移そのもの**が問いなら輪郭全体を分析単位にした方がよい、というのが統計設計上の重要な分岐です。
+
+#### 音響特徴量を統計的にどう扱うか
+
+研究設計で本当に重要なのは、「この指標が何を意味するか」だけでなく、「1トークンを**何型のデータ**としてモデルへ渡すのか」です。以下は、音響音声学の初学者が迷いやすい点を、先行研究と方法論に基づいてまとめた最小整理です。
+
+| 音響特徴量 | 典型的な単位・抽出単位 | 統計的な見方 | 前処理の典型 | よく使われるモデル |
+|---|---|---|---|---|
+| **持続時間** | ms; 音素・母音・音節・ポーズごとに1値 | 正の連続変数。右裾が長くなりやすい | 対数変換、話速の共変量化 | LMM / GLMM、Gamma・lognormal 混合モデル [@dejong2009; @baayen2008crossed] |
+| **F0 / ピッチ** | Hz または semitone; トークン平均または時系列 | 連続変数。1値にも輪郭にもできる | 無声区間の除外、半音変換、話者内中心化 | 要約値なら LMM、輪郭なら GAMM / SSM [@cole2019; @wieling2018gamm] |
+| **インテンシティ** | dB; トークン平均または時系列 | 連続変数。録音条件の影響を受けやすい | セッション内・話者内の基準化 | LMM、輪郭比較なら GAMM [@cole2019; @saito2022] |
+| **有声 / 無声・VOT** | voiced/unvoiced ラベル、または ms | 二値状態列、または連続時間指標 | 厳密な注釈、言語ごとの境界定義 | ラベルならロジスティック混合モデルや HMM、VOT なら LMM / Gamma 系 [@lisker1964; @abramson2017; @dmitrieva2015] |
+| **フォルマント遷移** | F1/F2/F3 の多時点測定 | 輪郭データ、機能データ、縦方向の反復測定 | 時間正規化、平滑化、必要なら onset/midpoint/offset の要約 | GAMM / FDA / SSM。数点要約なら LMM [@hillenbrand1995; @wieling2018gamm; @soskuthy2021gamm] |
+
+要するに、**1トークンから1つの数値**を得るなら混合効果モデル、**1トークンから1本の曲線**を得るなら GAMM や状態空間モデル、**時間順に状態が切り替わる**こと自体を研究したいなら HMM が出発点になります。@baayen2008crossed は話者と項目の交差乱効果を持つ LMM の重要性を整理しており、@wieling2018gamm と @soskuthy2021gamm は、formant や pitch の輪郭を単純な線形回帰で潰してしまうと重要な時間構造を落としてしまうことを明示しています。
+
+#### 初心者向けに言い換えると
+
+ここまでの話を、できるだけ平たく言い換えると次のようになります。
+
+- **持続時間**を見る研究は、「学習者はその音や語を長く言いすぎていないか」「ポーズが長すぎないか」を調べる研究です。
+- **F0 / ピッチ**を見る研究は、「どこで声が上がるか・下がるか」「強調や抑揚が母語話者らしいか」を調べる研究です。
+- **インテンシティ**を見る研究は、「どこを強く言っているか」「強調の置き方がどう聞こえるか」を調べる研究です。
+- **有声 / 無声や VOT** を見る研究は、「破裂のあと、いつ声帯振動が始まったか」「/b/ と /p/ をどう区別しているか」を調べる研究です。
+- **フォルマント遷移**を見る研究は、「母音の最終的な位置」だけでなく、「そこへ向かう途中の動き」まで含めて調べる研究です。
+
+初心者にとって大事なのは、**音響特徴量 = 研究質問そのものではない** という点です。研究質問は「流暢さ」「強調」「カテゴリ弁別」「母音の到達目標」「共調音」などであり、duration や F0 や F2 は、それを観察するための**窓**です。したがって、先に「何を知りたいか」を決め、その後で「どの指標を何単位で取るか」を決める順番の方が失敗しにくいです。
+
+#### SLA・心理言語学での応用地図
+
+SLA と心理言語学では、同じ音響特徴量でも問いの立て方が少し異なります。SLA では「学習者がどこまで母語話者らしいパターンに近づいたか」「指導や経験でどう変わるか」が中心になりやすく、心理言語学では「聞き手・話し手がその手がかりをどう利用しているか」「どの時点でカテゴリ差が立ち上がるか」が中心になりやすいです。これは既存研究の整理に基づく要約であり、分野全体の傾向として述べています。
+
+| 音響特徴量 | SLA でよくある問い | 心理言語学でよくある問い | 代表的な読み方 |
+|---|---|---|---|
+| **持続時間** | 発話速度、ポーズ、母音長が流暢性や comprehensibility とどう関係するか | 長短や timing が語認識・韻律知覚にどう使われるか | 1トークン1値にして LMM / GLMM で比較することが多い [@dejong2009; @derwing2009] |
+| **F0 / ピッチ** | イントネーション、文末上昇、強調位置が学習とともにどう変わるか | 聞き手が prominence や focus をどの音響手がかりで判断するか | 要約値なら LMM、輪郭なら GAMM。知覚研究では cue weighting のモデル化も行う [@cole2019; @wieling2018gamm] |
+| **インテンシティ** | 強調の置き方や朗読の prosody が理解しやすさにどう関係するか | prominence 判断で intensity が F0 や duration とどう組み合わさるか | 単独ではなく F0・duration と同時に解釈するのが普通 [@cole2019; @saito2022] |
+| **VOT / 有声性** | L2 学習者が /b-p/ や /d-t/ の対立をどれだけ安定して作れるか | 聞き手が voicing を VOT や onset F0 からどう推定するか | VOT を連続値で、voiced/unvoiced をカテゴリで扱い分ける [@lisker1964; @abramson2017; @dmitrieva2015] |
+| **フォルマント遷移** | L2 母音・二重母音・共調音パターンが母語話者とどう異なるか | 聞き手が母音カテゴリや子音手がかりを時間変化からどう利用するか | midpoint だけなら LMM、軌跡なら GAMM / FDA / SSM [@hillenbrand1995; @wieling2018gamm; @soskuthy2021gamm] |
+
+SLA の実例としては、`duration` やポーズ長から流暢性をみる研究、`F0` と `intensity` から英語らしい prominence をみる研究、`VOT` や `F1/F2` から分節音習得をみる研究が典型です。心理言語学の実例としては、聞き手が **複数の手がかりをどのように統合して判断するか** を問う研究が多く、prominence 研究では `F0 + intensity + duration`、voicing 研究では `VOT + onset F0`、母音研究では `steady-state formants + formant transitions` のような組み合わせがよく問題になります。つまり、心理言語学では「手がかりの利用」、SLA では「その手がかりを産出・制御できるか」が前景化しやすい、と整理すると分かりやすいです。
+
+もう少し具体的に言うと、@dejong2009 は Praat スクリプトで**音節核と発話速度**を自動計測し、流暢性研究で timing 指標をどう抽出できるかを示しました。@saito2022 は L2 音声の comprehensibility / accentedness をめぐる研究文脈の中で、**分節的手がかりと超分節的手がかりを切り分けて考える重要性**を明確にしています。心理言語学側では、@cole2019 が `F0`, `intensity`, `phone-rate` などの音響手がかりを組み合わせて、聞き手の **prominence 判断** をロジスティック回帰でモデル化しています。つまり、「どの指標を測るか」は単なる測定技術の問題ではなく、**どの認知過程や学習過程を仮定しているか** と直結しています。
+
+#### 初学者向けの最短ルール
+
+- **音素ごと・語ごとに1値**しか使わないなら、まずは LMM / GLMM を考える
+- **F0 contour やフォルマント遷移**をそのまま比較したいなら、GAMM を第一候補にする
+- **voiced / unvoiced の切り替わり**や発話状態の推移そのものが関心なら、HMM や状態空間モデルまで視野に入れる
+- **同じ学習者を何か月も追う**なら、各録音から集約した音響指標を前2章の時系列モデルへ橋渡しできる
+
+### ソース–フィルタ・モデルとは
+
+音声の生成メカニズムを理解することは、音声データを正しく分析するための前提です。**ソース–フィルタ・モデル** [@fant1960] は、音声の生成を**2つの独立した段階**に分けて捉える枠組みです。
+
+```{mermaid}
+%%| label: fig-source-filter
+%%| fig-cap: "Overview of the source-filter model"
+flowchart LR
+    A["ソース<br>（声帯振動）"] -->|"倍音列<br>f₀, 2f₀, 3f₀, ..."| B["フィルタ<br>（声道の共鳴）"]
+    B -->|"特定の周波数が<br>増幅される"| C["出力音声<br>（母音）"]
+
+    style A fill:#e3f2fd,stroke:#1565c0
+    style B fill:#fff3e0,stroke:#ef6c00
+    style C fill:#e8f5e9,stroke:#2e7d32
+```
+
+**ソース（声帯振動）**：声帯が開閉を繰り返すことで空気の流れが断続的になり、音の元（ソース信号）が生まれます。この振動の基本的な速さが**基本周波数 F0**です。ここで重要なのは、F0 は話者の年齢・性別・発話様式で大きく変わるため、**固定の1つの値ではなく、話者依存の範囲として扱う**ことです。Praat 公式マニュアルも、`pitch floor` / `pitch ceiling` を話者に合わせて設定する探索帯域として説明しています [@praatIntro4; @praatToPitch]。
+
+声帯振動は単純な正弦波ではなく、F0の整数倍の周波数（**倍音**, harmonics: $f_0, 2f_0, 3f_0, \ldots$）にもエネルギーを持つ複雑な波形です。たとえば F0 = 120 Hz の男性話者は、120, 240, 360, 480, ... Hz のエネルギーを同時に発しています。
+
+**フィルタ（声道の共鳴）**：声帯で生成された倍音列は、口腔・鼻腔・咽頭からなる「声道」を通過します。声道はその形状に応じた**共鳴周波数**を持ち、近い周波数の倍音を増幅し、遠い倍音を減衰させます。この共鳴周波数が**フォルマント**です。
+
+#### ソース–フィルタの独立性
+
+このモデルの最も重要な含意は、F0（声の高さ）とフォルマント（母音の音色）を**独立に**分析できることです。同じ /a/ を高い声で言っても低い声で言っても、声道の形状は変わらないため F1/F2 パターンは大きく変わりません。逆に、同じピッチで /a/ と /i/ を発音すると、F0は同じでもフォルマントパターンが全く異なります。この独立性が、音声研究でF0分析とフォルマント分析を別々に行う根拠です。
+
+### フォルマントとは？
+
+**フォルマント** (formant) は声道の**共鳴周波数**です。瓶の口に息を吹き込むと特定の高さの音が鳴るように、声道の形状（口の開き・舌の位置・唇の丸め）に応じた周波数で音が増幅されます。
+
+#### F1とF2の対応関係
+
+フォルマントの中で最も重要なのは、低い方から2つの**F1（第1フォルマント）**と**F2（第2フォルマント）**です。
+
+| フォルマント | 主に対応する調音特徴 | 高い場合 | 低い場合 |
+|---|---|---|---|
+| **F1** | 口の開き（顎の高さ） | 広母音（/a/: ~730 Hz） | 狭母音（/i/: ~300 Hz） |
+| **F2** | 舌の前後位置 | 前舌母音（/i/: ~2200 Hz） | 後舌母音（/u/: ~900 Hz） |
+
+この対応関係を利用して、F1–F2 の散布図（いわゆる**母音空間**, vowel space）を描くと、話者がどのような母音を産出しているかを視覚的に評価できます。@hillenbrand1995 はアメリカ英語の12母音について、成人男性・女性・子供のF1/F2/F3基準値を大規模コーパスから報告しており、L2研究での比較基準として広く引用されています。
+
+L2学習者の母音空間がL1話者のそれとどう異なるかを比較する研究は、英語教育研究で広く行われています。@flege1995 の **Speech Learning Model (SLM)** によれば、L1にない「新しい」母音カテゴリ（例：日本語話者にとっての英語 /æ/）は比較的習得しやすいが、L1の母音に「似ている」カテゴリ（例：日本語 /a/ と英語 /ɑ/）はF1/F2の弁別が困難になると予測されています。この仮説の検証には、学習者と母語話者のF1-F2散布図を重ねて比較するアプローチが定番です。
+
+F3以上のフォルマントは主に話者の個人差（声道の長さ）に関わり、母音の弁別にはF1/F2が主要な役割を果たします。
+
+### 合成母音の作成（/i/ と /a/ の典型的フォルマントを参考）
+
+以下のコードでは、ソース-フィルタ・モデルに基づいて英語母音 /i/（"beat"の母音）と /a/（"father"の母音）の合成波形を作成します。F0 = 120 Hz（男性の典型値）の調波列をソースとして生成し、各母音の典型的なフォルマント周波数でフィルタリングします。合成データを使うことで、**既知のF0とフォルマント周波数に対する推定精度を検証**でき、音声分析の原理を再現可能な形で体験できます。
+
+```{r synth_vowels}
+# 合成関数：基本周波数f0の調波を合成し、フォルマントで包絡を付ける
+vowel_synth <- function(f0 = 120, dur = 0.5, fs = 16000,
+                        formants = c(300, 2200, 3000),
+                        bandwidths = c(60, 90, 150)){
+  t  <- seq(0, dur, by = 1/fs)
+  nh <- floor((fs/2)/f0)  # ナイキストまでの調波数
+  sig <- rep(0, length(t))
+  # 各調波の振幅をフォルマントのガウス包絡で整形
+  for(h in 1:nh){
+    f   <- h * f0
+    env <- prod(exp(-0.5 * ((f - formants)/bandwidths)^2))
+    sig <- sig + env * sin(2*pi*f*t)
+  }
+  # 窓＆正規化
+  w   <- 0.5 - 0.5*cos(2*pi*(0:(length(t)-1))/(length(t)-1))
+  sig <- sig * w
+  sig <- sig / max(abs(sig))
+  ts(sig, frequency = fs)
+}
+
+fs <- 16000
+# 参考フォルマント（典型値）：/i/ と /a/（学術報告に見られる範囲の例）
+vw_i <- vowel_synth(f0 = 120, fs = fs, formants = c(300, 2200, 3000), bandwidths = c(60,90,150))
+vw_a <- vowel_synth(f0 = 120, fs = fs, formants = c(730, 1100, 2440), bandwidths = c(80,90,130))
+
+#### 波形の並列比較
+wave_plot_tbl <- bind_rows(
+  tibble(Time = seq_along(vw_i) / fs, Amplitude = as.numeric(vw_i), Vowel = "/i/"),
+  tibble(Time = seq_along(vw_a) / fs, Amplitude = as.numeric(vw_a), Vowel = "/a/")
+)
+
+p_i <- wave_plot_tbl |>
+  filter(Vowel == "/i/") |>
+  ggplot(aes(x = Time, y = Amplitude)) +
+  geom_line(color = "#1565c0", linewidth = 0.5) +
+  labs(title = "/i/", x = "Time (s)", y = "Amplitude") +
+  theme_speech(11)
+
+p_a <- wave_plot_tbl |>
+  filter(Vowel == "/a/") |>
+  ggplot(aes(x = Time, y = Amplitude)) +
+  geom_line(color = "#ef6c00", linewidth = 0.5) +
+  labs(title = "/a/", x = "Time (s)", y = "Amplitude") +
+  theme_speech(11)
+
+gridExtra::grid.arrange(p_i, p_a, ncol = 2,
+                        top = grid::textGrob("Synthetic vowel waveforms: /i/ vs /a/",
+                                             gp = grid::gpar(fontsize = 13, fontface = "bold")))
+```
+
+/i/ と /a/ を横に並べると、波形の見た目の違いが確認できます。/i/ はF2（~2200 Hz）が高いため、細かい振動が重畳した複雑な波形になります。/a/ はF1（~730 Hz）が高いため、比較的ゆっくりした振動パターンが支配的です。
+
+フォルマント値（F1/F2）は**性別・年齢・話速**で大きく異なります。本節の合成は教育目的の近似で、実測にはPraat等で**安定区間**を注釈し、LPCや反射法での推定を推奨します。
+
+#### スペクトログラムとフォルマント帯域
+
+合成母音のスペクトログラムを表示し、F1/F2のフォルマント帯域をアノテーションで示します。スペクトログラム上でフォルマントがどの位置に現れるかを視覚的に確認できます。
+
+```{r synth_spectrogram}
+#| fig-height: 5
+# Wave オブジェクトを作成して seewave に渡す
+make_wave <- function(sig, fs) {
+  tuneR::Wave(left = as.integer(sig * 32767), samp.rate = as.integer(fs), bit = 16L)
+}
+
+w_synth_i <- make_wave(as.numeric(vw_i), fs)
+w_synth_a <- make_wave(as.numeric(vw_a), fs)
+
+spectro_to_tbl <- function(wave_obj, vowel_label) {
+  sp <- seewave::spectro(
+    wave_obj,
+    f = fs,
+    wl = 512,
+    ovlp = 75,
+    wn = "hanning",
+    flim = c(0, 4),
+    scale = FALSE,
+    plot = FALSE
+  )
+  tibble(
+    time = rep(sp$time, each = length(sp$freq)),
+    freq_khz = rep(sp$freq, times = length(sp$time)),
+    amp_db = as.vector(sp$amp),
+    vowel = vowel_label
+  )
+}
+
+spectro_tbl <- bind_rows(
+  spectro_to_tbl(w_synth_i, "/i/"),
+  spectro_to_tbl(w_synth_a, "/a/")
+)
+
+formant_lines <- tibble(
+  vowel = c("/i/", "/i/", "/a/", "/a/"),
+  label = c("F1≈300Hz", "F2≈2200Hz", "F1≈730Hz", "F2≈1100Hz"),
+  freq_khz = c(0.3, 2.2, 0.73, 1.1)
+)
+
+ggplot(spectro_tbl, aes(x = time, y = freq_khz, fill = amp_db)) +
+  geom_raster() +
+  geom_hline(
+    data = formant_lines,
+    aes(yintercept = freq_khz),
+    color = "white",
+    linetype = "dashed",
+    linewidth = 0.6,
+    inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = formant_lines,
+    aes(x = 0.05, y = freq_khz + 0.08, label = label),
+    color = "white",
+    hjust = 0,
+    size = 3,
+    inherit.aes = FALSE
+  ) +
+  facet_wrap(~ vowel, ncol = 2) +
+  scale_fill_viridis_c(option = "C") +
+  labs(
+    title = "Spectrograms from seewave::spectro(plot = FALSE)",
+    x = "Time (s)",
+    y = "Frequency (kHz)",
+    fill = "Amplitude\n(dB)"
+  )
+```
+
+/i/ ではF1が低くF2が高いため、2つのフォルマント帯域が大きく離れています。/a/ ではF1が高くF2が比較的低いため、帯域が近接しています。このパターンの違いが母音の「音色」を決定し、音声学の**母音四角形**における位置に対応します。
+
+#### 平均スペクトル
+
+`meanspec()` はスペクトログラムの各フレームを平均化して、全体としてどの周波数帯にエネルギーが集まっているかを見せてくれます。時間方向の細かい変動を捨てる代わりに、**調波列とフォルマント帯域の位置関係**が読みやすくなります。
+
+```{r synth_meanspec}
+meanspec_to_tbl <- function(wave_obj, vowel_label) {
+  ms <- seewave::meanspec(
+    wave_obj,
+    f = fs,
+    wl = 512,
+    ovlp = 75,
+    wn = "hanning",
+    norm = TRUE,
+    plot = FALSE
+  )
+  tibble(
+    freq_khz = ms[, "x"],
+    amplitude = ms[, "y"],
+    vowel = vowel_label
+  )
+}
+
+meanspec_tbl <- bind_rows(
+  meanspec_to_tbl(w_synth_i, "/i/"),
+  meanspec_to_tbl(w_synth_a, "/a/")
+)
+
+ggplot(filter(meanspec_tbl, freq_khz <= 4), aes(x = freq_khz, y = amplitude)) +
+  geom_line(color = "#08519c", linewidth = 0.8) +
+  geom_vline(
+    data = formant_lines,
+    aes(xintercept = freq_khz),
+    linetype = "dashed",
+    color = "#d94801",
+    linewidth = 0.6,
+    inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = formant_lines,
+    aes(x = freq_khz, y = 0.92, label = label),
+    color = "#d94801",
+    angle = 90,
+    vjust = -0.3,
+    size = 3,
+    inherit.aes = FALSE
+  ) +
+  facet_wrap(~ vowel, ncol = 1) +
+  labs(
+    title = "Mean spectra from seewave::meanspec(plot = FALSE)",
+    x = "Frequency (kHz)",
+    y = "Normalized amplitude"
+  )
+```
+
+平均スペクトルでは、/i/ の高い F2 帯域と /a/ の高い F1 帯域が、時間平均しても明瞭に残ることが確認できます。つまり、スペクトログラムが「時間ごとの分布」を見る図なら、平均スペクトルは「**その母音らしさを作る周波数帯**」を見る図です。
+
+#### F1-F2 母音空間プロット
+
+母音を F1×F2 の二次元空間にプロットすると、母音間の音響的距離を視覚的に把握できます。音声学の慣例に従い、**F1軸を反転（上が低い値）、F2軸も反転（左が高い値）**しています。@hillenbrand1995 の英語母音基準値も参考値として示します。
+
+```{r vowel_space_synth}
+# 合成母音のフォルマント値
+synth_vowels <- tibble(
+  vowel = c("/i/", "/a/"),
+  F1 = c(300, 730),
+  F2 = c(2200, 1100),
+  type = "Synthetic (this chapter)"
+)
+
+# Hillenbrand et al. (1995) の典型値（男性平均の近似）
+ref_vowels <- tibble(
+  vowel = c("/i/", "/ɪ/", "/ɛ/", "/æ/", "/ɑ/", "/ʌ/", "/ʊ/", "/u/"),
+  F1 = c(342, 427, 580, 588, 768, 623, 469, 378),
+  F2 = c(2322, 2034, 1799, 1952, 1333, 1200, 1122, 997),
+  type = "Hillenbrand et al. (1995)"
+)
+
+bind_rows(synth_vowels, ref_vowels) |>
+  ggplot(aes(x = F2, y = F1, label = vowel, color = type, shape = type)) +
+  geom_point(size = 3) +
+  geom_text(vjust = -0.8, size = 4, show.legend = FALSE) +
+  scale_x_reverse(name = "F2 (Hz)") +
+  scale_y_reverse(name = "F1 (Hz)") +
+  scale_color_manual(values = c("Synthetic (this chapter)" = "#d32f2f",
+                                "Hillenbrand et al. (1995)" = "#1565c0")) +
+  labs(title = "F1-F2 vowel space",
+       subtitle = "Axes reversed following phonetic convention (high front = upper left)",
+       color = NULL, shape = NULL) +
+  theme_speech(12)
+```
+
+本章の合成母音（赤）が、@hillenbrand1995 の英語母音基準値（青）とおおむね同じ領域に位置していることが確認できます。L2発音研究では、学習者の産出した母音をこの空間にプロットし、母語話者分布との距離やオーバーラップを定量化します。
+
+### 後続の例のための .wav ファイルを用意する
+
+```{r make_vowel_wav}
+# Preferred: generate via Python utility
+#   python3 audio_generation.py --emit-vowels i --outdir data/audio --sample-rate 16000 --duration-ms 2000
+# Fallback: show an instruction if the file is missing
+if (!file.exists('data/audio/vowel_i.wav')) {
+  if (!dir.exists('data/audio')) dir.create('data/audio', recursive = TRUE)
+  message("Missing data/audio/vowel_i.wav. Run: python3 audio_generation.py --emit-vowels i --outdir data/audio --sample-rate 16000 --duration-ms 2000")
+} else {
+  message("Found data/audio/vowel_i.wav")
+}
+```
+
+### F0推定：自己相関とケプストラム
+
+**F0（基本周波数）**は、声帯が1秒間に何回振動するかを表す値で、知覚的には声の「高さ」（ピッチ）に対応します。L2音声研究では、学習者のイントネーション（F0の時間変化パターン）の分析や、流暢性の指標としてF0の変動幅（F0 range）が用いられます。
+
+F0を推定するには、波形の中から「繰り返しの周期」を検出する必要があります。ここでは2つの古典的な手法を紹介します。
+
+**自己相関法（ACF法）**：コア時系列章で、テストスコアの ACF から AR 次数を同定したことを思い出してください。あのとき「ラグ1で自己相関が高い → 1期前に依存する」と読みました。音声波形に同じ操作を適用すると、**声帯振動の周期に対応するラグ**で自己相関がピークを示します。たとえば F0 = 120 Hz（周期 ≈ 8.3 ms）の信号では、サンプリングレート 16,000 Hz のとき、ラグ 133 サンプル（= 16000/120）付近で自己相関が最大になります。つまり、ACFのピーク位置からF0を逆算できます。
+
+**ケプストラム法**：もう一つのアプローチは、スペクトルの「周期性」を利用する方法です。
+
+#### ケプストラムの直感的理解
+
+ケプストラム（cepstrum）は「spectrum」の前半を逆にした造語で、**スペクトルのスペクトル**とも呼ばれます。
+
+処理の流れ：`信号 → FFT → |X(f)|² → log → 逆FFT → ケプストラム`
+
+音声信号のスペクトルには、F0の**倍音列**（$f_0, 2f_0, 3f_0, \ldots$）が**等間隔**に並んでいます。たとえばF0 = 120 Hz なら、120, 240, 360, 480 Hz ... に倍音がある。この等間隔パターンは、対数スペクトル上では**周期的な成分**になります。逆FFTを取ることで、この周期性に対応するピークが「ケフレンシ」（quefrency, 単位は秒）軸上に現れます。そのピーク位置の逆数がF0です（例：ケフレンシ 0.00833秒 → $1/0.00833 = 120$ Hz）。
+
+ケプストラムの利点は、ソース–フィルタ・モデルと直結している点です。ソース（声帯振動）とフィルタ（声道共鳴）は時間領域では**畳み込み**ですが、対数スペクトル領域では**足し算**に変わります。逆FFT後、低ケフレンシ成分はフォルマント（声道の緩やかなスペクトル包絡）に対応し、高ケフレンシのピークがF0（倍音列の等間隔パターン）に対応します。つまり、ケプストラムはソースとフィルタを**自動的に分離**してくれます。
+
+以下のコードでは、自己相関法とケプストラム法をそれぞれ関数として実装し、合成母音に適用します。
+
+**コードの読み方のポイント**：
+
+- `acf(...)$acf[-1]`：自己相関関数を計算し、ラグ0（常に1.0）を除外。残りのラグの中から音声のF0範囲（`fmin`〜`fmax`）に対応するラグを探索
+- `pmax(Mod(X), 1e-6)`：FFTの振幅が0になるとlog(0)が−∞になるため、微小値（$10^{-6}$）で下限をクリップ
+- `fmin=60, fmax=300`：この学習用デモで置いた探索帯域。合成母音の真の F0 = 120 Hz を安全に含むように設定している
+
+```{r f0_estimation}
+est_f0_ac <- function(x, fs, fmin=60, fmax=300){
+  xr  <- as.numeric(scale(x, center = TRUE, scale = FALSE))
+  ac  <- stats::acf(xr, lag.max = floor(fs/fmin), plot = FALSE)$acf[-1]
+  lags<- 1:length(ac)
+  idx <- which(lags >= floor(fs/fmax) & lags <= floor(fs/fmin))
+  lag0<- lags[idx][which.max(ac[idx])]
+  fs/lag0
+}
+
+est_f0_cep <- function(x, fs, fmin=60, fmax=300){
+  X   <- stats::fft(x)
+  logS<- log(pmax(Mod(X), 1e-6))
+  cep <- Re(stats::fft(logS, inverse = TRUE))
+  q   <- 0:(length(cep)-1) / fs
+  idx <- which(q >= 1/fmax & q <= 1/fmin)
+  q0  <- q[idx][which.max(cep[idx])]
+  1/q0
+}
+
+f0_i_ac  <- est_f0_ac(vw_i, fs)
+f0_i_cep <- est_f0_cep(as.numeric(vw_i), fs)
+f0_a_ac  <- est_f0_ac(vw_a, fs)
+f0_a_cep <- est_f0_cep(as.numeric(vw_a), fs)
+```
+
+::: {.panel-tabset}
+
+##### 推定結果
+
+```{r f0_result_table}
+gt(tibble(Vowel=c('/i/','/i/','/a/','/a/'), Method=c('ACF','Cepstrum','ACF','Cepstrum'),
+          `F0 (Hz)` = round(c(f0_i_ac, f0_i_cep, f0_a_ac, f0_a_cep),1),
+          `True F0` = 120,
+          `Error (Hz)` = round(c(f0_i_ac, f0_i_cep, f0_a_ac, f0_a_cep) - 120, 1))) |>
+  tab_header(title = 'F0 estimates: ACF vs Cepstrum') |>
+  tab_footnote(footnote = "True F0 = 120 Hz (synthesis parameter). Both methods should yield ≈120 Hz for both vowels.")
+```
+
+合成母音のF0は 120 Hz に設定しました。ACF法とケプストラム法の推定値が両方とも 120 Hz に近ければ、推定が正しく機能しています。/i/ と /a/ で同じF0が推定されるべきです — F0は声帯振動の周期であり、母音の種類には依存しません。
+
+##### ACFの可視化
+
+ACF法の推定過程を図示します。F0の周期に対応するラグ（= fs/F0 ≈ 133サンプル）でACFがピークを示す様子を確認してください。
+
+```{r f0_acf_viz}
+#| fig-height: 4
+xr_i <- as.numeric(scale(vw_i, center = TRUE, scale = FALSE))
+ac_i <- stats::acf(xr_i, lag.max = floor(fs/60), plot = FALSE)
+lags_i <- 1:length(ac_i$acf[-1])
+ac_vals_i <- as.numeric(ac_i$acf[-1])
+
+# F0探索範囲
+fmin <- 60; fmax <- 300
+lag_min <- floor(fs/fmax)  # ~53
+lag_max <- floor(fs/fmin)  # ~266
+search_idx <- which(lags_i >= lag_min & lags_i <= lag_max)
+peak_lag <- lags_i[search_idx][which.max(ac_vals_i[search_idx])]
+
+tibble(lag = lags_i, acf = ac_vals_i) |>
+  ggplot(aes(x = lag, y = acf)) +
+  geom_line(color = "grey40") +
+  geom_vline(xintercept = peak_lag, color = "#d32f2f", linetype = "dashed", linewidth = 0.8) +
+  annotate("rect", xmin = lag_min, xmax = lag_max, ymin = -Inf, ymax = Inf,
+           fill = "#1565c0", alpha = 0.08) +
+  annotate("text", x = peak_lag + 8, y = max(ac_vals_i[search_idx]) * 0.95,
+           label = paste0("Peak lag = ", peak_lag, "\nF0 = ", fs, "/", peak_lag,
+                          " = ", round(fs/peak_lag, 1), " Hz"),
+           hjust = 0, color = "#d32f2f", size = 3.5) +
+  annotate("text", x = (lag_min + lag_max)/2, y = min(ac_vals_i) * 0.7,
+           label = paste0("Search range\n(", fmin, "–", fmax, " Hz)"),
+           color = "#1565c0", size = 3, alpha = 0.7) +
+  labs(title = "ACF-based F0 estimation for synthetic /i/",
+       x = "Lag (samples)", y = "Autocorrelation") +
+  theme_speech(12)
+```
+
+青い帯がF0の探索範囲（60–300 Hz に対応するラグ）、赤い破線がACFピーク位置です。ピーク位置のラグから $F_0 = f_s / \text{lag}$ で基本周波数を逆算します。
+
+##### ケプストラムの可視化
+
+ケプストラム法の推定過程を図示します。ケフレンシ（quefrency）軸上で、F0の周期（1/F0 ≈ 0.00833秒）に対応するピークが現れます。
+
+```{r f0_cep_viz}
+#| fig-height: 4
+x_i <- as.numeric(vw_i)
+X_i <- stats::fft(x_i)
+logS_i <- log(pmax(Mod(X_i), 1e-6))
+cep_i <- Re(stats::fft(logS_i, inverse = TRUE))
+q_i <- 0:(length(cep_i)-1) / fs   # ケフレンシ（秒）
+
+# F0探索範囲のケフレンシ
+q_min <- 1/fmax  # ~0.00333 s
+q_max <- 1/fmin  # ~0.01667 s
+search_q <- which(q_i >= q_min & q_i <= q_max)
+peak_q <- q_i[search_q][which.max(cep_i[search_q])]
+f0_est <- 1/peak_q
+
+tibble(quefrency = q_i, cepstrum = cep_i) |>
+  filter(quefrency <= 0.025) |>
+  ggplot(aes(x = quefrency * 1000, y = cepstrum)) +
+  geom_line(color = "grey40") +
+  geom_vline(xintercept = peak_q * 1000, color = "#d32f2f", linetype = "dashed", linewidth = 0.8) +
+  annotate("rect", xmin = q_min * 1000, xmax = q_max * 1000, ymin = -Inf, ymax = Inf,
+           fill = "#ef6c00", alpha = 0.08) +
+  annotate("text", x = peak_q * 1000 + 0.3, y = max(cep_i[search_q]) * 0.9,
+           label = paste0("Peak = ", round(peak_q * 1000, 2), " ms\nF0 = 1/",
+                          round(peak_q, 5), " = ", round(f0_est, 1), " Hz"),
+           hjust = 0, color = "#d32f2f", size = 3.5) +
+  annotate("text", x = (q_min + q_max)/2 * 1000, y = min(cep_i[search_q]) * 0.5,
+           label = paste0("Search range\n(", fmin, "–", fmax, " Hz)"),
+           color = "#ef6c00", size = 3, alpha = 0.7) +
+  labs(title = "Cepstrum-based F0 estimation for synthetic /i/",
+       x = "Quefrency (ms)", y = "Cepstrum amplitude") +
+  theme_speech(12)
+```
+
+オレンジの帯がF0の探索範囲（ケフレンシで1/300 ≈ 3.3 ms 〜 1/60 ≈ 16.7 ms）、赤い破線がケプストラムのピーク位置です。ピーク位置のケフレンシの逆数 $F_0 = 1/q_{\text{peak}}$ で基本周波数を推定します。
+
+##### `seewave::fund()` によるF0トラック
+
+```{r f0_seewave_fund}
+fund_i <- seewave::fund(w_synth_i, f = fs, wl = 512, ovlp = 75, fmax = 300, plot = FALSE)
+fund_a <- seewave::fund(w_synth_a, f = fs, wl = 512, ovlp = 75, fmax = 300, plot = FALSE)
+
+fund_tbl <- bind_rows(
+  tibble(time = fund_i[, "x"], f0_hz = fund_i[, "y"] * 1000, vowel = "/i/"),
+  tibble(time = fund_a[, "x"], f0_hz = fund_a[, "y"] * 1000, vowel = "/a/")
+)
+
+fund_tbl |>
+  group_by(vowel) |>
+  summarise(
+    median_f0 = median(f0_hz, na.rm = TRUE),
+    min_f0 = min(f0_hz, na.rm = TRUE),
+    max_f0 = max(f0_hz, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "F0 track summary from seewave::fund()") |>
+  fmt_number(columns = c(median_f0, min_f0, max_f0), decimals = 1)
+
+ggplot(fund_tbl, aes(x = time, y = f0_hz, color = vowel)) +
+  geom_hline(yintercept = 120, linetype = "dashed", color = "grey50") +
+  geom_line(linewidth = 0.9) +
+  labs(
+    title = "Framewise F0 tracks from seewave::fund(plot = FALSE)",
+    x = "Time (s)",
+    y = "F0 (Hz)",
+    color = "Vowel"
+  )
+```
+
+`fund()` はフレームごとにF0を推定するので、単一の代表値だけでなく**時間方向の安定性**を確認できます。合成母音のように定常な信号では、トラック全体が 120 Hz 付近にほぼ水平に並ぶはずです。実データで大きくギザつく場合は、倍音跳躍や無声区間の混入を疑います。
+
+:::
+
+もし推定値が 240 Hz（2倍）や 60 Hz（半分）に跳んでいる場合は、**倍音跳躍** (octave jump) が発生しています（後述の callout-warning を参照）。
+
+#### ACF法とケプストラム法の比較
+
+| 方法 | 原理 | 長所 | 短所 |
+|------|------|------|------|
+| ACF法 | 信号の周期ピークを検出 | 直感的、実装が簡単 | 無声区間で誤推定、振幅変動に敏感 |
+| ケプストラム法 | 畳み込み分離（スペクトルの対数→逆FFT） | ソースとフィルタを分離でき頑健 | 短窓では分解能が低下 |
+
+しきい値・探索帯域（`fmin`/`fmax`）は対象話者に合わせて調整します。Praat 公式マニュアルは、低めの成人話者と高めの成人話者で開始設定を分けて説明しており、**固定の「正解帯域」を覚えるより、話者に応じた探索帯域を置く**ことを重視しています [@praatIntro42Pitch]。
+
+**[推奨] 実務での使い分け**：教育研究では、自作のACF/ケプストラム関数よりも **Praat** や **seewave::fund()**（内部でACFベースの推定を行う）を使う方が、設定管理と再実行の面で扱いやすいことが多いです。本節で原理を手実装した目的は、(1) コア時系列章の自己相関分析との共通点を体験すること、(2) F0推定がブラックボックスではなく「ラグの検出」であると理解することです。実データでは、Praat の設定値や `seewave::fund()` の探索帯域を話者に合わせて明示的に決めてください。
+
+#### F0の倍音跳躍 (octave jump) に注意
+
+F0推定で最も頻出するエラーが**倍音跳躍**（octave jump）です。アルゴリズムがF0を2倍（1オクターブ上）や半分（1オクターブ下）の値で検出してしまう現象です。
+
+**検出方法**：連続するフレーム間でF0が急に2倍や半分になっていないかチェックします。
+
+```
+# 倍音跳躍の簡易検出・修正（概念コード）
+fix_octave_jumps <- function(f0_track, threshold = 0.4) {
+  for (i in 2:length(f0_track)) {
+    if (!is.na(f0_track[i]) && !is.na(f0_track[i-1])) {
+      ratio <- f0_track[i] / f0_track[i-1]
+      if (ratio > (2 - threshold)) f0_track[i] <- f0_track[i] / 2
+      else if (ratio < (0.5 + threshold/2)) f0_track[i] <- f0_track[i] * 2
+    }
+  }
+  f0_track
+}
+```
+
+**対策**：(1) Praatの`To Pitch (ac)...`は倍音跳躍の自動修正を内蔵しています。(2) R で独自実装する場合は、メディアンフィルタで平滑化してから外れ値を検出します。(3) `fmin`/`fmax` の範囲を話者の実際のF0範囲に合わせて狭くすると、誤推定を減らせます。
+
+### スペクトルと調波・フォルマントの概観
+
+**なぜスペクトルを見るのか**：波形（時間領域）を見ただけでは、F0やフォルマントの情報を読み取ることは困難です。波形は振幅の時間変化を示しますが、「どの周波数にどれだけのエネルギーがあるか」はわかりません。**スペクトル**（周波数領域）に変換することで、倍音列の構造やフォルマントの位置が一目でわかるようになります。
+
+この変換に使うのが**FFT**（高速フーリエ変換）です。FFTは信号を「どの周波数の正弦波がどれだけ含まれているか」に分解する操作で、数学的にはコア時系列章で見た ACF（時間ラグ方向の相関）と対をなす概念です。ACFが「どのラグで信号が自分自身に似ているか」を調べるのに対し、FFTは「どの周波数で信号が振動しているか」を調べます。
+
+以下のコードでは、合成母音のスペクトルを可視化し、F0の整数倍に現れる**調波列** (harmonics) と、フォルマント周波数付近で振幅が増幅された**スペクトル包絡のピーク**を確認します。
+
+```{r spectrum_helpers}
+plot_spectrum <- function(x, fs, nfft=4096){
+  X <- fft(as.numeric(x)[1:min(length(x), nfft)])
+  f <- (0:(length(X)-1)) * fs/length(X)
+  amp <- 20*log10(pmax(Mod(X), 1e-6))
+  tibble(f=f, amp=amp) |>
+    filter(f <= fs/2) |>
+    ggplot(aes(f, amp)) + geom_line() +
+    labs(x='Frequency (Hz)', y='Amplitude (dB)') + theme_speech(12)
+}
+
+plot_spectrum(vw_i, fs) + labs(title='Spectrum of synthetic /i/')
+plot_spectrum(vw_a, fs) + labs(title='Spectrum of synthetic /a/')
+```
+
+#### スペクトルの読み方
+
+- **横軸**（Frequency, Hz）：周波数。左が低音、右が高音。
+- **縦軸**（Amplitude, dB）：各周波数のエネルギー。dBスケールは対数的なので、20 dBの差は振幅で約10倍に相当します。
+- **等間隔のピーク（調波列）**：F0の整数倍（f0, 2f0, 3f0, ...）に対応。ピーク間の間隔がF0です。合成母音ではF0 = 120 Hzなので、120 Hz, 240 Hz, 360 Hz, ... にピークが並びます。
+- **包絡の山（フォルマント）**：調波列全体を滑らかに結ぶ包絡線に注目すると、特定の周波数帯でエネルギーが特に強くなっています。これがフォルマント（F1, F2, F3）です。
+- **/i/ と /a/ の違い**：英語母音の古典的データでは、/i/ は **F1 が低く F2 が高い**、/a/ は **F1 が高く F2 が相対的に低い** という対照が観察されます。この節の合成母音も、その典型的パターンを誇張して示しています [@hillenbrand1995]。
+
+#### 窓長（wl）と時間–周波数のトレードオフ
+
+スペクトル分析やスペクトログラムで指定する窓長（`wl`）は、**時間分解能と周波数分解能のトレードオフ**を制御します。
+
+| 窓長 | 16 kHzでの時間幅 | 周波数分解能 | 用途 |
+|------|-----------------|-------------|------|
+| `wl = 256` | 16 ms | 62.5 Hz | F0トラッキング（時間分解能重視） |
+| `wl = 512` | 32 ms | 31.3 Hz | スペクトログラムの標準設定 |
+| `wl = 1024` | 64 ms | 15.6 Hz | 平均スペクトル（周波数分解能重視） |
+
+窓長を長くすると倍音が1本ずつ分離して見えますが、時間的な変化（フォルマントの遷移など）がぼやけます。本節の `wl = 512` は 16 kHz なら約 32 ms に相当します。Praat 公式マニュアルでも、F0 分析の有効窓長は `pitch floor` に応じて自動決定され、たとえば floor = 75 Hz なら約 40 ms になります。つまり、**窓長は固定慣例ではなく、対象音声と分析目的に応じて決める設定値**です [@praatToPitch; @praatToSpectrogram]。
+
+#### フォルマント推定の信頼性について
+
+このスペクトルから目視でフォルマントのおおよその位置を確認できますが、厳密なフォルマント推定には**LPC**（線形予測符号化）や専用ツール（例：Praat の Formant tracking、`phonTools::findformants()`）を使用してください。スペクトルのピーク ≠ フォルマントです — 倍音のピークとフォルマントのピークが一致するとは限りません。LPCはスペクトル包絡を平滑に推定することで、倍音構造の影響を除去してフォルマント周波数をより正確に同定できます。実データの計測では**録音条件・マイク・話速**の影響も考慮してください。
+
+### 実データ（.wav）への応用
+
+ここまでは合成データで原理を確認しましたが、実際の研究では録音データ（.wavファイル）を扱います。以下のコードは、録音データの母音部分を切り出してF0とフォルマントを推定するワークフローの概要を示します。必要なwavファイルが存在しない場合は、メッセージを出して安全にスキップします。
+
+**典型的なワークフロー**：
+
+1. `tuneR::readWave()` で .wav ファイルを読み込む
+2. `seewave::oscillo()` で波形を表示し、目的の区間を確認する
+3. `seewave::fund()` でF0トラック（F0の時間変化）を算出する
+4. `phonTools::lpc()` でLPCスペクトル包絡を推定し、フォルマント位置を確認する
+
+```{r wav_real_example}
+#| eval: true
+# Use the generated vowel (see the preparation chunk below)
+if (file.exists("data/audio/vowel_i.wav")) {
+  w <- readWave('data/audio/vowel_i.wav')            # mono / sample rate
+  seewave::oscillo(w)                      # 波形
+  f0 <- seewave::fund(w, f = w@samp.rate, ovlp = 50, from = 0.2, to = 0.3, plot = TRUE)
+  # Approximate LPC envelope (phonTools)
+  phonTools::lpc(as.numeric(w@left), fs = w@samp.rate, show = TRUE)
+} else {
+  message("Skip wav_real_example: data/audio/vowel_i.wav not found")
+}
+```
+
+研究例（概要）：学習者の**英語/i/と/ɪ/** のF1/F2空間がネイティブの分布と異なる、ピッチ変動（F0の周期性）が母語のイントネーション転移を示す、など。実践では、単語/文コンテキスト、ピッチ範囲正規化、共変量（性別/年齢）を含めてGLMMや階層ベイズで分析します。
+
+------------------------------------------------------------------------
+
+## Rでwav処理入門（tuneR・seewave） {#sec-wav-r}
+
+前セクションでは合成データで音声分析の原理を学びましたが、実際の研究では録音された .wav ファイルを扱います。本セクションでは、Rで音声ファイルを読み込み、可視化し、特徴量を抽出する実践的なワークフローを紹介します。
+
+主に使用するパッケージは以下の2つです。
+
+| パッケージ | 役割 | 主な関数 |
+|---|---|---|
+| **tuneR** | wav ファイルの入出力と基本操作 | `readWave()`, `writeWave()`, `mono()`, `normalize()`, `downsample()` |
+| **seewave** | 音響特徴量の算出と可視化 | `oscillo()`, `spectro()`, `meanspec()`, `specprop()`, `fund()`, `zcr()`, `fpeaks()` |
+
+この2つのパッケージは連携して動作します。`tuneR::readWave()` で読み込んだ `Wave` オブジェクトを、そのまま `seewave` の関数に渡して分析できます。
+
+### 録音品質チェックリスト
+
+音声分析の信頼性は**録音品質**に大きく依存します。分析を始める前に以下を確認してください。
+
+| チェック項目 | 基準 | 確認方法 |
+|---|---|---|
+| **サンプリングレート** | 16 kHz以上（フォルマント分析には最低8 kHz） | `w@samp.rate` |
+| **ビット深度** | 16-bit以上 | `w@bit` |
+| **クリッピング** | 波形が±1.0で平坦化していないこと | `max(abs(w@left))` が0.95以下 |
+| **SNR（信号対雑音比）** | 30 dB以上が望ましい | 無音区間と発話区間のRMS比 |
+| **モノラル** | 分析はモノラルで行う | `w@stereo` が `FALSE` |
+| **背景ノイズ** | 一定レベルの定常ノイズであること | スペクトログラムの目視確認 |
+
+**よくある問題と対策**：
+
+- **クリッピング**：マイク入力レベルが高すぎると波形が「切り取られ」、F0やフォルマントの推定精度が著しく低下します。録音時のゲイン設定で防止します。
+- **部屋の反響**：反射音がフォルマントのピークを歪めます。吸音材のある部屋やヘッドセットマイクの使用を推奨します。
+- **圧縮音声**：MP3等の非可逆圧縮はスペクトル構造を変化させます。必ず**WAV（無圧縮）**で録音してください。
+
+
+### 1) ファイルを読む・基本情報を確認
+
+音声分析の第一歩は、.wav ファイルを R に読み込んで基本情報を確認することです。以下のコードでは、`tuneR::readWave()` でファイルを読み込み、3つの前処理を行います。
+
+- **`mono()`**：ステレオ録音の場合、左チャンネルだけを取り出してモノラル化する（分析は1チャンネルで行うため）
+- **`normalize()`**：振幅を 16-bit 整数範囲に正規化する（`unit = '16'` で ±32767 に、`center = TRUE` で直流成分を除去）
+- **`downsample()`**：サンプリングレートを 16 kHz に統一する（もとの録音が 44.1 kHz や 48 kHz の場合に、計算量を減らしつつフォルマント分析に十分な帯域を維持する）
+
+```{r wav_intro}
+if (file.exists('data/audio/vowel_i.wav')) {
+  w <- readWave('data/audio/vowel_i.wav')  # パスは適宜
+  w                                     # bit数・サンプリングレートなど
+  w@stereo                               # TRUEならステレオ
+
+  # モノラル化（左チャンネル）/ 正規化 / ダウンサンプリング（16 kHz）
+  w_mono <- mono(w, which = 'left')
+  w_norm <- tuneR::normalize(w_mono, unit = '16', center = TRUE)
+  w_ds   <- downsample(w_norm, samp.rate = 16000)
+} else {
+  message('data/audio/vowel_i.wav not found. See the Python command above to generate it.')
+}
+```
+
+#### Wave オブジェクトの主なスロット
+
+`readWave()` が返す `Wave` オブジェクトは以下のスロット（属性）を持ちます。
+
+| スロット | 意味 | アクセス方法 |
+|---|---|---|
+| `@left` | 左チャンネルの波形データ（整数ベクトル） | `w@left` |
+| `@right` | 右チャンネル（ステレオの場合のみ） | `w@right` |
+| `@samp.rate` | サンプリングレート（Hz） | `w@samp.rate` |
+| `@bit` | ビット深度（8, 16, 24, 32） | `w@bit` |
+| `@stereo` | ステレオか否か（論理値） | `w@stereo` |
+
+`w@left` は「音声の振幅値が時間順に並んだ整数ベクトル」であり、これ自体が**時系列データ**です。
+
+### 2–4) 可視化・記述統計・ピッチトラック {.unnumbered}
+
+音声ファイルを読み込んだら、**可視化** → **記述統計** → **ピッチ/フォルマント推定**の順に分析を進めます。以下のタブで各ステップの出力を確認してください。
+
+::: {.panel-tabset}
+
+#### 波形・スペクトログラム
+
+音声データを2つの方法で可視化します。**波形** (oscillogram) は時間軸に沿った振幅の変化を示し、発話区間や無音区間の特定に使います。**スペクトログラム**は時間×周波数の2次元表現で、色の濃さがエネルギーの強さを表します。
+
+```{r wav_viz_oscillo}
+if (exists('w_ds')) {
+  oscillo(w_ds)
+} else {
+  message('Skip viz: w_ds not available')
+}
+```
+
+```{r wav_viz_spectro}
+if (exists('w_ds')) {
+  spectro(w_ds, wl = 512, ovlp = 75, wn = 'hanning', flim = c(0, 5))
+} else {
+  message('Skip viz: w_ds not available')
+}
+```
+
+```{r wav_viz_meanspec}
+if (exists('w_ds')) {
+  meanspec(w_ds, f = w_ds@samp.rate, wl = 1024)
+} else {
+  message('Skip viz: w_ds not available')
+}
+```
+
+#### スペクトログラムの読み方
+
+| 要素 | 意味 | 確認ポイント |
+|------|------|-------------|
+| **横軸** | 時間（秒） | 発話の開始・終了、母音・子音の境界を確認 |
+| **縦軸** | 周波数（kHz） | フォルマント分析では 0–5 kHz の範囲に注目 |
+| **色の濃さ** | エネルギーの強さ（dB） | 暗い帯＝フォルマント（声道の共鳴） |
+| **横に連なる暗い帯** | フォルマント（F1, F2, F3...） | 下から順にF1、F2、F3 |
+| **縦の縞模様** | 声帯振動の各パルス | 有声区間で見られる。縞の間隔がF0の逆数 |
+| **均一な高周波ノイズ** | 無声摩擦音（/s/, /f/など） | 高周波帯に広がるエネルギー |
+
+`wl = 512` は窓長（サンプル数）で、16 kHzサンプリングなら約32 msに相当します。窓長を長くすると周波数分解能が上がり（フォルマントが鮮明に）、短くすると時間分解能が上がります（過渡的な変化が見やすく）。
+
+#### 記述統計
+
+テストスコアデータの分析でまず平均・SD・歪度を確認するのと同様に、音声データでも分析の前に**基本的な記述統計**を把握します。
+
+| 指標 | 意味 | 教育研究での活用例 |
+|---|---|---|
+| **duration** | 発話区間の長さ（秒） | 流暢性の指標（pause ratio等） |
+| **RMS** | 振幅の二乗平均平方根（音の大きさ） | 録音レベルの均一性チェック |
+| **ZCR** | ゼロ交差率（波形がゼロを横切る頻度） | 有声/無声の判定、摩擦音の検出 |
+| **spectral centroid** | スペクトル重心（周波数の重み付き平均） | 声質の明るさ/暗さの指標 |
+
+```{r wav_stats}
+if (exists('w_ds')) {
+  dur_sec <- length(w_ds@left) / w_ds@samp.rate
+  rms_amp <- seewave::rms(w_ds)
+  zcr_mat <- seewave::zcr(w_ds, wl = 512, plot = FALSE)
+  zcr_val <- mean(zcr_mat[, 2], na.rm = TRUE)
+  sp   <- meanspec(w_ds, f = w_ds@samp.rate, wl = 1024, plot = FALSE)
+  prop <- seewave::specprop(sp, f = w_ds@samp.rate)
+
+  tibble(
+    Metric = c("Duration (s)", "RMS amplitude", "ZCR (mean)",
+               "Spectral centroid (Hz)", "Spectral spread (Hz)", "Spectral skewness"),
+    Value  = round(c(dur_sec, as.numeric(rms_amp), zcr_val,
+                     as.numeric(prop$cent), as.numeric(prop$sd), as.numeric(prop$skewness)), 4)
+  ) |>
+    gt() |>
+    tab_header(title = "Audio descriptive statistics") |>
+    tab_footnote(
+      footnote = "Spectral spread = standard deviation of the spectral distribution; spectral skewness = asymmetry of the spectral shape.",
+      locations = cells_body(columns = Metric, rows = Metric %in% c("Spectral spread (Hz)", "Spectral skewness"))
+    )
+} else {
+  message('Skip stats: w_ds not available')
+}
+```
+
+#### 音響記述統計の読み方
+
+| 指標 | 意味 | 典型的な値の目安 |
+|------|------|----------------|
+| **duration** | 音声の長さ（秒） | 持続母音: 0.5–2秒、単語: 0.3–1秒 |
+| **RMS** | 振幅の実効値（音量の指標） | 正規化後は 0–1 の範囲。0.01未満は無音に近い |
+| **ZCR** | 波形がゼロを横切る頻度 | 有声音（母音）で低く、無声摩擦音（/s/）で高い |
+| **Spectral centroid** | スペクトルの「重心」周波数（Hz） | 明るい音色ほど高い。母音 /i/ > /a/ が一般的 |
+| **Spectral spread** | スペクトルの広がり（Hz） | 広いほど多様な周波数成分を含む |
+| **Spectral skewness** | スペクトルの歪度 | 正なら低周波側にエネルギーが偏る |
+
+これらの値は**録音品質の異常検出**にも使えます。たとえば、RMSが極端に低いファイルはマイク設定のミス、ZCRが異常に高いファイルはノイズ混入の可能性を示します。
+
+#### ピッチトラック（F0）
+
+`seewave::fund()` でF0トラック（時間に沿ったF0の変化）を推定します。F0トラッキングの結果自体が**時系列データ**であり、前2章で学んだ手法を直接適用できます。
+
+```{r wav_pitch}
+if (exists('w_ds')) {
+  fund(w_ds, f = w_ds@samp.rate, ovlp = 50,
+       threshold = 5, fmax = 400, plot = TRUE)
+} else {
+  message('Skip pitch: w_ds not available')
+}
+```
+
+#### F0トラックへの時系列分析の応用
+
+- **STL分解**：文全体のF0 contourからトレンド（declination：文末に向かってF0が下がる傾向）と局所変動を分離
+- **自己相関（ACF）**：F0の周期性を検出 — 流暢な発話ではリズミカルなF0パターンが見られることがある
+- **ARIMAモデル**：学習者のF0変動パターンが経時的にどう変化するかを定量化
+- **変化点検出（`strucchange`）**：音読の途中で韻律パターンが変化した時点を自動検出
+
+たとえば、学習者を毎月録音し、各録音からF0の変動係数（CV）を算出すれば、それは「マクロな時系列」になり、ITS分析で発音訓練の効果を評価できます。
+
+#### LPCスペクトル包絡
+
+`phonTools::lpc()` でLPC（線形予測符号化）によるスペクトル包絡を算出します。包絡のピーク（山）がフォルマント周波数に対応します。
+
+```{r wav_lpc}
+if (exists('w_ds')) {
+  phonTools::lpc(as.numeric(w_ds@left), fs = w_ds@samp.rate, show = TRUE)
+} else {
+  message('Skip LPC: w_ds not available')
+}
+```
+
+#### F0トラック・LPCスペクトルの読み方
+
+- **F0トラックプロット**：横軸が時間（秒）、縦軸がF0（Hz）。安定した有声区間ではF0が一定の帯域に集中します。急な跳躍や欠損は無声区間や推定エラーの可能性があります。
+- **LPCスペクトル包絡**：横軸が周波数（Hz）、縦軸が振幅（dB）。包絡のピーク（山）がフォルマント周波数に対応します。最初の山がF1（口の開き）、次がF2（舌の前後位置）です。
+- **F0とフォルマントの独立性**：ソース-フィルタ・モデルにより、F0（声の高さ）とフォルマント（母音の音色）は独立に分析できます。高い声で /a/ を言っても、F1/F2パターンは大きく変わりません。
+
+:::
+
+### 5) トリミング・フィルタリング・保存
+
+実際の録音ファイルには、発話の前後に無音区間やノイズが含まれていることがほとんどです。分析対象の区間だけを切り出し（トリミング）、不要な周波数帯を除去（フィルタリング）してから保存するのが標準的なワークフローです。
+
+- **`seewave::cutw()`**：時間（秒単位）で `from` / `to` を指定して波形を切り出す
+- **`seewave::ffilter()`**：周波数（Hz単位）で `from` / `to` を指定してバンドパスフィルタを適用。`bandpass = TRUE` で指定範囲内の周波数だけを通す
+- **`tuneR::writeWave()`**：処理後の Wave オブジェクトを .wav ファイルとして保存
+
+以下のコードでは、**例として** 300–8000 Hz のバンドパスを使っています。ただし、これは固定の標準値ではありません。実際には録音条件、サンプリングレート、雑音環境、研究目的に応じて決めるべき設定です。以下のコードでは、切り出し範囲が信号長を超えないよう安全なガード処理も入れています。
+
+```{r wav_edit_save}
+if (exists('w_ds')) {
+  # Compute duration and choose a safe cut window
+  dur <- length(w_ds@left) / w_ds@samp.rate
+  start_t <- 0.2
+  end_t   <- 0.6
+  # Clamp to available duration
+  start_t <- max(0, min(start_t, dur))
+  end_t   <- max(start_t + 1e-3, min(end_t, dur))
+  # If still too short, fall back to [0, min(0.4, dur)]
+  if (end_t - start_t < 0.02) {
+    start_t <- 0
+    end_t   <- min(0.4, dur)
+  }
+  # Final guard: ensure positive window
+  if (end_t <= start_t) {
+    start_t <- 0
+    end_t   <- dur
+  }
+
+  # Cut and filter
+  w_cut <- cutw(w_ds, from = start_t, to = end_t, output = 'Wave')
+  w_bp <- ffilter(w_cut, f = w_ds@samp.rate, from = 300, to = 8000,
+                  bandpass = TRUE, output = 'Wave')
+
+  writeWave(w_bp, 'data/audio/vowel_i_proc.wav')
+} else {
+  message('Skip edit/save: w_ds not available')
+}
+```
+
+#### サンプリングとビット深度
+- 16–48 kHz, 16-bit mono で十分な解析が可能（フォルマントは〜5 kHz程度）。
+- 24-bitは**ダイナミックレンジ**が広がるが、ファイルサイズ増に注意。解析では**正規化**と**クリップ回避**が肝要です。
+
+### 6) 複数ファイルのバッチ処理（記述統計をCSVに）
+
+以下のコードでは、`data/audio/` フォルダ内のすべての .wav ファイルに対して、前処理（モノラル化・正規化）→ 記述統計（duration / ZCR / RMS / スペクトル重心）の算出を自動化し、結果をCSVに保存します。複数話者・複数項目のデータを一括処理するパイプラインの雛形です。
+
+#### この章での表の使い分け
+
+- **静的な表**は、概念の比較、用語整理、手順の確認に使います。読み手に「この場で意味を理解してほしい」表は、本文の流れを止めない方が有利です。
+- **動的な表**は、ファイル単位・トークン単位の出力のように行数が増える結果表にだけ使います。探索・検索・並べ替えが必要だからです。
+- したがって本章では、`knitr::kable()` や Markdown 表を**教える表**に、`DT::datatable()` を**調べる表**に割り当てています。
+
+```{r wav_batch}
+files <- list.files('data/audio', pattern = '\\.(wav|WAV)$', full.names = TRUE)
+
+summarise_wav <- function(path){
+  w <- readWave(path) |> mono('left') |> tuneR::normalize(unit='16', center=TRUE)
+  dur <- length(w@left)/w@samp.rate
+  zcr_m <- zcr(w, wl = 512, plot = FALSE); zcr_v <- mean(zcr_m[, 2], na.rm = TRUE)
+  rmsv <- rms(w)
+  sp  <- meanspec(w, f = w@samp.rate, wl=1024, plot=FALSE)
+  cen <- specprop(sp, f = w@samp.rate)$cent
+  data.frame(file = basename(path), duration = dur, zcr = zcr_v, rms = rmsv, centroid = cen)
+}
+
+tbl <- map_dfr(files, summarise_wav)
+write.csv(tbl, 'audio_summary.csv', row.names = FALSE)
+tbl |>
+  DT::datatable(
+    caption = 'Audio files: descriptive stats',
+    filter = 'top',
+    options = list(pageLength = 10, scrollX = TRUE, autoWidth = TRUE)
+  )
+```
+
+PraatやELANなどの標準ツールとRを組み合わせると、**特徴量抽出 → 統計解析（GLMM/ベイズ）**を一貫して再現可能にできます。Rでは`tidyverse`で表整形、`lme4`/`brms`で推定、`emmeans`/`ggeffects`で解釈・図示が定番です。
+
+------------------------------------------------------------------------
+
+## 生成データ（audio_generation.py）をRで一括解析（ネイティブパイプ） {#sec-native-pipeline}
+
+以下は、Pythonの`audio_generation.py`で作成された最小データセット（`./audio_dataset`）を、Rで読み込み→記述統計→F0推定→集約保存する最小パイプラインです。R 4.1+ のネイティブパイプ（`|>`）を使用しています。
+
+### ステップ
+
+- メタデータCSVの読み込み（ファイルパスを取得）
+- wavの標準前処理（モノラル化・正規化）
+- 記述統計（duration/RMS/ZCR/スペクトル重心）
+- F0（fund）を持続母音は中央区間、文は全区間で中央値推定
+- テーブルを保存して後続（GLMMなど）へ
+
+以下のパイプラインでは、Pythonの `audio_generation.py` で生成した最小データセットをRで一括処理します。メタデータCSVの読み込み → wavの前処理（モノラル化・正規化）→ 記述統計の算出 → F0の中央値推定 → テーブルの保存、という流れを R 4.1+ のネイティブパイプ（`|>`）で記述しています。保存した特徴量テーブルは、そのまま GLMM や階層ベイズの入力データとして使えます。
+
+```{r audio_dataset_pipeline}
+# このコードは存在チェックを行うため、ビルド環境に音声がなくても安全に動きます
+if (file.exists("audio_dataset/metadata/metadata.csv")) {
+
+  # 1) メタデータ読み込み
+  md <- read.csv("audio_dataset/metadata/metadata.csv", stringsAsFactors = FALSE)
+
+  # 2) 前処理：モノラル化→正規化
+  read_mono_norm <- function(path) {
+    w <- readWave(path)
+    if (w@stereo) w <- mono(w, which = "left")
+    tuneR::normalize(w, unit = "16", center = TRUE)
+  }
+
+  # 3) 記述統計：長さ・RMS・ZCR・スペクトル重心
+  describe_wav <- function(w) {
+    dur_sec <- length(w@left) / w@samp.rate
+    rms_amp <- seewave::rms(w)
+    zcr_m   <- seewave::zcr(w, wl = 512, plot = FALSE)
+    zcr_val <- mean(zcr_m[, 2], na.rm = TRUE)
+    sp      <- meanspec(w, f = w@samp.rate, wl = 1024, plot = FALSE)
+    cent    <- specprop(sp, f = w@samp.rate)$cent
+    tibble(duration = dur_sec, rms = as.numeric(rms_amp),
+           zcr = zcr_val, centroid = as.numeric(cent))
+  }
+
+  f0_median <- function(w, from = 0, to = NULL, fmax = 350) {
+    dur <- length(w@left) / w@samp.rate
+    if (is.null(to)) { from <- 0; to <- dur }
+    out <- seewave::fund(
+      w, f = w@samp.rate, ovlp = 50, from = from, to = to,
+      threshold = 5, fmax = fmax, plot = FALSE
+    )
+    # fund() は行列を返す: 最終列がF0値
+    vals <- as.numeric(out[, ncol(out)])
+    if (length(vals)) median(vals, na.rm = TRUE) else NA_real_
+  }
+
+  # 5) 1レコードの特徴抽出
+  extract_features <- function(rec) {
+    w   <- read_mono_norm(rec$filepath)
+    dur <- length(w@left) / w@samp.rate
+    stats <- describe_wav(w)
+    f0 <- if (rec$task == "sustained_vowel") {
+      f0_median(w, from = dur * 0.25, to = dur * 0.75, fmax = 350)
+    } else {
+      f0_median(w, fmax = 350)
+    }
+    dplyr::bind_cols(as_tibble(rec), stats, tibble(f0 = f0))
+  }
+
+  # 6) すべての行に適用して結合
+  features <- purrr::map(seq_len(nrow(md)), ~ extract_features(md[.x, , drop = FALSE])) |>
+    dplyr::bind_rows()
+
+  # 7) 持続母音の概要（例）
+  features |>
+    dplyr::filter(task == "sustained_vowel") |>
+    dplyr::group_by(item) |>
+    dplyr::summarise(n = dplyr::n(),
+                     mean_f0 = mean(f0, na.rm = TRUE),
+                     sd_f0   = sd(f0, na.rm = TRUE),
+                     mean_centroid = mean(centroid, na.rm = TRUE), .groups = "drop") |>
+    gt() |>
+    tab_header(title = "Sustained vowels: F0/spectral centroid summary")
+
+  # 8) 文タイプのF0（例）
+  features |>
+    dplyr::filter(task == "sentence") |>
+    dplyr::mutate(type = dplyr::coalesce(sentence_type, "unknown")) |>
+    dplyr::group_by(type) |>
+    dplyr::summarise(n = dplyr::n(),
+                     mean_f0 = mean(f0, na.rm = TRUE),
+                     sd_f0   = sd(f0, na.rm = TRUE), .groups = "drop") |>
+    gt() |>
+    tab_header(title = "Sentence: F0 summary (by type)")
+
+  # 9) 保存
+  write.csv(features, "audio_dataset/metadata/audio_features.csv", row.names = FALSE)
+
+} else {
+  message("audio_dataset が見つかりませんでした。先に Python の audio_generation.py を実行してください。")
+}
+```
+
+このパイプラインで見るべき点は 2 つです。まず、**持続母音の概要表**では `mean_f0` が母音ごとにどの程度安定しているか、`sd_f0` が極端に大きくないかを確認します。`mean_centroid` は母音カテゴリや録音条件の違いを粗く反映するので、`F0` と独立にスペクトル側の差が出ているかを見る入口になります。
+
+次に、**文タイプ別の F0 要約表**では、`sentence_type` ごとに平均 `F0` と分散がどう違うかを見ます。ここで差が大きければ、そのまま「文タイプを固定効果に入れる」候補になりますし、差が小さければ不要な複雑化を避ける判断材料になります。つまり、この2表は最終分析ではなく、**どの変数をモデルに渡すかを決めるための探索的サマリー**として読むのが適切です。
+
+#### GLMM への橋渡し
+保存した `audio_features.csv` を `metadata.csv` と結合し、話者（Participant）やアイテム（Item）を乱効果にしてGLMM/階層ベイズへ展開できます。F0やフォルマントは**連続**、正誤は**二値**として第6章のレシピがそのまま適用できます。
+
+### 音響概念を Praat / rPraat の作業に翻訳する {#sec-acoustic-to-praat}
+
+ここまでで見てきた `duration`, `F0`, `intensity`, `VOT`, `formant transitions` は、Praat ではそれぞれ**別のオブジェクトや操作**として現れます。初心者がつまずきやすいのは、「研究で知りたい概念」と「Praat のメニュー名・ファイル名」とが頭の中でまだ結びついていない段階です。そこで、Praat / rPraat 節に入る前に一度だけ翻訳表を作っておきます。
+
+| 研究で見たいもの | Praat では何を見るか | `rPraat` / R で触るもの | その先の統計 |
+|---|---|---|---|
+| **持続時間** | TextGrid の interval 境界 (`t1`, `t2`) | `tg.read()` で tier を読み、`t2 - t1` を計算 | LMM / GLMM、Gamma / lognormal 系 |
+| **F0 / ピッチ** | `Pitch` オブジェクト、`PitchTier`、または Sound からの推定 | `.Pitch` なら `pitch.read()`、`.PitchTier` なら `pt.read()`、推定そのものは `seewave::fund()` や Praat | 平均値なら LMM、輪郭なら GAMM / SSM |
+| **インテンシティ** | `Intensity` / `IntensityTier` | `it.read()` で `IntensityTier` を読み、区間内平均・最大値に集約 | LMM、輪郭比較なら GAMM |
+| **VOT / 有声性** | 波形 + TextGrid + release / voicing onset の注釈 | `tg.read()` で時刻を取り、必要なら Pitch や波形と突き合わせる | VOT は LMM、voiced/unvoiced は GLMM / HMM |
+| **フォルマント遷移** | `Formant` オブジェクト、スペクトログラム、LPC | `formant.read()`、時点ごとの F1/F2/F3 を tidy 化 | midpoint なら LMM、軌跡なら GAMM / FDA / SSM |
+
+Praat 的に言い換えると、**音響概念は「オブジェクト + 注釈 + 集約ルール」**の組み合わせです。たとえば F0 そのものを論文に書くのではなく、「Praat で作った `Pitch` を `rPraat` で読み、母音区間の中央値に集約して比較する」という形で初めて統計データになります。同様に、フォルマント遷移は `Formant` オブジェクトを読んだだけでは終わらず、どの時点を抜くのか、あるいは輪郭全体を残すのかを決めてから統計へ渡します。
+
+この「測定値を研究データへ変換する」発想は、先行研究でも一貫しています。たとえば、@lisker1964 の古典的研究で重要だったのは「有声 / 無声」というラベルそのものではなく、**release から voicing onset までの時間差**を ms で定義したことでした。@hillenbrand1995 も、母音を単に `/i/` や `/a/` として扱うのではなく、**duration と F1/F2/F3 を複数時点で測る**ことで、静的な母音空間と動的な遷移の両方を記述しました。さらに @wieling2018gamm と @soskuthy2021gamm は、こうして得られた **輪郭データを1点に潰さずに** 統計モデルへ渡す意義を詳しく論じています。初心者向けに一言で言えば、Praat は「測る場所を決める道具」、rPraat と R は「測ったものを研究可能な表に変える道具」です。
+
+ここは概念と実務が混ざりやすいので、必要に応じて次の 3 タブを使い分けてください。
+
+::: {.panel-tabset}
+
+#### 文献から見るポイント
+
+- **duration** は「長い / 短い」ではなく、`TextGrid の境界差` から得た正の連続変数として扱う  
+  例: @dejong2009
+- **VOT** は「有声 / 無声」の説明変数であると同時に、それ自体が連続的な時間差でもある  
+  例: @lisker1964; @abramson2017
+- **F0 / intensity** は単独ではなく、prominence や focus の複数手がかりの一部として使われることが多い  
+  例: @cole2019
+- **formants** は midpoint だけでも使えるが、遷移まで含めると問いが変わる  
+  例: @hillenbrand1995; @wieling2018gamm; @soskuthy2021gamm
+
+#### 最短の実務フロー
+
+1. **Praat で注釈する**  
+   まず TextGrid で区間境界やラベルを作る。duration, VOT, 母音区間の定義はここで決まる。
+2. **必要なら Praat で Pitch / Formant / Intensity を保存する**  
+   F0, formants, intensity を Praat の推定で使いたいなら、`.Pitch` / `.PitchTier` / `.Formant` / `.IntensityTier` を保存する。
+3. **`rPraat` で読む**  
+   `tg.read()`, `pitch.read()` または `pt.read()`, `formant.read()`, `it.read()` で R に持ち込む。
+4. **tidy な表にする**  
+   区間ごとの duration、母音中央の F1/F2、区間内 F0 中央値など、1行1トークンの表にする。
+5. **研究質問に合うモデルへ渡す**  
+   1値なら LMM / GLMM、輪郭なら GAMM、状態推移なら HMM。
+
+#### 集約ルール
+
+以下は「Praat で何が測れるか」ではなく、**先行研究でその値をどう使ってきたか** の整理です。
+
+| 研究対象 | 先行研究で多い集約の仕方 | 根拠になる研究 |
+|---|---|---|
+| **母音フォルマント** | steady-state 母音なら midpoint 1点、動的母音や共調音なら複数時点または軌跡 | @hillenbrand1995; @wieling2018gamm; @soskuthy2021gamm |
+| **流暢性指標** | TextGrid 境界から duration, pause, speech rate を token / utterance 単位で要約 | @dejong2009; @derwing2009 |
+| **F0 / prominence** | トークン平均だけでなく contour そのものを比較することが多い | @cole2019; @wieling2018gamm |
+| **VOT / voicing** | release から voicing onset までを ms で測る連続量として扱う | @lisker1964; @abramson2017; @dmitrieva2015 |
+
+要するに、**設定値は公式ドキュメント、集約ルールは先行研究**を見る、という分業にすると判断がぶれにくくなります。
+
+:::
+
+------------------------------------------------------------------------
+
+## Praat ユーザーのための R パッケージガイド {#sec-praat-r-guide}
+
+英語教育・応用言語学の音声研究では、**Praat** が事実上の標準ツールです。多くの読者が Praat で注釈・測定を行い、結果を Excel に手入力して統計ソフトに持ち込む…というワークフローを採用しているでしょう。本セクションでは、R パッケージを使うことで**Praat との連携を自動化・効率化**し、再現可能な音声研究パイプラインを構築する方法を紹介します。
+
+直前の [音響概念を Praat / rPraat の作業に翻訳する](#sec-acoustic-to-praat) で整理したように、ここから先は「概念を Praat オブジェクトへ翻訳し、それを R の表に変える」実装編です。もし `duration`, `F0`, `VOT`, `formant transitions` の違いがまだ曖昧なら、先にそちらへ戻ってから読むと理解が速くなります。
+
+### 初学者向けの読み順
+
+::: {.panel-tabset}
+
+#### 読む順
+
+初心者がいきなり `rPraat` の関数一覧から入ると、**Praat の概念**と**R の役割**が混ざって分かりにくくなります。以下の順番で入ると迷いにくいです。
+
+1. **Praat の全体像**：まず Praat 本体と、注釈・F0・フォルマントの入門 manual を読んで、TextGrid・Pitch・Formant の「Praat 側の意味」を掴みます [@boersma2023; @praatIntro7; @praatIntro4; @praatIntro5]。
+2. **rPraat の守備範囲**：次に `rPraat` の package page と関連論文を見て、「Praat オブジェクトを R に読み込み、切り出し、変換し、書き戻すパッケージ」だと理解します [@bores2023rpraat; @boril2016rpraat]。
+3. **実践的な橋渡し**：指定してもらった授業ノートは、`phonTools`, `vowels`, `rPraat`, `speakr` の位置づけを横並びで掴むのに有用です。公式マニュアルほど厳密ではありませんが、学習順序を考える補助資料として優れています [@moroz2022phonetics]。
+4. **Praat を R から呼ぶ段階**：最後に `speakr` を見ると、「Praat の推定アルゴリズムを R のバッチ処理の中で使う」という発想が理解しやすくなります [@coretta2023speakr]。
+
+#### この節で優先する一次情報
+
+この節では、できるだけ**一次情報を優先**して記述しています。読むときは、次の3層に分けると整理しやすいです。
+
+- **Praat 公式マニュアル**：TextGrid, Pitch, Formant, Intensity の**定義・コマンドの意味・設定値**を確認する  
+  例: @praatTextGrid; @praatToPitch; @praatToFormantBurg; @praatToIntensity
+- **CRAN マニュアルと package page**：`rPraat` / `speakr` の**関数の守備範囲と入出力**を確認する  
+  例: @bores2023rpraat; @coretta2023speakr
+- **先行研究・方法論論文**：どの時点を測るか、どの単位で集約するか、どのモデルで比較するかを判断する  
+  例: @hillenbrand1995; @dejong2009; @cole2019; @wieling2018gamm; @soskuthy2021gamm
+
+:::
+
+### なぜ Praat ユーザーが R を使うのか
+
+この節では、本文中の判断の強さを次の3種類に分けます。
+
+- **[事実]**: 公式マニュアルや CRAN manual に書かれていること
+- **[推論]**: 公式文書と関数一覧から妥当と判断できること
+- **[推奨]**: 再現性や運用性のために本章が勧める実務上の選び方
+
+| 観点 | Praat 単体のワークフロー | R 統合ワークフロー |
+|---|---|---|
+| **バッチ処理** | Praat スクリプトで可能だが、データ整形は別途必要 | `purrr::map()` + `tidyverse` で抽出→整形→集約が一貫 |
+| **統計解析** | 外部ソフト（SPSS, R 等）に手動エクスポート | `lme4`/`brms`/`mgcv` に直接パイプ。中間ファイル不要 |
+| **再現可能性** | GUI 操作は記録が残らない | `.qmd` にすべてのコードを記録。誰でも再実行可能 |
+| **可視化** | Praat の描画機能は限定的 | `ggplot2` で出版品質の母音空間図、F0 contour、信頼区間付きプロット |
+| **大規模データ** | 100人×5母音×3回 = 1500ファイルの手動処理は非現実的 | R スクリプトで数分で一括処理 |
+
+#### Praat を「置き換える」のではなく「補完する」
+
+本セクションの目的は Praat を R で置き換えることではありません。**Praat が得意なこと**（リアルタイム波形表示、手動注釈の直感的な GUI、倍音跳躍の自動修正、知覚実験の構築）は Praat に任せ、**R が得意なこと**（バッチ処理、統計モデリング、再現可能な解析パイプライン、高度な可視化）は R に任せるのが最適です。
+
+### ワークフローの比較
+
+```{mermaid}
+%%| label: fig-praat-r-workflow
+%%| fig-cap: "Traditional workflow vs. R-integrated workflow"
+flowchart TD
+    subgraph Traditional["従来のワークフロー"]
+        direction TB
+        T1["Praat GUI で録音を開く"] --> T2["手動で TextGrid 注釈"]
+        T2 --> T3["Query → Get pitch / Get formant<br>（1ファイルずつ）"]
+        T3 --> T4["値を Excel に手入力"]
+        T4 --> T5["Excel → CSV → R / SPSS"]
+        T5 --> T6["統計解析"]
+    end
+
+    subgraph Integrated["R 統合ワークフロー"]
+        direction TB
+        I1["Praat GUI で TextGrid 注釈"] --> I2["rPraat::tg.read()<br>で R に読み込み"]
+        I2 --> I3["seewave / phonTools<br>で特徴量抽出"]
+        I3 --> I4["tidyverse で集約・整形"]
+        I4 --> I5["lme4 / brms で統計"]
+        I5 --> I6["ggplot2 で図"]
+    end
+
+    style Traditional fill:#fff3e0,stroke:#ef6c00
+    style Integrated fill:#e3f2fd,stroke:#1565c0
+```
+
+**[推奨]** 適切に設計すれば、R 統合ワークフローは手入力の工程を大幅に減らし、多くの場合ゼロにできます。Praat での注釈や目視確認のような人間判断は残りますが、その後の数値抽出・集約・統計・可視化を R スクリプトに寄せると、転記ミスと再実行コストを下げられます。
+
+### まずは地図を作る: Praat・rPraat・speakr・seewave の関係
+
+```{mermaid}
+flowchart LR
+    A["Praat GUI<br>注釈・目視確認・手動修正"] --> B["TextGrid / Pitch / Formant / Intensity"]
+    B --> C["rPraat<br>read / write / cut / interpolate / plot"]
+    C --> D["tidyverse<br>整形・集約・結合"]
+    D --> E["ggplot2 / lme4 / brms / mgcv"]
+
+    F["wav ファイルだけある"] --> G["tuneR + seewave / phonTools<br>R 側で推定・可視化"]
+    G --> D
+
+    H["Praat のアルゴリズムを<br>R から使いたい"] --> I["speakr<br>Praat スクリプトを実行"]
+    I --> B
+
+    style A fill:#fff3e0,stroke:#ef6c00
+    style C fill:#e8f5e9,stroke:#2e7d32
+    style G fill:#e3f2fd,stroke:#1565c0
+    style I fill:#f3e5f5,stroke:#6a1b9a
+```
+
+この図での要点は、`rPraat` が**分析エンジンそのもの**ではなく、**Praat オブジェクトを R に橋渡しする層**だという点です。Praat で作った TextGrid や `.Pitch` / `.Formant` を読み込み、それを tidy な表にして統計モデルへ流すところが `rPraat` の中心的な役割です。
+
+### Praat → R 操作対応表
+
+以下の表は、Praat でよく行う操作に対応する R パッケージと関数の一覧です。
+
+```{r praat_r_correspondence}
+tibble(
+  `Praat の操作` = c(
+    "Open → Read from file... (Sound)",
+    "Save → Save as WAV file...",
+    "Edit → TextGrid で注釈を読む",
+    "TextGrid → Tier の追加",
+    "TextGrid → ラベルの設定",
+    "TextGrid → ラベルの検索",
+    "Analyse → To Pitch (ac)...",
+    "Analyse → To Formant (burg)...",
+    "Analyse → To Intensity...",
+    "View → スペクトログラム表示",
+    "View → 波形表示",
+    "Read → Pitch object (.Pitch)",
+    "Read → PitchTier (.PitchTier)",
+    "Read → Formant object (.Formant)",
+    "Read → IntensityTier (.IntensityTier)",
+    "Praat Script の実行"
+  ),
+  `R パッケージ` = c(
+    "tuneR", "tuneR", "rPraat", "rPraat", "rPraat", "rPraat",
+    "seewave", "phonTools", "seewave", "seewave", "seewave",
+    "rPraat", "rPraat", "rPraat", "rPraat", "speakr"
+  ),
+  `R の関数` = c(
+    "readWave()", "writeWave()",
+    "tg.read()", "tg.insertNewIntervalTier()",
+    "tg.setLabel()", "tg.findLabels()",
+    "fund()", "findformants()",
+    "env() / rms()", "spectro()",
+    "oscillo()",
+    "pitch.read()", "pt.read()", "formant.read()",
+    "it.read()", "praat_run()"
+  )
+) |>
+  gt() |>
+  tab_header(title = "Praat → R package correspondence table") |>
+  tab_style(
+    style = cell_text(font = "monospace", size = "small"),
+    locations = cells_body(columns = `R の関数`)
+  ) |>
+  tab_footnote(
+    footnote = "speakr パッケージは Praat がローカルにインストールされている必要があります。",
+    locations = cells_body(columns = `R パッケージ`, rows = `R パッケージ` == "speakr")
+  )
+```
+
+#### 公式ドキュメントから確認できる主要設定
+
+以下は、**Praat 公式マニュアルや CRAN マニュアルに明記されている情報**だけを抜き出した確認表です。ここでは「慣例的にはこうする」ではなく、「公式文書に何と書いてあるか」を優先しています。
+
+| コマンド / オブジェクト | 公式ドキュメントで確認できること | 本章での実務上の意味 |
+|---|---|---|
+| **TextGrid** | `TextGrid` と annotation 入門は、TextGrid を sound と独立した注釈オブジェクトとして説明している [@praatTextGrid; @praatIntro7] | 境界とラベルは Praat で決め、R では `tg.read()` 後に `t2 - t1` やラベル集約を行う |
+| **Sound: To Pitch...** | `Sound: To Pitch...` は、`Time step = 0` のときの既定値、`Pitch floor`、`Pitch ceiling` の役割を説明している [@praatToPitch] | F0 の探索帯域は「何となく」ではなく、話者範囲に合わせて根拠を持って決める |
+| **Pitch / PitchTier** | `Pitch` manual は候補集合、`rPraat` の package documentation は `pitch.read()` と `pt.read()` の違いを明示している [@praatPitch; @bores2023rpraat] | `.Pitch` と `.PitchTier` を取り違えない。候補込みで見たいか、1本の輪郭として扱いたいかで関数を変える |
+| **Sound: To Formant (burg)...** | `Sound: To Formant (burg)...` は、time step, number of formants, maximum formant, window length, pre-emphasis の意味を説明している [@praatToFormantBurg] | フォルマント設定は報告対象。特に ceiling と window length は再現性に直結する |
+| **Formant** | `Formant` manual と `rPraat` documentation は、Formant を時間に沿う formant/bandwidth の構造として説明している [@praatFormant; @bores2023rpraat] | `formant.read()` の後は `formant.toArray()` で framewise な表にしてから集約すると見通しが良い |
+| **Sound: To Intensity... / IntensityTier** | `Sound: To Intensity...` と `IntensityTier` manual は、強度輪郭と点列化の考え方を分けて説明している [@praatToIntensity; @praatIntensityTier] | `it.read()` で読むのは `IntensityTier`。 sampled contour そのものと混同しない |
+| **`speakr::praat_run()`** | `speakr` documentation は `praat_run(script, ..., capture = FALSE)` を「Praat script を実行する関数」と定義している [@coretta2023speakr] | Praat の推定アルゴリズムを R パイプライン内で再利用したいときの接続点になる |
+
+
+### rPraat パッケージ詳解 [@bores2023rpraat]
+
+`rPraat` は、Praat のネイティブファイル形式（TextGrid, PitchTier, Pitch, IntensityTier, Formant, Sound, Collection）を R で直接読み書きし、操作するためのパッケージです。CRAN マニュアルでも package description は "Read, write and manipulate" と整理されています [@bores2023rpraat]。つまり、Praat GUI で作業した結果を**そのまま R に持ち込む**ことができるため、データの手入力や中間 CSV ファイルが不要になります。
+
+#### 公式マニュアルに沿って最初に押さえる対応
+
+CRAN の `rPraat` マニュアルでは、`pt.read()` は **PitchTier**、`pitch.read()` は **Pitch**、`formant.read()` は **Formant**、`it.read()` は **IntensityTier**、`snd.read()` は **Sound** を読む関数として区別されています [@bores2023rpraat]。Praat 側の公式マニュアルでも、`Pitch` は「periodicity candidates as a function of time」、`Formant` は「spectral structure as a function of time」と説明されています。つまり、**同じ「ピッチ」や「フォルマント」でも、Praat のオブジェクト名と R の関数名は1対1に対応している**と考えると混乱しにくくなります。
+
+### rPraat は何ができて、何ができないのか
+
+| 領域 | `rPraat` でできること | `rPraat` だけではやらない方がよいこと |
+|---|---|---|
+| **TextGrid** | 読み込み、書き出し、tier 追加・削除、ラベル変更、区間検索 | GUI での手動注釈、波形を見ながらの細かな境界修正 |
+| **Pitch / PitchTier** | `.Pitch` / `PitchTier` の読み込み、切り出し、補間、半音変換、Legendre近似、可視化 | 生 wav から Praat と同じアルゴリズムで新規に F0 推定 |
+| **Formant** | `.Formant` の読み込み、切り出し、フレーム取得、可視化 | 生 wav から Praat の Burg 法で新規にフォルマント推定 |
+| **IntensityTier / Sound** | `.IntensityTier` と sound の読み込み、時間切り出し、基本的な可視化 | Praat GUI での対話的な再生・目視調整の完全代替 |
+| **複数オブジェクト** | `Collection` の読み込み、Praat オブジェクトの一括処理 | 統計解析や出版用図の最終工程 |
+
+#### 初心者向けの一言まとめ
+
+- **Praat**：注釈する、見る、手で直す
+- **rPraat**：Praat の結果を R に持ち込む
+- **speakr**：Praat のアルゴリズムを R から呼ぶ
+- **seewave / phonTools**：Praat を介さず R 側で推定・可視化する
+
+#### 「rPraat だけではできない」の根拠
+
+ここで「`rPraat` は Praat の分析エンジンの完全な代替ではない」と書いているのは、CRAN のリファレンスマニュアルと関数一覧に基づく**推論**です。マニュアルは `rPraat` を TextGrid, PitchTier, Pitch, IntensityTier, Formant, Sound, Collection の**読み込み・書き出し・操作**パッケージとして記述しており、Praat の `Sound: To Pitch...` や `Sound: To Formant...` に相当する raw sound からの推定関数は中心機能として提示されていません [@bores2023rpraat]。そのため、**測定済みオブジェクトを扱う橋渡しパッケージ**として理解するのが安全です。
+
+### 初学者が最初にやるとよい 4 ステップ
+
+1. Praat で短い `.wav` を開き、1つの `TextGrid` tier にラベルを付けて保存する。
+2. `rPraat::tg.read()` でその TextGrid を読み、`names(tg)` と `tg[["TierName"]]` を確認する。
+3. Praat で `.Pitch` または `.Formant` を保存し、`.Pitch` は `pitch.read()`、`.Formant` は `formant.read()` で読み込んで `tibble` に変換する。
+4. その後で必要に応じて `speakr` に進む。最初から Praat スクリプト実行に入るより、**Praat オブジェクトの構造を先に理解した方がトラブルシュートしやすい**です。
+
+#### この先のコードの読み分け
+
+- **学習用デモ**: `rPraat` 付属の sample object や `tempdir()` を使う例。まず構造を理解するためのコードです。
+- **研究用テンプレート**: `data/audio/...` のような自分のファイルを読む例。研究データに置き換える前提のコードです。
+- まず `17.6` の学習用デモでオブジェクト構造を掴み、その後 `17.7` の研究用テンプレートへ移ると迷いにくいです。
+
+::: {.panel-tabset}
+
+#### TextGrid を読む・直す
+
+TextGrid は Praat の注釈データで、音声研究で最も頻繁に R に読み込むオブジェクトです。Praat 公式マニュアルの Annotation 入門を先に読んでおくと、tier, interval, point の概念がつかみやすくなります。`rPraat` 側では、その TextGrid を**R のリストとして安全に扱える形に変換する**ことが主目的です [@boersma2023; @bores2023rpraat]。
+
+```{r rpraat_textgrid}
+#| eval: true
+library(rPraat)
+
+tg_path <- system.file("extdata", "H.TextGrid", package = "rPraat")
+tg <- tg.read(tg_path)
+
+names(tg)
+
+word_tier <- tg[["word"]]
+word_df <- tibble(
+  t1 = word_tier$t1,
+  t2 = word_tier$t2,
+  label = word_tier$label,
+  duration_ms = 1000 * (word_tier$t2 - word_tier$t1)
+) |>
+  filter(nchar(label) > 0)
+
+word_df |>
+  dplyr::slice(1:6) |>
+  gt() |>
+  tab_header(title = "rPraat sample TextGrid: first labeled intervals") |>
+  fmt_number(columns = duration_ms, decimals = 1)
+
+# 完全一致検索なので、まずラベルをそのまま指定する
+co_idx <- tg.findLabels(tg, tierInd = "word", labelVector = c("co"))[[1]][1]
+
+# ラベルを変更したコピーを作る
+tg_mod <- tg.setLabel(tg, tierInd = "word", index = co_idx, newLabel = "co_TARGET")
+tibble(
+  label_before = tg.getLabel(tg, "word", co_idx),
+  label_after = tg.getLabel(tg_mod, "word", co_idx),
+  duration_ms = 1000 * tg.getIntervalDuration(tg, "word", co_idx)
+)
+
+# 0 から新規 TextGrid を作って保存する最小例
+demo_tg <- tg.createNewTextGrid(0, 1)
+demo_tg <- tg.insertNewIntervalTier(demo_tg, 1, "Word")
+demo_tg <- tg.insertInterval(demo_tg, "Word", 0, 0.45, "hello")
+demo_tg <- tg.insertInterval(demo_tg, "Word", 0.45, 1, "world")
+demo_tg_path <- file.path(tempdir(), "demo_rPraat.TextGrid")
+tg.write(demo_tg, demo_tg_path)
+demo_tg_path
+```
+
+この chunk で確認したい点は3つです。`names(tg)` で tier 名が取れること、`tg.findLabels()` が**完全一致検索**を返すこと、`tg.setLabel()` と `tg.write()` で「読んだあとに直して保存する」流れまで完結することです。
+
+#### TextGrid 操作のポイント
+
+- `tg.read()` は短い TextGrid 形式（short text format）とバイナリ形式の両方に対応しています。
+- 初学者はまず **Praat で `Save as short text file...`** を使うと、ファイルを開いて中身を確認しやすく、Git 管理もしやすいです。
+- `tg.findLabels()` は**正規表現には対応していません**。完全一致のラベルベクトルを渡します。部分一致が必要な場合は、data.frame化してから `stringr::str_detect()` で絞り込んでください。
+- TextGrid の tier は**リスト要素**としてアクセスします。`tg[["Vowel"]]` のように名前で、または `tg[[1]]` のようにインデックスで取得できます。
+- `tg.setLabel()` の引数名は `index` です。`elementInd` ではないので、古いメモや自作関数と混同しないようにしてください。
+- `TextGrid` は **注釈の入れ物**であって測定値そのものではありません。duration や VOT は、ここからさらに `t2 - t1` や境界差を計算して初めて分析変数になります。
+
+#### F0 を読む
+
+Praat の `Pitch` オブジェクトは、時間ごとの F0 候補を保持するオブジェクトです。ここで最重要なのは、**`.Pitch` を読むのは `pitch.read()`、`.PitchTier` を読むのは `pt.read()`** だという点です。前者は各フレームに複数候補を持てる「推定途中に近い」オブジェクト、後者は1本に決めた輪郭です。つまり、`rPraat` は「読む・切る・変換する・描く」を担当し、**Praat での F0 推定そのもの**は GUI か `speakr` か、あるいは `seewave::fund()` のような別パッケージに任せる構成になります [@boersma2023; @bores2023rpraat]。
+
+#### Praat のコマンド名が古い文献と違うことがある
+
+古い論文やチュートリアルでは `To Pitch (ac)...` や `To Pitch (cc)...` という表記がよく出てきます。一方、近年の Praat マニュアルでは filtered autocorrelation / raw autocorrelation / cross-correlation という整理で説明されることがあります。**どのコマンド名でも、保存される先は `Pitch` オブジェクト**なので、R 側では `pitch.read()` で読む流れは同じです [@praatIntro4]。
+
+```{r rpraat_pitch}
+#| eval: true
+# ── PitchTier: 1本に決めた F0 輪郭 ──
+pt_path <- system.file("extdata", "H.PitchTier", package = "rPraat")
+pt <- pt.read(pt_path)
+pt_st <- pt.Hz2ST(pt, ref = 100)
+
+pt_df <- tibble(
+  time = pt$t,
+  f0_hz = pt$f,
+  f0_st = pt_st$f
+)
+
+pt_df |>
+  dplyr::slice(1:8) |>
+  gt() |>
+  tab_header(title = "PitchTier read with pt.read()") |>
+  fmt_number(columns = c(f0_hz, f0_st), decimals = 2)
+
+# ── Pitch: フレームごとの候補集合 ──
+pitch_path <- file.path(tempdir(), "demo_rPraat.Pitch")
+pitch.write(pitch.sample(), pitch_path, format = "short")
+pitch_obj <- pitch.read(pitch_path)
+pitch_arr <- pitch.toArray(pitch_obj)
+
+pitch_df <- tibble(
+  time = pitch_arr$t,
+  f0_hz = pitch_arr$frequencyArray[1, ],
+  strength = pitch_arr$strengthArray[1, ],
+  intensity = pitch_arr$intensityVector
+) |>
+  mutate(f0_hz = na_if(f0_hz, 0))
+
+ggplot(filter(pitch_df, !is.na(f0_hz)), aes(x = time, y = f0_hz)) +
+  geom_line(color = "#1565c0", linewidth = 0.5) +
+  labs(
+    x = "Time (s)",
+    y = "F0 (Hz)",
+    title = "Pitch object: first candidate per frame after pitch.read()"
+  ) +
+  theme_speech(12)
+
+example_time <- 1.0
+nearest_frame <- pitch.getPointIndexNearestTime(pitch_obj, time = example_time)
+tibble(
+  query_time = example_time,
+  nearest_frame = nearest_frame,
+  time_at_frame = pitch_obj$t[nearest_frame],
+  best_f0_hz = pitch_arr$frequencyArray[1, nearest_frame]
+)
+
+pt_interp <- pt.interpolate(pt_st, seq(min(pt_st$t), max(pt_st$t), by = 0.02))
+head(tibble(time = pt_interp$t, f0_st = pt_interp$f), 5)
+```
+
+この chunk では、`PitchTier` は「1本の輪郭」、`Pitch` は「候補集合」だと分かれば十分です。`best_f0_hz` が 0 になるフレームは無声候補なので、`na_if(0)` で落としてから集約する、という実務上の癖もここで確認してください。
+
+#### F0 分析の最低報告項目
+
+- どのオブジェクトを使ったか: `.Pitch` か `.PitchTier` か
+- 推定方法: Praat GUI, `speakr`, `seewave::fund()` など
+- 設定値: `pitch floor`, `pitch ceiling`, `time step`
+- 集約方法: midpoint, median, contour 全体, semitone 変換の有無
+- 無声フレームの扱い: `0 Hz` を除外したか、補間したか、そのまま残したか
+
+#### F0 の半音変換と `Pitch` / `PitchTier` の使い分け
+
+F0を Hz のまま分析すると、話者間の絶対差が大きく、群間比較が難しくなることがあります。`pt.Hz2ST()` で**半音（セミトーン）**に変換すると、ピッチの知覚的な違いにより近い尺度になります。基準周波数（`ref`）には 1 Hz, 50 Hz, 100 Hz 等が使われますが、相対的な比較であればどの基準でも結果は同じです。
+
+実務上は、次のように覚えると迷いません。
+
+- **候補込みで見たい**なら `Pitch` を `pitch.read()` で読む
+- **1本の輪郭として扱いたい**なら `PitchTier` を `pt.read()` で読む
+- **半音変換・補間・Legendre 近似**は `PitchTier` 側の関数群 (`pt.*`) を使う
+- **区間中央値や輪郭比較**に進む前に、まず無声候補 (`0 Hz`) をどう扱うかを決める
+
+#### Formant を読む
+
+Formant も同じです。`formant.read()` は **Praat で推定済みの `.Formant` オブジェクトを読む関数**であり、wav からその場で Burg 法を実行する関数ではありません。したがって、「Praat と同じフォルマント推定を R パイプラインに組み込みたい」場合は、Praat GUI で保存した `.Formant` を読むか、`speakr` で Praat スクリプトを呼び出して `.Formant` を生成してから読む、という順番になります [@boersma2023; @bores2023rpraat; @coretta2023speakr]。
+
+```{r rpraat_formant}
+#| eval: true
+# ── Formant オブジェクトを self-contained に作って読む ──
+formant_path <- file.path(tempdir(), "demo_rPraat.Formant")
+formant.write(formant.sample(), formant_path, format = "short")
+fmt <- formant.read(formant_path)
+fmt_arr <- formant.toArray(fmt)
+
+formant_df <- tibble(
+  time = fmt_arr$t,
+  F1 = fmt_arr$frequencyArray[1, ],
+  F2 = fmt_arr$frequencyArray[2, ],
+  F3 = fmt_arr$frequencyArray[3, ]
+)
+
+formant_df |>
+  pivot_longer(cols = c(F1, F2, F3), names_to = "Formant", values_to = "Hz") |>
+  ggplot(aes(x = time, y = Hz, color = Formant)) +
+  geom_line(linewidth = 0.5) +
+  labs(
+    x = "Time (s)",
+    y = "Frequency (Hz)",
+    title = "Formant trajectories after formant.read() + formant.toArray()"
+  ) +
+  theme_speech(12)
+
+# ── TextGrid と結合して、区間中央の F1/F2 を取る最小例 ──
+tg <- tg.read(system.file("extdata", "H.TextGrid", package = "rPraat"))
+word_tier <- tg[["word"]]
+co_idx <- tg.findLabels(tg, tierInd = "word", labelVector = c("co"))[[1]][1]
+co_mid <- (word_tier$t1[co_idx] + word_tier$t2[co_idx]) / 2
+mid_idx <- formant.getPointIndexNearestTime(fmt, time = co_mid)
+
+tibble(
+  label = word_tier$label[co_idx],
+  midpoint_sec = co_mid,
+  F1 = fmt_arr$frequencyArray[1, mid_idx],
+  F2 = fmt_arr$frequencyArray[2, mid_idx],
+  F3 = fmt_arr$frequencyArray[3, mid_idx]
+) |>
+  gt() |>
+  tab_header(title = "TextGrid interval + Formant object = one token's formants") |>
+  fmt_number(columns = c(midpoint_sec, F1, F2, F3), decimals = 2)
+```
+
+この chunk の観察ポイントは、`formant.toArray()` で framewise な行列になることと、**TextGrid の区間中央を使って1トークン1行に集約できる**ことです。研究で使う表は、最終的にこの「label + midpoint + F1/F2/F3」の形に近づいていきます。
+
+#### フォルマント分析の最低報告項目
+
+- どのコマンドで推定したか: Praat の `To Formant (burg)...` か、R 側の LPC 実装か
+- 設定値: number of formants, maximum formant, window length, time step, pre-emphasis
+- 抽出時点: midpoint, 20/50/80% 点, 軌跡全体のいずれか
+- TextGrid との対応づけ: どの tier / label を対象にしたか
+- 外れ値処理: ceiling 超過や明らかな追跡失敗をどう扱ったか
+
+#### Praat Formant vs. R LPC
+
+Praat の `To Formant (burg)...` は **Burg 法**（共分散法の一種）を使用します。R の `phonTools::findformants()` や `phonTools::lpc()` もLPCベースですが、アルゴリズムの実装が異なるため、**同一データでも値が完全には一致しません**。論文では「Praat で推定」か「R で推定」かを明記し、設定パラメータ（最大フォルマント周波数、LPC次数、窓長）も報告してください。特に ceiling と window length は、再現性の観点から必ず残すべき設定です。
+
+#### Intensity を読む
+
+```{r rpraat_intensity}
+#| eval: true
+# `it.read()` が読むのは IntensityTier
+it_path <- file.path(tempdir(), "demo_rPraat.IntensityTier")
+it.write(it.sample(), it_path, format = "short")
+int_tier <- it.read(it_path)
+
+int_df <- tibble(time = int_tier$t, intensity_dB = int_tier$i)
+
+ggplot(int_df, aes(x = time, y = intensity_dB)) +
+  geom_line(color = "#ef6c00", linewidth = 0.5) +
+  labs(
+    x = "Time (s)",
+    y = "Intensity (dB)",
+    title = "IntensityTier read with it.read()"
+  ) +
+  theme_speech(12)
+
+int_cut <- it.cut(int_tier, tStart = 0.2, tEnd = 0.8)
+head(tibble(time = int_cut$t, intensity_dB = int_cut$i), 5)
+
+# ── Sound オブジェクト（Praat 互換の音声表現）──
+snd <- snd.read("data/audio/vowel_i.wav")
+tibble(
+  duration_sec = snd$duration,
+  sample_rate_hz = snd$fs,
+  channels = snd$nChannels,
+  bits = snd$nBits
+) |>
+  gt() |>
+  tab_header(title = "snd.read() summary for the local vowel_i.wav")
+
+w <- tuneR::Wave(
+  left = as.integer(as.vector(snd$sig[, 1]) * 32767),
+  samp.rate = as.integer(snd$fs),
+  bit = as.integer(snd$nBits)
+)
+seewave::oscillo(w)
+```
+
+ここでは `it.read()` が `IntensityTier` 用であること、`snd.read()` は Praat 互換の sound 表現を返すことを押さえれば十分です。`snd.read()` の結果があれば、`tuneR` / `seewave` に橋渡しして既存の可視化関数と混ぜられます。
+
+#### rPraat の全オブジェクト対応
+
+`rPraat` は TextGrid だけでなく、Praat の**主要なオブジェクト形式**を読み書きできます。Praat で `Save as binary file...` や `Save as text file...` したファイルをそのまま R に読み込めるため、手動での値の書き写しが不要になります。
+
+初心者向けには、次のように覚えると整理しやすいです。
+
+- **TextGrid**：注釈の入れ物
+- **PitchTier / Pitch**：F0 の点列・輪郭
+- **Formant**：F1/F2/F3 などの時間変化
+- **IntensityTier**：強度の点列
+- **Sound**：音そのもの
+- **Collection**：これらをまとめたコンテナ
+
+`Collection` が読めるので、Praat で複数オブジェクトをまとめて保存した場合でも R 側で展開できます [@bores2023rpraat]。
+
+:::
+
+### speakr パッケージ：R から Praat スクリプトを実行 [@coretta2023speakr]
+
+`speakr` パッケージを使うと、**Praat スクリプト（.praat）を R から直接実行**できます。Praat の高度な分析機能（例：Burg 法によるフォルマント推定、autocorrelation ベースのピッチ推定）を、R のバッチ処理パイプラインの中で呼び出すことが可能です。
+
+#### speakr の前提条件
+
+`speakr` を使うには、**Praat がローカルにインストール**されている必要があります。macOS の場合は `/Applications/Praat.app`、Linux の場合は `praat` コマンドにパスが通っている必要があります。`speakr::praat_run()` は内部で Praat のコマンドラインインターフェースを呼び出します。
+
+```{r speakr_example}
+#| eval: true
+praat_available <- dir.exists("/Applications/Praat.app") ||
+  nzchar(Sys.which("Praat")) ||
+  nzchar(Sys.which("praat"))
+
+if (requireNamespace("speakr", quietly = TRUE) &&
+    praat_available &&
+    file.exists("data/audio/vowel_i.wav")) {
+  library(speakr)
+
+  praat_script <- '
+    Read from file: "{wav_path}"
+    To Formant (burg): 0, 5, 5500, 0.025, 50
+    Save as text file: "{out_path}"
+  '
+
+  out_path <- file.path(tempdir(), "vowel_i_speakr.Formant")
+
+  praat_run(
+    praat_script,
+    wav_path = "data/audio/vowel_i.wav",
+    out_path = out_path
+  )
+
+  fmt <- rPraat::formant.read(out_path)
+  fmt_arr <- rPraat::formant.toArray(fmt)
+  mid_idx <- ceiling(length(fmt_arr$t) / 2)
+
+  tibble(
+    file = "vowel_i.wav",
+    midpoint_sec = fmt_arr$t[mid_idx],
+    F1 = fmt_arr$frequencyArray[1, mid_idx],
+    F2 = fmt_arr$frequencyArray[2, mid_idx],
+    F3 = fmt_arr$frequencyArray[3, mid_idx]
+  ) |>
+    gt() |>
+    tab_header(title = "Formants estimated by Praat via speakr::praat_run()")
+} else {
+  message("Skip speakr_example: speakr, Praat, or data/audio/vowel_i.wav not available")
+}
+```
+
+#### Praat スクリプト実行時の最低報告項目
+
+- Praat のバージョンと、`speakr` 経由か GUI 経由か
+- 実行した Praat コマンド列
+- 主要設定値: number of formants, maximum formant, window length, time step など
+- 入力ファイルと抽出時点: どの wav のどの区間から値を取ったか
+- 出力後の集約方法: midpoint, mean, median, contour 全体のいずれか
+
+#### speakr の利点
+
+**[推奨]** `speakr` の利点は、Praat で文書化されているコマンドと設定を、そのまま R パイプラインの中で再利用しやすいことです。`seewave` や `phonTools` は独立した R 実装なので、Praat と完全一致することは前提にできません。「先行研究が Praat 設定で測定しているので、比較可能性のために同じコマンド体系を使いたい」という場合に `speakr` が有用です。つまり、R のバッチ処理と Praat のコマンド体系を接続する道具として理解すると位置づけが明確です。
+
+### パッケージ選択ガイド
+
+```{r package_decision}
+tibble(
+  `ユースケース` = c(
+    "TextGrid の注釈データを R に読み込みたい",
+    "Praat で推定した F0 / Formant を R で分析したい",
+    "R だけで F0 を推定したい（Praat 不要）",
+    "R だけでフォルマントを推定したい（Praat 不要）",
+    "Praat スクリプトをバッチ実行したい",
+    "スペクトログラムを R で描画したい",
+    "wav の前処理（トリミング・フィルタ・正規化）",
+    "音響記述統計（RMS, ZCR, spectral centroid）",
+    "F0 contour の GAMM 分析"
+  ),
+  `推奨パッケージ` = c(
+    "rPraat",
+    "rPraat（pitch.read / formant.read）",
+    "seewave（fund）",
+    "phonTools（findformants / lpc）",
+    "speakr（praat_run）",
+    "seewave（spectro）",
+    "tuneR + seewave",
+    "seewave（rms, zcr, specprop）",
+    "rPraat → mgcv（gam）"
+  ),
+  `Praat 必要？` = c(
+    "TextGrid ファイルが必要",
+    ".Pitch / .Formant ファイルが必要",
+    "不要",
+    "不要",
+    "Praat 本体が必要",
+    "不要",
+    "不要",
+    "不要",
+    "Pitch ファイル推奨"
+  )
+) |>
+  gt() |>
+  tab_header(title = "Package selection guide for speech analysis in R") |>
+  tab_style(
+    style = cell_text(font = "monospace", size = "small"),
+    locations = cells_body(columns = `推奨パッケージ`)
+  )
+```
+
+#### まとめ：4パッケージの役割分担
+
+| パッケージ | 一言での役割 | Praat との関係 |
+|---|---|---|
+| **tuneR** | wav ファイルの入出力と前処理 | Praat の Sound オブジェクトに相当 |
+| **seewave** | 音響特徴量の算出と可視化 | Praat の Analyse / View メニューに相当 |
+| **rPraat** | Praat ファイル形式の読み書き | Praat との**ブリッジ**（最重要） |
+| **phonTools** | LPC ベースのフォルマント推定 | Praat の To Formant に相当（アルゴリズムは異なる） |
+| **speakr** | R から Praat スクリプトを呼び出す | Praat **そのもの**を R から操作 |
+
+音声研究の R パイプラインでは、`rPraat` が**ハブ**の役割を果たします。Praat で作業した結果（TextGrid, Pitch, Formant）を `rPraat` で R に読み込み、`seewave`/`phonTools` で追加分析し、`tidyverse` で整形して `lme4`/`brms` で統計モデルに投入する——これが現代の音声研究ワークフローです。
+
+------------------------------------------------------------------------
+
+## Praat TextGrid と LPC による F1/F2 抽出（実データ連携） {#sec-textgrid-template}
+
+英語母音の研究では、発話を録音した後に **Praat** で母音区間を手動（または半自動）で注釈し、その区間からフォルマント（F1/F2）を抽出するのが標準的なワークフローです。本セクションでは、PraatのTextGridで注釈した母音区間をRに読み込み、フォルマントを推定し、統計分析（LMM/GAMM）に繋げる最小レシピを示します。
+
+これは、前節の [音響概念を Praat / rPraat の作業に翻訳する](#sec-acoustic-to-praat) のうち、特に **「TextGrid + Formant → F1/F2 → LMM / GAMM」** の流れを具体化したものです。`duration` や `VOT` を扱う場合も、最初の入口は同じく TextGrid です。
+
+**全体の流れ**：
+
+1. **Praat で注釈**：.wav ファイルを開き、TextGrid で母音区間にラベルを付ける
+2. **R で読み込み**：`rPraat::tg.read()` で TextGrid を読み、`tuneR::readWave()` + `seewave::cutw()` で母音区間を切り出す
+3. **フォルマント推定**：`meanspec()` + `fpeaks()` でスペクトルピークを近似的にF1/F2とする（本節の方法）、または `phonTools::findformants()` でLPCベースの推定を行う
+4. **可視化・統計分析**：F1–F2 散布図で母音空間を描き、LMM や GAMM で群間比較を行う
+
+### 準備（ファイル配置）
+
+- `data/audio/` に `spk001_word_bit_rep01.wav` と `spk001_word_bit_rep01.TextGrid` のように**同名**（拡張子だけ異なる）で置いておきます。
+- TextGridの tier には、母音区間を含む `Vowel`（例）を用意（`label` に母音記号やターゲット名）。
+
+### TextGrid とは？
+
+#### Praat TextGrid の構造
+
+TextGrid は Praat が使用する注釈ファイル形式で、音声ファイルの各区間にラベルを付与するためのものです。1つの TextGrid は複数の**tier**（層）を持つことができ、各 tier は**interval tier**（開始時刻・終了時刻・ラベルの組）または**point tier**（時刻・ラベルの組）のどちらかです。
+
+```
+TextGrid 構造の例：
+├── Tier 1: "Word"     (interval) → "the", "cat", "sat", ...
+├── Tier 2: "Vowel"    (interval) → "æ", "æ", ...
+└── Tier 3: "Boundary" (point)    → 各音素境界の時刻
+```
+
+`rPraat::tg.read()` はこの TextGrid をRのリストオブジェクトとして読み込みます。各 tier は `tg[["Vowel"]]` のようにリスト要素として取得でき、`$t1`（開始時刻）、`$t2`（終了時刻）、`$label`（ラベル）のベクトルにアクセスできます。
+
+### 読み込みと切り出し
+
+以下のコードでは、TextGridから母音区間の時刻情報を取得し、対応する .wav ファイルから `seewave::cutw()` で母音区間の波形を切り出します。TextGridとwavファイルは**同じファイル名**（拡張子のみ異なる）で配置しておく必要があります。
+
+前セクション（@sec-praat-r-guide）で紹介した `rPraat` の関数を実際に使用するパイプラインです。
+
+```{r praat_textgrid_read}
+#| eval: true
+
+if (file.exists("data/audio/spk001_word_bit_rep01.TextGrid") &&
+    file.exists("data/audio/spk001_word_bit_rep01.wav")) {
+  tg <- tg.read("data/audio/spk001_word_bit_rep01.TextGrid")
+  tiers <- names(tg)             # TextGridオブジェクトのtier名一覧を取得
+  print(tiers)
+
+  # 例：'Vowel' tier の intervalをdata.frame化
+  iv <- tg[["Vowel"]]           # tierをリスト要素として直接取得
+  ann <- tibble(
+    t1 = iv$t1, t2 = iv$t2, label = iv$label
+  ) |>
+    filter(nchar(label) > 0)
+
+  # tg.findLabels() で特定の母音だけを検索
+  target_idx <- tg.findLabels(tg, tierInd = "Vowel", labelVector = c("i", "a", "u"))
+  # → 該当する interval のインデックスが返る
+
+  # wav読み込み→目的区間を切り出し（中心±25msなど）
+  w <- readWave("data/audio/spk001_word_bit_rep01.wav") |> mono("left") |> tuneR::normalize(unit='16', center=TRUE)
+  fs <- w@samp.rate
+
+  extract_segment <- function(w, from, to, pad_ms = 0){
+    cutw(w, from = max(0, from - pad_ms/1000), to = to + pad_ms/1000, output = 'Wave')
+  }
+
+  segments <- ann |>
+    mutate(mid = (t1 + t2)/2,
+           seg = pmap(list(t1, t2), ~extract_segment(w, ..1, ..2, pad_ms = 0)))
+} else {
+  message("Skip praat_textgrid_read: required TextGrid or wav file not found")
+}
+```
+
+#### Praat の Pitch / Formant ファイルから直接読み込む方法
+
+上記では `seewave::fund()` や `phonTools::findformants()` で R 内で F0/フォルマントを推定していますが、**Praat で既に推定済み**の場合は `.Pitch` / `.Formant` ファイルを直接読み込む方がはるかに効率的です。
+
+```{r praat_pitch_formant_read}
+#| eval: true
+# ── Praat で保存した Pitch オブジェクトを読み込み ──
+if (file.exists("data/audio/spk001_word_bit_rep01.Pitch") &&
+    file.exists("data/audio/spk001_word_bit_rep01.Formant") &&
+    exists("ann", inherits = FALSE) &&
+    inherits(ann, c("tbl_df", "tbl", "data.frame"))) {
+  pitch <- pitch.read("data/audio/spk001_word_bit_rep01.Pitch")
+  pitch_arr <- pitch.toArray(pitch)
+  f0_df <- tibble(
+    time = pitch_arr$t,
+    f0   = pitch_arr$frequencyArray[1, ]
+  ) |>
+    mutate(f0 = ifelse(f0 == 0, NA_real_, f0))
+
+  # TextGrid の母音区間ごとに F0 の中央値を集約
+  vowel_f0 <- ann |>
+    mutate(f0_median = purrr::map2_dbl(t1, t2, function(start, end) {
+      vals <- f0_df |> filter(time >= start, time <= end) |> pull(f0)
+      median(vals, na.rm = TRUE)
+    }))
+
+  # ── Praat で保存した Formant オブジェクトを読み込み ──
+  fmt <- formant.read("data/audio/spk001_word_bit_rep01.Formant")
+  fmt_arr <- formant.toArray(fmt)
+
+  # 母音区間の中央時刻で F1/F2 を取得
+  vowel_formants_praat <- ann |>
+    mutate(
+      mid = (t1 + t2) / 2,
+      F1 = purrr::map_dbl(mid, function(m) {
+        idx <- which.min(abs(fmt$t - m))
+        fmt_arr$frequencyArray[1, idx]
+      }),
+      F2 = purrr::map_dbl(mid, function(m) {
+        idx <- which.min(abs(fmt$t - m))
+        fmt_arr$frequencyArray[2, idx]
+      })
+    )
+} else {
+  message("Skip praat_pitch_formant_read: required Pitch/Formant files or ann object not available")
+}
+```
+
+#### Praat ファイル直接読み込みの利点
+
+Praat の `To Pitch (ac)...` や `To Formant (burg)...` で推定した結果を `.Pitch` / `.Formant` ファイルとして保存し、`rPraat` で読み込む方法には以下のメリットがあります：
+
+1. **先行研究との比較可能性**：多くの音声研究が Praat で測定を行っているため、同じアルゴリズムを使うことで比較が容易になります
+2. **推定品質**：Praat の Pitch / Formant 推定は長年にわたって改良されており、倍音跳躍の修正やフォルマント追跡の精度が高い
+3. **手動修正の反映**：Praat の GUI でF0やフォルマントの推定エラーを手動修正した結果をそのまま R に持ち込めます
+4. **処理速度**：R 内で再推定する必要がないため、大規模データのバッチ処理が高速です
+
+### LPCとピーク抽出（近似）
+
+切り出した母音区間からフォルマント（F1/F2）を推定する方法は複数あります。
+
+**LPC（線形予測符号化）**は、音声信号の自己回帰モデルを推定する手法で、スペクトルの包絡線（滑らかなカーブ）を求めるのに適しています。LPC の次数（`order`）は声道のフォルマント数に関係し、経験的には「サンプリングレート（kHz）+ 3〜4」程度（例：16 kHz なら 19〜20）が標準です。`phonTools::lpc()` はデフォルトでこの値を自動設定します。より直接的にフォルマント周波数を求めるには `phonTools::findformants()` が便利です。
+
+以下のコードでは、より単純な方法として `meanspec()` で平均スペクトルを算出し、`fpeaks()` でピーク周波数を検出して、200–3500 Hz の範囲で低周波側から順にF1、F2として採用します。`nmax = 6` は検出するピークの最大数で、フォルマント候補（F1–F3 + スプリアスピーク）を十分にカバーする数です。
+
+#### スペクトルピーク ≠ 厳密なフォルマント
+
+`fpeaks()` によるピーク検出は**近似的な方法**です。倍音のピーク（特にF0の整数倍）がフォルマントと誤認されることがあります。論文での報告には **Praat のフォルマント追跡**（Burg法ベースのLPC）または `phonTools::findformants()` の使用を推奨します。本節のコードは、Rでのパイプライン構築の全体像を理解するためのデモンストレーションです。
+
+```{r formant_estimation}
+#| eval: true
+if (exists("segments", inherits = FALSE) &&
+    inherits(segments, c("tbl_df", "tbl", "data.frame")) &&
+    exists("fs", inherits = FALSE) &&
+    is.numeric(fs) &&
+    length(fs) == 1) {
+  estimate_formants <- function(seg, f = fs, nform = 2, flim = c(200, 3500)){
+    # スペクトルを計算し、声道の共鳴付近のピークを検出
+    sp <- meanspec(seg, f = f, wl = 1024, plot = FALSE)
+    # fpeaks: 主要ピークを抽出（nmax=6程度）
+    pk <- seewave::fpeaks(sp, f = f, nmax = 6, plot = FALSE)
+    if (is.null(pk) || nrow(pk) == 0) return(c(NA, NA))
+    # 音声領域のピークを絞り込み、低周波からnform個を採用
+    cand <- pk[,1]
+    cand <- cand[cand >= flim[1] & cand <= flim[2]]
+    sort(cand)[1:min(nform, length(cand))]
+  }
+
+  formant_tbl <- segments |>
+    mutate(F = map(seg, estimate_formants)) |>
+    mutate(F1 = map_dbl(F, ~ .x[1] %||% NA_real_),
+           F2 = map_dbl(F, ~ .x[2] %||% NA_real_)) |>
+    dplyr::select(label, t1, t2, F1, F2)
+  formant_tbl
+} else {
+  message("Skip formant_estimation: segments or fs object not available")
+}
+```
+
+LPCのモデル次数や窓長によって推定は大きく変わります。実データでは、**Praat（FormantTask）**でF1/F2を抽出し、TextGridと揃えてRで集約・統計化するのが一般的です。`phonTools::formanttrack`等のR実装を使う方法もあります。
+
+### F1–F2散布図（楕円つき）
+
+以下のコードでは、推定したF1/F2を散布図にプロットし、母音カテゴリごとに68%信頼楕円を重ねて**母音空間** (vowel space) を可視化します。音声学では慣例としてF2を横軸（左→右を**反転**）、F1を縦軸（上→下を**反転**）に取ります。これにより、図の配置が調音位置（舌の前後・上下）に対応します。
+
+```{r vowel_space_plot}
+#| eval: true
+if (exists("formant_tbl", inherits = FALSE) &&
+    inherits(formant_tbl, c("tbl_df", "tbl", "data.frame"))) {
+  formant_tbl |>
+    mutate(Vowel = label) |>
+    ggplot(aes(F2, F1, color = Vowel, label = Vowel)) +
+    geom_point(alpha = .6) +
+    stat_ellipse(level = .68, linewidth = .6) +
+    scale_x_reverse() + scale_y_reverse() +
+    labs(title = 'Vowel space (F1–F2)', x = 'F2 (Hz)', y = 'F1 (Hz)') +
+    theme_speech(12)
+} else {
+  message("Skip vowel_space_plot: formant_tbl not available")
+}
+```
+
+#### 母音の正規化（Lobanov法）
+
+複数の話者（異なる性別・年齢）のフォルマントを比較する場合、声道の物理的な長さの違いを補正する**正規化**が必要です。最も広く使われているのが**Lobanov法**（z-score正規化）です。
+
+```
+# Lobanov正規化：話者ごとにz-scoreに変換
+lobanov_norm <- function(df, speaker_col = "Speaker") {
+  df |>
+    group_by(.data[[speaker_col]]) |>
+    mutate(
+      F1_z = (F1 - mean(F1, na.rm = TRUE)) / sd(F1, na.rm = TRUE),
+      F2_z = (F2 - mean(F2, na.rm = TRUE)) / sd(F2, na.rm = TRUE)
+    ) |>
+    ungroup()
+}
+```
+
+正規化後のF1_z/F2_zを使うことで、「話者の個人差を除いた母音カテゴリの違い」を比較できます。Rパッケージ `vowels` や `phonR` も正規化機能を提供しています。
+
+### GLMM か？ 時系列か？（考え方）
+
+**Steady-state 母音**：各トークンから1点（F1/F2）を抽出する場合、**LMM/GLMM**（交差乱効果：話者×項目）で群差や条件効果を評価するのが標準です（第6章参照）。
+
+**持続時間 / VOT / 平均 F0 / 平均 intensity**：1トークン1値に要約するなら、まずは **LMM/GLMM** を使います。duration や VOT のような正の連続量は、必要に応じて対数変換や Gamma / lognormal を検討します [@baayen2008crossed; @abramson2017]。
+
+**有声 / 無声ラベル**：各フレームや各区間を 0/1 で扱うなら、**ロジスティック混合モデル**が自然です。状態の切り替わり自体を分析したい場合は、**HMM** を使うと「どの状態からどの状態へ移りやすいか」まで扱えます。
+
+**トラジェクトリ（F0 / intensity / フォルマントの時間変化）**：時点をそろえて曲線を比較するなら、**GAM/GAMM**（`mgcv`）や**状態空間**（KFAS）が適します。例：`gam(F0 ~ s(time, by = condition) + s(time, speaker, bs='fs'), method='REML')` [@wieling2018gamm; @soskuthy2021gamm]。
+
+**縦断的発達研究**：学習者を月ごとに録音し、F0やフォルマントの変化を追跡する場合、各時点の音響特徴を集約した値は「マクロな時系列」になります。ここで前2章の ARIMA / STL / SSM が再び適用できます。
+
+### 混合効果モデル（LMM）の最小例
+
+```{r lmm_example}
+#| eval: true
+# 例：F1 ~ Vowel * Group + (1|Speaker) + (1|Item)
+if (exists("formant_tbl", inherits = FALSE) &&
+    inherits(formant_tbl, c("tbl_df", "tbl", "data.frame")) &&
+    requireNamespace("lme4", quietly = TRUE)) {
+  df <- formant_tbl |>
+    mutate(Speaker = 'spk001', Item = row_number(), Group = 'G1')  # 実際はメタデータと結合
+
+  fit_f1 <- lme4::lmer(F1 ~ Vowel * Group + (1|Speaker) + (1|Item), data = df)
+  summary(fit_f1)
+} else {
+  message("Skip lmm_example: formant_tbl or lme4 not available")
+}
+```
+
+この `LMM` の最小例では、出力のうち **固定効果の係数** と **乱効果の分散** をまず見ます。固定効果では `Vowel` や `Group` の係数の符号と大きさが、どちらの条件で `F1` が高いかを示します。乱効果では `Speaker` と `Item` の分散が、話者差と項目差をどれくらい吸収しているかを示します。教材としては、「平均差を出すだけではなく、話者差と項目差を同時に扱うのが LMM の役割だ」と理解できれば十分です。
+
+### トラジェクトリ比較（GAMM）の最小例
+
+```{r gamm_example}
+#| eval: true
+# F0曲線を time in [0,1] に正規化し、各トークンでサンプル（要事前整形）
+# df_track: columns = c(Speaker, Item, Condition, time, F0)
+if (exists("df_track", inherits = FALSE) &&
+    inherits(df_track, c("tbl_df", "tbl", "data.frame")) &&
+    requireNamespace("mgcv", quietly = TRUE)) {
+  fit_gamm <- mgcv::gam(F0 ~ s(time, by = Condition) + s(time, Speaker, bs='fs'),
+                        data = df_track, method = 'REML')
+  summary(fit_gamm)
+  plot(fit_gamm, pages = 1)
+} else {
+  message("Skip gamm_example: df_track or mgcv not available")
+}
+```
+
+この `GAMM` の最小例では、`summary()` の係数表よりも、**平滑項 `s(time, ...)` が条件ごとにどんな曲線を返すか** を重視して読みます。`plot(fit_gamm)` で 2 条件の曲線が時間のどこで分かれ、どこで重なるかを見ると、「平均値の差」ではなく「輪郭全体の差」を扱っていることが分かります。1トークン1値の `LMM` と違い、`GAMM` は **時間構造を潰さずに比較するためのモデル**だと押さえてください。
+
+------------------------------------------------------------------------
+
+## 報告テンプレート集 {#sec-report-templates}
+
+### テンプレート③：音響時系列（worked example: 合成母音 /i/ /a/）
+
+> 合成母音データ（f0 = 120 Hz、サンプリングレート 16 kHz、モノラル 16 bit、持続時間 0.5 秒）を用いて F0 推定の精度を検証した。F0 は自己相関法（ACF）とケプストラム法の2手法で推定し、それぞれ /i/: ACF = [値] Hz / Cepstrum = [値] Hz、/a/: ACF = [値] Hz / Cepstrum = [値] Hz であった（真値 120 Hz）。両手法とも真値に近い推定を示し、母音の種類（フォルマント構造の違い）にかかわらず F0 推定が安定していることが確認された。
+>
+> スペクトル分析では、/i/ の F1 ≈ 300 Hz / F2 ≈ 2200 Hz、/a/ の F1 ≈ 730 Hz / F2 ≈ 1100 Hz の近傍にスペクトル包絡のピークが確認され、合成パラメータと一致した。
+>
+> **実データへの適用時の注意**：実録音データでは話者間変動（性別・年齢による声道長の違い）があるため、Lobanov法等による正規化が必要。統計モデルは LMM（F1 ~ Vowel * Group + (1|Speaker) + (1|Item)）を基本とし、F0トラジェクトリの比較には GAMM を使用する。
+
+#### 査読者チェックリスト（音響時系列）
+
+- [ ] 録音条件（サンプリングレート、ビット深度、マイク、環境）を報告したか
+- [ ] クリッピング・SNR のチェックを行ったか
+- [ ] F0 推定の `fmin` / `fmax` パラメータを話者の範囲に合わせたか
+- [ ] フォルマント推定法（LPC / Praat）と設定を明記したか
+- [ ] 複数話者の比較では正規化（Lobanov等）を実施したか
+- [ ] 統計モデルに話者・項目の乱効果を含めたか
+- [ ] 母音空間図（F1–F2）を提示したか
+
+### 次に読む章
+
+- **音響特徴量を混合モデルで分析したい**: 第5章 `一般化線形モデル・一般化加法モデル` と第6章 `混合効果モデル：2値ロジスティック回帰分析` のモデル化の考え方を参照してください。
+- **縦断的に音響変化を追いたい**: `時系列データ分析（基礎）` と `時系列データ分析（発展）` に戻ると、学習者の音響特徴を週次・月次で追う設計につなげやすくなります。
+
+## 参考文献
+
+::: {#refs}
+:::

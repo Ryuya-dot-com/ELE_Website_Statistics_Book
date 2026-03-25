@@ -1,5 +1,7 @@
 ---
 title: "メタ分析"
+prefer-html: true
+always_allow_html: true
 bibliography: references_metaanalysis.bib
 nocite: |
   @harrer2021, @viechtbauer2010, @norris2006, @plonsky2014, @norris2015, @uchihara2019, @nakagawa2021, @cohen1988_ma, @stanley2014, @vevea1995, @page2021, @rosenthal1979, @innami2010, @burkner2017_ma, @cheung2014_metasem, @cheung2015_book, @assink2016, @konstantopoulos2011, @pustejovsky2022, @jak2021_masem, @berkey1998, @vandennoortgate2013, @cheung2019_reflections, @balduzzi2023, @salanti2012, @rucker2015
@@ -11,6 +13,152 @@ nocite: |
 pacman::p_load(tidyverse, gt)
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 theme_update(legend.position = "bottom")
+
+strip_md <- function(x) {
+  x <- as.character(x)
+  x <- gsub("\\*\\*", "", x)
+  x <- gsub("^`|`$", "", x)
+  x
+}
+
+book_table <- function(data) {
+  structure(
+    list(
+      data = as.data.frame(data),
+      title = NULL,
+      subtitle = NULL,
+      footnotes = character()
+    ),
+    class = "book_table"
+  )
+}
+
+gt <- function(data, ...) book_table(data)
+md <- function(text) strip_md(text)
+
+tab_header <- function(data, title = NULL, subtitle = NULL, ...) {
+  if (!is.null(title)) {
+    data$title <- strip_md(title)
+  }
+  if (!is.null(subtitle)) {
+    data$subtitle <- strip_md(subtitle)
+  }
+  data
+}
+
+tab_footnote <- function(data, footnote, ...) {
+  data$footnotes <- c(data$footnotes, strip_md(footnote))
+  data
+}
+
+resolve_table_columns <- function(data, expr) {
+  idx <- tidyselect::eval_select(rlang::enquo(expr), data = data)
+  names(idx)
+}
+
+fmt_number <- function(data, columns, decimals = 0, ...) {
+  cols <- resolve_table_columns(data$data, {{ columns }})
+  for (col in cols) {
+    if (is.numeric(data$data[[col]]) || is.integer(data$data[[col]])) {
+      vals <- data$data[[col]]
+      data$data[[col]] <- ifelse(
+        is.na(vals),
+        NA_character_,
+        format(round(vals, decimals), nsmall = decimals, scientific = FALSE, trim = TRUE)
+      )
+    }
+  }
+  data
+}
+
+fmt_integer <- function(data, columns, ...) {
+  cols <- resolve_table_columns(data$data, {{ columns }})
+  for (col in cols) {
+    vals <- data$data[[col]]
+    data$data[[col]] <- ifelse(
+      is.na(vals),
+      NA_character_,
+      format(round(as.numeric(vals)), scientific = FALSE, trim = TRUE)
+    )
+  }
+  data
+}
+
+fmt_percent <- function(data, columns, decimals = 0, ...) {
+  cols <- resolve_table_columns(data$data, {{ columns }})
+  for (col in cols) {
+    vals <- as.numeric(data$data[[col]]) * 100
+    data$data[[col]] <- ifelse(
+      is.na(vals),
+      NA_character_,
+      paste0(format(round(vals, decimals), nsmall = decimals, scientific = FALSE, trim = TRUE), "%")
+    )
+  }
+  data
+}
+
+sub_missing <- function(data, columns = everything(), missing_text = "---", ...) {
+  cols <- resolve_table_columns(data$data, {{ columns }})
+  for (col in cols) {
+    vals <- data$data[[col]]
+    vals[is.na(vals)] <- missing_text
+    data$data[[col]] <- vals
+  }
+  data
+}
+
+cols_label <- function(data, ...) {
+  labels <- rlang::list2(...)
+  current_names <- names(data$data)
+  for (nm in names(labels)) {
+    if (nm %in% current_names) {
+      current_names[current_names == nm] <- strip_md(labels[[nm]])
+    }
+  }
+  names(data$data) <- current_names
+  data
+}
+
+tab_options <- function(data, ...) data
+tab_style <- function(data, ...) data
+tab_spanner <- function(data, ...) data
+data_color <- function(data, ...) data
+
+cell_fill <- function(...) NULL
+cell_text <- function(...) NULL
+cells_body <- function(...) NULL
+cells_column_labels <- function(...) NULL
+px <- function(...) NULL
+
+print.book_table <- function(x, ...) {
+  caption_parts <- c(x$title, x$subtitle)
+  if (length(x$footnotes) > 0) {
+    caption_parts <- c(caption_parts, paste("Note:", paste(x$footnotes, collapse = "; ")))
+  }
+  caption_parts <- caption_parts[nzchar(caption_parts)]
+  caption <- if (length(caption_parts) > 0) paste(caption_parts, collapse = " - ") else NULL
+
+  print(knitr::kable(x$data, format = "pipe", caption = caption, escape = FALSE))
+  invisible(x)
+}
+
+knit_print.book_table <- function(x, ...) {
+  caption_parts <- c(x$title, x$subtitle)
+  if (length(x$footnotes) > 0) {
+    caption_parts <- c(caption_parts, paste("Note:", paste(x$footnotes, collapse = "; ")))
+  }
+  caption_parts <- caption_parts[nzchar(caption_parts)]
+  caption <- if (length(caption_parts) > 0) paste(caption_parts, collapse = "<br>") else NULL
+
+  out <- knitr::kable(
+    x$data,
+    format = "html",
+    caption = caption,
+    escape = FALSE,
+    booktabs = TRUE
+  )
+  knitr::asis_output(out)
+}
 ```
 
 ## メタ分析とは何か――なぜ個別の研究では不十分なのか
@@ -25,24 +173,18 @@ theme_update(legend.position = "bottom")
 - **異質性の検討**: 効果が研究間でどの程度異なるかを定量的に評価できる（後述する $\tau^2$, $I^2$ などの指標）
 - **モデレーター分析**: 「どのような条件下で効果が大きい（あるいは小さい）か」を体系的に探索できる
 
-::: {.callout-note}
 ### 本章の位置づけ
 本章は、メタ分析の実施手順を R の `metafor` パッケージを中心に解説する実践的なガイドである。効果量の基礎概念については「`1_T検定と効果量.qmd`」を参照されたい。本章では、複数の研究から得られた効果量を統合する手続きに焦点を当てる。
-:::
 
-::: {.callout-tip}
 ### Plot labels
 文字化け（mojibake）を防ぐため、本章のすべての図は英語ラベルで描画している。各図の読み方は本文中で日本語により解説する。
-:::
 
 
 メタ分析は、効果量の算出から異質性の評価、モデレーター分析、出版バイアスの検討まで、段階的に進める。異質性の大きさによって次のステップが分岐する。
 
 実務手順としては、まず研究を収集して効果量を算出し、ランダム効果モデルでプール推定を行う。次に $I^2$、$Q$、$\tau^2$ で異質性を評価し、異質性が大きい場合はサブグループ分析やメタ回帰でモデレーターを探索する。異質性が小さい場合はプール推定値を中心に報告し、どちらの経路でも最終段階でファンネルプロットや Trim-and-Fill による出版バイアス評価を実施する。最後に PRISMA に準拠して報告する。
 
-::: {.callout-note}
 英語教育研究のメタ分析では、介入の種類・学習者レベル・アウトカム指標などが異質性の主な要因となる。異質性が大きい場合（$I^2 > 75\%$）は、必ず**モデレーター分析**で要因を探索する必要がある。
-:::
 
 
 ## クイックリファレンス――分析手法の選択
@@ -78,10 +220,14 @@ tibble::tribble(
   )
 ```
 
-::: {.callout-tip}
 ### 読み方の指針
 初めてメタ分析を実施する場合は、PART I（Recipes 1--12）を通読したうえで、自身の研究設計に応じて PART II（NMA）に進むことを推奨する。Recipe 21（多層モデル）は、1 つの論文から複数の効果量を抽出する場合に必須となるため、該当する場合は必ず参照されたい。PART IV は、3 水準モデルの数理的基盤、混合効果モデリングとの等価性、CHE モデル、MASEM など、方法論的に一歩進んだ内容を扱う。
-:::
+
+### 本線と発展の読み分け
+
+- **本線**: PART I を中心に読み、必要に応じて Recipe 21 と Recipe 25 を追加する。通常の英語教育メタ分析なら、この範囲で実務の大部分をカバーできる。
+- **発展**: PART II の NMA と PART IV の CHE / MASEM / 混合効果接続は、研究質問が明確にそこを要求するときに読む。
+- **実践**: PART III は、公開データでコードと判断の流れを確認したいときの参照用として読む。
 
 
 ## メタ分析の実施プロセス――系統的レビューの 5 段階
@@ -129,10 +275,8 @@ digraph prisma {
 ")
 ```
 
-::: {.callout-tip}
 #### カスタマイズ方法
 上記コード中の数値（847, 312, 558 など）を自身のレビューの実数に置き換えるだけで、論文投稿用の PRISMA 図が完成する。除外理由のカテゴリも研究に応じて編集されたい。
-:::
 
 
 ### コーディングシートの設計とコーダー間信頼性
@@ -150,7 +294,6 @@ digraph prisma {
 | **アウトカム** | テスト種類, 測定時点（直後/遅延） | 1論文から複数行の場合あり |
 | **質指標** | ランダム化の有無, 盲検の有無, 脱落率 | Risk of bias の評価に使用 |
 
-::: {.callout-warning}
 #### コーディングでよくある間違い
 
 **症状**: 分析後に一部の研究の効果量が不自然に大きい（または符号が逆）。
@@ -158,7 +301,6 @@ digraph prisma {
 **原因**: (1) 介入群と統制群の M1/M2 の割り当てが研究間で逆転している、(2) 介入の名称表記が不統一（"CTRL", "Control", "統制群" が混在）。
 
 **修正**: コーディング開始前に**コードブック**（各列の定義と入力規則を記した文書）を作成し、2 名のコーダーで独立にコーディングを行った後、一致率を確認する。
-:::
 
 #### コーダー間信頼性の算出
 
@@ -289,7 +431,7 @@ rma_to_gt <- function(fit, title = "Meta-Analysis Results") {
 ```
 
 
-## PART I: ペアワイズ・メタ分析
+## PART I: 本線――ペアワイズ・メタ分析
 
 本章の前半では、最も基本的な形式である「2群の比較を複数の研究から統合する」ペアワイズ・メタ分析を扱う。学位論文や学術論文において最も頻繁に用いられる分析手法である。
 
@@ -390,10 +532,8 @@ dat |>
   DT::datatable(caption = "最初の10研究の効果量と分散")
 ```
 
-::: {.callout-tip}
 #### 実データへの適用
 実際のメタ分析では、各論文から平均値・標準偏差・サンプルサイズを抽出し、データフレームに格納する。論文が *t* 値や *F* 値のみを報告している場合は、`escalc()` の引数（`ti=`, `fi=` など）や効果量変換パッケージ（`esc`, `effectsize`）、オンラインツール（[Effect Size Calculator](https://www.escal.site/)）を用いて変換が可能である。効果量変換の詳細は Recipe 23 で扱う。
-:::
 
 
 ### Recipe 3: ランダム効果モデルによる統合――分析の中核
@@ -450,13 +590,11 @@ predict(m)
 
 **読み方**: `pred` がプール推定値、`ci.lb` / `ci.ub` が 95% 信頼区間、`pi.lb` / `pi.ub` が 95% 予測区間である。予測区間の下限が負の値を含む場合、一部の研究文脈では介入効果がゼロまたは負になりうることを示唆する。たとえば予測区間が [−0.05, 0.80] であれば、「全体的には正の効果が期待されるが、文脈によってはほぼ効果が見られない可能性もある」と解釈できる。
 
-::: {.callout-warning}
 #### 解釈における典型的な誤り
 
 1. ***p* 値のみに基づく結論**: 効果量の大きさ・信頼区間・予測区間を必ず併せて報告する
 2. **$I^2$ の過大評価・過小評価**: $I^2$ が低くとも予測区間が広い場合がある。$I^2$ は「ばらつきの大きさ」ではなく「ばらつきに占める真の異質性の割合」である
 3. **95% CI が 0 を含む = 効果が存在しない**: 正確には「本分析においては統計的に有意な効果は検出されなかった」ということであり、効果の大きさ自体の報告には依然として意義がある
-:::
 
 
 ### Recipe 4: 結果の可視化――フォレストプロットとファンネルプロット
@@ -527,10 +665,8 @@ par(mfrow = c(1, 1))
 rma_to_gt(tf, title = "Trim-and-Fill 補完後の推定結果")
 ```
 
-::: {.callout-warning}
 #### Trim-and-fill 法の限界
 本手法はあくまで**感度分析**であり、「真の効果量」を推定するものではない。「出版バイアスが存在すると仮定した場合に、結論がどの程度変動するか」を検討するために用いる。補完前後で推定値が大きく変動する場合は、出版バイアスの影響について慎重な議論が求められる。
-:::
 
 #### コンター補強ファンネルプロット
 
@@ -584,12 +720,10 @@ tibble::tribble(
   fmt_number(columns = `p value`, decimals = 4)
 ```
 
-::: {.callout-note}
 #### PET-PEESE の使用手順
 1. まず **PET**（`mods = ~sei`）を実行する
 2. PET の切片が有意（*p* < .05）であれば、**PEESE**（`mods = ~vi`）の切片をバイアス調整済み推定値として採用する
 3. PET の切片が非有意であれば、「統計的に有意な効果は（バイアスを考慮すると）検出されない」と解釈する
-:::
 
 #### 選択モデル（Vevea-Hedges 法）
 
@@ -614,10 +748,8 @@ rma_to_gt(sel, title = "選択モデル: バイアス調整済み推定値")
 | PET-PEESE | バイアス調整済み推定値を提供 | 異質性が大きい場合に精度低下 | メイン分析の感度分析 |
 | 選択モデル | 選択過程を明示的にモデル化 | *k* < 20 で不安定 | *k* ≥ 20 の大規模メタ分析 |
 
-::: {.callout-warning}
 #### 出版バイアスの評価は複数手法で
 単一の手法に依拠して出版バイアスの有無を結論づけるべきではない。上記の手法を**複数組み合わせ**、結果が一貫しているかを総合的に判断することが推奨される。各手法が異なる結論を示す場合は、その不一致について透明に議論する。
-:::
 
 
 ### Recipe 6: 異質性の原因の探索――サブグループ分析とメタ回帰
@@ -685,13 +817,11 @@ tibble::tibble(
 
 疑似 $R^2$ が小さい場合、当該モデレーターは異質性の主要な原因ではないことを示唆する。なお、`rma()` の出力中にも `QM`（モデレーター検定）と `QE`（残差異質性検定）が報告される。QM が有意であればモデレーターの寄与が統計的に有意であり、QE が有意であればモデレーター投入後もなお未説明の異質性が残っていることを意味する。
 
-::: {.callout-warning}
 #### モデレーター分析における留意事項
 
 - **検出力**: サブグループ分析やメタ回帰で実質的な差を検出するには、各群に最低でも 10 件程度の研究が必要とされる。少数の研究に基づいて「差は認められなかった」と結論するのは早計である
 - **生態学的誤謬（ecological fallacy）**: メタ回帰は**研究レベル**の関連を検討している。「介入期間が長い研究ほど効果が大きい」という知見と「個々の学習者が長く学習するほど効果が大きい」という命題は、論理的に等価ではない
 - **事前登録**: モデレーター分析は探索的になりやすいため、検討するモデレーターを**事前にプロトコルで登録する**ことが推奨される（PROSPERO 等）
-:::
 
 #### バブルプロット（メタ回帰の可視化）
 
@@ -822,10 +952,8 @@ cs
 
 **出力の読み方**: `coef_test()` は CR2 推定量に基づく頑健な標準誤差を返す。各列の意味は以下の通り: `Estimate` = 効果量の推定値（`rma()` の結果と同じ）、`SE` = CR2 による頑健な標準誤差（通常の `rma()` の SE より大きくなることが多い）、`tstat` = *t* 統計量、`df_Satt` = Satterthwaite 近似による自由度（研究数が少ない場合に重要）、`p_Satt` = Satterthwaite 調整済み *p* 値。
 
-::: {.callout-tip}
 #### RVE と通常の推定結果が乖離する場合
 RVE を適用すると標準誤差が増大することが多い。これは、非独立性を無視した場合の標準誤差が過度に楽観的であったことを意味する。分析結果の報告においては、RVE による推定値を採用し、通常の推定値との差異について透明性をもって議論することが望ましい。
-:::
 
 
 ### Recipe 9: サブグループ別フォレストプロット
@@ -1028,13 +1156,11 @@ tibble::tibble(
   fmt_number(columns = c(`平均 r`, `95% CI lower`, `95% CI upper`), decimals = 3)
 ```
 
-::: {.callout-note}
 #### Recipe 21 との接続
 1 つの研究から複数の相関（例: 動機づけ × 語彙テスト、動機づけ × ライティングテスト）が抽出される場合は、本 Recipe の `rma()` ではなく、Recipe 21 の `rma.mv()` による多層モデルを用いて非独立性に対処する必要がある。
-:::
 
 
-## PART II: ネットワーク・メタ分析（NMA）
+## PART II: 発展――ネットワーク・メタ分析（NMA）
 
 本章の後半では、3 つ以上の介入を同時に比較する**ネットワーク・メタ分析（Network Meta-Analysis; NMA）**を扱う。ペアワイズ・メタ分析が「A vs. B」の 2 群比較を統合するのに対し、NMA は「A vs. B vs. C vs. D」を同時に比較し、直接比較が存在しない介入間の効果も間接推定できる点に特徴がある。
 
@@ -1103,13 +1229,11 @@ wide <- studies |>
   arrange(study)
 ```
 
-::: {.callout-warning}
 #### NMA データ整形上の注意
 
 - **多群試験（3 群以上）は 1 行にまとめる**: 各群を別行に分割すると研究内の相関が無視され、誤った推定結果が生じる
 - **介入名の表記統一**: 「CTRL」「Control」「統制群」が混在すると、それぞれ異なる介入として処理されてしまう
 - **連結ネットワークの確認**: すべての介入が直接的または間接的に比較可能であること（ネットワークが連結していること）が必要条件である
-:::
 
 #### ネットワーク連結性のプリフライトチェック
 
@@ -1142,7 +1266,6 @@ tibble::tibble(
 
 **読み方**: 連結成分の数が 1 であれば、すべての介入が直接的または間接的に比較可能であり、NMA を実行できる。2 以上の場合は部分ネットワークに分割して分析するか、孤立した介入を除外する必要がある。
 
-::: {.callout-tip}
 #### ネットワーク幾何の評価
 
 連結性だけでなく、ネットワークの形状（geometry）も推定精度に影響する:
@@ -1154,7 +1277,6 @@ tibble::tibble(
 | Sparse（疎） | 一部の比較のみ研究が存在 | 特定の比較で CI が極端に広い |
 
 英語教育研究では star-shaped になりやすい（統制群 vs. 各指導法の構造が多い）。Recipe 15 の `netgraph()` でネットワーク構造を可視化すると、これらの形状を直感的に確認できる。
-:::
 
 
 ### Recipe 14: NMA の適合と結果の解釈
@@ -1322,14 +1444,12 @@ tibble::tibble(
   fmt_number(columns = c(SUCRA, `P-score`), decimals = 3)
 ```
 
-::: {.callout-note}
 #### P-score vs. SUCRA
 
 - **P-score**: ネットワーク推定値の点推定から解析的に算出。リサンプリング不要で高速[@rucker2015]
 - **SUCRA**: ベイズ NMA の MCMC サンプルまたは頻度論のリサンプリングから算出。ランキングの不確実性を直接反映
 
 実際には両者はほぼ同じ値をとることが多い。頻度論的 NMA（`netmeta`）を使用する場合、**報告には P-score を用い、ランキングの不確実性の検討には rankogram を補足的に使用する**ことを推奨する。
-:::
 
 #### NMA 可視化手法の選択ガイド
 
@@ -1355,7 +1475,6 @@ tibble::tribble(
   )
 ```
 
-::: {.callout-tip}
 #### 論文に掲載すべき最低限の図表
 
 NMA の結果を報告する際、以下の 4 点は必須とされる[@salanti2012]:
@@ -1364,7 +1483,6 @@ NMA の結果を報告する際、以下の 4 点は必須とされる[@salanti2
 2. **フォレストプロット**または**リーグテーブル**: 効果量の推定値と信頼区間
 3. **ランキング**（P-score / SUCRA）: 介入の相対的順位
 4. **整合性検定の結果**: グローバル検定 + ノード分割法の結果
-:::
 
 
 ### Recipe 16: NMA の整合性検証
@@ -1469,7 +1587,6 @@ if (requireNamespace("dmetar", quietly = TRUE)) {
 - **Minimal Parallelism（最小並列性）**: 推定値に寄与する独立した情報経路の最小数。たとえば A vs. C の間接推定が A→B→C と A→D→C の 2 経路から得られる場合、並列性は 2 である。値が大きいほど推定が頑健。1 の場合、情報が単一の経路に依存しており、その経路上の研究が除外されると推定が大きく変動する可能性がある
 - **Mean Path Length（平均パス長）**: 推定値が何段階の間接比較を経由しているかの平均。値が大きいほど間接性が高く、推移性の仮定への依存度が増す
 
-::: {.callout-important}
 #### 整合性に問題がある場合の対処フロー
 
 1. **`decomp.design()` の between-design で $p$ < .10** → 整合性に懸念あり
@@ -1479,7 +1596,6 @@ if (requireNamespace("dmetar", quietly = TRUE)) {
    - 当該比較に含まれる研究の参加者特性（年齢、習熟度、L1）に偏りがないか？
    - 介入の定義に不統一がないか（同名の介入で実質的に異なる指導法を含んでいないか）？
 5. **報告**: 不整合が認められた比較とその考えられる原因を明記し、**その比較の推定値は慎重に解釈すべきである旨を limitations に記述する**
-:::
 
 
 ### Recipe 17: 二値アウトカムの NMA
@@ -1657,7 +1773,6 @@ tibble::tribble(
   tab_options(table.font.size = px(13))
 ```
 
-::: {.callout-warning}
 #### 英語教育研究における推移性の脅威
 
 英語教育の NMA では、以下のシナリオで推移性が脅かされやすい:
@@ -1666,7 +1781,6 @@ tibble::tribble(
 - **即時テストのみ報告する研究と遅延テストのみ報告する研究が異なる比較に偏る**場合、推定値にテストのタイミング効果が混入する
 
 対策として、コーディングシートにこれらのモデレーター変数を含め、比較ごとの分布を表形式で示すことが推奨される。
-:::
 
 ##### ランキング不確実性と固定効果モデル（common effect model）との比較
 
@@ -1708,29 +1822,23 @@ ggplot(rank_comp, aes(x = treatment, y = Pscore, fill = Model)) +
 
 #### NMA 実施時の実務的注意点（英語教育研究向け）
 
-::: {.callout-tip}
 #### 介入の定義粒度
 「明示的文法指導」を一括りにするか、「演繹的指導」「帰納的指導」「意識高揚タスク」に細分化するかは、利用可能な研究数と研究の問いに依存する。細分化するほどネットワークは希薄になり推定の不確実性が増す。目安として、各ノード（介入）に直接比較が少なくとも 2 件存在することが望ましい。
-:::
 
-::: {.callout-warning}
 #### ネットワーク幾何の偏り
 英語教育研究の NMA では、ほとんどの研究が「統制群 vs. 何らかの介入」という比較構造をとるため、star-shaped（星形）のネットワークになりやすい。このようなネットワークでは、介入間の間接比較が統制群を経由することになり、推定の精度が低下する。ネットワークに直接比較のエッジが多いほど（well-connected）、推定はより信頼できる。
-:::
 
 
 ## PART III: 公開データによる実践――SLA 語彙学習メタ分析の再分析
 
 PART I・II ではシミュレーションデータを用いて分析手順を解説してきたが、実際の公開データに基づく再分析を行うことで、より実践的な理解が得られる。本セクションでは、OSF（Open Science Framework）で公開されている 2 つの SLA 語彙学習メタ分析のデータセットを用い、再分析と高度な可視化手法を紹介する。
 
-::: {.callout-note}
 ### データの出典
 
 1. **偶発的語彙学習のメタ分析**（*Language Teaching*, 2022）: OSF [osf.io/92r3t](https://osf.io/92r3t/)
 2. **@uchihara2019** "The Effects of Repetition on Incidental Vocabulary Learning": OSF [osf.io/rmnk2](https://osf.io/rmnk2)
 
 いずれも Creative Commons ライセンスのもとで公開されており、教育・研究目的での再利用が認められている。
-:::
 
 
 ### 使用パッケージ一覧
@@ -1786,13 +1894,11 @@ vocab |>
   tab_options(table.font.size = px(14))
 ```
 
-::: {.callout-tip}
 #### OSF からのデータ取得手順
 1. [osf.io](https://osf.io/) にて論文タイトルまたは DOI で検索する
 2. プロジェクトの Files タブからデータファイル（CSV, Excel）をダウンロードする
 3. Excel 形式の場合は `readxl::read_excel()` で読み込む
 4. 列名の整理と欠損値の処理を行い、`yi`（効果量）と `vi`（分散）の列を準備する
-:::
 
 
 ### Recipe 20: 公開データに対するランダム効果モデルの適合
@@ -1922,7 +2028,6 @@ if ("Test.format" %in% names(uchi_clean)) {
 }
 ```
 
-::: {.callout-tip}
 #### `rma()` と `rma.mv()` の使い分け
 
 | 状況 | 使うモデル |
@@ -1933,7 +2038,6 @@ if ("Test.format" %in% names(uchi_clean)) {
 | 1研究 = 1効果量だが簡易にRVEしたい | `rma()` + `clubSandwich::coef_test()` |
 
 英語教育研究のメタ分析では、1 つの論文から語彙・文法・ライティングなど複数のアウトカムの効果量を抽出することが多いため、**多層モデルの使用が推奨される**。
-:::
 
 
 ### Recipe 22: 高度な可視化手法――orchaRd, metaviz, その他
@@ -2123,10 +2227,8 @@ if (requireNamespace("dmetar", quietly = TRUE)) {
 }
 ```
 
-::: {.callout-tip}
 #### 検出力分析の意義
 メタ分析においても、研究数や各研究のサンプルサイズが不十分な場合、実際に存在する効果を検出できない可能性がある。**事前に**検出力を算出し、分析が十分な精度を備えていることを確認することが重要である。なお、事後的（post-hoc）な検出力分析には方法論的問題が指摘されているため、避けるべきである。
-:::
 
 #### dmetar による包括的な影響度分析
 
@@ -2167,10 +2269,8 @@ if (requireNamespace("dmetar", quietly = TRUE)) {
 
 影響力の大きい研究が特定された場合、それが**外れ値**（コーディングミスや方法論的問題）なのか、**真に異なる効果**（特殊な参加者集団や介入条件）なのかを検討する。前者であれば除外を検討し、後者であればモデレーター分析で理由を探索する。
 
-::: {.callout-note}
 #### Recipe 7 との関係
 Recipe 7 では `metafor::leave1out()` と `metafor::baujat()` を個別に実行した。`dmetar::InfluenceAnalysis()` はこれらを 1 つの関数呼び出しで統合し、4 つの診断を同時に可視化する。探索的な分析では `InfluenceAnalysis()` が便利であり、レポートで個別の図を掲載する場合は Recipe 7 の関数を使い分けるとよい。
-:::
 
 
 ### Recipe 23: 効果量の算出と変換――R パッケージの活用
@@ -2241,14 +2341,12 @@ d_to_r(d = 0.50)
 r_to_d(r = 0.30)
 ```
 
-::: {.callout-tip}
 #### パッケージの使い分けの指針
 
 - **コーディングシートから効果量を一括算出する場合** → `metafor::escalc()` が最適。`measure` 引数でさまざまな効果量指標に対応する
 - **論文中の多様な報告形式から個別に変換する場合** → `esc` パッケージの専用関数群が便利。変換過程が透明で再現性が高い
 - **自身の一次データの分析で効果量を算出する場合** → `effectsize` パッケージが R のモデルオブジェクトと直接連携できる
 - **いずれのパッケージでも対応できない特殊な変換** → オンラインツール（[Effect Size Calculator](https://www.escal.site/)）を参照する
-:::
 
 #### `escalc()` による効果量変換の実例
 
@@ -2298,7 +2396,6 @@ vi_from_t <- (n1 + n2) / (n1 * n2) + g_from_t^2 / (2 * (n1 + n2))
 
 *t* = `r t_val` の場合、*d* ≈ `r round(d_from_t, 3)` となる。*F* = `r F_val`（1自由度）の場合は *d* ≈ `r round(d_from_F, 3)` である。Hedges の修正を適用すると *g* ≈ `r round(g_from_t, 3)`（*v~i~* ≈ `r round(vi_from_t, 4)`）となる。
 
-::: {.callout-note}
 #### 効果量変換のオンラインツール
 
 手計算による検算やパッケージ外での確認が必要な場合は、以下のオンラインツールが有用である。
@@ -2306,7 +2403,6 @@ vi_from_t <- (n1 + n2) / (n1 * n2) + g_from_t^2 / (2 * (n1 + n2))
 - [Effect Size Calculator (escal.site)](https://www.escal.site/) -- 各種統計量間の双方向変換
 - [Campbell Collaboration Calculator](https://www.campbellcollaboration.org/calculator/) -- 標準化された効果量計算ツール
 - [Psychometrica Effect Size Calculator](https://www.psychometrica.de/effect_size.html) -- 多様な効果量指標に対応
-:::
 
 
 ### Recipe 24: 出版品質の表の作成
@@ -2395,11 +2491,9 @@ fit_bayes <- brm(
 )
 ```
 
-::: {.callout-note}
 #### 事前分布の選択
 - **切片（全体平均効果量）**: `normal(0, 1)` は「効果量がおよそ −2 から +2 の範囲にある」という弱い信念を表現する。SLA 研究で *g* > 2 の効果はきわめて稀であるため、この設定は十分に弱情報的である
 - **研究間 SD（$\tau$）**: `cauchy(0, 0.5)` は $\tau$ が 0 に近いことを穏やかに示唆しつつ、大きな値も排除しない。`sd` クラスのパラメータは `brms` が自動的に非負に制約するため、実質的に半コーシー分布となる。MCMC 診断（R-hat, ESS）の詳細は第 7 章を参照
-:::
 
 #### 事後分布の要約
 
@@ -2460,7 +2554,6 @@ tibble::tibble(
 
 研究数が十分に大きい場合、頻度論的推定とベイズ推定は概ね一致する。両者の乖離が大きい場合は、事前分布の影響や研究間分散の推定方法の違いについて議論する。
 
-::: {.callout-tip}
 #### ベイズ vs. 頻度論の使い分け
 
 | 状況 | 推奨手法 | 理由 |
@@ -2471,10 +2564,9 @@ tibble::tibble(
 | 感度分析として | `brms` | 頻度論の結果と併記し、頑健性を確認 |
 
 学位論文では、**メインの分析を頻度論（`rma()`）で行い、感度分析としてベイズ推定の結果を補足的に報告する**戦略が現実的である。
-:::
 
 
-## PART IV: 発展的手法――3水準モデルの深層・混合効果モデリング・構造方程式アプローチ
+## PART IV: 発展――3水準モデルの深層・混合効果モデリング・構造方程式アプローチ
 
 Recipe 21（PART III）では `rma.mv()` による 3 水準メタ分析の基本を扱った。本パートでは、3 水準モデルの数理的基礎を掘り下げるとともに、メタ分析と混合効果モデリングの理論的関係、相関する効果量への頑健な対処法（CHE モデル）、および構造方程式モデリングアプローチ（MASEM）を解説する。これらの手法は、英語教育研究におけるメタ分析の方法論的な深化に不可欠である[@cheung2015_book; @pustejovsky2022]。
 
@@ -2595,11 +2687,9 @@ tibble::tibble(
 
 **解釈**: $p$ 値が有意（< .05）であれば、当該水準の分散成分は 0 ではなく、3 水準モデルが統計的に支持される。両方の検定が有意であれば、研究間と研究内の両方の変動が存在し、3 水準モデルの使用が正当化される。
 
-::: {.callout-tip}
 #### 報告例
 
 > 3 水準モデルの必要性を尤度比検定で確認した。研究内変動（Level 2; $\sigma^2_{\text{within}}$）の追加は LRT = XX.XX, $p$ < .001 で有意であり、研究間変動（Level 3; $\sigma^2_{\text{between}}$）の追加も LRT = XX.XX, $p$ < .001 で有意であった。したがって、3 水準ランダム効果モデルの使用が統計的に支持された[@assink2016]。
-:::
 
 #### プロファイル尤度による分散成分の信頼区間
 
@@ -2619,7 +2709,6 @@ par(mfrow = c(1, 1))
 
 **読み方**: 横軸が $\sigma^2$ の値、縦軸がプロファイル尤度（対数尤度からの差分）である。曲線が破線（95% 閾値）と交わる 2 点が信頼区間の下限・上限にあたる。曲線が鋭い（狭い CI）ほど推定精度が高い。
 
-::: {.callout-note}
 #### 3水準モデルを使う場面の判断基準
 
 | 基準 | 2水準で十分 | 3水準が必要 |
@@ -2630,7 +2719,6 @@ par(mfrow = c(1, 1))
 | 研究数 *k* | — | *k* ≥ 15 が望ましい |
 
 *k* が少ない（< 15）場合でも 3 水準モデルは適用可能だが、分散成分の推定精度は低下する。その場合はプロファイル尤度 CI の幅を確認し、結果の解釈に慎重を期す。
-:::
 
 
 ### Recipe 27: メタ分析と混合効果モデリングの理論的関係 {#sec-recipe27}
@@ -2655,10 +2743,8 @@ $$
 | 重み付け | $1/v_i$（精度重み: $n$ が大きい研究ほど重い） | 残差分散から導出 |
 | 推定対象 | $\mu$（全体平均）と $\tau^2$（研究間分散）のみ | $\mu$、$\tau^2$、**および** $\sigma^2$（残差分散） |
 
-::: {.callout-note}
 #### 本質的な違い:「分散が既知」とは何を意味するか
 通常の回帰分析やマルチレベルモデルでは、残差分散 $\sigma^2$ はデータから推定する。メタ分析では、各効果量の標準誤差 $\sqrt{v_i}$ が一次研究の情報（サンプルサイズ、SD 等）から既に計算されているため、Level 1 の分散は推定する必要がない。この「既知分散」の仮定こそが、メタ分析を混合効果モデリングの特殊ケースにしている。
-:::
 
 #### `rma()` と `nlme::lme()` の等価性の実証
 
@@ -2749,7 +2835,6 @@ tibble::tibble(
   fmt_number(columns = c(`rma.mv()`, `lme()`), decimals = 4)
 ```
 
-::: {.callout-tip}
 #### なぜ `lme()`/`lmer()` ではなく `metafor` を使うのか
 
 理論的に等価であるにもかかわらず、メタ分析には `metafor` パッケージの使用が強く推奨される:
@@ -2760,7 +2845,6 @@ tibble::tibble(
 4. **分散の扱い**: `metafor` は $v_i$ を厳密に「既知」として扱うが、`lme()`/`lmer()` では `varFixed()` の指定を誤るとモデルが変わるリスクがある
 
 ただし、`lme()`/`lmer()` との等価性を理解することには大きな教育的価値がある。メタ分析をマルチレベルモデリングの文脈で捉え直すことで、発展的手法（3 水準モデル、CHE モデル等）の理論的背景がより明瞭になる。
-:::
 
 
 ### Recipe 28: CHE モデルと頑健分散推定――相関する効果量への対処 {#sec-recipe28}
@@ -2880,7 +2964,6 @@ ggplot(sens_df, aes(x = rho, y = estimate)) +
 
 **読み方**: $\rho$ を 0 から 0.9 まで変化させても、プール推定値と信頼区間がほぼ一定であれば、結果は $\rho$ の仮定に対して頑健であるといえる。推定値が大きく変動する場合は、結果の解釈に注意が必要であり、$\rho$ の仮定が実質的な影響を及ぼしている旨を報告すべきである。
 
-::: {.callout-tip}
 #### CHE モデル vs. 3水準モデル: どちらを選ぶか
 
 | 基準 | 3水準モデル（Recipe 21, 26） | CHE モデル（本 Recipe） |
@@ -2891,7 +2974,6 @@ ggplot(sens_df, aes(x = rho, y = estimate)) +
 | 推奨場面 | 研究内効果量が少数（2--3 個） | 研究内効果量が多数（4 個以上） |
 
 実務的には、**3 水準モデルをメイン分析として報告し、CHE モデルによる感度分析を補足的に示す**ことで、レビューアの懸念に対処できる[@pustejovsky2022]。
-:::
 
 
 ### Recipe 29: メタ分析的構造方程式モデリング（MASEM）――相関行列の統合 {#sec-recipe29}
@@ -3064,7 +3146,6 @@ gt(param_df) |>
 
 **解釈**: $\beta$ 係数は、他の変数を統制した上での各予測変数の効果を示す。Recipe 12 のような二変量の相関メタ分析とは異なり、MASEM は**多変量の関係を同時に推定**できる点に利点がある。
 
-::: {.callout-warning}
 #### 簡易版 MASEM の限界
 
 上記の `lavaan` によるアプローチは教育目的の簡易版であり、以下の限界がある:
@@ -3074,9 +3155,7 @@ gt(param_df) |>
 - **異質性の扱い**: 相関の $I^2$ が大きい場合、プール相関行列の代表性に疑問が生じる
 
 正式な MASEM の実施には `metaSEM` パッケージの使用を推奨する。`metaSEM` は `OpenMx` をバックエンドとして Stage 1 の不確実性を Stage 2 に適切に伝播させる統計的枠組みを提供する[@cheung2015_book; @cheung2019_reflections]。ただし、探索的な目的や学位論文の予備分析としては、本 Recipe のアプローチでも十分に有用である。本 Recipe で学んだ概念的手順（Stage 1 → Stage 2）は `metaSEM` でも同一である。
-:::
 
-::: {.callout-tip}
 #### MASEM を使う場面
 
 | 研究の問い | 適切な手法 |
@@ -3087,7 +3166,6 @@ gt(param_df) |>
 | 「複数構成概念の因子構造は一貫しているか？」 | **MASEM** |
 
 英語教育研究では、「動機づけが学習方略を介して L2 習熟度に影響する」といった理論的な媒介モデルの検証に MASEM が有効である。ただし、十分な数の研究（*k* ≥ 10）が各変数ペアの相関を報告していることが前提条件となる[@jak2021_masem]。
-:::
 
 #### PART IV のまとめ
 
@@ -3117,7 +3195,6 @@ tibble::tribble(
 
 **ペアワイズ・メタ分析:**
 
-::: {.callout-warning}
 ### `tau² = 0` と表示される
 
 **症状**: `rma()` の出力で `tau^2 (estimated amount of total heterogeneity): 0.0000` と表示される。
@@ -3125,9 +3202,7 @@ tibble::tribble(
 **原因**: データの異質性が非常に小さい、あるいは研究数が少なすぎて $\tau^2$ の推定値が 0 に切り詰められている（REML 推定量は負値をとれないため 0 に制約される）。
 
 **修正**: これは計算エラーではなく、統計的に正当な結果である。$I^2$ も 0% に近くなる。報告では「研究間の異質性は実質的にゼロであった」と記述し、固定効果モデルの結果を併記することを検討する。ただし、*k* < 10 の場合は $\tau^2$ の推定精度自体が低いため、ベイズ推定（Recipe 25）による感度分析が有用である。
-:::
 
-::: {.callout-warning}
 ### フォレストプロットのラベルが重なって読めない
 
 **症状**: `forest(m)` の出力で研究名や CI が重なり合い、判読不能。
@@ -3135,9 +3210,7 @@ tibble::tribble(
 **原因**: 研究数（*k* > 30）に対して描画領域が不足している。
 
 **修正**: (1) チャンクオプションで `#| fig-height:` を研究数に応じて増やす（目安: *k* × 0.35 + 2）、(2) `forest()` の `cex` 引数でフォントサイズを縮小（`cex = 0.7`）、(3) 研究数が多い場合は `forestploter` パッケージで出版品質のカスタムプロットを作成する。
-:::
 
-::: {.callout-warning}
 ### 一部の研究の効果量が不自然に大きい（または符号が逆）
 
 **症状**: フォレストプロットで数件の研究が他と大きく乖離する。*g* = −1.5 など、理論的に考えにくい値が出現する。
@@ -3145,9 +3218,7 @@ tibble::tribble(
 **原因**: コーディングシートにおいて介入群と統制群の M1/M2 が入れ替わっている。特に、異なるコーダーが担当した研究で生じやすい。
 
 **修正**: (1) 元論文に戻り、どちらの群が介入群かを確認する、(2) 必要に応じて `dat$yi[i] <- -dat$yi[i]` で符号を反転する、(3) コーディングシートの段階で「正の効果量 = 介入が有利」の定義を統一しておく。
-:::
 
-::: {.callout-warning}
 ### `escalc()` が `NA` を返す
 
 **症状**: 一部の研究で `yi` や `vi` が `NA` になる。
@@ -3155,9 +3226,7 @@ tibble::tribble(
 **原因**: (1) 入力値（M, SD, n）に欠損がある、(2) 不正な値（SD が 0 や負、n が 0）が含まれている、(3) `measure` と入力引数の組み合わせが不適切。
 
 **修正**: (1) `summary()` や `is.na()` で入力データの欠損を確認する、(2) SD = 0 の場合はデータの入力誤りでないかを検証する、(3) 元論文が *t* 値や *F* 値のみを報告している場合は `esc` パッケージの専用関数（`esc_t()`, `esc_f()`）で代替変換を試みる。
-:::
 
-::: {.callout-warning}
 ### サブグループ分析の一方に *k* < 5
 
 **症状**: あるサブグループの 95% CI が極端に広く、推定が不安定。
@@ -3165,9 +3234,7 @@ tibble::tribble(
 **原因**: サブグループの研究数が少なすぎて、推定精度が不十分。
 
 **修正**: (1) カテゴリを統合して研究数を確保する（例: "beginner" と "intermediate" を "lower" にまとめる）、(2) 差の統計的検定は行わず、記述的な報告にとどめる、(3) limitations セクションで検出力不足を明記する。各サブグループに最低 10 件の研究が必要とされるのが一般的な目安である。
-:::
 
-::: {.callout-warning}
 ### Trim-and-fill が多数の研究を補完するが、推定値がほとんど変わらない
 
 **症状**: `trimfill()` が 5 件以上の仮想的研究を補完するが、補完前後の効果量推定値の差が 0.01 未満。
@@ -3175,11 +3242,9 @@ tibble::tribble(
 **原因**: 補完された仮想的研究は精度が低い（標準誤差が大きい）ため、ランダム効果モデルにおける重みが小さく、全体推定値への影響が限定的。
 
 **修正**: これは実際にはポジティブな結果であり、「出版バイアスを仮定しても、結論は実質的に変わらない」ことを意味する。報告では「Trim-and-fill 法により *k* = X の研究が補完されたが、調整後の推定値（*g* = Y.YY）は調整前（*g* = Z.ZZ）と実質的に同等であり、結果の頑健性が確認された」と記述する。
-:::
 
 **NMA（ネットワーク・メタ分析）:**
 
-::: {.callout-warning}
 ### NMA のネットワークが非連結
 
 **症状**: `netmeta()` でエラーが発生し、「disconnected network」と表示される。
@@ -3187,9 +3252,7 @@ tibble::tribble(
 **原因**: 一部の介入間に直接的にも間接的にも比較経路が存在しない。たとえば、{A, B, C} と {D, E} がそれぞれ内部で比較されているが、2 つのグループ間に橋渡しとなる研究がない。
 
 **修正**: (1) `netgraph()` でネットワーク構造を可視化し、非連結の箇所を特定する、(2) 非連結な部分ネットワークを個別に分析する、(3) 孤立した介入を除外してネットワークを連結にする。
-:::
 
-::: {.callout-warning}
 ### `rankogram()` で特定の介入のランキング分布が二峰性を示す
 
 **症状**: rankogram のバープロットで、ある介入が U 字型の分布を示す（1 位と最下位に棒が高く、中間順位が低い）。
@@ -3197,9 +3260,7 @@ tibble::tribble(
 **原因**: その介入に関する直接比較の研究数が極端に少なく、間接比較の経路によって推定値が大きく異なる。結果として、ランキングの不確実性が増大する。
 
 **修正**: (1) `dmetar::direct.evidence.plot()` でその介入の直接エビデンス割合を確認する、(2) 直接エビデンス割合が低い場合、その介入を含む比較の解釈に慎重になる旨を論文に明記する、(3) 感度分析として当該介入を除外した NMA を追加で実施し、残りの介入間のランキングが安定するかを確認する。
-:::
 
-::: {.callout-warning}
 ### `netmeta()` で `singular` または `computationally singular` 警告
 
 **症状**: `netmeta()` の実行時に "computationally singular" や "system is exactly singular" という警告メッセージが表示される。
@@ -3207,11 +3268,9 @@ tibble::tribble(
 **原因**: (1) `pairwise()` で多群試験の処理が不適切であり、同一の情報を重複して含む比較対が生じている、(2) 同一研究内で同じ比較ペアが重複して含まれている、(3) ネットワーク内のある比較の自由度が 0 になっている。
 
 **修正**: (1) `pairwise()` に渡すデータを確認し、多群試験が正しく long format に変換されているか検証する（`studlab` が一意に研究を識別しているか）、(2) `pairwise()` で作成した比較ペアデータ `pw` に対し `pw[duplicated(pw[, c("studlab", "treat1", "treat2")]), ]` で重複行を検出する、(3) 3 群以上の研究では `pairwise()` が全ペアを自動生成するため、手動でペアを作成していないか確認する。
-:::
 
 **多層モデル・発展的手法:**
 
-::: {.callout-warning}
 ### `rma.mv()` が収束しない
 
 **症状**: `Warning: Convergence problem` や推定値が極端に大きい/小さい。
@@ -3219,9 +3278,7 @@ tibble::tribble(
 **原因**: (1) クラスタ数（研究数）に対してランダム効果の構造が複雑すぎる、(2) 分散成分が境界値（0 付近）にある。
 
 **修正**: (1) 3 水準モデルが収束しない場合は 2 水準に簡素化する（`random = ~ 1 | study_id` のみ）、(2) optimizer を変更する（`control = list(optimizer = "nlminb")`）、(3) `verbose = TRUE` で反復過程を確認し、初期値の問題かどうかを診断する。
-:::
 
-::: {.callout-warning}
 ### CHE モデルの感度分析で推定値が $\rho$ によって大きく変動する
 
 **症状**: CHE モデルの $\rho$ 感度分析プロットで、$\rho$ = 0 と $\rho$ = 0.9 の間でプール推定値が 0.1 以上変動する。
@@ -3229,7 +3286,6 @@ tibble::tribble(
 **原因**: 研究内に多数の効果量が含まれる研究があり、それらの重みが $\rho$ の値に強く依存している。
 
 **修正**: (1) 研究ごとの効果量数を確認し、極端に多い研究（10+）がないかチェックする。(2) 頑健 SE（CR2）を使用しているか確認する（CR2 を使わないモデルベース SE は $\rho$ の影響をさらに受けやすい）。(3) 可能であれば、同一研究内のアウトカムの相関に関する先行研究や経験的知見を参照して $\rho$ の範囲を絞る。(4) 結果の報告では $\rho$ の範囲と推定値の変動幅を明示する。
-:::
 
 
 ## レポーティング・チェックリスト
@@ -3272,7 +3328,6 @@ tibble::tribble(
 
 ### 最終チェックリスト
 
-::: {.callout-tip}
 #### 論文提出前の確認事項
 
 **基本事項:**
@@ -3322,7 +3377,6 @@ tibble::tribble(
 - プロトコルの事前登録（PROSPERO 等）について言及したか？
 - データとコードの共有（OSF, GitHub 等）を検討したか？
 - コーダー間信頼性（$\kappa$, ICC）を報告したか？
-:::
 
 ## 参考文献
 

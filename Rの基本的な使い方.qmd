@@ -1,5 +1,7 @@
 ---
 title: "Rの基本的な使い方"
+prefer-html: true
+always_allow_html: true
 bibliography: references_r_basics.bib
 nocite: |
   @wickham2023, @winter2019, @larsonhall2015, @plonsky2014_rb, @norris2006_rb
@@ -17,17 +19,17 @@ theme_update(legend.position = "bottom")
 
 R は、応用言語学・英語教育研究において最も広く用いられている統計解析環境の一つです。無料かつオープンソースであり、*Language Learning*、*Studies in Second Language Acquisition*、*TESOL Quarterly* をはじめとする主要ジャーナルに掲載される量的研究の多くがRを用いて分析されています。混合効果モデル（`lme4`）、項目応答理論（`mirt`）、テキスト分析（`quanteda`）、ベイズ推定（`brms`）など、英語教育研究で必要とされる高度な分析手法のほぼすべてがRのパッケージとして提供されています。
 
-本章は、Rの基本的な操作方法を **リファレンスガイド** としてまとめたものです。本書の各章（T検定、ANOVA、一般化線形モデル等）を読み進める中で「この関数の使い方が分からない」「データ操作の方法を確認したい」といった場面で参照することを想定しています。Rが初めての方は、まず第1節から第5節までを通読し、基本的な操作に慣れてから他の章に進むことをお勧めします。
+本章は、Rの基本的な操作方法を **リファレンスガイド** としてまとめたものです。本書の各章（T検定、ANOVA、一般化線形モデル等）を読み進める中で「この関数の使い方が分からない」「データ操作の方法を確認したい」といった場面で参照することを想定しています。Rが初めての方は、まず「RとRStudioの導入」から「データ構造」までを通読し、基本的な操作に慣れてから他の章に進むことをお勧めします。
 
 本章では、120名の日本人大学EFL学習者を対象とした架空の語彙学習実験データを一貫して使用します。TOEFL得点、語彙テスト、読解テスト、ライティング評価、指導法（明示的指導 vs. 暗示的指導）、事前・事後テストなど、英語教育研究で実際に扱う変数を用いることで、読者が自身の研究に応用しやすい形で解説を進めます。
 
 ::: {.callout-tip}
 ### この章の読み方（初心者向け）
 - 本章は逐次的に読む章ではなく、他の章で不明な点があった際に参照する **リファレンスガイド** です。
-- **Rが初めての方:** まず第1節〜第5節を順に読み、Rの基本操作に慣れてください。
-- **他の章のコードが分からない時:** 第6節（tidyverse）と第7節（可視化）を参照してください。
-- **統計の基礎を確認したい時:** 第8節で t検定・相関・回帰分析の基本的な実行方法を確認できます。
-- **エラーが出て困った時:** 第11節（トラブルシューティング）を参照してください。
+- **Rが初めての方:** まず「RとRStudioの導入」から「データ構造」までを順に読み、Rの基本操作に慣れてください。
+- **他の章のコードが分からない時:** 「tidyverseによるデータ操作」と「データの可視化」を参照してください。
+- **統計の基礎を確認したい時:** 「基礎的な統計解析」で t検定・相関・回帰分析の基本的な実行方法を確認できます。
+- **エラーが出て困った時:** 「トラブルシューティング」を参照してください。
 :::
 
 ## RとRStudioの導入
@@ -65,6 +67,55 @@ RStudioは4つのペインで構成されています。
 ::: {.callout-warning}
 ### Rのバージョンについて
 本書のコードは R 4.3.0 以降での動作を想定しています。古いバージョンでは一部のパッケージやネイティブパイプ演算子（`|>`）が使用できない場合があります。`R.version.string` で現在のバージョンを確認してください。
+:::
+
+### Quarto文書の基本
+
+本書のコードは、通常の `.R` スクリプトではなく **Quarto文書**（`.qmd`）として書かれています。Quartoでは、**解説文**、**実行可能なコード**、**その出力** を1つのファイルにまとめて管理できます。分析ノート、授業資料、研究メモ、再現可能なレポートを作る際に非常に便利です。
+
+最小限のQuarto文書は次のような構造です。
+
+    ---
+    title: "分析ノート"
+    format: html
+    ---
+
+    平均点は &#96;r round(mean(scores), 2)&#96; 点でした。
+
+    &#96;&#96;&#96;{r}
+    #| label: mean-score
+    #| echo: true
+    mean(scores)
+    &#96;&#96;&#96;
+
+- **YAMLフロントマター**：文書タイトルや出力形式（HTML, PDF など）を指定
+- **インラインコード**：文中に `&#96;r ...&#96;` と書くと、計算結果を本文に埋め込める
+- **コードチャンク**：`&#96;&#96;&#96;{r}` と `&#96;&#96;&#96;` で囲むと、Rコードを実行して出力を本文に表示できる
+
+::: {.callout-tip}
+### よく使うチャンクオプション
+
+| オプション | 役割 | よく使う場面 |
+|:---|:---|:---|
+| `echo: true/false` | コードを表示するか | 解説用コードを見せる / 見せない |
+| `eval: true/false` | コードを実行するか | サンプルコードだけ示したい時 |
+| `warning: false` | warningを非表示にする | 教材として出力をすっきり見せたい時 |
+| `message: false` | package読み込みメッセージ等を非表示にする | 不要なメッセージを隠したい時 |
+| `include: false` | コードも結果も出さない | setup chunk や内部準備 |
+| `fig-width`, `fig-height` | 図のサイズを指定 | 図が潰れる・大きすぎる時 |
+| `cache: true` | 重い計算結果を再利用する | シミュレーションや複雑なモデル |
+
+教材や論文用の文書では、**すべてのチャンクを同じ設定で使うのではなく、目的に応じてオプションを変える** ことが重要です。
+:::
+
+::: {.callout-note}
+### HTML出力とインタラクティブ要素
+`DT::datatable()` のようなインタラクティブな表は、**HTML出力で最も力を発揮します**。一方、`gt()` は静的テーブルとして整った見た目を作りやすく、論文や配布資料向きです。
+
+本書では両方を使いますが、役割は次のように分けると理解しやすくなります。
+
+- **その場で並べ替え・検索したい** → `DT::datatable()`
+- **体裁を整えた表として見せたい** → `gt()`
 :::
 
 ## Rの基本操作
@@ -143,6 +194,39 @@ levels(proficiency)
 ::: {.callout-warning}
 ### 日本語の変数名について
 Rは日本語の変数名（例: `得点 <- 85`）にも対応していますが、エラーの原因になりやすく、コードの共有時に文字化けが生じることがあります。変数名には **英語のスネークケース**（例: `toefl_score`, `vocab_test`）を使用してください。
+:::
+
+### 型変換とベクトル化のルール
+
+Rは「ベクトル」を中心に設計された言語です。複数の値をまとめて扱う演算が得意で、**自動的な型変換** と **ベクトル化された計算** が頻繁に起こります。便利な一方で、意図しない変換に気づかないとバグの原因になります。
+
+```{r}
+#| label: type-coercion-ele
+# --- 型変換 ---
+c(1, 2, "3")                         # 数値 + 文字列 → すべて文字列になる
+as.numeric("85")                     # 文字列 → 数値
+as.character(85)                     # 数値 → 文字列
+as.factor(c("Explicit", "Implicit", "Explicit"))
+
+# --- ベクトル化 ---
+pre_scores <- c(10, 12, 15, 18)
+gain_scores <- c(3, 5, 2, 4)
+
+pre_scores + gain_scores             # 要素ごとの計算
+pre_scores + 5                       # 1つの値を全要素に加算
+pre_scores / c(2, 2, 3, 3)           # 要素ごとの割り算
+```
+
+::: {.callout-warning}
+### 自動変換で起こりやすいミス
+- `c(1, 2, "3")` のように異なる型を混ぜると、Rは共通の型にそろえます。この場合は **文字列ベクトル** になります。
+- `as.numeric(c("85", "90", "欠測"))` のように数値に変換できない文字列が含まれると、`NA` が生じます。
+- ベクトルの長さが合わない計算では、Rが値を繰り返して再利用（recycling）することがあります。便利ですが、長さの不一致に気づきにくいため注意が必要です。
+
+```r
+# 要注意: 長さが合わないベクトル同士の計算
+c(1, 2, 3, 4) + c(10, 20)
+```
 :::
 
 ### 論理演算子と比較演算子
@@ -320,7 +404,7 @@ if (n_groups == 2 & test_type == "parametric") {
 # ✅ ベクトルの条件変換には ifelse() を使う
 ifelse(scores > 80, "合格", "不合格")
 
-# ✅ 3つ以上の条件には case_when() を使う（第6節参照）
+# ✅ 3つ以上の条件には case_when() を使う（「tidyverseによるデータ操作」参照）
 # case_when(scores >= 80 ~ "A", scores >= 60 ~ "B", TRUE ~ "C")
 ```
 :::
@@ -1501,6 +1585,96 @@ ele_data[ele_data$toefl_score > 90, c("participant_id", "toefl_score", "proficie
 `tidyverse` では `data.frame` の拡張版である `tibble` が使われます。`tibble` はコンソール表示が見やすく、意図しない型変換を防ぎます。`as_tibble(ele_data)` で変換できます。実用上、両者はほぼ同じように使えます。
 :::
 
+### 欠損値（NA）の扱い
+
+実際の研究データでは、欠席、未回答、測定失敗などにより **欠損値** が頻繁に発生します。Rでは欠損値は `NA` として表され、通常の数値とは異なる扱いになります。
+
+```{r}
+#| label: missing-values-ele
+# ベクトル中の欠損値
+score_with_na <- c(85, 90, NA, 78, NA)
+
+mean(score_with_na)                  # NA が含まれると結果も NA
+mean(score_with_na, na.rm = TRUE)    # 欠損値を除外して平均を計算
+is.na(score_with_na)                 # どこが欠損か確認
+sum(is.na(score_with_na))            # 欠損値の個数
+
+# データフレーム中の欠損値
+survey_df <- tibble(
+  participant_id = c("P001", "P002", "P003", "P004"),
+  vocabulary_score = c(85, NA, 78, 92),
+  study_group = c("Explicit", "Implicit", NA, "Explicit"),
+  notes = c("complete", NA, "late", NA)
+)
+
+# 特定列にNAがある行を除外
+survey_df |>
+  drop_na(vocabulary_score)
+
+# NA を別の値で置き換える
+survey_df |>
+  replace_na(list(
+    vocabulary_score = 0,
+    study_group = "Unknown",
+    notes = ""
+  ))
+
+# 別のベクトルの値で補完する
+backup_scores <- c(84, 88, 79, 91)
+coalesce(survey_df$vocabulary_score, backup_scores)
+```
+
+::: {.callout-note}
+### `NA`・`NULL`・`NaN` の違い
+- `NA`: 値が存在するはずだが欠けている状態
+- `NULL`: オブジェクトや要素そのものが存在しない状態
+- `NaN`: `0 / 0` のような不定な数値演算の結果
+
+分析で最も頻繁に出てくるのは `NA` です。まずは **`is.na()` で確認し、`na.rm = TRUE` や `drop_na()` / `replace_na()` でどう扱うか明示する** ことを習慣にしてください。
+:::
+
+### 因子を実務でどう扱うか
+
+因子は「カテゴリ変数」を表すためのデータ型です。表示順だけでなく、**回帰分析や分散分析でどのカテゴリが基準になるか** にも影響します。したがって、カテゴリ変数は「文字列のまま放置」せず、必要に応じて明示的に因子として整えることが重要です。
+
+```{r}
+#| label: factor-operations-ele
+# 順序を持つ因子
+cefr_level <- factor(
+  c("A2", "B1", "B2", "B1"),
+  levels = c("A2", "B1", "B2"),
+  ordered = TRUE
+)
+
+cefr_level
+is.ordered(cefr_level)
+
+# 基準カテゴリを先頭に移動
+instruction_factor <- factor(c("Implicit", "Explicit", "Implicit", "Explicit"))
+levels(instruction_factor)
+
+instruction_factor <- fct_relevel(instruction_factor, "Explicit")
+levels(instruction_factor)
+
+# 表示ラベルを分かりやすく変更
+proficiency_named <- factor(
+  c("A2", "B1", "B2", "B1"),
+  levels = c("A2", "B1", "B2")
+) |>
+  fct_recode(
+    Basic = "A2",
+    Intermediate = "B1",
+    Advanced = "B2"
+  )
+
+levels(proficiency_named)
+```
+
+::: {.callout-important}
+### 因子の順序は「見た目」だけでなく「分析結果」にも影響する
+例えば `instruction_type` が `factor(c("Implicit", "Explicit"))` のままだと、モデルによっては `Implicit` が基準カテゴリとして扱われます。基準カテゴリを研究上の比較対象に合わせたい場合は、`fct_relevel()` や `relevel()` で **意図的に順序を決める** ようにしてください。
+:::
+
 ### リスト
 
 リストは異なる型・構造のオブジェクトを格納できるデータ構造です。Rでは統計モデルの結果（`lm()` の出力等）がリスト形式で返されるため、リストの基本操作を知っておくと便利です。
@@ -1662,6 +1836,56 @@ tibble::tribble(
   tab_row_group(label = "Base R: read.csv()", rows = 1:7)
 ```
 
+### 読み込み直後の品質チェック
+
+データを読み込めたからといって、**正しく読み込めた** とは限りません。列型の誤判定、数値列への文字列混入、想定外の欠損値などは、読み込み直後に確認しておくべきです。
+
+```{r}
+#| label: import-validation-demo
+# 一時CSVを作成して、読み込み後チェックを再現
+tmp_csv <- tempfile(fileext = ".csv")
+writeLines(c(
+  "id,score,group",
+  "P001,85,Explicit",
+  "P002,eighty,Implicit",
+  "P003,90,Explicit"
+), con = tmp_csv)
+
+imported_scores <- read_csv(
+  tmp_csv,
+  col_types = cols(
+    id = col_character(),
+    score = col_double(),
+    group = col_character()
+  ),
+  show_col_types = FALSE
+)
+
+# 行数・欠損数などの簡易チェック
+imported_scores |>
+  summarize(
+    n_rows = n(),
+    n_missing_score = sum(is.na(score)),
+    n_groups = n_distinct(group)
+  )
+
+# 読み込まれた列型の確認
+spec(imported_scores)
+
+# パース失敗の確認
+problems(imported_scores)
+```
+
+::: {.callout-important}
+### 読み込み後に最低限確認したい4点
+1. **行数・列数** は想定通りか
+2. **列型** は想定通りか（数値列が文字列になっていないか）
+3. **欠損値の個数** は妥当か
+4. **ID列の一意性** は保たれているか
+
+この4点を毎回チェックするだけで、後続の分析エラーのかなりの部分を未然に防げます。
+:::
+
 ### Excelファイル
 
 ```{r}
@@ -1747,7 +1971,7 @@ data <- read_sheet("https://docs.google.com/spreadsheets/d/xxxx")
 
 ::: {.callout-tip}
 ### ファイルパスのベストプラクティス
-`setwd()` でディレクトリを変更するのではなく、**RStudioプロジェクト**（第10節参照）を使用し、`here::here()` で相対パスを構築することを推奨します。
+`setwd()` でディレクトリを変更するのではなく、**RStudioプロジェクト**（本章の「RStudioプロジェクト」参照）を使用し、`here::here()` で相対パスを構築することを推奨します。
 
 ```r
 # 非推奨
@@ -2272,6 +2496,92 @@ ele_wide <- ele_long |>
 DT::datatable(ele_wide)
 ```
 
+### 反復測定データを long 形式にする
+
+教育研究では、**pretest / posttest** や **session 1 / session 2 / session 3** のような反復測定データを扱うことが多くあります。こうしたデータは wide 形式のまま保存されていることが多いですが、可視化や混合効果モデルでは long 形式の方が扱いやすくなります。
+
+```{r}
+#| label: repeated-measures-long
+# pretest / posttest を long 形式に変換
+ele_long_time <- ele_data |>
+  select(participant_id, instruction_type, proficiency_level,
+         pretest, posttest) |>
+  pivot_longer(
+    cols = c(pretest, posttest),
+    names_to = "timepoint",
+    values_to = "score"
+  ) |>
+  mutate(
+    timepoint = factor(
+      timepoint,
+      levels = c("pretest", "posttest"),
+      labels = c("Pretest", "Posttest")
+    )
+  )
+```
+
+::: {.panel-tabset}
+### データ
+
+```{r}
+#| label: repeated-measures-table
+ele_long_time |>
+  group_by(instruction_type, timepoint) |>
+  summarize(
+    n = n(),
+    mean_score = mean(score),
+    sd_score = sd(score),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "指導法 × 時点別の記述統計") |>
+  fmt_number(columns = c(mean_score, sd_score), decimals = 2) |>
+  cols_label(
+    instruction_type = "指導法",
+    timepoint = "時点",
+    n = "n",
+    mean_score = "M",
+    sd_score = "SD"
+  )
+```
+
+### 可視化
+
+```{r}
+#| label: repeated-measures-plot
+#| fig-width: 7
+#| fig-height: 5
+ele_long_time |>
+  group_by(instruction_type, timepoint) |>
+  summarize(
+    mean_score = mean(score),
+    se = sd(score) / sqrt(n()),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = timepoint, y = mean_score,
+             group = instruction_type, color = instruction_type)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  geom_errorbar(aes(ymin = mean_score - se, ymax = mean_score + se),
+                width = 0.08) +
+  labs(
+    title = "Pretest-Posttest Change by Instruction Type",
+    x = "Timepoint", y = "Mean Score",
+    color = "Instruction"
+  ) +
+  scale_color_brewer(palette = "Dark2")
+```
+:::
+
+::: {.callout-tip}
+### long形式が重要になる場面
+- `ggplot2` で時点ごとの推移を描く時
+- 反復測定ANOVAで時点を要因として扱う時
+- 混合効果モデルで `timepoint` を固定効果・ランダム効果と組み合わせる時
+
+**「1人が複数時点の観測を持つ」データは、まず long 形式を疑う** と整理しやすくなります。
+:::
+
 ### その他の便利な操作
 
 #### count：度数の集計
@@ -2369,6 +2679,46 @@ ele_merged |>
 - `inner_join(x, y)`: 両方に存在する行のみ残す
 - `full_join(x, y)`: すべての行を残す（一致しない部分は `NA`）
 - `anti_join(x, y)`: y に存在しない x の行のみ残す（欠損データの確認に便利）
+:::
+
+#### 結合前後の検証
+
+`left_join()` 自体は非常に便利ですが、**キーの重複** や **存在しないID** によって、意図せず行数が増えたり、`NA` が大量に発生したりします。結合の前後で最低限の点検を行うことが重要です。
+
+```{r}
+#| label: join-quality-check
+# わざと問題を含むデータ
+motivation_data_checked <- tibble(
+  participant_id = c("P001", "P001", "P002", "P999"),
+  motivation = c(4.1, 4.3, 3.8, 3.5)
+)
+
+# 1. 重複キーの確認
+motivation_data_checked |>
+  count(participant_id) |>
+  filter(n > 1)
+
+# 2. 元データに存在しないIDの確認
+motivation_data_checked |>
+  anti_join(ele_data, by = "participant_id")
+
+# 3. 結合前後で行数が変わっていないか確認
+tibble(
+  step = c("before_join", "after_join"),
+  n_rows = c(
+    nrow(ele_data),
+    nrow(left_join(ele_data, motivation_data_checked, by = "participant_id"))
+  )
+)
+```
+
+::: {.callout-warning}
+### joinで必ず確認したい3点
+- **キーは一意か**：`count(id) |> filter(n > 1)`
+- **一致しないIDはないか**：`anti_join()`
+- **結合後に行数が増減していないか**：`nrow()` を比較
+
+この3点を確認せずに join すると、後の回帰分析や集計結果が静かに壊れます。
 :::
 
 #### distinct と slice：行の操作
@@ -2936,6 +3286,262 @@ iris_summary |>
 
 `ggplot2` は「グラフィックスの文法」（Grammar of Graphics）に基づく可視化パッケージで、**データ**、**エステティックマッピング**（aes: 軸や色の対応付け）、**ジオメトリ**（geom: 図の種類）を組み合わせて図を構築します。
 
+```{r}
+#| label: ggplot-visual-data
+#| include: false
+# 可視化セクションで共通利用するlong形式データ
+visual_tests_long <- ele_data |>
+  select(participant_id, proficiency_level, instruction_type,
+         vocabulary_test, reading_score, writing_score) |>
+  pivot_longer(
+    cols = c(vocabulary_test, reading_score, writing_score),
+    names_to = "test_type",
+    values_to = "score"
+  ) |>
+  mutate(
+    test_type = factor(
+      test_type,
+      levels = c("vocabulary_test", "reading_score", "writing_score"),
+      labels = c("Vocabulary", "Reading", "Writing")
+    )
+  )
+
+timepoint_long <- ele_data |>
+  pivot_longer(
+    cols = c(pretest, posttest),
+    names_to = "timepoint",
+    values_to = "score"
+  ) |>
+  mutate(
+    timepoint = factor(
+      timepoint,
+      levels = c("pretest", "posttest"),
+      labels = c("Pretest", "Posttest")
+    )
+  )
+
+eda_numeric_vars <- ele_data |>
+  select(toefl_score, vocabulary_test, reading_score, writing_score)
+
+psych_describe_by_df <- psych::describeBy(
+  eda_numeric_vars,
+  group = ele_data$instruction_type,
+  mat = TRUE
+) |>
+  as.data.frame() |>
+  rownames_to_column("row_id") |>
+  mutate(
+    variable = stringr::str_remove(row_id, "[0-9]+$"),
+    group = as.character(group1)
+  ) |>
+  select(group, variable, n, mean, sd, median, min, max, skew, kurtosis)
+
+psych_corr_test <- psych::corr.test(eda_numeric_vars)
+
+psych_corr_long <- psych_corr_test$r |>
+  as.data.frame() |>
+  rownames_to_column("var1") |>
+  pivot_longer(-var1, names_to = "var2", values_to = "r") |>
+  left_join(
+    psych_corr_test$p |>
+      as.data.frame() |>
+      rownames_to_column("var1") |>
+      pivot_longer(-var1, names_to = "var2", values_to = "p"),
+    by = c("var1", "var2")
+  ) |>
+  left_join(
+    psych_corr_test$n |>
+      as.data.frame() |>
+      rownames_to_column("var1") |>
+      pivot_longer(-var1, names_to = "var2", values_to = "n"),
+    by = c("var1", "var2")
+  ) |>
+  mutate(
+    i = match(var1, colnames(psych_corr_test$r)),
+    j = match(var2, colnames(psych_corr_test$r)),
+    p_display = ifelse(p < .001, "< .001", sprintf("%.3f", p))
+  ) |>
+  filter(i < j) |>
+  select(var1, var2, n, r, p_display)
+```
+
+### ggplot2の構成要素
+
+`ggplot2` では、図は1つの関数で一気に作るのではなく、**部品を積み重ねる** 形で作ります。どの部品が何を担当しているかを理解すると、既存コードの読解とカスタマイズが急に楽になります。
+
+```{r}
+#| label: ggplot-components-table
+tibble::tribble(
+  ~構成要素, ~役割, ~代表的な関数,
+  "data", "どのデータを描くか", "ggplot(data = ...), geom_*(data = ...)",
+  "mapping", "どの変数を軸・色・形・大きさに割り当てるか", "aes(x = ..., y = ..., color = ...)",
+  "geom", "どの形で描くか", "geom_point(), geom_line(), geom_boxplot()",
+  "stat", "集計や平滑化をどう行うか", "stat_summary(), geom_smooth()",
+  "position", "重なりや配置をどう調整するか", "position_dodge(), position_jitter()",
+  "scale", "色・軸・凡例をどう変換するか", "scale_color_brewer(), scale_x_continuous()",
+  "facet", "小分けしたパネルにどう分割するか", "facet_wrap(), facet_grid()",
+  "coord", "座標系や表示範囲をどう扱うか", "coord_cartesian(), coord_flip()",
+  "theme", "見た目をどう整えるか", "theme_bw(), theme(), theme_minimal()",
+  "labels", "タイトルや軸名をどう付けるか", "labs(), xlab(), ylab()"
+) |>
+  gt() |>
+  tab_header(title = "ggplot2の基本構成") |>
+  cols_label(
+    構成要素 = "構成要素",
+    役割 = "役割",
+    代表的な関数 = "代表的な関数"
+  )
+```
+
+### aes() とレイヤーの考え方
+
+`aes()` は「どの変数をどの見た目に対応させるか」を指定します。`ggplot()` の中に書けば **全レイヤーで共有されるグローバル指定** になり、各 `geom_*()` の中に書けば **そのレイヤーだけのローカル指定** になります。
+
+```{r}
+#| label: ggplot-aes-layers
+# x と y は全レイヤーで共有し、color だけ点レイヤーに追加
+ggplot(ele_data, aes(x = vocabulary_test, y = reading_score)) +
+  geom_point(alpha = 0.25, color = "gray70", size = 2) +
+  geom_point(aes(color = proficiency_level), size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linewidth = 0.7) +
+  labs(
+    title = "Global vs Local Aesthetic Mapping",
+    x = "Vocabulary Test Score",
+    y = "Reading Score",
+    color = "Proficiency"
+  ) +
+  scale_color_brewer(palette = "Dark2")
+```
+
+::: {.callout-tip}
+### 読み方の基本
+- `ggplot(data, aes(...))` で土台を作る
+- `+ geom_*()` で描画レイヤーを足す
+- `+ scale_*()` や `+ labs()` で意味付けを整える
+- `+ theme()` で見た目を調整する
+
+まずは **x / y をグローバルに、色やラベルを必要なレイヤーだけローカルに足す** という書き方が最も読みやすいです。
+:::
+
+### facet_wrap() と facet_grid()
+
+パネル分割は、複数の群や変数を見比べる時の基本です。**1つの変数で分割するなら `facet_wrap()`、2つの変数で行×列に分割するなら `facet_grid()`** が基本ルールです。
+
+#### facet_wrap()：1変数で柔軟に分割
+
+```{r}
+#| label: ggplot-facet-wrap-main
+#| fig-width: 10
+#| fig-height: 4.5
+ggplot(visual_tests_long, aes(x = instruction_type, y = score, fill = instruction_type)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+  geom_jitter(width = 0.12, alpha = 0.15, size = 0.8) +
+  facet_wrap(vars(test_type), scales = "free_y", nrow = 1) +
+  labs(
+    title = "Scores by Instruction Type Across Multiple Tests",
+    x = "Instruction Type",
+    y = "Score"
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  theme(legend.position = "none")
+```
+
+#### facet_grid()：2変数を行×列で整理
+
+```{r}
+#| label: ggplot-facet-grid-main
+#| fig-width: 9
+#| fig-height: 7
+ggplot(timepoint_long, aes(x = timepoint, y = score, fill = timepoint)) +
+  geom_boxplot(alpha = 0.75, outlier.shape = NA) +
+  facet_grid(rows = vars(proficiency_level), cols = vars(instruction_type)) +
+  labs(
+    title = "Pretest and Posttest by Proficiency and Instruction",
+    x = "Timepoint",
+    y = "Score"
+  ) +
+  scale_fill_brewer(palette = "Pastel2") +
+  theme(legend.position = "none")
+```
+
+::: {.callout-note}
+### facet関連の判断基準
+- **`facet_wrap()`**: 1つの変数に多くの水準がある時に見やすい
+- **`facet_grid()`**: 行変数と列変数を厳密に整理したい時に向く
+- **`scales = "free_y"`**: 各パネル内のパターンは見やすくなるが、パネル間の厳密比較はしにくくなる
+
+比較を重視するなら固定尺度、各パネル内の形を見たいなら自由尺度、という判断が基本です。
+:::
+
+### ハーフバイオリンプロット（raincloud風）
+
+Pre から Post への変化を「平均値だけ」で示すと、分布の広がりや外れ方が見えにくくなります。半バイオリンに箱ひげ図とジッター点を重ねると、**分布・代表値・個票の散らばり** を一度に確認できます。
+
+```{r}
+#| label: ggplot-half-violin
+#| fig-width: 9
+#| fig-height: 5
+ggplot(timepoint_long, aes(x = timepoint, y = score, fill = timepoint)) +
+  gghalves::geom_half_violin(side = "l", trim = FALSE, alpha = 0.6, color = NA) +
+  geom_boxplot(width = 0.18, outlier.shape = NA, alpha = 0.75) +
+  geom_jitter(width = 0.08, alpha = 0.18, size = 0.9) +
+  stat_summary(fun = mean, geom = "point", size = 2.2, color = "black") +
+  facet_wrap(vars(instruction_type)) +
+  labs(
+    title = "Pre-Post Change with Half Violins, Boxplots, and Raw Points",
+    x = "Timepoint",
+    y = "Score"
+  ) +
+  scale_fill_brewer(palette = "Pastel2") +
+  theme(legend.position = "none")
+```
+
+::: {.callout-tip}
+### ハーフバイオリンが有効な場面
+- Pre / Post のような **2時点比較**
+- 条件ごとの得点分布を平均だけでなく形でも見たい時
+- 箱ひげ図だけでは情報が足りず、フルバイオリンではやや重い時
+
+本文では「半バイオリン + 箱ひげ図 + ジッター」の組み合わせを基本形として覚えておくと実務で使いやすいです。
+:::
+
+### 座標系と複数図の配置
+
+`ggplot2` の軸範囲を調整する時、`scale_x_continuous(limits = ...)` でデータ自体を切る方法と、`coord_cartesian()` で**見た目だけズーム**する方法は意味が異なります。外れ値や回帰線の形を保ったまま拡大したい場合は `coord_cartesian()` が適しています。
+
+```{r}
+#| label: ggplot-coord-patchwork
+#| fig-width: 11
+#| fig-height: 4.5
+base_zoom_plot <- ggplot(
+  ele_data,
+  aes(x = vocabulary_test, y = reading_score, color = proficiency_level)
+) +
+  geom_point(alpha = 0.55, size = 2) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
+  scale_color_brewer(palette = "Dark2") +
+  labs(x = "Vocabulary Test Score", y = "Reading Score", color = "Proficiency")
+
+zoomed_plot <- base_zoom_plot +
+  coord_cartesian(xlim = c(45, 95), ylim = c(45, 95)) +
+  labs(title = "Zoom with coord_cartesian()")
+
+full_plot <- base_zoom_plot +
+  labs(title = "Full Plot")
+
+patchwork::wrap_plots(
+  full_plot,
+  zoomed_plot,
+  ncol = 2,
+  guides = "collect"
+)
+```
+
+::: {.callout-warning}
+### `coord_flip()` について
+`ggplot2` の公式ドキュメントでは `coord_flip()` は **superseded** です。単純な横向き箱ひげ図や棒グラフなら、`coord_flip()` を使うより **x と y の aesthetic を入れ替える** 方が今は基本です。
+:::
+
 ### ヒストグラムと密度プロット
 
 ```{r}
@@ -3040,6 +3646,174 @@ ggplot(ele_data, aes(x = toefl_score, y = vocabulary_test)) +
   scale_color_brewer(palette = "Dark2")
 ```
 
+### plotlyによるインタラクティブ可視化
+
+`ggplot2` が「静的で出版品質の高い図」を作るのに適しているのに対し、`plotly` は **マウスオーバーによる値の確認、拡大縮小、凡例クリックによる系列のON/OFF** など、インタラクティブな可視化に向いています。HTML文書で配布する教材や分析ノートでは特に有用です。
+
+::: {.callout-note}
+### `ggplot2` と `plotly` の使い分け
+- **論文・書籍・配布資料向けの静的図** → `ggplot2`
+- **HTMLで探索的に確認したい図** → `plotly`
+- **まず `ggplot2` で作図し、必要なら `ggplotly()` で対話化** → 最も実用的
+
+`plotly` を `library(plotly)` で読み込むと `layout()` や `filter()` などの名前が他パッケージと衝突することがあります。本章では `plotly::ggplotly()` や `plotly::plot_ly()` のように **名前空間を明示** して使います。
+:::
+
+#### ggplotly()：既存のggplotをインタラクティブ化
+
+既存の `ggplot` オブジェクトをそのまま `plotly::ggplotly()` に渡すと、インタラクティブなHTML図に変換できます。まずはこの方法を覚えるのが最も簡単です。
+
+```{r}
+#| label: plotly-ggplotly-demo
+# ggplotに tooltip 用の text aesthetic を追加
+gg_scatter <- ggplot(
+  ele_data,
+  aes(
+    x = vocabulary_test,
+    y = reading_score,
+    color = proficiency_level,
+    text = paste(
+      "ID:", participant_id,
+      "<br>Vocabulary:", vocabulary_test,
+      "<br>Reading:", reading_score,
+      "<br>CEFR:", proficiency_level
+    )
+  )
+) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Interactive Scatterplot: Vocabulary and Reading",
+    x = "Vocabulary Test Score",
+    y = "Reading Score",
+    color = "Proficiency"
+  ) +
+  scale_color_brewer(palette = "Dark2")
+
+plotly::ggplotly(
+  gg_scatter,
+  tooltip = c("text", "x", "y", "colour")
+)
+```
+
+::: {.callout-tip}
+### `ggplotly()` でよく使う引数
+- `tooltip = "all"`: 利用可能な情報をすべて表示
+- `tooltip = c("text", "x", "y")`: 表示内容と順序を明示
+- `width`, `height`: HTML上の表示サイズを調整
+
+ツールチップを丁寧に整えたい場合は、`aes(text = ...)` を先に `ggplot` 側で指定しておくと制御しやすくなります。
+:::
+
+#### plot_ly()：plotlyで直接作図する
+
+`plotly::plot_ly()` は、`ggplot2` を介さずに plotly の図を直接作る方法です。列参照には `~variable` のような **formula記法** を使うのが基本です。
+
+```{r}
+#| label: plotly-direct-demo
+# 反復測定データを要約
+interactive_summary <- ele_data |>
+  pivot_longer(
+    cols = c(pretest, posttest),
+    names_to = "timepoint",
+    values_to = "score"
+  ) |>
+  mutate(
+    timepoint = factor(
+      timepoint,
+      levels = c("pretest", "posttest"),
+      labels = c("Pretest", "Posttest")
+    )
+  ) |>
+  group_by(instruction_type, timepoint) |>
+  summarize(mean_score = mean(score), .groups = "drop")
+
+plotly::plot_ly(
+  interactive_summary,
+  x = ~timepoint,
+  y = ~mean_score,
+  color = ~instruction_type,
+  colors = "Dark2",
+  type = "scatter",
+  mode = "lines+markers",
+  text = ~paste(
+    "Instruction:", instruction_type,
+    "<br>Timepoint:", timepoint,
+    "<br>Mean:", round(mean_score, 2)
+  ),
+  hoverinfo = "text"
+) |>
+  plotly::layout(
+    title = "Interactive Pre-Post Change by Instruction Type",
+    xaxis = list(title = "Timepoint"),
+    yaxis = list(title = "Mean Score")
+  )
+```
+
+::: {.callout-warning}
+### `plot_ly()` で初心者がつまずきやすい点
+- 列名を参照する時は `x = ~timepoint` のように **`~` を付ける**
+- 線グラフでは `type = "scatter"` + `mode = "lines"` または `"lines+markers"` を使う
+- `layout()` は `plotly::layout()` と明示しておくと、`graphics::layout()` との混同を避けられる
+:::
+
+::: {.callout-tip}
+### HTML教材での実用的な方針
+本書のようなHTML文書では、**本文では `ggplot2` の静的図で説明し、補助的に `plotly` の探索図を置く** のが最もバランスが良いです。分析の主図をすべて plotly にすると、印刷やPDF変換、図の細かな体裁調整がやや難しくなります。
+:::
+
+### GGallyによる散布図行列
+
+`GGally` は `ggplot2` を拡張する可視化パッケージで、特に `ggpairs()` による **散布図行列（scatterplot matrix）** が便利です。複数の連続変数の関係を短時間で点検したい時に、`ggplot2` で1枚ずつ図を描くよりも効率的です。
+
+::: {.panel-tabset}
+### 基本形
+
+```{r}
+#| label: ggally-ggpairs-basic
+#| fig-width: 8
+#| fig-height: 8
+GGally::ggpairs(
+  eda_numeric_vars,
+  upper = list(continuous = GGally::wrap("cor", size = 4)),
+  lower = list(continuous = GGally::wrap("points", alpha = 0.45, size = 0.9)),
+  diag = list(continuous = GGally::wrap("densityDiag",
+                                        alpha = 0.5, fill = "steelblue"))
+) +
+  labs(title = "GGally::ggpairs for Test Scores") +
+  theme_bw(base_size = 11, base_family = "HiraginoSans-W3")
+```
+
+### 群別表示
+
+```{r}
+#| label: ggally-ggpairs-grouped
+#| fig-width: 8
+#| fig-height: 8
+GGally::ggpairs(
+  ele_data,
+  columns = c("toefl_score", "vocabulary_test", "reading_score", "writing_score"),
+  mapping = ggplot2::aes(color = proficiency_level, alpha = 0.5),
+  upper = list(continuous = GGally::wrap("cor", size = 4)),
+  lower = list(continuous = GGally::wrap("points", size = 0.9)),
+  diag = list(continuous = GGally::wrap("densityDiag"))
+) +
+  labs(title = "GGally::ggpairs by Proficiency Level") +
+  theme_bw(base_size = 11, base_family = "HiraginoSans-W3") +
+  theme(legend.position = "bottom")
+```
+
+### 読み方
+
+- 対角線：各変数単独の分布
+- 左下：2変数間の散布図
+- 右上：相関係数
+- `columns = c(...)` で表示する変数を絞る
+- `mapping = aes(color = ...)` で群情報を重ねられる
+
+`GGally::ggpairs()` は、**どの変数同士が強く関係しているか**、**外れたケースがあるか**、**群ごとに分布が違うか** を素早く見るのに向いています。
+:::
+
 ::: {.callout-tip}
 ### 図の保存
 `ggsave()` を使用して、出版品質の図を保存できます。
@@ -3085,6 +3859,77 @@ ele_data |>
   fmt_number(columns = c(mean, sd, median, skew, kurtosis), decimals = 2) |>
   fmt_number(columns = c(min, max), decimals = 0)
 ```
+
+### psychによる拡張的な探索的要約
+
+`psych` は、単なる記述統計表だけでなく、**群別要約**、**相関表**、**散布図行列** まで一通りまとめて点検できるパッケージです。分析を本格的に始める前のEDA（探索的データ分析）として非常に有用です。
+
+::: {.panel-tabset}
+### 群別記述統計
+
+```{r}
+#| label: psych-describe-by
+psych_describe_by_df |>
+  gt() |>
+  tab_header(title = "psych::describeBy() による群別記述統計") |>
+  fmt_number(columns = c(mean, sd, median, skew, kurtosis), decimals = 2) |>
+  fmt_number(columns = c(min, max), decimals = 0) |>
+  cols_label(
+    group = "群",
+    variable = "変数",
+    n = "n",
+    mean = "M",
+    sd = "SD",
+    median = "Median",
+    min = "Min",
+    max = "Max",
+    skew = "Skew",
+    kurtosis = "Kurtosis"
+  )
+```
+
+### 相関表
+
+```{r}
+#| label: psych-corr-test-table
+psych_corr_long |>
+  gt() |>
+  tab_header(title = "psych::corr.test() による相関係数とp値") |>
+  fmt_number(columns = r, decimals = 2) |>
+  cols_label(
+    var1 = "変数1",
+    var2 = "変数2",
+    n = "n",
+    r = "r",
+    p_display = "p"
+  )
+```
+
+### 探索的可視化
+
+```{r}
+#| label: psych-pairs-panels
+#| fig-width: 8
+#| fig-height: 8
+psych::pairs.panels(
+  eda_numeric_vars,
+  method = "pearson",
+  lm = TRUE,
+  ellipses = TRUE,
+  hist.col = "lightblue",
+  pch = 20
+)
+```
+
+### 使い分け
+
+- `psych::describe()`：全体の記述統計を一覧したい時
+- `psych::describeBy()`：群別の平均や分布の違いをすぐ確認したい時
+- `psych::corr.test()`：相関係数とp値をまとめて確認したい時
+- `psych::pairs.panels()`：散布図・ヒストグラム・相関を1枚で見たい時
+
+`psych` は **素早く全体像をつかむEDA向け**、`dplyr` + `gt()` は **論文用に整えた表を作る場面向け** と覚えると使い分けしやすくなります。
+:::
 
 ### t検定
 
@@ -3290,7 +4135,9 @@ tibble::tribble(
   "表作成",        "gt",             "出版品質のテーブル作成",
   "可視化",        "ggplot2",        "グラフ作成（tidyverseに含まれる）",
   "可視化",        "GGally",         "散布図行列（ggpairs）",
+  "可視化",        "gghalves",       "ハーフバイオリン等の分布可視化",
   "可視化",        "patchwork",      "複数の図を並べる",
+  "可視化",        "plotly",         "インタラクティブなHTMLグラフ",
   "統計（基礎）",  "psych",          "記述統計（describe）",
   "統計（基礎）",  "car",            "分散分析の検定",
   "統計（基礎）",  "effectsize",     "効果量の算出",
@@ -3580,7 +4427,7 @@ reprex::reprex({
 
 ::: {.callout-tip}
 ### 練習問題の進め方
-まずは自分でコードを書いてみて、その後に解答例と比較してください。エラーが出た場合は第11節（トラブルシューティング）を参照してください。解答例はコードブロックを展開すると表示されます。
+まずは自分でコードを書いてみて、その後に解答例と比較してください。エラーが出た場合は「トラブルシューティング」を参照してください。解答例はコードブロックを展開すると表示されます。
 :::
 
 ### 問題1：ベクトルとデータフレーム操作
@@ -3727,6 +4574,184 @@ cat(sprintf(
   t_gain$parameter, t_gain$statistic, t_gain$p.value,
   abs(d_gain$Cohens_d)
 ))
+```
+
+### 問題4：欠損値処理と因子の整備
+
+**研究シナリオ:** 語彙テストとスピーキングテストのデータを整理していたところ、一部に未記入の群ラベルと欠損スコアが含まれていました。バックアップ列もあるため、分析前にデータを整備したい状況です。
+
+**タスク:**
+
+1. 以下のコードでデータセットを作成
+2. 列ごとの欠損値数を集計
+3. `coalesce()` を使って `vocabulary_score` の欠損を `backup_vocab` で補完し、`vocabulary_final` を作成
+4. `replace_na()` で `group` の欠損を `"Unknown"` に置き換え、`factor()` で `Explicit` → `Implicit` → `Unknown` の順に並べる
+5. `drop_na()` で `speaking_score` が欠損していない行だけを残し、群別の平均語彙得点・平均スピーキング得点を `gt()` テーブルで表示
+
+```{r}
+#| label: exercise4-data
+# データセットの作成（このコードをまず実行してください）
+survey_scores <- tibble(
+  participant_id = paste0("P", sprintf("%03d", 1:8)),
+  group = c("Implicit", "Explicit", NA, "Implicit",
+            "Explicit", "Implicit", "Explicit", NA),
+  vocabulary_score = c(82, NA, 75, 88, 91, 79, NA, 84),
+  backup_vocab = c(81, 80, 76, 87, 90, 78, 83, 85),
+  speaking_score = c(18, 20, NA, 22, 24, 19, 21, NA)
+)
+```
+
+```{r}
+#| label: exercise4-solution
+#| code-fold: true
+#| code-summary: "解答例を表示"
+
+# 2. 列ごとの欠損値数
+survey_scores |>
+  summarize(across(everything(), ~ sum(is.na(.)))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "n_missing") |>
+  gt() |>
+  tab_header(title = "列ごとの欠損値数") |>
+  cols_label(variable = "変数", n_missing = "欠損数")
+
+# 3-4. 欠損値処理と因子の整備
+survey_clean <- survey_scores |>
+  mutate(
+    vocabulary_final = coalesce(vocabulary_score, backup_vocab),
+    group = replace_na(group, "Unknown"),
+    group = factor(group, levels = c("Explicit", "Implicit", "Unknown"))
+  )
+
+# 5. speaking_score がある行だけで群別集計
+survey_clean |>
+  drop_na(speaking_score) |>
+  group_by(group) |>
+  summarize(
+    n = n(),
+    mean_vocab = mean(vocabulary_final),
+    mean_speaking = mean(speaking_score),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "群別の平均得点（欠損処理後）") |>
+  fmt_number(columns = c(mean_vocab, mean_speaking), decimals = 2) |>
+  cols_label(
+    group = "群",
+    n = "n",
+    mean_vocab = "M (Vocabulary)",
+    mean_speaking = "M (Speaking)"
+  )
+```
+
+### 問題5：joinの検証と反復測定データの整形
+
+**研究シナリオ:** 12名の学習者の pretest / posttest データに、別ファイルで管理していた学習動機データを結合したい状況です。ただし、動機データには重複IDと、本体データに存在しないIDが混ざっています。
+
+**タスク:**
+
+1. 以下のコードでデータセットを作成
+2. `count()` を使って `motivation_aux` 内の重複IDを特定
+3. `anti_join()` を使って `progress_main` に存在しないIDを特定
+4. `semi_join()` と `group_by()` + `summarize()` を使って、重複を平均化した `motivation_clean` を作成
+5. `left_join()` 後に行数が変わっていないことを確認し、`pivot_longer()` で long 形式に変換して、指導法別の pretest / posttest の平均推移を図示
+
+```{r}
+#| label: exercise5-data
+# データセットの作成（このコードをまず実行してください）
+progress_main <- tibble(
+  participant_id = paste0("P", sprintf("%03d", 1:12)),
+  instruction_type = factor(rep(c("Implicit", "Explicit"), each = 6)),
+  pretest = c(12, 14, 11, 15, 13, 10, 13, 16, 15, 17, 14, 18),
+  posttest = c(16, 17, 14, 19, 16, 13, 19, 21, 20, 23, 19, 24)
+)
+
+motivation_aux <- tibble(
+  participant_id = c("P001", "P002", "P002", "P004",
+                     "P007", "P009", "P012", "P999"),
+  motivation = c(4.0, 3.8, 4.2, 4.5, 3.9, 4.1, 4.4, 3.7)
+)
+```
+
+```{r}
+#| label: exercise5-solution
+#| code-fold: true
+#| code-summary: "解答例を表示"
+
+# 2. 重複IDの確認
+motivation_aux |>
+  count(participant_id) |>
+  filter(n > 1)
+
+# 3. 本体データに存在しないIDの確認
+motivation_aux |>
+  anti_join(progress_main, by = "participant_id")
+
+# 4. 重複を平均化し、本体に存在するIDだけ残す
+motivation_clean <- motivation_aux |>
+  semi_join(progress_main, by = "participant_id") |>
+  group_by(participant_id) |>
+  summarize(motivation = mean(motivation), .groups = "drop")
+
+# 5. join後の行数確認
+progress_joined <- progress_main |>
+  mutate(instruction_type = forcats::fct_relevel(instruction_type, "Explicit")) |>
+  left_join(motivation_clean, by = "participant_id")
+
+tibble(
+  step = c("before_join", "after_join"),
+  n_rows = c(nrow(progress_main), nrow(progress_joined))
+)
+
+# long形式に変換して要約
+progress_long <- progress_joined |>
+  pivot_longer(
+    cols = c(pretest, posttest),
+    names_to = "timepoint",
+    values_to = "score"
+  ) |>
+  mutate(
+    timepoint = factor(
+      timepoint,
+      levels = c("pretest", "posttest"),
+      labels = c("Pretest", "Posttest")
+    )
+  )
+
+progress_long |>
+  group_by(instruction_type, timepoint) |>
+  summarize(
+    n = n(),
+    mean_score = mean(score),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  tab_header(title = "指導法 × 時点別の平均得点") |>
+  fmt_number(columns = mean_score, decimals = 2) |>
+  cols_label(
+    instruction_type = "指導法",
+    timepoint = "時点",
+    n = "n",
+    mean_score = "M"
+  )
+
+# 指導法別の平均推移
+progress_long |>
+  group_by(instruction_type, timepoint) |>
+  summarize(
+    mean_score = mean(score),
+    se = sd(score) / sqrt(n()),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(x = timepoint, y = mean_score,
+             group = instruction_type, color = instruction_type)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  geom_errorbar(aes(ymin = mean_score - se, ymax = mean_score + se),
+                width = 0.08) +
+  labs(title = "Pretest-Posttest Change by Instruction Type",
+       x = "Timepoint", y = "Mean Score",
+       color = "Instruction") +
+  scale_color_brewer(palette = "Dark2")
 ```
 
 ## 参考文献

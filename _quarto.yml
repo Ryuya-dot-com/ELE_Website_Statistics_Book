@@ -23,25 +23,27 @@ book:
     
     - part: "第II部：回帰分析"
       chapters:
-        - 4_重回帰分析_simple_slope_analysis.qmd
+        - 4_重回帰分析と交互作用.qmd
         - 5_一般化線形モデル_一般化加法モデル.qmd
         - 6_混合効果モデル_2値ロジスティック回帰.qmd
     
     - part: "第III部：ベイズ統計と機械学習"
       chapters:
         - 7_ベイズ推定.qmd
-        - 8_ROC曲線_ツリーモデル.qmd
+        - 8_予測分析_ROC曲線とツリーモデル.qmd
     
     - part: "第IV部：多変量解析"
       chapters:
-        - 9_因子分析_主成分分析_コレスポンデンス分析_多次元尺度法.qmd
+        - 9_潜在変数モデリングと次元縮約.qmd
         - 10_一般化可能性理論.qmd
         - 11_項目応答理論とラッシュモデル.qmd
         - 12_拡張ラッシュモデル.qmd
 
-    - part: "第V部：時系列解析"
+    - part: "第V部：時系列データ分析"
       chapters:
-        - 13_時系列データ分析_ARIMA.qmd
+        - 13_時系列データ分析_基礎.qmd
+        - 13b_時系列データ分析_発展.qmd
+        - 13c_音声時系列分析_Praat.qmd
 
     - part: "第VI部：地理空間データ"
       chapters:
@@ -99,6 +101,7 @@ format:
     
   pdf:
     pdf-engine: lualatex
+    prefer-html: true
     documentclass: ltjsbook
     classoption:
       - openany

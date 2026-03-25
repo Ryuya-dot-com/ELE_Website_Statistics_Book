@@ -9,7 +9,8 @@ nocite: |
 #| label: setup-theme
 #| include: false
 
-library(ggplot2)
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(ggplot2)
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 ```
 

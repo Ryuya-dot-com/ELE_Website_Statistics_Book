@@ -1,0 +1,6 @@
+*.html
+*_cache/
+index.tex
+index.log
+Rplots.pdf
+.render-html-backup/
