@@ -2732,7 +2732,7 @@ text_block <- glue::glue(
   "p = {format.pval(slope_row$p.value, digits = 3)}), indicating stronger proficiency-related gains under Writing."
 )
 
-cat(text_block)
+knitr::asis_output(text_block)
 ```
 
 :::

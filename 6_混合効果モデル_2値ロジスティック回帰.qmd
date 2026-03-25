@@ -4295,11 +4295,9 @@ run_single_sim <- function(...) {
 
   data.frame(p_B1 = p_B1, p_B2 = p_B2, p_omnibus = p_omnibus)
 }
-
-cat("データ生成関数とシミュレーション関数を定義しました。\n")
-cat("simulate_glmm_data(): パラメータ → 2値データ\n")
-cat("run_single_sim(): データ生成 → glmer推定 → p値抽出\n")
 ```
+
+ここまでで、`simulate_glmm_data()` は指定したパラメータから2値データを生成し、`run_single_sim()` はデータ生成から `glmer()` による推定、p値抽出までを1回で実行できる状態になっています。
 
 ### パラメータ設定が意味する確率を確認する
 

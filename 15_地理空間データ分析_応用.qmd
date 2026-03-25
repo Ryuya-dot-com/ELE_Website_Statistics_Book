@@ -1122,14 +1122,13 @@ remotes::install_github("eliaskrainski/INLAspacetime", build_vignettes = TRUE)
 nb <- nb_queen
 W <- spdep::nb2mat(nb, style = 'B', zero.policy = TRUE)
 
-if (requireNamespace("INLA", quietly = TRUE) &&
-    requireNamespace("INLAspacetime", quietly = TRUE)) {
+has_inla <- requireNamespace("INLA", quietly = TRUE) &&
+  requireNamespace("INLAspacetime", quietly = TRUE)
+
+if (has_inla) {
   # 例: ICAR/BYM 型ランダム効果の骨格（擬似コード）
   # formula <- eng_score ~ teacher_toeic + eiken_rate + f(pref_name, model='icar', graph=W)
   # fit_inla <- INLA::inla(formula, family='gaussian', data = as.data.frame(dat_reg))
-  cat("INLA / INLAspacetime are available in this environment.\n")
-} else {
-  cat("INLA / INLAspacetime are not installed in this environment, so only the GWR example is executed here.\n")
 }
 
 # GWR: 係数の空間的変異を探索的に可視化
@@ -1139,6 +1138,8 @@ bw <- GWmodel::bw.gwr(eng_score ~ teacher_toeic + eiken_rate, data = spobj, appr
 gwr <- GWmodel::gwr.basic(eng_score ~ teacher_toeic + eiken_rate, data = spobj, bw = bw, kernel='bisquare', adaptive=TRUE)
 gwr$GW.diagnostic
 ```
+
+この環境では、`r if (has_inla) "INLA / INLAspacetime が利用可能です。必要であれば、この節の擬似コードを実データ用の時空間モデルへ発展させられます。" else "INLA / INLAspacetime が未インストールのため、この節では GWR の例のみを実行しています。"` 
 
 ここでの実践的な判断基準は単純です。まず固定効果 DID で平均効果を確認し、次に空間パネルで波及を明示的に入れる。それでもなお「小地域の疎な観測から潜在的な時空間パターンを推定したい」「不確実性ごと面として報告したい」という段階に来たら、INLA 系の時空間モデルへ進む、という順序です。発展節の目的はすべてを一度に実装することではなく、**自分の研究質問に対してどの拡張が本当に必要かを見極めること**です。ここでわかるのは、INLA 系が小地域の潜在場や不確実性の面表現に強く、GWR が係数の空間的異質性を探索的に見るのに向く、という役割分担です。一方、これらのモデルを使ったからといって自動的に因果推論が保証されるわけではありません。特に GWR は探索的な係数地図であり、DID のような識別戦略の代替にはなりません。
 

@@ -3497,7 +3497,7 @@ lgm_report <- glue::glue(
   "indicating that higher motivation was associated with faster vocabulary growth."
 )
 
-cat(lgm_report)
+knitr::asis_output(lgm_report)
 ```
 
 
@@ -4407,7 +4407,7 @@ efa_report <- glue::glue(
   "to {round(max(rel_tbl$`McDonald's ω`), 2)} across the three factors."
 )
 
-cat(efa_report)
+knitr::asis_output(efa_report)
 ```
 
 ### CFA の報告テンプレート
@@ -4432,7 +4432,7 @@ cfa_report <- glue::glue(
   "SRMR = {round(fit_vals['srmr'], 3)}."
 )
 
-cat(cfa_report)
+knitr::asis_output(cfa_report)
 ```
 
 ### PCA の報告テンプレート
@@ -4453,7 +4453,7 @@ pca_report <- glue::glue(
   "The analysis was performed using FactoMineR (Le et al., 2008)."
 )
 
-cat(pca_report)
+knitr::asis_output(pca_report)
 ```
 
 ### SEM の報告テンプレート
@@ -4478,7 +4478,7 @@ sem_report <- glue::glue(
   "{round(ind_boot$ci.upper, 3)}] (500 bootstrap samples, percentile method)."
 )
 
-cat(sem_report)
+knitr::asis_output(sem_report)
 ```
 
 ### 論文報告のコピペ用テンプレート

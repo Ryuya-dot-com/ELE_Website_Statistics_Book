@@ -785,9 +785,7 @@ dtw_open_tbl <- tibble(
   Reference = dtw_ref_long,
   Matched = dplyr::between(seq_along(dtw_ref_long), matched_start, matched_end)
 )
-
-cat("Matched reference interval:", matched_start, "-", matched_end, "\n")
-cat("Subsequence normalized distance:", round(get_norm_dist(fit_dtw_open), 3), "\n")
+dtw_open_dist <- round(get_norm_dist(fit_dtw_open), 3)
 
 dtw_open_tbl |>
   ggplot(aes(x = Index, y = Reference)) +
@@ -808,6 +806,8 @@ dtw_open_tbl |>
     y = "Standardized score"
   )
 ```
+
+この例では、照合された参照区間は `r matched_start`〜`r matched_end` で、正規化距離は `r dtw_open_dist` です。
 
 `Matched reference interval` は、長い参照系列の中で「短いクエリと最も整合した区間」です。学習ログ分析では、ある学習者の特定期間が、別学習者のどの期間に対応するかを検出する用途に使えます。
 
@@ -1005,7 +1005,6 @@ hmm_ic |>
   )
 
 best_k <- hmm_ic$nstates[which.min(hmm_ic$BIC)]
-cat("Selected by BIC:", best_k, "states\n")
 
 # 最良モデルを random.start 付きで再推定
 mod_hmm_best <- depmixS4::depmix(
@@ -1019,6 +1018,8 @@ fit_hmm <- depmixS4::fit(
   emcontrol = depmixS4::em.control(maxit = 1000, tol = 1e-8, random.start = TRUE)
 )
 ```
+
+この例では、BIC が最小だったのは `r best_k` 状態モデルです。
 
 本書ではレンダリング時間を抑えるため、最良モデルの再推定は `random.start = TRUE` までに留めています。実データで初期値依存が強い場合は、公式ドキュメントどおり `multistart()` を追加して安定性を確認してください。
 
@@ -1061,17 +1062,8 @@ df_hmm_decoded <- df_hmm |>
     decode_disagree = state_global != state_local
   ) |>
   bind_cols(smooth_tbl)
-
-cat(
-  "Global vs local decoding disagreements:",
-  sum(df_hmm_decoded$decode_disagree),
-  "time points\n"
-)
-cat(
-  "Local decoding equals argmax(smoothing):",
-  all(as.integer(pst_local) == state_local_from_smooth),
-  "\n"
-)
+decode_disagree_n <- sum(df_hmm_decoded$decode_disagree)
+local_matches_smoothing <- all(as.integer(pst_local) == state_local_from_smooth)
 
 state_emission |>
   arrange(mean_score) |>
@@ -1194,6 +1186,8 @@ df_hmm_decoded |>
   tab_header(title = "Decoded state transitions (empirical proportions)") |>
   fmt_number(columns = prob, decimals = 3)
 ```
+
+この例では、`global` と `local` のデコードが食い違った時点は `r decode_disagree_n` 個で、`local` デコードは smoothing の事後最大確率状態と `r if (local_matches_smoothing) "一致しました" else "一致しませんでした"`。
 
 **読み方**：
 
@@ -1451,8 +1445,7 @@ df_kf_na <- tibble(
   smoothed = as.numeric(fitted(kfs_na)),
   missing = is.na(observed)
 )
-
-cat("Artificial missing months:", paste(miss_idx, collapse = ", "), "\n")
+miss_idx_text <- paste(miss_idx, collapse = ", ")
 
 ggplot(df_kf_na, aes(x = time)) +
   geom_line(aes(y = smoothed, color = "Smoothed"), linewidth = 0.9) +
@@ -1474,6 +1467,8 @@ ggplot(df_kf_na, aes(x = time)) +
     color = ""
   )
 ```
+
+この例で人工的に欠測させた月は `r miss_idx_text` です。
 
 赤い丸は観測が欠けていた月で、その値はモデルが前後情報から推定した平滑値です。欠測率が高い場合は、`Q` と `H` の推定安定性（過度平滑化の有無）を必ず確認してください。
 

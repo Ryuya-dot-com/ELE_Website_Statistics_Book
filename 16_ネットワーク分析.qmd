@@ -211,18 +211,17 @@ toy_edges <- data.frame(
   to   = c("L2", "L3", "L3", "L4", "L5")
 )
 g_toy <- graph_from_data_frame(toy_edges, directed = FALSE)
-
-# 隣接行列
-cat("隣接行列:\n")
 as_adjacency_matrix(g_toy, sparse = FALSE)
-
-# 基本指標
-cat("\n各ノードの次数:\n")
-igraph::degree(g_toy)
-
-cat("\n密度:", round(edge_density(g_toy), 3), "\n")
-cat("推移性:", round(transitivity(g_toy, type = "global"), 3), "\n")
 ```
+
+`g_toy` の各ノードの次数は次のとおりです。
+
+```{r}
+#| label: toy-graph-degree
+igraph::degree(g_toy)
+```
+
+このミニネットワークの密度は `r round(igraph::edge_density(g_toy), 3)`、推移性は `r round(igraph::transitivity(g_toy, type = "global"), 3)` です。
 
 この例では、L2 は次数3（L1, L3, L4 と接続）で最も多くの関係を持ち、L4 と L5 は次数1で周辺に位置している。
 
@@ -2714,7 +2713,7 @@ report_descriptive <- glue::glue(
   "The largest connected component included {max(igraph::components(g)$csize)} of ",
   "{gorder(g)} nodes ({round(max(igraph::components(g)$csize) / gorder(g) * 100, 1)}%)."
 )
-cat(report_descriptive)
+knitr::asis_output(report_descriptive)
 ```
 
 ### コミュニティ検出の報告
@@ -2730,7 +2729,7 @@ report_community <- glue::glue(
   "{round(ari_value, 2)}, suggesting {'moderate'} correspondence between ",
   "algorithmically detected communities and administrative class assignments."
 )
-cat(report_community)
+knitr::asis_output(report_community)
 ```
 
 ### ERGM結果の報告
@@ -2751,7 +2750,7 @@ report_ergm <- glue::glue(
   "Model fit was assessed using goodness-of-fit diagnostics for degree distribution, ",
   "geodesic distance, and edge-wise shared partners."
 )
-cat(report_ergm)
+knitr::asis_output(report_ergm)
 ```
 
 ### 報告チェックリスト

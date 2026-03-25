@@ -1255,7 +1255,8 @@ GLM 同士の入れ子比較（尤度比検定）を実演します。
 #| label: likelihood-binary
 
 # 尤度ベース比較（入れ子 GLM）
-m_bin_glm_reduced <- update(m_bin_glm, . ~ . - score_gap)
+dat_bin_glm_complete <- model.frame(m_bin_glm)
+m_bin_glm_reduced <- update(m_bin_glm, . ~ . - score_gap, data = dat_bin_glm_complete)
 
 tibble(
   model = c("Reduced GLM", "Full GLM"),
@@ -1544,12 +1545,12 @@ bin_prob_examples |>
 bin_eval_tbl <- bind_rows(
   tibble(
     model = "GLM",
-    observed = dat_bin$tie,
+    observed = model.response(model.frame(m_bin_glm)),
     predicted = predict(m_bin_glm, type = "response")
   ),
   tibble(
     model = "GAM",
-    observed = dat_bin$tie,
+    observed = model.response(model.frame(m_bin_gam)),
     predicted = predict(m_bin_gam, type = "response")
   )
 )

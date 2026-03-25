@@ -393,12 +393,9 @@ pref_latest <- pref_panel |> filter(year == max(year))
 pref_panel_keyed <- pref_panel |> mutate(pref_key = norm_pref(pref_name))
 anti_data_vs_shape <- dplyr::anti_join(pref_panel_keyed, jpn_key, by = 'pref_key')
 anti_shape_vs_data <- dplyr::anti_join(jpn_key, pref_panel_keyed, by = 'pref_key')
-
-cat("指標データにあるが形状にない:", nrow(anti_data_vs_shape), "件\n")
-cat("形状にあるが指標データにない:", nrow(anti_shape_vs_data), "件\n")
 ```
 
-**確認ポイント**: 両方とも 0 件であれば名寄せ成功です。もし 0 でなければ、`norm_pref()` に辞書置換を追加するか、元データの都道府県名を修正してください。
+**確認ポイント**: 指標データにあるが形状にないレコードは `r nrow(anti_data_vs_shape)` 件、形状にあるが指標データにないレコードは `r nrow(anti_shape_vs_data)` 件です。両方とも 0 件であれば名寄せ成功です。もし 0 でなければ、`norm_pref()` に辞書置換を追加するか、元データの都道府県名を修正してください。
 
 ## 結合とコロプレス図
 
@@ -594,9 +591,9 @@ pref_panel_complete <- pref_panel |>
   group_by(pref_name) |>
   tidyr::complete(year = seq(min(year), max(year), by = 1)) |>
   ungroup()
-
-cat("元の行数:", nrow(pref_panel), " → 補完後:", nrow(pref_panel_complete), "\n")
 ```
+
+この補完により、行数は `r nrow(pref_panel)` から `r nrow(pref_panel_complete)` に増えます。
 
 #### 2) キーの重複チェック
 
@@ -606,9 +603,9 @@ cat("元の行数:", nrow(pref_panel), " → 補完後:", nrow(pref_panel_comple
 dup_check <- pref_panel |>
   count(pref_name, year, name = 'n') |>
   filter(n > 1)
-
-cat("重複行:", nrow(dup_check), "件\n")
 ```
+
+この例では、重複行は `r nrow(dup_check)` 件です。
 
 #### 3) 伸び率の安全な計算
 

@@ -1510,19 +1510,22 @@ Estimate は対数スケールのため、指数変換すると Incidence Rate R
 #| results: asis
 
 fe_pois_b2 <- fixef(fit_pois)["proficiencyB2", ]
-cat(sprintf(
-  "- **Estimate** = %.2f → これは対数スケールの値。exp(%.2f) = **%.2f** が IRR。\n",
-  fe_pois_b2["Estimate"], fe_pois_b2["Estimate"], exp(fe_pois_b2["Estimate"])
-))
-cat(sprintf(
-  "- **IRR = %.2f** の意味：B2 学習者の予測エラー数は A2 学習者の **%.0f%% 少ない**。\n",
-  exp(fe_pois_b2["Estimate"]), (1 - exp(fe_pois_b2["Estimate"])) * 100
-))
-cat(sprintf(
-  "- **95%% CrI** [%.2f, %.2f]: 区間が 1 をまたがない → 効果はゼロでない確信が高い。\n",
-  exp(fe_pois_b2["Q2.5"]), exp(fe_pois_b2["Q97.5"])
-))
-cat("- **Rhat** < 1.01、**ESS** > 400 → 収束に問題なし。\n")
+worked_interpretation_poisson <- c(
+  sprintf(
+    "- **Estimate** = %.2f → これは対数スケールの値。exp(%.2f) = **%.2f** が IRR。\n",
+    fe_pois_b2["Estimate"], fe_pois_b2["Estimate"], exp(fe_pois_b2["Estimate"])
+  ),
+  sprintf(
+    "- **IRR = %.2f** の意味：B2 学習者の予測エラー数は A2 学習者の **%.0f%% 少ない**。\n",
+    exp(fe_pois_b2["Estimate"]), (1 - exp(fe_pois_b2["Estimate"])) * 100
+  ),
+  sprintf(
+    "- **95%% CrI** [%.2f, %.2f]: 区間が 1 をまたがない → 効果はゼロでない確信が高い。\n",
+    exp(fe_pois_b2["Q2.5"]), exp(fe_pois_b2["Q97.5"])
+  ),
+  "- **Rhat** < 1.01、**ESS** > 400 → 収束に問題なし。\n"
+)
+knitr::asis_output(paste0(worked_interpretation_poisson, collapse = ""))
 ```
 
 #### tab_model()（IRR）
@@ -1625,12 +1628,12 @@ pred_new <- posterior_predict(
   ndraws = 1000
 )
 
-# 予測の要約
-cat("Predicted error count for new B1 student:\n")
-cat(sprintf("  Mean: %.1f, Median: %.0f, 95%% PI: [%.0f, %.0f]\n",
-    mean(pred_new), median(pred_new),
-    quantile(pred_new, 0.025), quantile(pred_new, 0.975)))
+pred_new_mean <- mean(pred_new)
+pred_new_median <- median(pred_new)
+pred_new_pi <- quantile(pred_new, c(0.025, 0.975))
 ```
+
+この新しい B1 学習者について、予測エラー数の平均は `r sprintf("%.1f", pred_new_mean)`、中央値は `r sprintf("%.0f", pred_new_median)`、95%予測区間は [`r sprintf("%.0f", pred_new_pi[1])`, `r sprintf("%.0f", pred_new_pi[2])`] です。
 
 **読み方**: この予測は「ランダム効果の個人差を含む」ため、`conditional_effects()` の母平均的予測よりも幅が広くなります。新しいコホートや新しい評価者に一般化する際の不確実性を正直に反映しています。
 
@@ -2314,19 +2317,19 @@ np_pois <- nuts_params(fit_pois)
 
 # divergence の件数を確認（0 が望ましい）
 div_count <- sum(np_pois$Value[np_pois$Parameter == "divergent__"])
-cat("Divergent transitions:", div_count, "\n")
 
 # treedepth saturation の確認
 max_td <- max(np_pois$Value[np_pois$Parameter == "treedepth__"])
-cat("Max treedepth reached:", max_td, "\n")
 
 # E-BFMI の確認（0.3 未満は要注意）
 ebfmi <- np_pois |>
   dplyr::filter(Parameter == "energy__") |>
   dplyr::group_by(Chain) |>
   dplyr::summarise(ebfmi = var(diff(Value)) / var(Value), .groups = "drop")
-cat("E-BFMI by chain:", round(ebfmi$ebfmi, 3), "\n")
+ebfmi_by_chain <- round(ebfmi$ebfmi, 3)
 ```
+
+このモデルでは、divergent transitions は `r div_count`、最大 treedepth は `r max_td`、E-BFMI は chain ごとに `r paste(ebfmi_by_chain, collapse = ", ")` でした。
 
 ```{r}
 #| label: nuts-plots-poisson
@@ -3274,10 +3277,10 @@ mcmc_neff(neff_ratio(fit_ord)) +
 
 np_ord <- nuts_params(fit_ord)
 div_count_ord <- sum(np_ord$Value[np_ord$Parameter == "divergent__"])
-cat("Divergent transitions:", div_count_ord, "\n")
 max_td_ord <- max(np_ord$Value[np_ord$Parameter == "treedepth__"])
-cat("Max treedepth reached:", max_td_ord, "\n")
 ```
+
+この順序モデルでは、divergent transitions は `r div_count_ord`、最大 treedepth は `r max_td_ord` でした。
 
 ```{r}
 #| label: nuts-plots-ordinal
@@ -3869,7 +3872,7 @@ tibble::tribble(
 #| results: asis
 
 fe_p <- fixef(fit_pois)
-cat(sprintf(
+knitr::asis_output(sprintf(
   "> B2 proficiency learners produced fewer errors than A2 learners (IRR = %.2f, 95%% CrI [%.2f, %.2f]). B1 learners also produced fewer errors (IRR = %.2f, 95%% CrI [%.2f, %.2f]). The narrative task was associated with slightly fewer errors (IRR = %.2f, 95%% CrI [%.2f, %.2f]). All Rhat values were below 1.01, and posterior predictive checks indicated adequate model fit. Prior sensitivity analyses indicated that the main conclusions were robust.\n",
   exp(fe_p["proficiencyB2","Estimate"]), exp(fe_p["proficiencyB2","Q2.5"]), exp(fe_p["proficiencyB2","Q97.5"]),
   exp(fe_p["proficiencyB1","Estimate"]), exp(fe_p["proficiencyB1","Q2.5"]), exp(fe_p["proficiencyB1","Q97.5"]),
@@ -3885,7 +3888,7 @@ cat(sprintf(
 #| results: asis
 
 fe_o <- fixef(fit_ord)
-cat(sprintf(
+knitr::asis_output(sprintf(
   "> A Bayesian cumulative logistic regression indicated that B2 proficiency was associated with higher speaking ratings (OR = %.2f, 95%% CrI [%.2f, %.2f]). Task type (opinion vs. description) had a negligible effect (OR = %.2f, 95%% CrI [%.2f, %.2f]). Prior sensitivity analyses yielded consistent conclusions.\n",
   exp(fe_o["proficiencyB2","Estimate"]), exp(fe_o["proficiencyB2","Q2.5"]), exp(fe_o["proficiencyB2","Q97.5"]),
   exp(fe_o["task_typeopinion","Estimate"]), exp(fe_o["task_typeopinion","Q2.5"]), exp(fe_o["task_typeopinion","Q97.5"])
@@ -3914,7 +3917,7 @@ post_study1 <- posterior_summary(fit_pois)
 # proficiencyB2 の事後分布: 平均と SD
 b2_mean <- post_study1["b_proficiencyB2", "Estimate"]
 b2_sd   <- post_study1["b_proficiencyB2", "Est.Error"]
-cat(sprintf("Study 1 posterior: Normal(%.3f, %.3f)\n", b2_mean, b2_sd))
+prior_summary <- sprintf("Study 1 posterior: Normal(%.3f, %.3f)", b2_mean, b2_sd)
 
 # ── Study 2 の事前分布として使用 ──
 prior_from_study1 <- c(

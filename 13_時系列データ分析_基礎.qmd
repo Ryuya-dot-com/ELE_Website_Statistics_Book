@@ -503,9 +503,11 @@ tibble(
   tab_header(title = "ADF vs KPSS: complementary stationarity tests")
 
 # ndiffs() で必要な差分回数を自動判定
-cat("Recommended differencing (KPSS-based):", forecast::ndiffs(vocab_ts, test = "kpss"), "\n")
-cat("Recommended differencing (ADF-based):", forecast::ndiffs(vocab_ts, test = "adf"), "\n")
+ndiffs_kpss <- forecast::ndiffs(vocab_ts, test = "kpss")
+ndiffs_adf <- forecast::ndiffs(vocab_ts, test = "adf")
 ```
+
+この系列では、`ndiffs()` が推奨する通常差分回数は KPSS 基準で `r ndiffs_kpss` 回、ADF 基準で `r ndiffs_adf` 回です。
 
 **ADF検定とKPSS検定の結果が食い違う場合**：系列が定常と非定常の境界領域にあると、検出力の異なる2つの検定が異なる結論を出すことがあります。特に $n < 40$ の教育データでは珍しくありません。その場合は、機械的に「とりあえず1回差分する」のではなく、次の順で**最小限の差分**を判断してください。
 
@@ -1605,6 +1607,7 @@ bp <- strucchange::breakpoints(as.numeric(toefl_ts) ~ 1)
 bp_summary <- summary(bp)
 bp_rss <- bp_summary$RSS
 # RSS table structure varies; convert to data frame safely
+bp_rss_note <- NULL
 if (is.matrix(bp_rss)) {
   bp_df <- as.data.frame(bp_rss)
   bp_df$n_breaks <- 0:(nrow(bp_df) - 1)
@@ -1614,10 +1617,12 @@ if (is.matrix(bp_rss)) {
     tab_header(title = "Breakpoint Analysis: Model Comparison") |>
     fmt_number(columns = where(is.numeric), decimals = 2)
 } else {
-  cat("RSS table is not available in this output format; inspect `plot(bp)` and `breakpoints(bp)` directly.\\n")
+  bp_rss_note <- "RSS table is not available in this output format; inspect `plot(bp)` and `breakpoints(bp)` directly."
 }
 plot(bp)
 ```
+
+`r if (!is.null(bp_rss_note)) bp_rss_note else ""`
 
 #### breakpoints出力の読み方
 

@@ -1,118 +1,953 @@
 /* ============================================
    Rによる統計解析実戦ガイド — 共通スタイル
-   journalテーマ用のアカデミックなカスタムスタイル
+   Quarto Book / journal テーマ向けの洗練版
    ============================================ */
 
-body {
-  font-family: 'Noto Serif JP', 'Times New Roman', serif;
-  color: #2c3e50;
-  line-height: 1.8;
+:root {
+  --ink: #24303a;
+  --muted: #5f6b76;
+  --muted-2: #7b8792;
+  --line: #d7dde3;
+  --line-strong: #8d98a4;
+  --paper: #ffffff;
+  --paper-alt: #f6f8fa;
+  --paper-tint: #eef3f6;
+  --paper-deep: #f1f4f6;
+  --accent: #1f5c7a;
+  --accent-strong: #15455d;
+  --accent-soft: #e8f1f6;
+  --accent-faint: rgba(31, 92, 122, 0.06);
+  --warm-soft: rgba(183, 121, 31, 0.1);
+  --shadow-soft: 0 12px 32px rgba(36, 48, 58, 0.08);
+  --shadow-card: 0 16px 36px rgba(36, 48, 58, 0.06);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --measure: 760px;
+  --measure-wide: 860px;
 }
 
-/* タイトルブロックをジャーナル風に */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Noto Serif JP", "Times New Roman", serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top, rgba(31, 92, 122, 0.07), transparent 34%),
+    linear-gradient(180deg, rgba(246, 248, 250, 0.75) 0%, rgba(255, 255, 255, 0.98) 14%, #ffffff 100%),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 30px,
+      rgba(36, 48, 58, 0.012) 30px,
+      rgba(36, 48, 58, 0.012) 31px
+    );
+  line-height: 1.85;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent), #7aa7bc);
+  z-index: 1035;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-color: rgba(31, 92, 122, 0.3);
+  text-underline-offset: 0.12em;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+a:hover,
+a:focus {
+  color: var(--accent-strong);
+  text-decoration-color: rgba(21, 69, 93, 0.55);
+}
+
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid rgba(31, 92, 122, 0.32);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(31, 92, 122, 0.18);
+}
+
+main.content#quarto-document-content {
+  max-width: min(100%, var(--measure));
+  padding-inline: 0.75rem;
+  padding-bottom: 3rem;
+  position: relative;
+}
+
+#quarto-document-content > * {
+  max-width: 100%;
+}
+
+#quarto-document-content > p:first-of-type {
+  position: relative;
+  margin-bottom: 1.35rem;
+  padding: 0.9rem 1.1rem 0.95rem 1.2rem;
+  border-left: 3px solid rgba(31, 92, 122, 0.28);
+  background: linear-gradient(90deg, rgba(232, 241, 246, 0.58), rgba(255, 255, 255, 0));
+  color: #30414d;
+  font-size: 1.03rem;
+  line-height: 1.95;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+p,
+li,
+dd {
+  color: var(--ink);
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+h2 + p,
+h3 + p {
+  color: #334551;
+}
+
+ul,
+ol {
+  padding-left: 1.3rem;
+}
+
+li + li {
+  margin-top: 0.35rem;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2.5rem 0;
+}
+
+blockquote {
+  margin: 1.8rem 0;
+  padding: 0.2rem 0 0.2rem 1.2rem;
+  border-left: 3px solid var(--line-strong);
+  color: var(--muted);
+  background: linear-gradient(90deg, rgba(31, 92, 122, 0.05), transparent 65%);
+}
+
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* タイトルブロック */
 .quarto-title-banner {
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  border-bottom: 4px double #495057;
-  padding: 2.5em 2em;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(239, 244, 247, 0.98) 100%);
+  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 -1px 0 rgba(141, 152, 164, 0.25);
+  padding: 2.6rem 2rem 2.2rem;
   text-align: center;
 }
 
 .quarto-title-banner .title {
-  color: #212529 !important;
-  font-size: 2.2em !important;
+  color: #1e2a33 !important;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: clamp(2rem, 1.25rem + 1.8vw, 2.6rem) !important;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.quarto-title-banner .subtitle,
+.quarto-title-banner .description,
+.quarto-title-banner .quarto-title-meta {
+  color: var(--muted);
+}
+
+/* Bookページの章頭 */
+#title-block-header.quarto-title-block.default {
+  position: relative;
+  margin: 0 0 2.1rem;
+  padding: 1.1rem 1.35rem 1.25rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 248, 0.92));
+  border: 1px solid rgba(215, 221, 227, 0.95);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+#title-block-header.quarto-title-block.default::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent), #89afc1);
+}
+
+#title-block-header .quarto-title-breadcrumbs {
+  margin-bottom: 0.6rem;
+}
+
+#title-block-header .quarto-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+#title-block-header .title {
+  margin: 0;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: clamp(1.9rem, 1.45rem + 1vw, 2.45rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: #1d2932;
+}
+
+#title-block-header .title .chapter-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  margin-right: 0.35rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: rgba(31, 92, 122, 0.1);
+  color: var(--accent-strong);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.78em;
+  font-weight: 800;
+}
+
+.code-tools-button {
+  border-color: rgba(141, 152, 164, 0.55) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: var(--accent-strong) !important;
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 14px rgba(36, 48, 58, 0.06);
+}
+
+.code-tools-button:hover,
+.code-tools-button:focus {
+  background: var(--accent-soft) !important;
+}
+
+.dropdown-menu {
+  border: 1px solid rgba(215, 221, 227, 0.95);
+  border-radius: 14px;
+  padding: 0.45rem;
+  box-shadow: 0 16px 34px rgba(36, 48, 58, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.dropdown-item {
+  border-radius: 10px;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.93rem;
+  padding: 0.55rem 0.72rem;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: rgba(31, 92, 122, 0.08);
+  color: var(--accent-strong);
+}
+
+/* パンくず */
+.quarto-secondary-nav {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(215, 221, 227, 0.9);
+}
+
+.quarto-page-breadcrumbs .breadcrumb {
+  margin: 0;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.quarto-page-breadcrumbs .breadcrumb-item,
+.quarto-page-breadcrumbs .breadcrumb-item a {
+  color: var(--muted);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.9rem;
+}
+
+.quarto-page-breadcrumbs .breadcrumb-item + .breadcrumb-item::before {
+  color: var(--muted-2);
+}
+
+/* 見出し */
+main.content h1,
+main.content h2,
+main.content h3,
+main.content h4 {
+  color: #1f2b34;
+  letter-spacing: 0.01em;
+}
+
+main.content .anchored {
+  scroll-margin-top: 5.5rem;
+}
+
+main.content h2 {
+  position: relative;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: clamp(1.55rem, 1.2rem + 0.8vw, 1.95rem);
+  font-weight: 750;
+  margin-top: 2.6rem;
+  margin-bottom: 1rem;
+  padding: 0.35rem 0 0.55rem 0.9rem;
+  border-bottom: 0;
+  background: linear-gradient(90deg, rgba(31, 92, 122, 0.07), transparent 70%);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  text-transform: none;
+}
+
+main.content h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  bottom: 0.55rem;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent-strong), #7aa7bc);
+}
+
+main.content h2::after {
+  content: "";
+  position: absolute;
+  left: 0.9rem;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(141, 152, 164, 0.75), rgba(141, 152, 164, 0.08));
+}
+
+main.content h3 {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.28rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-family: 'Noto Sans JP', sans-serif;
+  margin-top: 2rem;
+  margin-bottom: 0.7rem;
+  padding-left: 0.8rem;
+  border-left: 2px solid rgba(31, 92, 122, 0.22);
 }
 
-/* 見出しのアカデミックスタイル */
-/* h2 = セクション見出し（旧 h1） */
-h2 {
-  font-size: 1.8em;
+main.content h3::before {
+  content: none;
+}
+
+main.content h4 {
+  font-size: 1.08rem;
   font-weight: 700;
-  color: #1a1a1a;
-  border-bottom: 2px solid #212529;
-  padding-bottom: 0.5em;
-  margin-top: 2em;
-  margin-bottom: 1em;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-style: normal;
+  color: #3b4a55;
+  margin-top: 1.4rem;
+  margin-bottom: 0.55rem;
 }
 
-/* h3 = サブセクション見出し（旧 h2） */
-h3 {
-  font-size: 1.4em;
+main.content .anchored .anchorjs-link {
+  color: rgba(31, 92, 122, 0.45);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.16s ease, color 0.16s ease;
+}
+
+main.content .anchored:hover .anchorjs-link,
+main.content .anchored .anchorjs-link:focus {
+  opacity: 1;
+}
+
+main.content .anchored .anchorjs-link:hover {
+  color: var(--accent-strong);
+}
+
+.header-section-number,
+.chapter-number {
+  color: var(--muted-2);
   font-weight: 600;
-  color: #343a40;
-  margin-top: 1.5em;
-  margin-bottom: 0.8em;
 }
 
-h3:before {
-  content: "\00A7"; /* § */
-  margin-right: 0.5em;
-  color: #6c757d;
-  font-weight: 400;
+/* サイドバー */
+#quarto-sidebar {
+  background: rgba(255, 255, 255, 0.92);
+  border-right: 1px solid var(--line);
+  backdrop-filter: blur(12px);
 }
 
-/* h4 = サブサブセクション見出し（旧 h3） */
-h4 {
-  font-size: 1.2em;
-  font-weight: 600;
-  color: #495057;
-  font-style: italic;
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
+#quarto-sidebar .sidebar-title,
+#quarto-sidebar .sidebar-title a {
+  color: #1f2b34;
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.01em;
 }
 
-/* テーブルを学術論文風に */
-table {
-  margin: 2em auto;
+#quarto-sidebar .sidebar-item-section > .sidebar-item-container {
+  margin-top: 0.35rem;
+}
+
+#quarto-sidebar .sidebar-item-text,
+#quarto-sidebar .sidebar-link {
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+#quarto-sidebar .sidebar-item-text:hover,
+#quarto-sidebar .sidebar-link:hover,
+#quarto-sidebar .sidebar-link.active,
+#quarto-sidebar .active > .sidebar-item-container > .sidebar-item-text,
+#quarto-sidebar .active > .sidebar-item-container > .sidebar-link {
+  color: var(--accent-strong);
+  background: rgba(31, 92, 122, 0.08);
+  box-shadow: inset 2px 0 0 rgba(31, 92, 122, 0.32);
+}
+
+#quarto-sidebar .sidebar-section > li > .sidebar-item-container > .sidebar-item-text {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 650;
+}
+
+#quarto-sidebar .chapter-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  height: 1.65rem;
+  margin-right: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(31, 92, 122, 0.08);
+  color: var(--accent-strong);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+#quarto-sidebar .sidebar-item-toggle {
+  color: var(--muted-2);
+}
+
+/* 右TOC */
+#quarto-margin-sidebar {
+  color: var(--muted);
+}
+
+#TOC {
+  position: sticky;
+  top: 5rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1rem 0.75rem;
+  box-shadow: var(--shadow-card);
+}
+
+#TOC > h2 {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1f2b34;
+  border-bottom: 0;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
+
+#TOC a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+#TOC a:hover,
+#TOC a.active {
+  color: var(--accent-strong);
+}
+
+#TOC a.active {
+  font-weight: 650;
+}
+
+#TOC .active {
+  border-left: 2px solid var(--accent);
+  padding-left: 0.5rem;
+  margin-left: -0.65rem;
+}
+
+#TOC ul {
+  padding-left: 0.9rem;
+}
+
+#TOC li {
+  margin: 0.15rem 0;
+}
+
+#TOC ul ul {
+  margin-top: 0.18rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(215, 221, 227, 0.75);
+}
+
+/* 標準テーブル */
+table:not(.gt_table) {
+  width: 100%;
+  margin: 1.8rem 0;
   border-collapse: collapse;
-  font-size: 0.95em;
-  width: 90%;
-  border-top: 2px solid #212529;
-  border-bottom: 2px solid #212529;
+  border-top: 1.5px solid var(--line-strong);
+  border-bottom: 1.5px solid var(--line-strong);
+  font-size: 0.96rem;
+  background: var(--paper);
 }
 
-thead {
-  background: #f8f9fa;
-  border-bottom: 1px solid #212529;
+table:not(.gt_table) thead {
+  background: transparent;
+  border-bottom: 1px solid var(--line-strong);
 }
 
-/* コードブロックをシンプルに */
-pre {
-  background: #f8f9fa !important;
-  border: 1px solid #dee2e6;
+table:not(.gt_table) th,
+table:not(.gt_table) td {
+  padding: 0.58rem 0.7rem;
+  border-bottom: 1px solid rgba(215, 221, 227, 0.8);
+}
+
+table:not(.gt_table) tbody tr:nth-child(even) {
+  background: rgba(246, 248, 250, 0.72);
+}
+
+table:not(.gt_table) tbody tr:hover {
+  background: rgba(232, 241, 246, 0.5);
+}
+
+table:not(.gt_table) tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* gt テーブル */
+.gt_table {
+  border-top: 1.5px solid var(--line-strong) !important;
+  border-bottom: 1.5px solid var(--line-strong) !important;
+  font-size: 0.95rem !important;
+  color: var(--ink) !important;
+}
+
+.gt_table .gt_heading,
+.gt_table .gt_col_headings {
+  background: rgba(246, 248, 250, 0.92) !important;
+}
+
+.gt_table .gt_title,
+.gt_table .gt_subtitle {
+  font-family: "Noto Sans JP", sans-serif !important;
+}
+
+.gt_table .gt_row {
+  border-top-color: rgba(215, 221, 227, 0.8) !important;
+}
+
+.gt_table .gt_footnotes {
+  background: rgba(246, 248, 250, 0.9) !important;
+}
+
+.gt_table .gt_footnote {
+  color: var(--muted) !important;
+  font-size: 0.88rem !important;
+  line-height: 1.5 !important;
+}
+
+.gt_table .gt_footnote_marks {
+  color: var(--accent-strong) !important;
+}
+
+/* コード */
+code:not(pre code) {
+  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 0.92em;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid rgba(31, 92, 122, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 0.12rem 0.34rem;
+}
+
+div.sourceCode,
+.cell-output-stdout pre,
+.cell-output-stderr pre {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #f8fafb 0%, #f4f7f9 100%);
+  box-shadow: 0 8px 20px rgba(36, 48, 58, 0.04);
+}
+
+div.sourceCode:hover,
+.cell-output-stdout pre:hover,
+.cell-output-stderr pre:hover {
+  box-shadow: 0 12px 24px rgba(36, 48, 58, 0.06);
+}
+
+div.sourceCode {
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+}
+
+pre.sourceCode,
+.cell-output-stdout pre,
+.cell-output-stderr pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  background: transparent !important;
+  border: 0;
   border-radius: 0;
-  padding: 1em;
-  font-size: 0.9em;
 }
 
-/* 数式を強調 */
-.math {
-  color: #212529;
-  font-size: 1.05em;
-  font-style: italic;
+.cell-output {
+  margin-top: 0.55rem;
 }
 
-/* タブスタイル（panel-tabset） */
+.cell-output-display {
+  margin-top: 0.7rem;
+  padding: 0.5rem 0.6rem 0.65rem;
+  border: 1px solid rgba(215, 221, 227, 0.75);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(241, 245, 248, 0.72));
+  box-shadow: 0 10px 24px rgba(36, 48, 58, 0.04);
+}
+
+.cell-output-display > .quarto-figure,
+.cell-output-display > div[id] {
+  border-radius: var(--radius-md);
+}
+
+.cell-output-display img,
+.cell-output-display .plotly,
+.cell-output-display .html-widget,
+.cell-output-display iframe {
+  border-radius: var(--radius-md);
+}
+
+.code-copy-button {
+  border-radius: var(--radius-sm) !important;
+  border-color: rgba(141, 152, 164, 0.55) !important;
+}
+
+details.code-fold {
+  margin: 1.2rem 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.82);
+  overflow: hidden;
+}
+
+details.code-fold > summary {
+  list-style: none;
+  cursor: pointer;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.94rem;
+  font-weight: 650;
+  color: #30414d;
+  background: linear-gradient(180deg, #f7f9fb 0%, #eff4f7 100%);
+  padding: 0.72rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+details.code-fold > summary:hover {
+  background: linear-gradient(180deg, #f4f8fb 0%, #eaf1f5 100%);
+}
+
+details.code-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.code-fold > summary::before {
+  content: "＋";
+  margin-right: 0.55rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+details.code-fold[open] > summary::before {
+  content: "−";
+}
+
+details.code-fold > .sourceCode,
+details.code-fold > .cell-output,
+details.code-fold > .cell {
+  margin: 0;
+}
+
+/* callout */
+.callout {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-card);
+  margin: 1.8rem 0;
+  overflow: hidden;
+}
+
+.callout-header {
+  border-bottom: 1px solid rgba(215, 221, 227, 0.85);
+  background: linear-gradient(180deg, rgba(246, 248, 250, 0.96), rgba(239, 244, 247, 0.92));
+}
+
+.callout-title {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.callout-body {
+  color: var(--ink);
+  padding-top: 0.15rem;
+}
+
+.callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+.callout.callout-warning {
+  border-left: 4px solid #b7791f;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(183, 121, 31, 0.04));
+}
+
+.callout.callout-tip,
+.callout.callout-note {
+  border-left: 4px solid var(--accent);
+}
+
+.callout.callout-tip {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(31, 92, 122, 0.045));
+}
+
+.callout.callout-note {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(123, 135, 146, 0.05));
+}
+
+.callout.callout-important {
+  border-left: 4px solid #8e4b2b;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(142, 75, 43, 0.05));
+}
+
+.callout-icon-container {
+  color: var(--accent-strong);
+}
+
+/* tabset */
 .panel-tabset {
-  margin-top: 2em;
-  margin-bottom: 2em;
+  margin: 2rem 0;
 }
 
-.nav-tabs {
-  border-bottom: 2px solid #dee2e6;
+.panel-tabset > .nav-tabs {
+  border-bottom: 1px solid var(--line);
+  gap: 0.35rem;
 }
 
-.nav-tabs .nav-link.active {
-  font-weight: 600;
-  border-bottom: 3px solid #007bff;
+.panel-tabset > .nav-tabs .nav-link {
+  border: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--muted);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.94rem;
+  font-weight: 650;
+  padding: 0.6rem 0.95rem 0.55rem;
 }
 
-/* 参考文献リストを表示（Quarto Bookのインラインdisplay:noneを上書き） */
+.panel-tabset > .nav-tabs .nav-link:hover {
+  color: var(--accent-strong);
+  background: rgba(31, 92, 122, 0.05);
+}
+
+.panel-tabset > .nav-tabs .nav-link.active {
+  color: var(--accent-strong);
+  background: rgba(31, 92, 122, 0.08);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  font-weight: 700;
+}
+
+.panel-tabset > .tab-content {
+  padding: 0.95rem 1rem 0.25rem;
+  border: 1px solid rgba(215, 221, 227, 0.9);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 10px 24px rgba(36, 48, 58, 0.03);
+}
+
+/* 図表・数式・参考文献 */
+.quarto-figure {
+  margin: 1.6rem 0 2rem;
+}
+
+.quarto-figure > figure,
+.cell-output-display > .quarto-figure > figure {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(215, 221, 227, 0.7);
+  border-radius: var(--radius-lg);
+  padding: 0.7rem 0.7rem 0.95rem;
+  box-shadow: var(--shadow-card);
+}
+
+.quarto-figure img,
+.quarto-figure svg,
+.cell-output-display img,
+.cell-output-display svg {
+  display: block;
+  margin-inline: auto;
+}
+
+figcaption,
+.figure-caption,
+.quarto-float-caption-top,
+.table-caption {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+figcaption {
+  padding-inline: 0.25rem;
+  margin-top: 0.55rem;
+  border-top: 1px solid rgba(215, 221, 227, 0.65);
+  padding-top: 0.55rem;
+}
+
+.math,
+.MathJax {
+  color: #1d2831;
+}
+
+mark {
+  background: rgba(183, 121, 31, 0.14);
+  color: inherit;
+  padding: 0.08rem 0.25rem;
+  border-radius: 4px;
+}
+
+.footnotes {
+  margin-top: 3rem;
+  padding: 1.15rem 1.2rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 248, 0.7));
+  color: var(--muted);
+  font-size: 0.94rem;
+  box-shadow: 0 8px 20px rgba(36, 48, 58, 0.03);
+}
+
+.footnotes ol {
+  padding-left: 1.1rem;
+}
+
+.footnote-ref {
+  font-family: "Noto Sans JP", sans-serif;
+}
+
+a.footnote-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.22rem;
+  border-radius: 999px;
+  background: rgba(31, 92, 122, 0.08);
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: super;
+}
+
+a.footnote-ref:hover,
+a.footnote-ref:focus {
+  background: rgba(31, 92, 122, 0.14);
+}
+
 #refs {
   display: block !important;
+  margin-top: 2.4rem;
+  padding-top: 0.4rem;
+}
+
+#refs .csl-entry {
+  margin-bottom: 0.7rem;
+  padding-left: 1.4rem;
+  text-indent: -1.4rem;
+}
+
+/* 前後ページナビゲーション */
+.page-navigation {
+  margin-top: 2.8rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+  gap: 1rem;
+}
+
+.nav-page .pagination-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 100%;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 8px 20px rgba(36, 48, 58, 0.04);
+  text-decoration: none;
+}
+
+.nav-page .pagination-link:hover {
+  background: rgba(232, 241, 246, 0.75);
+  border-color: rgba(31, 92, 122, 0.22);
+}
+
+.nav-page .nav-page-text {
+  color: var(--ink);
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 650;
+}
+
+/* モバイル */
+@media (max-width: 991.98px) {
+  main.content#quarto-document-content {
+    max-width: 100%;
+    padding-inline: 0.35rem;
+  }
+
+  .quarto-title-banner {
+    padding: 2rem 1.1rem 1.8rem;
+  }
+
+  #title-block-header.quarto-title-block.default {
+    padding: 1rem 1rem 1.05rem;
+  }
+
+  #TOC {
+    box-shadow: none;
+    border-radius: var(--radius-md);
+    position: static;
+  }
+
+  table:not(.gt_table) {
+    font-size: 0.92rem;
+  }
 }

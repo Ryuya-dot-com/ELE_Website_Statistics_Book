@@ -2257,12 +2257,12 @@ SEM_abs <- sqrt(sig2_Delta)
 person_means$pass <- person_means$universe_hat > cut_score
 person_means$distance <- abs(person_means$universe_hat - cut_score)
 person_means$uncertain <- person_means$distance < 1.96 * SEM_abs
-
-cat(sprintf("Absolute SEM: %.3f\n", SEM_abs))
-cat(sprintf("Pass rate: %.1f%%\n", mean(person_means$pass) * 100))
-cat(sprintf("Uncertain zone (within 1.96 × SEM of cut): %d / %d persons\n",
-            sum(person_means$uncertain), nrow(person_means)))
+pass_rate <- mean(person_means$pass) * 100
+uncertain_n <- sum(person_means$uncertain)
+person_n <- nrow(person_means)
 ```
+
+この例では、絶対 SEM は `r sprintf("%.3f", SEM_abs)`、合格率は `r sprintf("%.1f%%", pass_rate)`、不確実ゾーンに入る受験者は `r uncertain_n` / `r person_n` 名です。
 
 **決定一貫性の指標**:
 

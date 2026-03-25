@@ -1077,9 +1077,8 @@ SAT12_collapsed[SAT12_collapsed == 0] <- 1  # カテゴリ0を1に統合
 SAT12_collapsed <- as.data.frame(lapply(SAT12_collapsed, function(x) {
   as.integer(factor(x)) - 1L
 }))
-
-cat("統合前カテゴリ:", sort(unique(as.vector(as.matrix(SAT12)))), "\n")
-cat("統合後カテゴリ:", sort(unique(as.vector(as.matrix(SAT12_collapsed)))), "\n")
+sat12_categories_before <- paste(sort(unique(as.vector(as.matrix(SAT12)))), collapse = ", ")
+sat12_categories_after <- paste(sort(unique(as.vector(as.matrix(SAT12_collapsed)))), collapse = ", ")
 
 # 統合後データで GRM を再推定
 fit_grm_collapsed <- try(
@@ -1125,6 +1124,8 @@ if (!inherits(fit_grm_collapsed, "try-error")) {
   message("統合後モデルの推定に失敗しました。統合パターンを見直してください。")
 }
 ```
+
+この例では、統合前カテゴリは `r sat12_categories_before`、統合後カテゴリは `r sat12_categories_after` です。
 
 #### カテゴリ統合の実践ワークフロー
 
@@ -2138,8 +2139,8 @@ data(data.sim.mfr, package = "TAM")
 data(data.sim.facets, package = "TAM")
 
 # 応答データの確認
-cat("Response matrix dimensions:", dim(data.sim.mfr), "\n")
-cat("Categories:", sort(unique(as.vector(data.sim.mfr))), "\n")
+mfrm_response_dim <- paste(dim(data.sim.mfr), collapse = " × ")
+mfrm_categories <- paste(sort(unique(as.vector(data.sim.mfr))), collapse = ", ")
 
 # ファセットデータの確認
 str(data.sim.facets)
@@ -2154,6 +2155,8 @@ data.sim.facets |>
   gt() |>
   tab_header(title = md("**Facet Design Overview**"))
 ```
+
+このデータの応答行列は `r mfrm_response_dim` で、カテゴリは `r mfrm_categories` です。
 
 ```{r mfrm-data-overview}
 # 採点者ごとの応答分布
@@ -4596,8 +4599,11 @@ aisp_handoff <- mokken::aisp(SAT12_binary, lowerbound = 0.3)
 
 # Scale 1 に割り当てられた項目を抽出
 scale1_items <- which(aisp_handoff == 1)
-cat("Mokken Scale 1 items:", scale1_items, "\n")
-cat("Number of items selected:", length(scale1_items), "\n")
+scale1_items_text <- if (length(scale1_items) > 0) {
+  paste(scale1_items, collapse = ", ")
+} else {
+  "なし"
+}
 
 if (length(scale1_items) >= 5) {
   # Step 2: 選別された項目で GRM を推定（元の順序データを使用）
@@ -4625,6 +4631,8 @@ if (length(scale1_items) >= 5) {
           "lowerbound を下げるか、項目プールを見直してください。")
 }
 ```
+
+この例で Scale 1 に割り当てられた項目は `r scale1_items_text` で、項目数は `r length(scale1_items)` 個です。
 
 この2段階設計では、Mokken（ノンパラメトリック）で「尺度として最低限の品質を持つ項目群」を特定し、GRM（パラメトリック）で「精密なパラメータ推定と情報関数分析」を行います。Mokken で除外された項目は、内容面の改訂後に再度プールに追加して検証するサイクルが推奨されます[@sijtsmavanderark2017]。
 
