@@ -1,0 +1,78 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.__plotZoomInitialized) return;
+  window.__plotZoomInitialized = true;
+
+  const selector = ".cell-output-display img, .quarto-figure img";
+  const figures = Array.from(document.querySelectorAll(selector)).filter((img) => {
+    if (img.closest("a")) return false;
+    if (img.closest(".plot-zoom-overlay")) return false;
+    const width = img.naturalWidth || img.width || 0;
+    const height = img.naturalHeight || img.height || 0;
+    return width >= 220 || height >= 140;
+  });
+
+  if (!figures.length) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "plot-zoom-overlay";
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <button type="button" class="plot-zoom-close" aria-label="Close zoomed plot">&times;</button>
+    <div class="plot-zoom-stage" role="dialog" aria-modal="true" aria-label="Zoomed plot">
+      <img class="plot-zoom-image" alt="">
+      <p class="plot-zoom-caption"></p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const zoomedImage = overlay.querySelector(".plot-zoom-image");
+  const caption = overlay.querySelector(".plot-zoom-caption");
+
+  const closeOverlay = () => {
+    overlay.hidden = true;
+    document.body.classList.remove("plot-zoom-open");
+    zoomedImage.removeAttribute("src");
+  };
+
+  const findCaption = (img) => {
+    const figure = img.closest("figure");
+    const figcaption = figure ? figure.querySelector("figcaption") : null;
+    return figcaption ? figcaption.textContent.trim() : "";
+  };
+
+  const openOverlay = (img) => {
+    zoomedImage.src = img.currentSrc || img.src;
+    zoomedImage.alt = img.alt || "Zoomed plot";
+    caption.textContent = findCaption(img);
+    overlay.hidden = false;
+    document.body.classList.add("plot-zoom-open");
+  };
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay || event.target.closest(".plot-zoom-close")) {
+      closeOverlay();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!overlay.hidden && event.key === "Escape") {
+      closeOverlay();
+    }
+  });
+
+  figures.forEach((img) => {
+    img.classList.add("plot-zoom-target");
+    img.tabIndex = 0;
+    img.setAttribute("role", "button");
+    img.setAttribute("aria-label", "Click to zoom plot");
+    img.addEventListener("click", () => openOverlay(img));
+    img.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openOverlay(img);
+      }
+    });
+  });
+});
+</script>
