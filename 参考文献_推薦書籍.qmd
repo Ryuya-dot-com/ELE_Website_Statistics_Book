@@ -3,15 +3,6 @@ title: "参考文献・推薦書籍"
 bibliography: references_recommended.bib
 ---
 
-```{r}
-#| label: setup-theme
-#| include: false
-
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-pacman::p_load(ggplot2)
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
-```
-
 
 こちらのページでは、Rを使った統計モデリングを学ぶための書籍、チュートリアル論文、オンライン教材をまとめています。単なる「本の一覧」ではなく、「まず全体像をつかむ」「必要になった手法を実装する」「理論的背景を補う」という順番で使えるように整理しています。とくにチュートリアル論文は、特定の分析を実際に行う直前に読む資料として位置づけています。
 
