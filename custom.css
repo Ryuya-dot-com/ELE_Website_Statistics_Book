@@ -18,13 +18,13 @@
   --accent-soft: #e8f1f6;
   --accent-faint: rgba(31, 92, 122, 0.06);
   --warm-soft: rgba(183, 121, 31, 0.1);
-  --shadow-soft: 0 12px 32px rgba(36, 48, 58, 0.08);
-  --shadow-card: 0 16px 36px rgba(36, 48, 58, 0.06);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --measure: 760px;
-  --measure-wide: 860px;
+  --shadow-soft: 0 8px 24px rgba(36, 48, 58, 0.06);
+  --shadow-card: 0 12px 28px rgba(36, 48, 58, 0.05);
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --measure: 1100px;
+  --measure-wide: 1200px;
 }
 
 html {
@@ -85,8 +85,8 @@ summary:focus-visible {
 }
 
 main.content#quarto-document-content {
-  max-width: min(100%, var(--measure));
-  padding-inline: 0.75rem;
+  max-width: 100%;
+  padding-inline: 1.5rem;
   padding-bottom: 3rem;
   position: relative;
 }
@@ -95,10 +95,29 @@ main.content#quarto-document-content {
   max-width: 100%;
 }
 
+/* Prose elements: comfortable reading width within wider container */
+main.content#quarto-document-content > p,
+main.content#quarto-document-content > ul,
+main.content#quarto-document-content > ol,
+main.content#quarto-document-content > blockquote,
+main.content#quarto-document-content > dl {
+  max-width: 52em;
+}
+
+/* Wide elements: use full container width */
+main.content#quarto-document-content .cell,
+main.content#quarto-document-content table:not(.gt_table),
+main.content#quarto-document-content .gt_table,
+main.content#quarto-document-content .quarto-figure {
+  max-width: 100%;
+  width: 100%;
+}
+
 #quarto-document-content > p:first-of-type {
   position: relative;
   margin-bottom: 1.35rem;
-  padding: 0.9rem 1.1rem 0.95rem 1.2rem;
+  padding: 1rem 1.3rem 1.05rem 1.4rem;
+  max-width: 52em;
   border-left: 3px solid rgba(31, 92, 122, 0.28);
   background: linear-gradient(90deg, rgba(232, 241, 246, 0.58), rgba(255, 255, 255, 0));
   color: #30414d;
@@ -178,8 +197,8 @@ blockquote > :last-child {
 /* Bookページの章頭 */
 #title-block-header.quarto-title-block.default {
   position: relative;
-  margin: 0 0 2.1rem;
-  padding: 1.1rem 1.35rem 1.25rem;
+  margin: 0 0 2.4rem;
+  padding: 1.3rem 1.6rem 1.4rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 248, 0.92));
   border: 1px solid rgba(215, 221, 227, 0.95);
   border-radius: var(--radius-lg);
@@ -308,10 +327,10 @@ main.content .anchored {
 main.content h2 {
   position: relative;
   font-family: "Noto Sans JP", sans-serif;
-  font-size: clamp(1.55rem, 1.2rem + 0.8vw, 1.95rem);
+  font-size: clamp(1.55rem, 1.2rem + 0.8vw, 2rem);
   font-weight: 750;
-  margin-top: 2.6rem;
-  margin-bottom: 1rem;
+  margin-top: 3rem;
+  margin-bottom: 1.1rem;
   padding: 0.35rem 0 0.55rem 0.9rem;
   border-bottom: 0;
   background: linear-gradient(90deg, rgba(31, 92, 122, 0.07), transparent 70%);
@@ -342,12 +361,12 @@ main.content h2::after {
 
 main.content h3 {
   font-family: "Noto Sans JP", sans-serif;
-  font-size: 1.28rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  margin-top: 2rem;
+  margin-top: 2.2rem;
   margin-bottom: 0.7rem;
   padding-left: 0.8rem;
-  border-left: 2px solid rgba(31, 92, 122, 0.22);
+  border-left: 3px solid rgba(31, 92, 122, 0.25);
 }
 
 main.content h3::before {
@@ -387,9 +406,10 @@ main.content .anchored .anchorjs-link:hover {
 
 /* サイドバー */
 #quarto-sidebar {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   border-right: 1px solid var(--line);
   backdrop-filter: blur(12px);
+  font-size: 0.92rem;
 }
 
 #quarto-sidebar .sidebar-title,
@@ -397,28 +417,51 @@ main.content .anchored .anchorjs-link:hover {
   color: #1f2b34;
   font-family: "Noto Sans JP", sans-serif;
   font-weight: 800;
+  font-size: 1.05rem;
   letter-spacing: 0.01em;
 }
 
 #quarto-sidebar .sidebar-item-section > .sidebar-item-container {
-  margin-top: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+/* 部タイトル（第I部、第II部...）を目立たせる */
+#quarto-sidebar .sidebar-item-section > .sidebar-item-container > .sidebar-item-text {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--accent-strong);
+  text-transform: none;
+  letter-spacing: 0.03em;
+  padding: 0.45rem 0.6rem;
+  margin-top: 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(31, 92, 122, 0.05);
+  border-left: 3px solid rgba(31, 92, 122, 0.25);
 }
 
 #quarto-sidebar .sidebar-item-text,
 #quarto-sidebar .sidebar-link {
   color: var(--muted);
   border-radius: var(--radius-sm);
+  padding: 0.35rem 0.55rem;
+  line-height: 1.45;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 #quarto-sidebar .sidebar-item-text:hover,
-#quarto-sidebar .sidebar-link:hover,
+#quarto-sidebar .sidebar-link:hover {
+  color: var(--accent-strong);
+  background: rgba(31, 92, 122, 0.06);
+}
+
 #quarto-sidebar .sidebar-link.active,
 #quarto-sidebar .active > .sidebar-item-container > .sidebar-item-text,
 #quarto-sidebar .active > .sidebar-item-container > .sidebar-link {
   color: var(--accent-strong);
-  background: rgba(31, 92, 122, 0.08);
-  box-shadow: inset 2px 0 0 rgba(31, 92, 122, 0.32);
+  background: rgba(31, 92, 122, 0.1);
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-weight: 650;
 }
 
 #quarto-sidebar .sidebar-section > li > .sidebar-item-container > .sidebar-item-text {
@@ -508,11 +551,11 @@ main.content .anchored .anchorjs-link:hover {
 /* 標準テーブル */
 table:not(.gt_table) {
   width: 100%;
-  margin: 1.8rem 0;
+  margin: 1.5rem 0;
   border-collapse: collapse;
-  border-top: 1.5px solid var(--line-strong);
-  border-bottom: 1.5px solid var(--line-strong);
-  font-size: 0.96rem;
+  border-top: 2px solid var(--line-strong);
+  border-bottom: 2px solid var(--line-strong);
+  font-size: 0.94rem;
   background: var(--paper);
 }
 
@@ -521,10 +564,25 @@ table:not(.gt_table) thead {
   border-bottom: 1px solid var(--line-strong);
 }
 
-table:not(.gt_table) th,
+table:not(.gt_table) th {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 650;
+  font-size: 0.9rem;
+  color: #2d3a44;
+  padding: 0.6rem 0.7rem;
+  border-bottom: 1px solid rgba(215, 221, 227, 0.8);
+}
+
 table:not(.gt_table) td {
   padding: 0.58rem 0.7rem;
   border-bottom: 1px solid rgba(215, 221, 227, 0.8);
+}
+
+/* Responsive table overflow */
+.table-responsive,
+main.content#quarto-document-content > div:has(> table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 table:not(.gt_table) tbody tr:nth-child(even) {
@@ -577,8 +635,8 @@ table:not(.gt_table) tbody tr:last-child td {
 
 /* コード */
 code:not(pre code) {
-  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-  font-size: 0.92em;
+  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 0.88em;
   color: var(--accent-strong);
   background: var(--accent-soft);
   border: 1px solid rgba(31, 92, 122, 0.08);
@@ -589,16 +647,10 @@ code:not(pre code) {
 div.sourceCode,
 .cell-output-stdout pre,
 .cell-output-stderr pre {
-  border: 1px solid var(--line);
+  border: 1px solid rgba(215, 221, 227, 0.9);
   border-radius: var(--radius-md);
-  background: linear-gradient(180deg, #f8fafb 0%, #f4f7f9 100%);
-  box-shadow: 0 8px 20px rgba(36, 48, 58, 0.04);
-}
-
-div.sourceCode:hover,
-.cell-output-stdout pre:hover,
-.cell-output-stderr pre:hover {
-  box-shadow: 0 12px 24px rgba(36, 48, 58, 0.06);
+  background: #f8fafb;
+  box-shadow: 0 4px 12px rgba(36, 48, 58, 0.03);
 }
 
 div.sourceCode {
@@ -611,24 +663,35 @@ pre.sourceCode,
 .cell-output-stderr pre {
   margin: 0;
   padding: 1rem 1.1rem;
-  font-size: 0.9rem;
-  line-height: 1.55;
+  font-size: 0.88rem;
+  line-height: 1.6;
   background: transparent !important;
   border: 0;
   border-radius: 0;
 }
 
 .cell-output {
-  margin-top: 0.55rem;
+  margin-top: 0.5rem;
+  position: relative;
+}
+
+.cell-output-stdout pre,
+.cell-output-stderr pre {
+  border-left: 3px solid rgba(31, 92, 122, 0.15);
+}
+
+.cell-output-stderr pre {
+  border-left-color: rgba(180, 80, 50, 0.3);
+  background: rgba(180, 80, 50, 0.03) !important;
 }
 
 .cell-output-display {
-  margin-top: 0.7rem;
-  padding: 0.5rem 0.6rem 0.65rem;
-  border: 1px solid rgba(215, 221, 227, 0.75);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(241, 245, 248, 0.72));
-  box-shadow: 0 10px 24px rgba(36, 48, 58, 0.04);
+  margin-top: 0.6rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(215, 221, 227, 0.65);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(36, 48, 58, 0.03);
 }
 
 .cell-output-display > .quarto-figure,
@@ -660,16 +723,17 @@ details.code-fold > summary {
   list-style: none;
   cursor: pointer;
   font-family: "Noto Sans JP", sans-serif;
-  font-size: 0.94rem;
+  font-size: 0.88rem;
   font-weight: 650;
-  color: #30414d;
-  background: linear-gradient(180deg, #f7f9fb 0%, #eff4f7 100%);
-  padding: 0.72rem 1rem;
+  color: var(--accent-strong);
+  background: var(--paper-alt);
+  padding: 0.55rem 0.9rem;
   border-bottom: 1px solid var(--line);
+  transition: background 0.15s ease;
 }
 
 details.code-fold > summary:hover {
-  background: linear-gradient(180deg, #f4f8fb 0%, #eaf1f5 100%);
+  background: var(--accent-soft);
 }
 
 details.code-fold > summary::-webkit-details-marker {
@@ -677,14 +741,16 @@ details.code-fold > summary::-webkit-details-marker {
 }
 
 details.code-fold > summary::before {
-  content: "＋";
-  margin-right: 0.55rem;
+  content: "\25B6";
+  display: inline-block;
+  margin-right: 0.45rem;
+  font-size: 0.7em;
   color: var(--accent);
-  font-weight: 700;
+  transition: transform 0.2s ease;
 }
 
 details.code-fold[open] > summary::before {
-  content: "−";
+  transform: rotate(90deg);
 }
 
 details.code-fold > .sourceCode,
@@ -697,9 +763,9 @@ details.code-fold > .cell {
 .callout {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--shadow-card);
-  margin: 1.8rem 0;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 16px rgba(36, 48, 58, 0.04);
+  margin: 1.6rem 0;
   overflow: hidden;
 }
 
@@ -896,41 +962,53 @@ a.footnote-ref:focus {
 
 /* 前後ページナビゲーション */
 .page-navigation {
-  margin-top: 2.8rem;
-  padding-top: 1.2rem;
-  border-top: 1px solid var(--line);
-  gap: 1rem;
+  margin-top: 3.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--line);
+  gap: 1.2rem;
 }
 
 .nav-page .pagination-link {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.65rem;
   min-height: 100%;
-  padding: 0.95rem 1.05rem;
+  padding: 1.1rem 1.3rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 8px 20px rgba(36, 48, 58, 0.04);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), var(--paper-alt));
+  box-shadow: 0 4px 14px rgba(36, 48, 58, 0.04);
   text-decoration: none;
+  transition: all 0.2s ease;
 }
 
 .nav-page .pagination-link:hover {
-  background: rgba(232, 241, 246, 0.75);
-  border-color: rgba(31, 92, 122, 0.22);
+  background: linear-gradient(180deg, rgba(232, 241, 246, 0.6), rgba(232, 241, 246, 0.9));
+  border-color: rgba(31, 92, 122, 0.28);
+  box-shadow: 0 6px 18px rgba(36, 48, 58, 0.07);
+  transform: translateY(-1px);
 }
 
 .nav-page .nav-page-text {
   color: var(--ink);
   font-family: "Noto Sans JP", sans-serif;
-  font-weight: 650;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.nav-page .pagination-link .bi {
+  color: var(--accent);
+  font-size: 1.1rem;
 }
 
 /* モバイル */
+/* 大画面でも本文はグリッド列の全幅を使う */
+
 @media (max-width: 991.98px) {
   main.content#quarto-document-content {
     max-width: 100%;
-    padding-inline: 0.35rem;
+    padding-inline: 1rem;
   }
 
   .quarto-title-banner {
