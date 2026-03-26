@@ -8,8 +8,6 @@ book:
   title: "Rによる統計解析実戦ガイド"
   author: "小室竜也"
   date: today
-  reader-mode: true
-  
   chapters:
     - index.qmd
     - Rの基本的な使い方.qmd
@@ -67,7 +65,7 @@ book:
       chapters:
         - 20_欠測データ解析とロバスト統計.qmd
 
-    - 参考文献_おすすめの書籍.qmd
+    - 参考文献_推薦書籍.qmd
 
 csl: apa-7th-edition.csl
 
@@ -75,6 +73,11 @@ format:
   html:
     theme: journal
     css: custom.css
+    grid:
+      sidebar-width: 280px
+      body-width: 1100px
+      margin-width: 250px
+      gutter-width: 2rem
     toc: true
     toc-depth: 3
     toc-location: right
