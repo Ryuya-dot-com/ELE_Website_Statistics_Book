@@ -2508,13 +2508,7 @@ p_rater <- ggplot(rater_plot_df2, aes(x = xsi, y = reorder(Rater, xsi))) +
   labs(title = "Rater Severity (α)", x = "Logits", y = NULL)
 
 # patchwork で3パネルを横に並べる（共通X軸スケール）
-if (requireNamespace("patchwork", quietly = TRUE)) {
-  library(patchwork)
-  p_person + p_item + p_rater + plot_layout(ncol = 3)
-} else {
-  # patchwork がない場合は gridExtra で代用
-  gridExtra::grid.arrange(p_person, p_item, p_rater, ncol = 3)
-}
+patchwork::wrap_plots(p_person, p_item, p_rater, ncol = 3)
 ```
 
 ファセットマップの読み方：

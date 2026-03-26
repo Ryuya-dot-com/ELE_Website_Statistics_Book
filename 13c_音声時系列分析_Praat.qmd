@@ -20,7 +20,8 @@ pacman::p_load(
   rPraat,
   phonTools,
   lme4,
-  mgcv
+  mgcv,
+  patchwork
 )
 
 if (requireNamespace("speakr", quietly = TRUE)) library(speakr)
@@ -443,6 +444,7 @@ ggplot(harmonic_basic_tbl, aes(x = Frequency_Hz, y = Harmonic)) +
 統計的には、duration は 0 未満を取れないため**右裾の長い分布**になりやすく、対数変換や Gamma / lognormal 系のモデルがしばしば使われます。F0 は話者差が大きいため、Hz のまま比較するより **セミトーン変換**や話者内中心化を行う方が解釈しやすいことが多いです。intensity は録音条件の影響を受けやすいため、セッション内・話者内での基準化が実務上よく行われます。ここでの「よく行われる」は、混合効果モデルと動的音声分析の方法論 [@baayen2008crossed; @wieling2018gamm] に基づく実務的要約です。
 
 ```{r acoustic-cues-schematic}
+#| fig-height: 8.25
 dur_cue_tbl <- tibble(
   Token = c("Short token", "Long token"),
   start = 0,
@@ -521,16 +523,19 @@ p_int_cue <- ggplot(int_cue_tbl, aes(x = time_norm, y = value, color = Contour))
   ) +
   theme_speech(11)
 
-gridExtra::grid.arrange(
+patchwork::wrap_plots(
   p_dur_cue,
   p_f0_cue,
   p_int_cue,
   ncol = 1,
-  top = grid::textGrob(
-    "Duration, F0, and intensity are related but distinct acoustic cues",
-    gp = grid::gpar(fontsize = 13, fontface = "bold")
+  heights = c(1.2, 1, 1)
+) +
+  patchwork::plot_annotation(
+    title = "Duration, F0, and intensity are related but distinct acoustic cues",
+    theme = theme(
+      plot.title = element_text(size = 13, face = "bold", hjust = 0.5)
+    )
   )
-)
 ```
 
 この図で重要なのは、3つの指標が**別々の軸**で読まれることです。duration は時間軸上の長さ、F0 は輪郭の高さと形、intensity は dB 輪郭の上下として解釈します。たとえば「強調された発話」は duration が長いのか、F0 が高いのか、intensity が強いのか、その全部なのかを分けて考える必要があります。@cole2019 のような prominence 研究では、こうした複数の音響手がかりを同時にモデルへ入れて、どの手がかりが知覚判断に効いているかを検討します。
@@ -688,6 +693,7 @@ F3以上のフォルマントは主に話者の個人差（声道の長さ）に
 以下のコードでは、ソース-フィルタ・モデルに基づいて英語母音 /i/（"beat"の母音）と /a/（"father"の母音）の合成波形を作成します。F0 = 120 Hz（男性の典型値）の調波列をソースとして生成し、各母音の典型的なフォルマント周波数でフィルタリングします。合成データを使うことで、**既知のF0とフォルマント周波数に対する推定精度を検証**でき、音声分析の原理を再現可能な形で体験できます。
 
 ```{r synth_vowels}
+#| fig-height: 5.5
 # 合成関数：基本周波数f0の調波を合成し、フォルマントで包絡を付ける
 vowel_synth <- function(f0 = 120, dur = 0.5, fs = 16000,
                         formants = c(300, 2200, 3000),
@@ -733,9 +739,13 @@ p_a <- wave_plot_tbl |>
   labs(title = "/a/", x = "Time (s)", y = "Amplitude") +
   theme_speech(11)
 
-gridExtra::grid.arrange(p_i, p_a, ncol = 2,
-                        top = grid::textGrob("Synthetic vowel waveforms: /i/ vs /a/",
-                                             gp = grid::gpar(fontsize = 13, fontface = "bold")))
+patchwork::wrap_plots(p_i, p_a, ncol = 2) +
+  patchwork::plot_annotation(
+    title = "Synthetic vowel waveforms: /i/ vs /a/",
+    theme = theme(
+      plot.title = element_text(size = 13, face = "bold", hjust = 0.5)
+    )
+  )
 ```
 
 /i/ と /a/ を横に並べると、波形の見た目の違いが確認できます。/i/ はF2（~2200 Hz）が高いため、細かい振動が重畳した複雑な波形になります。/a/ はF1（~730 Hz）が高いため、比較的ゆっくりした振動パターンが支配的です。

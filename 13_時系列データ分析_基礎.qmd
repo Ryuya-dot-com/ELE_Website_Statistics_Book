@@ -64,7 +64,8 @@ pacman::p_load(
   tsibbledata,
   ggtime,
   fable,
-  feasts
+  feasts,
+  patchwork
 )
 
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
@@ -274,10 +275,11 @@ tibble(
 
 ```{r}
 #| label: desc-compare-ts
+#| fig-height: 8.5
 p1 <- autoplot(vocab_ts) + labs(title = "Vocabulary", x = "Week", y = "Score (/20)")
 p2 <- autoplot(toefl_ts) + labs(title = "TOEFL-like", x = "Time", y = "Score")
 p3 <- autoplot(fluency_ts) + labs(title = "Fluency", x = "Week", y = "WPM")
-gridExtra::grid.arrange(p1, p2, p3, ncol = 1)
+patchwork::wrap_plots(p1, p2, p3, ncol = 1)
 ```
 
 3つのデータセットを並べると、それぞれ異なる特徴が見えます。語彙テストは緩やかな上昇トレンド、TOEFLスコアは介入時点での水準変化、流暢性は周期的な上下動が特徴的です。
@@ -286,10 +288,11 @@ gridExtra::grid.arrange(p1, p2, p3, ncol = 1)
 
 ```{r}
 #| label: desc-acf-ts
+#| fig-height: 8.5
 p_acf1 <- ggAcf(vocab_ts) + labs(title = "ACF: Vocabulary")
 p_acf2 <- ggAcf(toefl_ts) + labs(title = "ACF: TOEFL-like")
 p_acf3 <- ggAcf(fluency_ts) + labs(title = "ACF: Fluency")
-gridExtra::grid.arrange(p_acf1, p_acf2, p_acf3, ncol = 1)
+patchwork::wrap_plots(p_acf1, p_acf2, p_acf3, ncol = 1)
 ```
 
 3つのデータセットすべてに自己相関が見られます。青い破線（95%信頼限界）を超えるバーの数に注目してください。この自己相関が「なぜ問題なのか」「通常のt検定や回帰がなぜ使えないのか」は、次のセクションで詳しく解説します。
@@ -647,17 +650,19 @@ $$\Delta y_t = y_t - y_{t-1}$$
 
 ```{r}
 #| label: differencing-demo
+#| fig-height: 6.75
 p1 <- autoplot(vocab_ts) +
   labs(title = "Original: vocabulary scores", x = "Week", y = "Score")
 p2 <- autoplot(diff(vocab_ts)) +
   labs(title = "After 1st differencing (trend removed)", x = "Week", y = "Change in score") +
   geom_hline(yintercept = 0, linetype = "dashed", color = "blue", alpha = 0.5)
 
-gridExtra::grid.arrange(p1, p2, ncol = 1)
+patchwork::wrap_plots(p1, p2, ncol = 1)
 ```
 
 ```{r}
 #| label: seasonal-differencing-demo
+#| fig-height: 6.75
 seasonal_diff_fluency <- diff(fluency_ts, lag = frequency(fluency_ts))
 
 p_season_raw <- autoplot(fluency_ts) +
@@ -675,7 +680,7 @@ p_season_diff <- autoplot(seasonal_diff_fluency) +
   ) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "#2171b5", alpha = 0.7)
 
-gridExtra::grid.arrange(p_season_raw, p_season_diff, ncol = 1)
+patchwork::wrap_plots(p_season_raw, p_season_diff, ncol = 1)
 ```
 
 **差分後のプロットの読み方**：上段の生データには右肩上がりのトレンドが見えていましたが、差分後（下段）は**ゼロの周りで安定して振動**しています。青い破線（y = 0）が系列の中心にあり、上下対称に散らばっている — これが「定常に近い」状態です。
@@ -700,7 +705,7 @@ d2 <- diff(vocab_ts, differences = 2)  # 2回差分（過剰の可能性）
 
 p_d1 <- ggAcf(d1) + labs(title = "ACF: 1st diff (appropriate)")
 p_d2 <- ggAcf(d2) + labs(title = "ACF: 2nd diff (over-differenced?)")
-gridExtra::grid.arrange(p_d1, p_d2, ncol = 2)
+patchwork::wrap_plots(p_d1, p_d2, ncol = 2)
 ```
 :::
 
@@ -747,9 +752,10 @@ ACFだけではARモデルとMAモデルを区別できないため、PACFが必
 
 ```{r}
 #| label: acf-pacf-vocab
+#| fig-height: 6.25
 p_acf <- ggAcf(diff(vocab_ts)) + labs(title = "ACF: differenced vocabulary scores")
 p_pacf <- ggPacf(diff(vocab_ts)) + labs(title = "PACF: differenced vocabulary scores")
-gridExtra::grid.arrange(p_acf, p_pacf, ncol = 1)
+patchwork::wrap_plots(p_acf, p_pacf, ncol = 1)
 ```
 
 #### ACF/PACF の読み方（次数同定のルール）

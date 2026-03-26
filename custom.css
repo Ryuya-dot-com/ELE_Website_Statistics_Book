@@ -895,6 +895,84 @@ figcaption {
   padding-top: 0.55rem;
 }
 
+/* Plot zoom */
+.plot-zoom-target {
+  cursor: zoom-in;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.plot-zoom-target:hover,
+.plot-zoom-target:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(36, 48, 58, 0.16);
+}
+
+body.plot-zoom-open {
+  overflow: hidden;
+}
+
+.plot-zoom-overlay[hidden] {
+  display: none !important;
+}
+
+.plot-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(18, 26, 32, 0.82);
+  backdrop-filter: blur(7px);
+}
+
+.plot-zoom-stage {
+  display: grid;
+  gap: 0.8rem;
+  max-width: min(96vw, 1500px);
+  max-height: 92vh;
+}
+
+.plot-zoom-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(92vh - 3.5rem);
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
+}
+
+.plot-zoom-caption {
+  margin: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.plot-zoom-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.plot-zoom-close:hover,
+.plot-zoom-close:focus-visible {
+  background: rgba(255, 255, 255, 0.24);
+}
+
 .math,
 .MathJax {
   color: #1d2831;

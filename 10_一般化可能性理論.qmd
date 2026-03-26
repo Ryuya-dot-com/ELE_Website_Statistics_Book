@@ -33,7 +33,7 @@ CTT はこれらすべてを「誤差」として1つにまとめてしまう。
 
 pacman::p_load(
   tidyverse, lmerTest, gt, DT, performance, sjPlot,
-  effectsize, broom.mixed, gridExtra, glue, psych)
+  effectsize, broom.mixed, patchwork, glue, psych)
 
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 theme_update(legend.position = "bottom")
@@ -1020,7 +1020,7 @@ p2 <- Brennan.3.2 |>
     x = "Person",
     y = "Mean score (±SD)")
 
-grid.arrange(p1, p2, ncol = 2, widths = c(0.6, 0.4))
+patchwork::wrap_plots(p1, p2, ncol = 2, widths = c(0.6, 0.4))
 ```
 
 このプロットから、受験者間の得点差（Person 変動）が課題によって異なるパターンが読み取れる。標準偏差が大きい課題は受験者を弁別する力が強く、小さい課題は「天井効果」や「床効果」の可能性がある。このような課題×受験者の交互作用パターンは、G study の分散成分に反映される。
@@ -1839,7 +1839,7 @@ plot_phi <- ggplot(d_results_numeric, aes(x = TaskCount, y = RaterCount, fill = 
   labs(title = "Phi coefficient", x = "Number of tasks", y = "Number of raters") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
 
-grid.arrange(plot_g, plot_phi, ncol = 2)
+patchwork::wrap_plots(plot_g, plot_phi, ncol = 2)
 ```
 
 :::
@@ -3235,7 +3235,7 @@ p_qq <- ggplot(diag_data, aes(sample = Std_Residuals)) +
   stat_qq_line(color = "red", linetype = "dashed", linewidth = 0.6) +
   labs(title = "Normal Q-Q Plot", x = "Theoretical quantiles", y = "Standardized residuals")
 
-grid.arrange(p_resid_fit, p_qq, ncol = 2)
+patchwork::wrap_plots(p_resid_fit, p_qq, ncol = 2)
 ```
 
 残差 vs 予測値プロット（左）でパターン（漏斗状、曲線状）が見られなければ、等分散性と線形性の仮定が満たされている。Q-Q プロット（右）で点が対角線上に並んでいれば、正規性の仮定が概ね満たされている。逸脱が見られる場合は、外れ値の除外やモデルの再指定を検討する。

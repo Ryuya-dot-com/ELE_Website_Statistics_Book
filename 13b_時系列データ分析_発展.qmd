@@ -23,7 +23,8 @@ pacman::p_load(
   tsibbledata,
   fable,
   feasts,
-  ggtime
+  ggtime,
+  patchwork
 )
 
 if (requireNamespace("cmdstanr", quietly = TRUE)) {
@@ -2100,6 +2101,7 @@ $$
 
 ```{r}
 #| label: bayes-rl-simulation
+#| fig-height: 6.5
 set.seed(2027)
 n_trial_rl <- 80
 alpha_true <- 0.25
@@ -2169,7 +2171,7 @@ p_rl_pe <- ggplot(rl_df, aes(x = trial, y = prediction_error, color = factor(cho
   ) +
   theme_book(11)
 
-gridExtra::grid.arrange(p_rl_q, p_rl_pe, ncol = 1)
+patchwork::wrap_plots(p_rl_q, p_rl_pe, ncol = 1)
 ```
 
 ここでは、上段で `Q_A` と `Q_B` がどの試行で入れ替わるかを見て、下段でその切替を生んだ prediction error の山を確認します。観測されるのは choice と reward だけですが、モデルはその背後で `Q_A`, `Q_B` を毎試行更新しています。つまり RL は、「**試行系列から潜在学習状態を逆算する**」モデルです。時系列として見れば、`Q_t` は状態方程式、choice は観測方程式に近い役割を持っています。
