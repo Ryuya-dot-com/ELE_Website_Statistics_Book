@@ -1,11 +1,53 @@
 ```{r}
-#| label: setup-theme
+#| label: required-packages
+#| eval: false
+
+required_packages <- c(
+  "pacman",
+  # Data manipulation and visualization
+  "tidyverse", "gt", "gtExtras", "patchwork", "GGally", "plotly",
+
+  # Core statistics
+  "car", "effectsize", "compute.es", "pwr", "emmeans", "psych",
+
+  # 回帰モデルと混合効果モデル
+  "lme4", "lmerTest", "lavaan",
+
+  # 欠測データとロバスト統計
+  "mice", "naniar", "sandwich", "lmtest", "quantreg", "vegan", "clubSandwich",
+
+  # IRT と Rasch モデル
+  "mirt", "eRm", "TAM", "mokken",
+
+  # Bayesian modeling
+  "brms", "rstanarm", "bayesplot",
+
+  # Network analysis
+  "igraph",
+
+  # Meta-analysis
+  "metafor", "clubSandwich", "meta", "netmeta"
+)
+
+missing_packages <- setdiff(required_packages, rownames(installed.packages()))
+if (length(missing_packages) > 0) {
+  install.packages(missing_packages, repos = "https://cloud.r-project.org")
+}
+```
+
+```{r}
+#| eval: true
+#| label: pre-setup
 #| include: false
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
 pacman::p_load(ggplot2)
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 ```
+
+### 主なパッケージの役割
+
+- `ggplot2`: 章冒頭で使う概念図や説明用の図を描画する。
 
 # はじめに {.unnumbered}
 
@@ -84,41 +126,8 @@ sfパッケージによる地図作成の入門から、空間自己相関・空
 - **R**（最新版を推奨）：[https://cran.r-project.org/](https://cran.r-project.org/)
 - **RStudio**：[https://posit.co/download/rstudio-desktop/](https://posit.co/download/rstudio-desktop/)
 
-各章で使用するパッケージは章の冒頭で読み込んでいますが、以下のコードで主要なパッケージを一括インストールできます。
+各章で使用するパッケージは各章冒頭の `required_packages` を参照してください。本書全体の主要パッケージの一括インストール例は、このファイル冒頭に移しました。
 
-```{r}
-#| label: setup
-#| eval: false
-
-# 主要パッケージの一括インストール
-required_packages <- c(
-  # データ操作・可視化
-  "tidyverse", "gt", "gtExtras", "patchwork", "GGally",
-
-  # 統計解析（基礎）
-  "car", "effectsize", "pwr", "emmeans", "psych",
-
-  # 回帰・混合効果モデル
-  "lme4", "lmerTest", "lavaan",
-
-  # 欠測データ・ロバスト統計
-  "mice", "naniar", "sandwich", "lmtest", "quantreg", "vegan", "clubSandwich",
-
-  # IRT・ラッシュモデル
-  "mirt", "eRm", "TAM", "mokken",
-
-  # ベイズ推定
-  "brms", "rstanarm", "bayesplot",
-
-  # ネットワーク分析
-  "igraph",
-
-  # メタ分析
-  "metafor", "clubSandwich", "meta", "netmeta"
-)
-
-install.packages(required_packages)
-```
 
 ::: {.callout-tip}
 #### 図表の言語について

@@ -6,13 +6,33 @@ nocite: |
 ---
 
 ```{r}
-#| label: setup-theme
+#| label: required-packages
+#| eval: false
+
+required_packages <- c(
+  "ggplot2",
+  "pacman"
+)
+
+missing_packages <- setdiff(required_packages, rownames(installed.packages()))
+if (length(missing_packages) > 0) {
+  install.packages(missing_packages, repos = "https://cloud.r-project.org")
+}
+```
+
+```{r}
+#| eval: true
+#| label: pre-setup
 #| include: false
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
 pacman::p_load(ggplot2)
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
 ```
+
+### 主なパッケージの役割
+
+- `ggplot2`: モデル比較や概念整理に使う図を描画する。
 
 
 ## はじめに
