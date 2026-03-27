@@ -92,7 +92,7 @@ main.content#quarto-document-content > ul,
 main.content#quarto-document-content > ol,
 main.content#quarto-document-content > blockquote,
 main.content#quarto-document-content > dl {
-  max-width: 52em;
+  max-width: 56em;
 }
 
 /* Wide elements: use full container width */
@@ -108,7 +108,7 @@ main.content#quarto-document-content .quarto-figure {
   position: relative;
   margin-bottom: 1.35rem;
   padding: 1rem 1.3rem 1.05rem 1.4rem;
-  max-width: 52em;
+  max-width: 56em;
   border-left: 3px solid rgba(31, 92, 122, 0.28);
   background: linear-gradient(90deg, rgba(232, 241, 246, 0.58), rgba(255, 255, 255, 0));
   color: #30414d;
@@ -516,6 +516,10 @@ main.content .anchored .anchorjs-link:hover {
   color: var(--muted);
 }
 
+body.sidebar-toc-integrated #quarto-margin-sidebar {
+  display: none !important;
+}
+
 #TOC {
   position: sticky;
   top: 5rem;
@@ -567,6 +571,106 @@ main.content .anchored .anchorjs-link:hover {
 #TOC ul ul {
   margin-top: 0.18rem;
   padding-left: 0.75rem;
+  border-left: 1px solid rgba(215, 221, 227, 0.75);
+}
+
+#quarto-sidebar .sidebar-item-current-chapter {
+  margin-bottom: 0.7rem;
+}
+
+#quarto-sidebar .sidebar-page-toc {
+  margin: 0.35rem 0 0.75rem 0.4rem;
+  padding-left: 0.3rem;
+  border-left: 2px solid rgba(31, 92, 122, 0.14);
+}
+
+#quarto-sidebar .sidebar-page-toc-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  list-style: none;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.77rem;
+  font-weight: 750;
+  color: var(--accent-strong);
+  background: rgba(31, 92, 122, 0.05);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+#quarto-sidebar .sidebar-page-toc-summary::-webkit-details-marker {
+  display: none;
+}
+
+#quarto-sidebar .sidebar-page-toc-summary::before {
+  content: "▾";
+  color: var(--accent);
+  font-size: 0.88rem;
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+#quarto-sidebar .sidebar-page-toc:not([open]) .sidebar-page-toc-summary::before {
+  transform: rotate(-90deg);
+}
+
+#quarto-sidebar .sidebar-page-toc-summary:hover,
+#quarto-sidebar .sidebar-page-toc-summary:focus-visible {
+  background: rgba(31, 92, 122, 0.1);
+  color: var(--accent-strong);
+}
+
+#quarto-sidebar .sidebar-page-toc-nav {
+  position: static;
+  top: auto;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0.45rem 0 0;
+  box-shadow: none;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav a {
+  display: block;
+  padding: 0.24rem 0.45rem;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.38;
+  text-decoration: none;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav a:hover,
+#quarto-sidebar .sidebar-page-toc-nav a.active {
+  color: var(--accent-strong);
+  background: rgba(31, 92, 122, 0.08);
+}
+
+#quarto-sidebar .sidebar-page-toc-nav a.active {
+  font-weight: 700;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav .active {
+  border-left: 0;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav ul {
+  padding-left: 0;
+  margin-bottom: 0;
+  list-style: none;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav li {
+  margin: 0.1rem 0;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav ul ul {
+  margin-top: 0.16rem;
+  padding-left: 0.72rem;
   border-left: 1px solid rgba(215, 221, 227, 0.75);
 }
 
@@ -1186,6 +1290,6 @@ a.footnote-ref:focus {
   body.sidebar-collapsed main.content#quarto-document-content > blockquote,
   body.sidebar-collapsed main.content#quarto-document-content > dl,
   body.sidebar-collapsed #quarto-document-content > p:first-of-type {
-    max-width: 60em;
+    max-width: 66em;
   }
 }

@@ -1,0 +1,54 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.__sidebarPageTocInitialized) return;
+  window.__sidebarPageTocInitialized = true;
+
+  const sidebar = document.getElementById("quarto-sidebar");
+  const marginSidebar = document.getElementById("quarto-margin-sidebar");
+  const toc = document.getElementById("TOC");
+
+  if (!sidebar) return;
+
+  document.body.classList.add("sidebar-toc-integrated");
+
+  if (!toc || !marginSidebar) return;
+
+  const activeItem = sidebar.querySelector(".sidebar-link.active")?.closest(".sidebar-item");
+  const anchorPoint = activeItem ?? sidebar.querySelector(".sidebar-menu-container");
+  const tocLinks = toc.querySelectorAll("a[data-scroll-target]");
+
+  if (!anchorPoint || tocLinks.length === 0) {
+    marginSidebar.remove();
+    return;
+  }
+
+  const storageKey = "ele-book-page-toc-collapsed";
+  const wrapper = document.createElement("details");
+  wrapper.className = "sidebar-page-toc";
+
+  const storedCollapsed = window.localStorage.getItem(storageKey);
+  wrapper.open = storedCollapsed === null ? true : storedCollapsed !== "1";
+
+  wrapper.addEventListener("toggle", () => {
+    window.localStorage.setItem(storageKey, wrapper.open ? "0" : "1");
+  });
+
+  const summary = document.createElement("summary");
+  summary.className = "sidebar-page-toc-summary";
+  summary.textContent = "このページの見出し";
+  wrapper.appendChild(summary);
+
+  toc.classList.add("sidebar-page-toc-nav");
+  toc.querySelector("#toc-title")?.remove();
+  wrapper.appendChild(toc);
+
+  if (activeItem) {
+    activeItem.classList.add("sidebar-item-current-chapter");
+    activeItem.appendChild(wrapper);
+  } else {
+    anchorPoint.appendChild(wrapper);
+  }
+
+  marginSidebar.remove();
+});
+</script>

@@ -76,11 +76,12 @@ format:
     include-after-body:
       - plot-zoom.html
       - layout-controls.html
+      - sidebar-page-toc.html
     grid:
-      sidebar-width: 280px
-      body-width: 1100px
-      margin-width: 250px
-      gutter-width: 2rem
+      sidebar-width: 320px
+      body-width: 1240px
+      margin-width: 0px
+      gutter-width: 1.5rem
     toc: true
     toc-depth: 3
     toc-location: right

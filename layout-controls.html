@@ -1,0 +1,53 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.__layoutControlsInitialized) return;
+  window.__layoutControlsInitialized = true;
+
+  const sidebar = document.getElementById("quarto-sidebar");
+  if (!sidebar) return;
+
+  const desktopBreakpoint = window.matchMedia("(min-width: 992px)");
+  const storageKey = "ele-book-sidebar-collapsed";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "sidebar-desktop-toggle";
+  button.setAttribute("aria-controls", "quarto-sidebar");
+  document.body.appendChild(button);
+
+  const updateButtonPosition = () => {
+    if (!desktopBreakpoint.matches) {
+      button.hidden = true;
+      return;
+    }
+
+    button.hidden = false;
+    const rect = sidebar.getBoundingClientRect();
+    const collapsed = document.body.classList.contains("sidebar-collapsed");
+    const left = collapsed ? Math.max(16, rect.left + 12) : Math.max(16, rect.right - 28);
+    button.style.left = `${Math.round(left)}px`;
+  };
+
+  const applySidebarState = (collapsed, persist = true) => {
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+    button.textContent = collapsed ? "目次を開く" : "目次を閉じる";
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.setAttribute("aria-label", collapsed ? "左サイドバーを表示" : "左サイドバーを隠す");
+    if (persist) {
+      window.localStorage.setItem(storageKey, collapsed ? "1" : "0");
+    }
+    window.requestAnimationFrame(updateButtonPosition);
+  };
+
+  button.addEventListener("click", () => {
+    const collapsed = document.body.classList.contains("sidebar-collapsed");
+    applySidebarState(!collapsed);
+  });
+
+  const storedCollapsed = window.localStorage.getItem(storageKey) === "1";
+  applySidebarState(storedCollapsed, false);
+
+  window.addEventListener("resize", updateButtonPosition);
+  window.addEventListener("load", updateButtonPosition);
+});
+</script>

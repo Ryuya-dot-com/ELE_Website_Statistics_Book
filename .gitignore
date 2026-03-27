@@ -24,6 +24,9 @@ _freeze/**/libs/
 
 # Large binary artifacts (local only)
 *.html
+!layout-controls.html
+!plot-zoom.html
+!sidebar-page-toc.html
 *.pdf
 *.rds
 *.rda
