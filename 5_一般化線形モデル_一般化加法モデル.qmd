@@ -718,7 +718,22 @@ pacman::p_load(
 )
 
 # プロットは全て英語のため、フォント指定不要（システムデフォルトを使用）
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 set.seed(2024)
 
@@ -760,6 +775,21 @@ plot_check_model_separate <- function(
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
       theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),
@@ -1710,6 +1740,21 @@ sjPlot::plot_model(
     fill = "Sender proficiency"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -2157,6 +2202,21 @@ sjPlot::plot_model(
     y = "Expected collaboration count"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -2489,6 +2549,21 @@ sjPlot::plot_model(
     fill = "Class"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 

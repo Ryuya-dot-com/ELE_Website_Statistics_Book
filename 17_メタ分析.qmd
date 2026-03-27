@@ -63,7 +63,22 @@ if (length(missing_bootstrap) > 0) {
 }
 
 pacman::p_load(char = bootstrap_pkgs)
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 strip_md <- function(x) {
@@ -441,7 +456,22 @@ if (!requireNamespace("dmetar", quietly = TRUE)) {
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
 pacman::p_load(metafor, ggplot2, dplyr, tidyr, tibble, gt, DT)
 set.seed(2024)
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 # メタ分析結果をgt表に変換するヘルパー関数
@@ -920,7 +950,22 @@ ggplot(dat, aes(x = duration, y = yi)) +
   scale_size_continuous(name = "Precision (1/SE)") +
   labs(x = "Intervention duration (weeks)", y = "Hedges g",
        title = "Meta-regression: Effect by intervention duration") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 **図の読み方**: 各点が 1 つの研究に対応し、点の大きさは精度（サンプルサイズ）を反映する。回帰線が右上がりであれば、介入期間が長い研究ほど効果量が大きい傾向を示す。帯は 95% CI である。
@@ -955,7 +1000,22 @@ ggplot(df_loo, aes(x = idx, y = estimate)) +
   scale_x_continuous(breaks = df_loo$idx, labels = df_loo$study) +
   labs(x = "Left-out study", y = "Leave-one-out estimate (Hedges g)",
        title = "Sensitivity: Leave-one-out analysis") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8))
 ```
 
@@ -1467,7 +1527,22 @@ ggplot(df_rank, aes(x = reorder(treatment, Pscore), y = Pscore)) +
   coord_flip() +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(title = "Treatment ranking (P-score)", x = "Treatment", y = "P-score") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 **読み方**: P-score は 0〜1（0%〜100%）の指標であり、値が大きいほど有利な介入であることを示す。ただし、P-score の差が小さい場合は実質的な差が存在しない可能性もあるため、効果量と信頼区間を併せて解釈する必要がある。
@@ -1638,7 +1713,22 @@ if (!is.null(dr) && !is.null(ir)) {
     geom_point(color = "#2c3e50", size = 3, alpha = 0.7) +
     labs(title = "Node-splitting: Direct vs Indirect estimates",
          x = "Direct estimate", y = "Indirect estimate") +
-    theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+    theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 }
 ```
 
@@ -1850,7 +1940,22 @@ if (length(studies_nma) >= 5) {
       geom_point(size = 3, alpha = 0.7, position = position_dodge(0.3)) +
       labs(title = "NMA sensitivity: P-score change by study exclusion",
            x = "Treatment", y = "P-score", color = "Excluded study") +
-      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
   }
 }
 ```
@@ -1923,7 +2028,22 @@ ggplot(rank_comp, aes(x = treatment, y = Pscore, fill = Model)) +
   labs(title = "P-score sensitivity: Random vs Common effects model",
        x = "Treatment", y = "P-score", fill = "Model") +
   scale_fill_manual(values = c(Random = "#2c3e50", Common = "#95a5a6")) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 **読み方**: ランダム効果モデルと固定効果モデルで P-score やランキング順位が大きく異なる場合、研究間の異質性がランキングに強く影響していることを示す。両モデルで一貫したランキングが得られれば、結果の頑健性が支持される。
@@ -3094,7 +3214,22 @@ ggplot(sens_df, aes(x = rho, y = estimate)) +
     caption = "Shaded area = 95% CR2 robust CI"
   ) +
   scale_x_continuous(breaks = rho_grid) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **読み方**: $\rho$ を 0 から 0.9 まで変化させても、プール推定値と信頼区間がほぼ一定であれば、結果は $\rho$ の仮定に対して頑健であるといえる。推定値が大きく変動する場合は、結果の解釈に注意が必要であり、$\rho$ の仮定が実質的な影響を及ぼしている旨を報告すべきである。

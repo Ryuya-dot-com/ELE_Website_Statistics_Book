@@ -683,6 +683,9 @@ div.sourceCode {
 }
 
 pre.sourceCode,
+pre > code.sourceCode,
+.sourceCode pre > code.sourceCode,
+.sourceCode pre code,
 .cell-output-stdout pre,
 .cell-output-stderr pre {
   margin: 0;
@@ -696,6 +699,17 @@ pre.sourceCode,
   overflow-wrap: normal !important;
   word-break: normal !important;
   min-width: max-content;
+}
+
+pre > code.sourceCode,
+.sourceCode pre > code.sourceCode,
+.sourceCode pre code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  white-space: inherit !important;
+  overflow-wrap: inherit !important;
+  word-break: inherit !important;
 }
 
 .cell-output {
@@ -785,6 +799,11 @@ details.code-fold > .sourceCode,
 details.code-fold > .cell-output,
 details.code-fold > .cell {
   margin: 0;
+}
+
+details.code-fold > .sourceCode {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* callout */

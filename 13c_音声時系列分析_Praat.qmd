@@ -61,6 +61,21 @@ pacman::p_load(
 
 theme_speech <- function(base_size = 12) {
   theme_bw(base_size = base_size, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
     theme(legend.position = "bottom")
 }
 

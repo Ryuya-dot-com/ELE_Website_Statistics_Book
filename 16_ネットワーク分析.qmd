@@ -129,7 +129,22 @@ pacman::p_load(
 
 set.seed(2024)
 network_base_family <- "HiraginoSans-W3"
-theme_set(theme_bw(base_size = 12, base_family = network_base_family))
+theme_set(theme_bw(base_size = 12, base_family = network_base_family) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 scale01 <- function(x) {
@@ -677,7 +692,22 @@ p_deg <- tibble(degree = igraph::degree(g)) |>
            label = paste0("Mean = ", round(mean(igraph::degree(g)), 1)),
            size = 3.5, family = network_base_family) +
   labs(title = "Degree Distribution", x = "Degree", y = "Density") +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom")
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 
 p_wt <- tibble(weight = E(g)$weight) |>
   ggplot(aes(x = weight)) +
@@ -692,7 +722,22 @@ p_wt <- tibble(weight = E(g)$weight) |>
            label = paste0("Mean = ", round(mean(E(g)$weight), 1)),
            size = 3.5, family = network_base_family) +
   labs(title = "Edge Weight Distribution", x = "Weight (collaboration count)", y = "Density") +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom")
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 
 p_deg + p_wt
 ```
@@ -737,7 +782,22 @@ ggplot(adj_long, aes(x = from, y = to, fill = weight)) +
     title = "Adjacency Matrix Heatmap (sorted by class)",
     x = NULL, y = NULL
   ) +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(
     axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
     axis.text.y = element_text(size = 6),
@@ -771,7 +831,22 @@ tibble(
     title = "Strength Distribution by Class",
     x = "Class", y = "Strength (weighted degree)"
   ) +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 ```
 
@@ -923,7 +998,22 @@ ggplot(centrality_long, aes(x = Var1, y = Var2, fill = r)) +
   geom_text(aes(label = round(r, 2)), size = 3.5) +
   scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b", midpoint = 0, limits = c(-1, 1)) +
   labs(title = "Centrality Correlation Matrix", fill = "r") +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.title = element_blank())
 ```
 
@@ -955,7 +1045,22 @@ ggplot(top_n_centrality, aes(x = reorder(id, value), y = value, color = class)) 
   coord_flip() +
   facet_wrap(~ metric, scales = "free", ncol = 2) +
   labs(title = "Top 10 Learners by Centrality Metric", x = NULL, y = "Value", color = "Class") +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(strip.text = element_text(face = "bold"))
 ```
 
@@ -1021,7 +1126,22 @@ ggplot(node_stats, aes(x = strength, y = betweenness)) +
     x = "Strength (weighted degree)", y = "Betweenness (normalized)",
     color = "Class", size = "Eigenvector"
   ) +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom")
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 **4象限の解釈**:
@@ -1244,6 +1364,21 @@ community_class_df |>
     x = "Observed Class", y = "Detected Community", fill = "Row %"
   ) +
   theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -1273,14 +1408,44 @@ p_str_comm <- ggplot(community_centrality, aes(x = community, y = strength, fill
   geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.5) +
   geom_jitter(aes(color = community), width = 0.15, size = 2, alpha = 0.7) +
   labs(title = "Strength by Community", x = "Community", y = "Strength") +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 
 p_btw_comm <- ggplot(community_centrality, aes(x = community, y = betweenness, fill = community)) +
   geom_boxplot(alpha = 0.5, outlier.shape = NA, width = 0.5) +
   geom_jitter(aes(color = community), width = 0.15, size = 2, alpha = 0.7) +
   labs(title = "Betweenness by Community", x = "Community", y = "Betweenness") +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 
 p_str_comm + p_btw_comm
@@ -1458,7 +1623,22 @@ ggplot(dir_stats, aes(x = outdegree, y = indegree)) +
     x = "Out-degree (advice seeking)", y = "In-degree (advice received)",
     color = "Class", size = "PageRank"
   ) +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom")
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 **4象限の解釈（有向ネットワーク）**:
@@ -1597,7 +1777,22 @@ ggplot(ergm_forest, aes(x = estimate, y = term)) +
     title = "ERGM Coefficient Forest Plot",
     x = "Estimate (log-odds)", y = NULL
   ) +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom") +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(axis.text.y = element_text(size = 10))
 ```
 
@@ -1903,7 +2098,22 @@ tibble(permuted = perm_dist_class) |>
     title = "MRQAP Permutation Distribution: Same Class",
     x = "Permuted Coefficient", y = "Density"
   ) +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom")
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 通常のOLS回帰では、ダイアド間の非独立性により標準誤差が過小推定される。QAP回帰は行列の行と列を同時に置換することでこの問題に対処し、より保守的（正確な）p値を提供する[@dekker2007]。
@@ -2363,6 +2573,21 @@ p_lex_rt <- ggplot(toy_lexicon, aes(x = closeness, y = rt, label = word)) +
     color = "Clustering"
   ) +
   theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 
 p_lex_network + p_lex_rt + plot_layout(guides = "collect")
@@ -2406,6 +2631,21 @@ toy_predictor_cor |>
     fill = "r"
   ) +
   theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(panel.grid = element_blank(), axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -2683,6 +2923,21 @@ ggplot(halo_plot_data, aes(x = criterion_pair, y = rater, fill = rho)) +
     fill = "Spearman rho"
   ) +
   theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(panel.grid = element_blank())
 ```
 
@@ -2807,7 +3062,22 @@ rank_comparison |>
     title = "Top 10 Learners: Strength Stability Across Thresholds",
     x = NULL, y = "Strength", fill = "Threshold"
   ) +
-  theme_bw(base_family = network_base_family, base_size = 12) + theme(legend.position = "bottom")
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 ここでは「誰が1位か」だけでなく、「しきい値を変えても上位メンバーが大きく入れ替わらないか」を見る。順位が多少動いても主要な学習者群が維持されるなら、中心性の解釈は比較的頑健だと言える。

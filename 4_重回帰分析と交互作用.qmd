@@ -254,7 +254,22 @@ pacman::p_load(
   ggridges
 )
 
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 plot_check_model_separate <- function(
@@ -272,6 +287,21 @@ plot_check_model_separate <- function(
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
       theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),
@@ -471,6 +501,21 @@ ggplot(causal_demo, aes(x = Motivation, fill = factor(Treatment))) +
     fill = "Treatment"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -493,7 +538,22 @@ ggplot(causal_coef_tbl, aes(x = estimate, y = Model)) +
     x = "Estimated treatment effect",
     y = NULL
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ```{r}
@@ -798,7 +858,22 @@ ggplot(
     x = "Proficiency (z)",
     y = "Predicted Score_Recall"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### 係数の可変性（解釈単位の違い）
@@ -849,6 +924,21 @@ ggplot(
     color = "Coding"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -1072,7 +1162,22 @@ ggplot(
     size = "Cook's D",
     color = "Flagged"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ```{r}
@@ -1395,7 +1500,22 @@ ggplot(dominance_tbl, aes(x = reorder(term, general_dominance), y = general_domi
     x = "Model term",
     y = "General dominance"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 この節の読み方は単純です。
@@ -1431,6 +1551,21 @@ plot_model(
     fill = "Treatment / Time"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -1464,6 +1599,21 @@ ggplot(wide_scores, aes(x = Proficiency, y = Score_Recall, color = Treatment)) +
     fill = "Treatment"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -1503,7 +1653,22 @@ ggplot(pred_focus_ci, aes(x = Proficiency, y = fit)) +
     x = "Proficiency (z)",
     y = "Predicted Score_Recall"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ```{r}
@@ -1560,7 +1725,22 @@ ggplot(surface_pred_df, aes(x = Proficiency, y = Aptitude, fill = fit)) +
     y = "Aptitude (z)",
     fill = "Predicted\nScore"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### 処置差ヒートマップ（Writing - Glossing）
@@ -1592,7 +1772,22 @@ ggplot(surface_gap_df, aes(x = Proficiency, y = Aptitude, fill = Writing_minus_G
     y = "Aptitude (z)",
     fill = "Diff"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### OLS と HC3 の比較
@@ -1765,7 +1960,22 @@ ggplot(
     x = "Estimated slope difference",
     y = NULL
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ```{r}
@@ -2465,6 +2675,21 @@ ggplot(
     color = "Coding"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -2493,6 +2718,21 @@ ggplot(
     fill = "Coding"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -2661,7 +2901,22 @@ ggplot(within_plot_tbl, aes(x = Time, y = Score, group = Participant, color = Tr
     x = "Time",
     y = "Score"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**:
@@ -2739,7 +2994,22 @@ ggplot(within_wide, aes(x = Proficiency, y = Change, color = Treatment)) +
     x = "Proficiency (z)",
     y = "Change score (Delayed - Immediate)"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **差分得点回帰の読み方**:
@@ -2824,6 +3094,21 @@ ggplot(pred_df, aes(x = Proficiency, y = fit, color = Treatment, fill = Treatmen
     y = "Predicted Recall Score"
   ) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 

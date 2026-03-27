@@ -287,7 +287,22 @@ pacman::p_load(
 )
 
 # 7章と揃える可視化テーマ
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 # APA 7th に沿った p 値表記
@@ -644,7 +659,22 @@ love.plot(bt_ipw, abs = TRUE, thresholds = c(m = 0.1),
           sample.names = c("Before weighting", "After weighting"),
           var.names = NULL) +
   labs(x = "Absolute SMD", y = NULL) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 分析では、重み付け後の絶対 SMD を 0.1 以下に抑えることを一つの目安とします。上の Love plot で、重み付け後（青）の点がすべて破線の左側に収まっていればバランスは良好です。
@@ -747,7 +777,22 @@ vif_path |>
   geom_point(color = "#FF9800", size = 1.5) +
   facet_wrap(~ metric, scales = "free_y", ncol = 1) +
   labs(x = "Correlation between covariates (rho)", y = NULL) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -894,7 +939,22 @@ ggplot(hte_strata, aes(x = estimate, y = stratum)) +
   geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2, color = "#2196F3") +
   labs(x = "Estimated treatment effect", y = NULL,
        subtitle = "Dashed line: null effect = 0") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **読み方ガイド:** 各層で推定された処置効果と 95% CI を比較します。信頼区間が大きくずれている層があれば、効果の異質性の存在が示唆されます。ただし、各層のサンプルサイズは限られるため、層別効果の差は慎重に解釈してください。
@@ -1000,7 +1060,22 @@ bind_rows(
   scale_color_manual(values = c("Treatment" = "#2196F3", "Control" = "#9E9E9E")) +
   scale_fill_manual(values = c("Treatment" = "#2196F3", "Control" = "#9E9E9E")) +
   labs(x = "Propensity score", y = "Weighted density", color = NULL, fill = NULL) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 #### 重みの安定性
@@ -1119,7 +1194,22 @@ love.plot(m_nn, abs = TRUE, thresholds = c(m = 0.1),
           colors = c("#FF9800", "#4CAF50"),
           sample.names = c("Before matching", "After matching (1:1 NN)")) +
   labs(x = "Absolute SMD", y = NULL) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 #### 推定結果比較
@@ -1290,7 +1380,22 @@ aipw_compare_tbl |>
   geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 0.12, color = "#2196F3", na.rm = TRUE) +
   coord_flip() +
   labs(x = NULL, y = "Estimated ATE", subtitle = "Dashed line indicates simulation truth") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -1346,7 +1451,22 @@ overlap_dat |>
   scale_fill_manual(values = c("Treatment" = "#2196F3", "Control" = "#9E9E9E")) +
   scale_color_manual(values = c("Treatment" = "#2196F3", "Control" = "#9E9E9E")) +
   labs(x = "Propensity score", y = "Density", fill = NULL, color = NULL) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 #### 診断表
@@ -1434,7 +1554,22 @@ sutva_summary |>
     y = "Estimated coefficient of treatment",
     subtitle = "Dashed line: true direct effect (= 2)"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 #### 診断表
@@ -1526,7 +1661,22 @@ dag_est_tbl |>
   geom_point(size = 3, color = "#E91E63") +
   labs(y = NULL, x = "Estimated treatment effect",
        subtitle = "Dashed line: True effect = 2.0") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -1590,7 +1740,22 @@ med_tbl |>
   geom_point(aes(y = target), shape = 4, size = 3, stroke = 1.2, color = "black") +
   coord_flip() +
   labs(x = NULL, y = "Estimated effect", subtitle = "× marks indicate the corresponding true target") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -1668,6 +1833,21 @@ iv_dat |>
        subtitle = paste0("First-stage F = ", round(first_stage_f, 1))) +
   ylim(0, 1) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "none")
 ```
 :::
@@ -1772,7 +1952,22 @@ rd_density_df |>
   geom_vline(xintercept = 0, linetype = 2, color = "gray40") +
   scale_color_manual(values = c("Left of cutoff" = "#9E9E9E", "Right of cutoff" = "#2196F3")) +
   labs(x = "Running variable", y = "Kernel density", color = NULL) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 #### RDプロット
@@ -2159,7 +2354,22 @@ mi_ps_compare_tbl |>
   geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 0.12, color = "#2196F3", na.rm = TRUE) +
   coord_flip() +
   labs(x = NULL, y = "Estimated effect", subtitle = "Dashed line indicates simulation truth") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### `pool()` と `pool.scalar()` の違い
@@ -2224,7 +2434,22 @@ imp_mean_tbl |>
     y = "Mean of imputed x",
     subtitle = "Dashed line: observed (non-missing) mean of x"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -2294,7 +2519,22 @@ did_panel |>
   geom_point(size = 3) +
   scale_color_manual(values = c("Treatment" = "#2196F3", "Control" = "#9E9E9E")) +
   labs(x = NULL, y = "Mean score", color = NULL) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### DIDで必ず確認すべき点
@@ -2438,7 +2678,22 @@ did_dyn_tbl |>
   geom_line(color = "#2196F3", linewidth = 1) +
   geom_point(color = "#2196F3", size = 2) +
   labs(x = "Event time", y = "ATT") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -2549,6 +2804,21 @@ sens_rv_tbl |>
   scale_fill_manual(values = c("RV(q = 1)" = "#2196F3", "RV(alpha = .05)" = "#FF9800")) +
   labs(x = NULL, y = "Robustness value", fill = NULL) +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "none")
 ```
 

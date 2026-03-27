@@ -68,7 +68,22 @@ if (length(missing_packages) > 0) {
 
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
 pacman::p_load(tidyverse)
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 ```
 
@@ -344,7 +359,22 @@ pacman::p_load(
 
 set.seed(2024)
 afex::set_sum_contrasts()
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 plot_check_model_separate <- function(
@@ -366,6 +396,21 @@ plot_check_model_separate <- function(
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
       theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),

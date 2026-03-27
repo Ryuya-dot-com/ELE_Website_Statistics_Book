@@ -175,7 +175,22 @@ if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repo
 
 pacman::p_load(ggplot2)
 base_font <- "HiraginoSans-W3"
-theme_set(theme_bw(base_size = 12, base_family = base_font))
+theme_set(theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 # 3 つのリンク関数の逆関数（確率曲線）を比較
@@ -201,6 +216,21 @@ ggplot(link_df, aes(x = eta, y = prob, color = Link, linetype = Link)) +
        x = expression(paste("Linear predictor (", eta, " = X", beta, ")")),
        y = "P(Y = 1)") +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "top")
 ```
 
@@ -356,7 +386,22 @@ pacman::p_load(
 # --- 共通設定 ---
 # ggplot2 のデフォルトテーマ
 base_font <- "HiraginoSans-W3"
-theme_set(theme_bw(base_size = 12, base_family = base_font))
+theme_set(theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 set.seed(2024)      # 乱数の再現性を確保
 
@@ -517,6 +562,21 @@ p_hist <- ggplot(centering_df, aes(x = Score, fill = Type)) +
        subtitle = "Dashed line = mean. After centering, mean = 0 and SD = 1.",
        x = "Score", y = "Count") +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "none")
 
 print(p_hist)
@@ -732,6 +792,21 @@ ggplot(cell_means, aes(x = food, y = speed, color = utensil, group = utensil)) +
        subtitle = "Lines cross → interaction only; grand mean ≈ cell means average",
        x = "Food", y = "Eating Speed", color = "Utensil") +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "top")
 ```
 
@@ -835,6 +910,21 @@ ggplot(effects_only, aes(x = estimate, y = term_clean, color = model)) +
        subtitle = "Utensil & Food: true main effect = 0. Only the interaction is real.",
        x = "Coefficient Estimate (95% CI)", y = NULL, color = "Coding") +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "top")
 ```
 
@@ -860,6 +950,21 @@ base_plot <- ggplot(cell_means, aes(x = food, y = speed, color = utensil, group 
   geom_line(linewidth = 1) +
   scale_color_manual(values = c(fork = "#E69F00", spoon = "#56B4E9")) +
   theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "none") +
   ylim(1, 5)
 
@@ -1545,7 +1650,22 @@ p_pi_learners <- ggplot(pi_participant_means,
     y = "Accuracy",
     color = "Proficiency"
   ) +
-  theme_bw(base_size = 11, base_family = base_font)
+  theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 
 p_pi_items <- pi_demo_dat |>
   dplyr::group_by(item_id, frequency) |>
@@ -1562,6 +1682,21 @@ p_pi_items <- pi_demo_dat |>
     fill = NULL
   ) +
   theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "none")
 
 p_pi_learners + p_pi_items
@@ -1968,7 +2103,22 @@ ggplot(icc_share_df, aes(x = component, y = share, fill = component)) +
     y = "Share of latent-scale variance"
   ) +
   coord_flip() +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**: 青と橙の部分が sender / receiver に由来する**共有分散**で、灰色は観測レベルのロジスティック残差です。青 + 橙が `total clustered share`、つまり「GLM が独立と仮定すると取りこぼす依存構造」の大きさです。
@@ -2231,6 +2381,21 @@ ggplot(rs_intuition_df,
     y = "Accuracy"
   ) +
   theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "none")
 ```
 
@@ -2443,10 +2608,40 @@ re_plots <- sjPlot::plot_model(
 )
 # リスト / 単一 ggplot 両対応
 if (inherits(re_plots, "list")) {
-  re_plots <- lapply(re_plots, function(p) p + theme_bw(base_size = 12, base_family = base_font))
+  re_plots <- lapply(re_plots, function(p) p + theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
   patchwork::wrap_plots(re_plots, ncol = 2)
 } else {
-  re_plots + theme_bw(base_size = 12, base_family = base_font)
+  re_plots + theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 }
 ```
 
@@ -2507,7 +2702,22 @@ ggplot(shrink_df, aes(x = no_pool, y = partial_pool)) +
        subtitle = "Arrows show how GLMM pulls extreme estimates toward the grand mean",
        x = "No-pooling estimate (individual GLM intercept)",
        y = "Partial-pooling estimate (GLMM BLUP)") +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**:
@@ -2546,7 +2756,22 @@ sjPlot::plot_model(
   sort.est = TRUE,       # 効果量順にソート
   title = "Fixed Effects (OR scale)",
   vline.color = "grey70"
-) + theme_bw(base_size = 12, base_family = base_font)
+) + theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**: 各点が固定効果の OR 推定値、水平バーが 95% CI。**縦の灰色線（OR = 1）を CI がまたがなければ有意**。`sort.est = TRUE` で効果量順にソートされているため、最も影響の大きい予測子が一目でわかります。論文の Figure として最も使われる形式です。
@@ -2565,7 +2790,22 @@ sjPlot::plot_model(
   type = "std2",
   show.values = TRUE,
   title = "Standardized Coefficients (2 SD, Gelman 2008)"
-) + theme_bw(base_size = 12, base_family = base_font)
+) + theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**: 係数が「2 SD あたりの変化」に標準化されているため、2 値変数（same_class）と連続変数（score_sender_sc 等）の**効果の大きさを直接比較**できます[@gelman2008]。通常の標準化（`type = "std"`）は 1 SD 単位ですが、Gelman の 2 SD 法は 2 値変数のスケール（0→1 の変化 ≈ 2 SD）と自然に揃います。
@@ -2584,14 +2824,44 @@ p_sender <- sjPlot::plot_model(
   terms = "score_sender_sc",
   pred.type = "fe",
   title = "Effect of Sender Score"
-) + theme_bw(base_size = 11, base_family = base_font)
+) + theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 
 p_class <- sjPlot::plot_model(
   m_glmm_ri, type = "pred",
   terms = "same_class",
   pred.type = "fe",
   title = "Effect of Same Class"
-) + theme_bw(base_size = 11, base_family = base_font)
+) + theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 
 patchwork::wrap_plots(p_sender, p_class, nrow = 1)
 ```
@@ -2850,7 +3120,22 @@ sjPlot::plot_model(
   terms = c("prof_gap", "same_class"),
   pred.type = "fe",
   title = "Interaction: Same Class × Proficiency Gap"
-) + theme_bw(base_size = 12, base_family = base_font)
+) + theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**:
@@ -2908,7 +3193,22 @@ emmeans::emmip(m_glmm_int, same_class ~ prof_gap,
        subtitle = "Lines = same_class levels; Error bars = 95% CI",
        x = "Proficiency Gap", y = "Predicted Probability",
        color = "Same Class") +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**:
@@ -3163,6 +3463,21 @@ sjPlot::plot_model(
     fill = "Same class"
   ) +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -3205,6 +3520,21 @@ ggpred_sender |>
     fill = NULL
   ) +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -3252,6 +3582,21 @@ p_vocab_raw <- ggplot(
     color = NULL
   ) +
   theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 
 vocab_adj_pred <- ggeffects::ggpredict(
@@ -3284,6 +3629,21 @@ p_vocab_adjusted <- vocab_adj_pred |>
     color = NULL
   ) +
   theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 
 p_vocab_raw + p_vocab_adjusted
@@ -3337,7 +3697,22 @@ emmeans::emmip(
     y = "Predicted post-test accuracy",
     color = NULL
   ) +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**:
@@ -3450,6 +3825,21 @@ ggplot(
     color = NULL
   ) +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -3555,6 +3945,21 @@ ggplot(vocab_calibration, aes(x = predicted, y = observed, color = target)) +
     size = "Bin n"
   ) +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -3619,6 +4024,21 @@ ggplot(plot_pred, aes(x = score_sender_sc, y = pred_prob,
     color = "Condition", fill = "Condition"
   ) +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "top")
 ```
 
@@ -3819,6 +4239,21 @@ ggplot(g_phi_demo, aes(x = n_items, y = value, color = metric)) +
     color = NULL
   ) +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "top")
 ```
 
@@ -3884,7 +4319,22 @@ ggplot(sep_rel_demo, aes(x = cohort, y = sep_rel, fill = cohort)) +
     x = NULL,
     y = "Separation reliability"
   ) +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**:
@@ -4008,7 +4458,22 @@ linearity_plots <- lapply(cont_vars, function(v) {
     geom_point(size = 3) +
     geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "red") +
     labs(title = v, x = paste(v, "(binned)"), y = "Empirical log-odds") +
-    theme_bw(base_size = 10, base_family = base_font)
+    theme_bw(base_size = 10, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 })
 
 patchwork::wrap_plots(linearity_plots, nrow = 1)
@@ -4093,6 +4558,21 @@ ggplot(roc_df, aes(x = specificity, y = sensitivity, color = Model)) +
        x = "1 - Specificity (False Positive Rate)",
        y = "Sensitivity (True Positive Rate)") +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "top")
 ```
 
@@ -4226,7 +4706,22 @@ sjPlot::plot_model(
   title = "Final Fixed Effects (OR scale)",
   vline.color = "grey70"
 ) +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **読み方**:
@@ -4259,6 +4754,21 @@ sjPlot::plot_model(
     fill = "Same class"
   ) +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "bottom")
 ```
 
@@ -4465,7 +4975,22 @@ p_rate <- one_dataset |>
   labs(title = "(a) Accuracy by Proficiency Group",
        subtitle = "Each dot = one participant's mean accuracy",
        x = "Proficiency", y = "Accuracy") +
-  theme_bw(base_size = 11, base_family = base_font) + theme(legend.position = "none")
+  theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "none")
 
 # (b) 項目別の正答率分布
 p_item <- one_dataset |>
@@ -4477,7 +5002,22 @@ p_item <- one_dataset |>
   labs(title = "(b) Item Difficulty (1 - accuracy)",
        subtitle = "Higher = more difficult",
        x = NULL, y = "Difficulty") +
-  theme_bw(base_size = 11, base_family = base_font)
+  theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 
 # (c) ランダム効果の分布
 p_re <- data.frame(
@@ -4494,7 +5034,22 @@ p_re <- data.frame(
                                 "Item (SD=0.5)" = "#0072B2")) +
   labs(title = "(c) Random Effects Distribution",
        x = "Random Intercept (logit)", y = "Count", fill = NULL) +
-  theme_bw(base_size = 11, base_family = base_font) + theme(legend.position = "top")
+  theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "top")
 
 p_rate + p_item + p_re + plot_layout(widths = c(1, 1, 1))
 ```
@@ -4589,6 +5144,21 @@ ggplot(p_long, aes(x = p_value, fill = test)) +
        subtitle = "Red line = α = 0.05. Bars LEFT of the line = significant = power.",
        x = "p-value", y = "Count") +
   theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "none")
 ```
 
@@ -4646,6 +5216,21 @@ ggplot(grid, aes(x = factor(n_subj_pg), y = factor(n_item),
        y = "Number of Items",
        fill = "Power") +
   theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(legend.position = "right")
 ```
 
@@ -4673,7 +5258,22 @@ p_omnibus <- ggplot(grid, aes(x = factor(n_subj_pg), y = factor(n_item),
                        midpoint = 0.8, limits = c(0, 1)) +
   labs(title = "Omnibus (proficiency overall)",
        x = "Participants/group", y = "Items", fill = "Power") +
-  theme_bw(base_size = 10, base_family = base_font) + theme(legend.position = "none")
+  theme_bw(base_size = 10, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "none")
 
 p_b1 <- ggplot(grid, aes(x = factor(n_subj_pg), y = factor(n_item),
                            fill = power_B1)) +
@@ -4683,7 +5283,22 @@ p_b1 <- ggplot(grid, aes(x = factor(n_subj_pg), y = factor(n_item),
                        midpoint = 0.8, limits = c(0, 1)) +
   labs(title = "B1 vs A2 (small effect, OR=1.65)",
        x = "Participants/group", y = "Items", fill = "Power") +
-  theme_bw(base_size = 10, base_family = base_font) + theme(legend.position = "right")
+  theme_bw(base_size = 10, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "right")
 
 p_omnibus + p_b1 +
   plot_annotation(
@@ -4822,7 +5437,22 @@ ggplot(
     y = "Number of Items",
     fill = "Power"
   ) +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**:
@@ -4985,7 +5615,22 @@ ggplot(sensitivity_df, aes(x = OR, y = Power)) +
   labs(title = "Sensitivity Analysis: Detectable Effect Size",
        subtitle = "What is the smallest OR this study could detect at 80% power?",
        x = "Effect Size (Odds Ratio)", y = "Power") +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **この図の読み方**: 赤線（80%）と曲線が交わる点が「この設計で信頼性をもって検出できる最小の効果量」です。それより小さい効果は、たとえ真に存在しても、このデータでは見逃す可能性が高いです。
@@ -5011,7 +5656,22 @@ ggplot(dat_bin, aes(x = factor(tie, labels = c("No tie (0)", "Tie (1)")))) +
   scale_fill_manual(values = c("0" = "#999999", "1" = "#E69F00")) +
   labs(title = sprintf("Outcome Distribution: Base Rate = %.1f%%", tie_rate * 100),
        x = "Outcome", y = "Count") +
-  theme_bw(base_size = 12, base_family = base_font)
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 #### ベースレートが低い場合の注意点

@@ -52,7 +52,7 @@ script.js
 # Local-only render outputs and diagnostics
 .Renviron
 *.log
-index.knit.md
+*.knit.md
 index.tex
 qa_*.png
 *.mojibake-backup

@@ -142,7 +142,22 @@ pacman::p_load(
   topicmodels, gt, DT, psych, janitor, tidytext,
   ggrepel, igraph, quanteda, udpipe, stopwords, here
 )
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 
 # この章は比較表が多いため、軽い結果表は静的に出力する
@@ -509,7 +524,22 @@ ggplot(outlier_demo, aes(x1, x2, color = outlier, shape = outlier)) +
   geom_point(size = 3, alpha = 0.8) +
   scale_color_manual(values = c(Normal = "#1B9E77", Outlier = "#D95F02")) +
   labs(color = "Status", shape = "Status") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **ステップ2: 判断**——外れ値がデータ入力エラーか、真に極端な観測かを確認します。
@@ -598,7 +628,22 @@ ggplot(moon_dat, aes(x, y, color = kmeans, shape = true_group)) +
   geom_point(size = 2, alpha = 0.7) +
   scale_color_brewer(palette = "Dark2") +
   labs(title = "k-means (k = 2)", color = "Cluster", shape = "True group") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### Ward法
@@ -612,7 +657,22 @@ ggplot(moon_dat, aes(x, y, color = ward, shape = true_group)) +
   geom_point(size = 2, alpha = 0.7) +
   scale_color_brewer(palette = "Dark2") +
   labs(title = "Ward (k = 2)", color = "Cluster", shape = "True group") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### DBSCAN
@@ -626,7 +686,22 @@ ggplot(moon_dat, aes(x, y, color = dbscan, shape = true_group)) +
   geom_point(size = 2, alpha = 0.7) +
   scale_color_brewer(palette = "Dark2") +
   labs(title = "DBSCAN (eps = 0.2, minPts = 5)", color = "Cluster", shape = "True group") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 :::
@@ -713,13 +788,43 @@ p1 <- ggplot(tibble(k = 1:6, WSS = wss_vals), aes(k, WSS)) +
   geom_vline(xintercept = 3, linetype = "dashed", color = "tomato") +
   scale_x_continuous(breaks = 1:6) +
   labs(title = "Elbow method", x = "k", y = "Total within SS") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 p2 <- ggplot(tibble(k = 2:6, Silhouette = sil_vals), aes(k, Silhouette)) +
   geom_line(color = "#D95F02", linewidth = 1) + geom_point(size = 2, color = "#D95F02") +
   geom_vline(xintercept = 3, linetype = "dashed", color = "tomato") +
   scale_x_continuous(breaks = 2:6) +
   labs(title = "Avg. silhouette width", x = "k", y = "Silhouette") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 patchwork::wrap_plots(p1, p2, ncol = 2)
 ```
 
@@ -923,7 +1028,22 @@ ggplot(kmeans_nstart_comp, aes(x = nstart, y = tot_withinss, fill = nstart)) +
   scale_fill_brewer(palette = "Set2") +
   labs(x = "nstart", y = "Total within-cluster SS") +
   guides(fill = "none") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -1096,7 +1216,22 @@ ggplot(dat_long, aes(x = value, fill = profile_true)) +
   facet_wrap(~ variable, scales = "free", ncol = 2) +
   scale_fill_brewer(palette = "Set2") +
   labs(x = NULL, y = "Density", fill = "True profile") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### 群別箱ひげ図
@@ -1112,7 +1247,22 @@ ggplot(dat_long, aes(x = profile_true, y = value, fill = profile_true)) +
   scale_fill_brewer(palette = "Set2") +
   labs(x = "True profile", y = NULL) +
   guides(fill = "none") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### 相関ヒートマップ
@@ -1129,6 +1279,21 @@ ggplot(cor_long, aes(x = Var1, y = Var2, fill = correlation)) +
   coord_equal() +
   labs(x = NULL, y = NULL, fill = "r") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 :::
@@ -1202,7 +1367,22 @@ bind_rows(raw_long, z_long) |>
   facet_wrap(~Scale, scales = "free_x") +
   scale_fill_brewer(palette = "Set2") +
   labs(x = "Value", y = "Density") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 #### 距離ヒートマップ（先頭20名）
@@ -1224,14 +1404,44 @@ heat_raw <- tibble(
   ggplot(aes(Col, Row, fill = Distance)) +
   geom_tile() + scale_fill_viridis_c() +
   labs(title = "Raw scale", x = "Learner", y = "Learner") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 heat_z <- tibble(
   Row = rep(1:20, each = 20), Col = rep(1:20, 20),
   Distance = as.vector(dist_z_20)) |>
   ggplot(aes(Col, Row, fill = Distance)) +
   geom_tile() + scale_fill_viridis_c() +
   labs(title = "z-standardized", x = "Learner", y = "Learner") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 wrap_plots(heat_raw, heat_z, ncol = 2)
 ```
 
@@ -1327,7 +1537,22 @@ pca_var_tbl |>
   geom_line(color = "#1F78B4", linewidth = 1) +
   geom_point(color = "#1F78B4", size = 2) +
   labs(x = NULL, y = "Variance explained") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### クラスタ解の比較（gt + 図）
@@ -1350,7 +1575,22 @@ ggplot(pca_space_plot, aes(PC1, PC2, color = cluster_original, shape = cluster_p
   geom_point(alpha = 0.75, size = 2) +
   scale_color_brewer(palette = "Dark2") +
   labs(color = "Original-space cluster", shape = "PCA2-space cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -1477,7 +1717,22 @@ pca_scale_var_tbl |>
   geom_point(size = 2) +
   scale_color_brewer(palette = "Dark2") +
   labs(x = NULL, y = "Variance explained", color = "Setting") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ```{r}
@@ -1490,7 +1745,22 @@ ggplot(pca_score_comp_tbl, aes(PC1, PC2, color = profile_true)) +
   facet_wrap(~ setting) +
   scale_color_brewer(palette = "Set2") +
   labs(color = "True profile") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -1545,7 +1815,22 @@ tibble(k = ks, wss = wss) |>
   geom_point(color = "#1B9E77", size = 2) +
   scale_x_continuous(breaks = ks) +
   labs(x = "Number of clusters (k)", y = "Total within-cluster SS") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **エルボー法の見方:** WSS（群内平方和）は $k$ が増えるほど単調に減少します。曲線が急激に下降した後に平坦化する「肘」の位置が候補です。肘の位置が曖昧な場合は、他の基準と併用して判断します。
@@ -1582,7 +1867,22 @@ sil_tbl |>
   geom_point(color = "#D95F02", size = 2) +
   scale_x_continuous(breaks = 2:8) +
   labs(x = "Number of clusters (k)", y = "Average silhouette") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **シルエットの見方:** 平均シルエット係数は、各観測が「自分のクラスタにどれだけ合っているか」を −1〜+1 で測った指標の平均です[@rousseeuw1987]。値が最大となる $k$ が最適候補です。@kaufman1990 の基準では、0.51–0.70 で "reasonable structure"、0.71–1.00 で "strong structure" とされます。
@@ -1610,7 +1910,22 @@ gap_tbl |>
   geom_errorbar(aes(ymin = gap - SE.sim, ymax = gap + SE.sim), width = 0.15) +
   scale_x_continuous(breaks = 1:8) +
   labs(x = "Number of clusters (k)", y = "Gap statistic") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **ギャップ統計量の見方:** ギャップ統計量は「実データの WSS が、ランダムデータ（帰無参照分布）と比べてどれだけ良いか」を測ります[@tibshirani2001]。@tibshirani2001 のルールでは、$\text{Gap}(k) \geq \text{Gap}(k+1) - \text{SE}_{k+1}$ を満たす最小の $k$ が推奨値です。エラーバーが重なっている $k$ 間では差が有意でないため、パーシモニー（節約原則）から小さい方を選びます[@hastie2009]。
@@ -1732,7 +2047,22 @@ sil_metric_tbl |>
   scale_color_brewer(palette = "Dark2") +
   scale_x_continuous(breaks = 2:8) +
   labs(x = "Number of clusters (k)", y = "Average silhouette", color = "Distance") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ```{r}
@@ -1748,7 +2078,22 @@ gap_curve_tbl |>
   scale_x_continuous(breaks = 1:8) +
   scale_color_brewer(palette = "Dark2") +
   labs(x = "Number of clusters (k)", y = "Gap statistic", color = "B") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### 診断ログ（DT）
@@ -1895,7 +2240,22 @@ ggplot(pca_scores, aes(PC1, PC2)) +
                            box.padding = 0.5) +
   scale_color_brewer(palette = "Dark2") +
   labs(color = "Cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 **Biplotの読み方:** 点は個々の学習者、矢印は変数の負荷量ベクトルを表します。矢印が同じ方向を指す変数は正の相関があり、直交する変数は独立的です。矢印の方向と各クラスタの位置を照合することで、「Cluster 1はvocabulary/grammar方向に高い」のような解釈が可能になります。
@@ -1913,7 +2273,22 @@ ggplot(cluster_profile_z, aes(x = variable, y = mean_z, group = cluster_km, colo
   geom_point(size = 2) +
   scale_color_brewer(palette = "Dark2") +
   labs(x = NULL, y = "Mean z-score", color = "Cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### 個別シルエット図
@@ -1932,6 +2307,21 @@ factoextra::fviz_silhouette(sil_km3, print.summary = FALSE) +
              linetype = 2, color = "red", linewidth = 0.6) +
   labs(title = NULL, y = "Silhouette width", x = "Observations (sorted)") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 ```
 
@@ -1950,7 +2340,22 @@ ggplot(cluster_size_tbl, aes(x = cluster_km, y = n, fill = cluster_km)) +
   scale_fill_brewer(palette = "Dark2") +
   labs(x = "Cluster", y = "Number of learners") +
   guides(fill = "none") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 クラスタサイズに極端な偏りがないか確認します。1つのクラスタが全体の5%未満の場合は、外れ値集団の可能性があるため慎重な解釈が必要です。
@@ -2021,7 +2426,22 @@ ggplot(dat_cluster, aes(x = cluster_km, y = final_exam, fill = cluster_km)) +
   scale_fill_brewer(palette = "Dark2") +
   labs(x = "k-means cluster", y = "Final exam score") +
   guides(fill = "none") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ### ANOVA + 効果量（gt）
@@ -2127,6 +2547,21 @@ ggplot(km_hc_long, aes(x = cluster_hc, y = cluster_km, fill = n)) +
   scale_fill_gradient(low = "grey95", high = "#1B9E77") +
   labs(x = "Ward cluster", y = "k-means cluster", fill = "n") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) +
   theme(panel.grid = element_blank())
 ```
 
@@ -2223,7 +2658,22 @@ hc_summary_tbl |>
   coord_flip() +
   scale_fill_brewer(palette = "Set2") +
   labs(x = "Setting", y = "Average silhouette", fill = "Distance") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -2365,7 +2815,22 @@ ggplot(stability_boot_tbl, aes(x = cluster, y = jaccard, fill = cluster)) +
   scale_fill_brewer(palette = "Set2") +
   labs(x = "Cluster", y = "Jaccard coefficient") +
   guides(fill = "none") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -2551,7 +3016,22 @@ ggplot(pcoa_gower_tbl, aes(PCoA1, PCoA2, color = cluster_gower, shape = learning
   geom_point(alpha = 0.75, size = 2) +
   scale_color_brewer(palette = "Dark2") +
   labs(color = "Gower cluster", shape = "Learning focus") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 PCoA（主座標分析）は Gower 距離行列を2次元に可視化する手法です[@legendre2012]（PCA のユークリッド距離版と考えてください）。同じ色のクラスタが空間的にまとまっており、形状（learning_focus）との対応も見てとれれば、カテゴリ変数を含む混合データクラスタリングが有効に機能していることが確認できます。
@@ -2706,7 +3186,22 @@ ggplot(text_pca, aes(PC1, PC2, color = cluster, label = doc_id)) +
   ggrepel::geom_text_repel(size = 3, max.overlaps = 50) +
   scale_color_brewer(palette = "Dark2") +
   labs(color = "Cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 PCA散布図では、同じ色の点（同じクラスタ）がまとまって配置されていれば、クラスタ間の分離が良好です。点が重なり合っている場合は、そのクラスタ間の語彙的な差異が小さいことを示唆します。
@@ -3062,7 +3557,22 @@ ggplot(lda_top_terms_tbl, aes(x = stats::reorder(term, beta), y = beta, fill = f
   facet_wrap(~ topic, scales = "free_y") +
   scale_fill_brewer(palette = "Set2") +
   labs(x = NULL, y = "Beta") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 LDA beta 棒グラフでは、各パネルが1つのトピックに対応します。パネルごとに上位語を見て「このトピックは何の話題か」をラベリングします。
@@ -3077,7 +3587,22 @@ ggplot(lsa_doc_tbl, aes(LSA1, LSA2, color = lda_topic, shape = cluster, label = 
   ggrepel::geom_text_repel(size = 3, max.overlaps = 30, show.legend = FALSE) +
   scale_color_brewer(palette = "Dark2") +
   labs(color = "LDA topic", shape = "k-means cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 LSA 散布図では、色（LDA トピック）と形状（k-means クラスタ）の両方を重ねて表示しています。色と形状が対応していれば、確率モデル（LDA）と距離ベース（k-means）が同じ文書グルーピングを見出していることが確認できます。
@@ -3263,7 +3788,22 @@ ggplot(transition_rate_tbl, aes(x = cluster_wave2, y = cluster_wave1, fill = pro
   geom_text(aes(label = sprintf("%.2f", prop)), size = 3.2) +
   scale_fill_gradient(low = "white", high = "#1B9E77") +
   labs(x = "Wave2 cluster", y = "Wave1 cluster", fill = "Proportion") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ヒートマップでは、対角線のセルが濃い緑色（高い割合）であれば安定、対角線外のセルが濃い場合はクラスタ間の移動が活発であることを視覚的に確認できます。
@@ -3281,7 +3821,22 @@ ggplot(wave_profile_tbl, aes(x = wave, y = mean_value, group = assigned_cluster,
   facet_wrap(~ metric, scales = "free_y") +
   scale_color_brewer(palette = "Dark2") +
   labs(x = NULL, y = "Mean", color = "Cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 プロフィール変化図では、各パネル（vocabulary, grammar, fluency, anxiety）でクラスタ間の平均が Wave1 → Wave2 でどう動いたかを確認します。線が平行ならクラスタ間の相対的な序列は維持されています。線が交差したり収束したりする場合は、特定のクラスタで大きな変化が生じたことを示します。
@@ -3416,7 +3971,22 @@ ggplot(essay_lex_long, aes(x = metric, y = value, group = learner_id, color = le
   facet_wrap(~ proficiency_band) +
   scale_color_brewer(palette = "Dark2") +
   labs(x = NULL, y = "Value", color = "Lexical cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 パネルごとに熟達度帯（初級・中級・上級）が分かれています。各線は1人の学習者の3指標プロフィールです。同じ色の線が似たパターンを描いていれば、クラスタリングが語彙使用スタイルの類型を適切に捉えていることを意味します。異なる熟達度帯で同じ色のクラスタが出現する場合は、語彙多様性が熟達度とは独立した次元であることを示唆しています。
@@ -3566,7 +4136,22 @@ ggplot(reading_features_tbl, aes(
     color = "Difficulty cluster",
     size = "Word count"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 散布図では、横軸（平均文長）と縦軸（平均語長）の空間にテキストを配置しています。右上に位置するテキストほど、文も語も長い＝難しいと推定されます。点の大きさは総語数を反映しています。同じ色のテキストが近くにまとまっていれば、クラスタリングが難易度を適切に区別していることを意味します。
@@ -3777,7 +4362,22 @@ louvain_summary_tbl |>
   geom_col(position = position_dodge(width = 0.7), width = 0.6, alpha = 0.85) +
   scale_fill_brewer(palette = "Set2") +
   labs(x = "Edge threshold", y = "Modularity", fill = "Weight scheme") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -3858,7 +4458,22 @@ ggplot() +
   ) +
   scale_color_brewer(palette = "Dark2") +
   labs(x = NULL, y = NULL, color = "Community", size = "Degree", linewidth = "Edge weight") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 :::
 
@@ -4129,7 +4744,22 @@ ggplot(test_profile_long, aes(x = metric, y = z_mean, group = test_cluster, colo
   geom_point(size = 2) +
   scale_color_brewer(palette = "Dark2") +
   labs(x = NULL, y = "Cluster mean (z)", color = "Test cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 z平均プロフィール図では、破線（z = 0）が全体平均です。各クラスタの線がどの指標で平均を上回り/下回るかを見ることで、クラスタの特徴を直感的に把握できます。線の形状が異なるクラスタは、質的に異なる学習者タイプを表しています。
@@ -4144,7 +4774,22 @@ ggplot(score_tbl, aes(x = theta_general, y = total_score, color = test_cluster))
   geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
   scale_color_brewer(palette = "Dark2") +
   labs(x = "Latent ability (theta)", y = "Total score", color = "Test cluster") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 theta（潜在能力）と総得点の散布図では、各クラスタの回帰直線の傾き・切片の違いに注目します。同じ theta でも総得点が異なるクラスタがあれば、下位領域のバランス（語彙に強い vs. 読解に強い）や反応時間パターンが得点に反映されていることを示唆します。

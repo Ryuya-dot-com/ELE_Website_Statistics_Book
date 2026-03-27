@@ -35,7 +35,22 @@ pacman::p_load(
   tidyverse, lmerTest, gt, DT, performance, sjPlot,
   effectsize, broom.mixed, patchwork, glue, psych)
 
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3"))
+theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ))
 theme_update(legend.position = "bottom")
 set.seed(2024)
 options(digits = 4)
@@ -182,7 +197,22 @@ ggplot(ctt_gt_combined, aes(x = Component, y = Percent, fill = Framework)) +
     title = "CTT = One Error Bucket vs G-theory = Multiple Error Buckets",
     x = NULL, y = "Proportion of Variance (%)", fill = "Framework"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(axis.text.x = element_text(angle = 20, hjust = 1))
 ```
 
@@ -484,7 +514,22 @@ bind_rows(crossed_layout, nested_layout) |>
     subtitle = "Crossed designs fill all cells; nested designs assign different raters per task",
     x = NULL, y = NULL
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(panel.grid = element_blank())
 ```
 
@@ -1213,7 +1258,22 @@ g_study_results |>
     title = "G-study: Variance Component Decomposition (p x t x r:t Design)",
     x = "Source", y = "Percent of total variance (%)"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 ```
 
@@ -1434,7 +1494,22 @@ ggplot(boot_long, aes(x = Variance)) +
                pivot_longer(c(lower, upper), values_to = "x"),
              aes(xintercept = x), linetype = "dashed", color = "red") +
   labs(x = "Variance Estimate", y = "Frequency") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 ブートストラップ分布のヒストグラムは、各分散成分の推定値のサンプリング変動を示す。赤い破線は 95% ブートストラップ信頼区間の上限・下限である。分布が対称（釣鐘型）であれば正規近似に基づくプロファイル法でも十分だが、分布が右に歪んでいる（特に分散成分が 0 に近い場合に顕著）場合は、ブートストラップ法がより正確な信頼区間を返す。Person 分散の分布が相対的に狭く、Residual の分布が広い場合、G study の結論は Person の推定に対してはロバストだが、残差の推定に対してはやや不確実であることを意味する。
@@ -1716,7 +1791,22 @@ ggplot(one_step_long, aes(x = Scenario, y = Value, fill = Coefficient)) +
     title = "+1 Step Design Comparison: Which Single Change Is Most Efficient?",
     x = NULL, y = "Reliability coefficient", fill = "Coefficient"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 ```{r}
@@ -1813,7 +1903,22 @@ ggplot(
     title = "D-study: Reliability by Number of Tasks x Raters",
     x = "Number of tasks", y = "Reliability coefficient", linetype = "Coefficient"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 折れ線グラフから、タスク数・評価者数の増加に伴う信頼性の向上パターンが読み取れる。曲線が平坦になる点（収穫逓減点）以降は、追加の投資に見合う改善が得られない。例えば、タスク 4 → 5 で G coefficientの改善が 0.02 未満であれば、5 番目のタスクを追加するコストは正当化しにくい。G coefficient（実線）と Phi coefficient（破線）の差は、課題・評価者の主効果（系統的な偏り）の影響を反映する。
@@ -1830,14 +1935,44 @@ plot_g <- ggplot(d_results_numeric, aes(x = TaskCount, y = RaterCount, fill = Ge
   geom_text(aes(label = sprintf("%.2f", Generalizability)), size = 3) +
   scale_fill_viridis_c(name = "G") +
   labs(title = "G coefficient", x = "Number of tasks", y = "Number of raters") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 
 plot_phi <- ggplot(d_results_numeric, aes(x = TaskCount, y = RaterCount, fill = Dependability)) +
   geom_tile(color = "white", linewidth = 0.4) +
   geom_text(aes(label = sprintf("%.2f", Dependability)), size = 3) +
   scale_fill_viridis_c(option = "C", name = "Phi") +
   labs(title = "Phi coefficient", x = "Number of tasks", y = "Number of raters") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 
 patchwork::wrap_plots(plot_g, plot_phi, ncol = 2)
 ```
@@ -1924,7 +2059,22 @@ ggplot(phi_feasible, aes(x = TaskCount, y = RaterCount, color = Dependability)) 
     title = paste0("Designs Meeting Phi >= ", phi_target, " (For Pass/Fail Decisions)"),
     x = "Number of tasks", y = "Number of raters"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 ::: {.callout-note}
@@ -1963,7 +2113,22 @@ cost_data |>
     title = "Diminishing Returns: Increasing Tasks with 4 Raters Fixed",
     x = "Number of tasks", y = "Reliability coefficient", color = "Coefficient"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 ### コスト制約つき設計選定
@@ -2037,7 +2202,22 @@ ggplot(budget_plot_data, aes(x = TotalCost, y = Dependability, color = Generaliz
     title = "Design Space Under Budget Constraint (Goal: Maximize Phi)",
     x = "Total cost", y = "Phi coefficient"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 この散布図は、予算制約のもとで達成可能な設計とその信頼性を示す。横軸がコスト、縦軸が Phi coefficientであり、予算上限の左側にある設計のみが実行可能である。実行可能な設計の中で最も高い Φ を返す設計が最適解となる。
@@ -2103,7 +2283,22 @@ ggplot(person_blup, aes(x = universe_hat, y = Person)) +
     x = "Estimated Universe Score",
     y = "Person"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 このフォレストプロットは、各受験者の推定 universe score（点）と 95% 信頼区間（横棒）を示す。赤い破線はカットスコア（5.5）を表す。信頼区間がカットスコアをまたぐ受験者（横棒が赤い線と重なる受験者）は、判定の不確実性が高い。
@@ -2478,7 +2673,22 @@ ggplot(
     title = "Multivariate G-study: Variance Components by Subtest",
     x = NULL, y = "Percent of total variance (%)", fill = "Source"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 #### 診断サマリー
@@ -2717,7 +2927,22 @@ ggplot(mv_d_long, aes(x = Scenario, y = Value, fill = Coefficient)) +
     title = "Multivariate D-study: Weighting and Reliability",
     x = NULL, y = "Reliability coefficient", fill = "Coefficient"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 ```{r}
@@ -2812,7 +3037,22 @@ mv_sim_long |>
     title = "Multivariate D-study (Equal Weights)",
     x = "Baseline number of items", y = "Reliability coefficient", color = "Coefficient"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom")
 ```
 
 ### 条件付き測定の標準誤差
@@ -2979,7 +3219,22 @@ ggplot(d_results_testlet, aes(x = factor(n_passages), y = factor(n_items), fill 
     y = "Items per Passage",
     fill = "G"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3")
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
 ```
 
 このヒートマップから、パッセージ数と項目数の増加が G coefficient にどのように影響するかが一目で分かる。一般に、**パッセージ数の増加は項目数の増加よりも信頼性改善に寄与する**。これは、パッセージ間の変動（$\sigma^2_t$ と $\sigma^2_{pt}$）がパッセージ数でのみ平均化されるためである。例えば、5パッセージ×5項目（計25問）と4パッセージ×6項目（計24問）では、同程度の総項目数でもパッセージ数が多い前者の方が G coefficient が高い傾向がある。
@@ -3510,7 +3765,22 @@ icc_results |>
   scale_fill_manual(values = c("Person" = "#4e79a7", "Task" = "#f28e2b", "Rater" = "#e15759", "Person:Task" = "#76b7b2")) +
   scale_y_continuous(limits = c(0, max(icc_results$ICC) * 1.2)) +
   labs(title = "ICC: Contribution of Each Component", x = NULL, y = "ICC") +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") + theme(legend.position = "bottom") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  ) + theme(legend.position = "bottom") +
   theme(legend.position = "none")
 ```
 
