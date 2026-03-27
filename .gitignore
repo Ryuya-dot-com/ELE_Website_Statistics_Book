@@ -46,3 +46,14 @@ audio_summary.csv
 Rplots.pdf
 search.json
 script.js
+
+**/*.quarto_ipynb
+
+# Local-only render outputs and diagnostics
+.Renviron
+*.log
+*.knit.md
+index.tex
+qa_*.png
+*.mojibake-backup
+*.bak_*

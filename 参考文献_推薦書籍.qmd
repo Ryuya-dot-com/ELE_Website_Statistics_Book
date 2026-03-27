@@ -3,6 +3,19 @@ title: "参考文献・推薦書籍"
 bibliography: references_recommended.bib
 ---
 
+```{r}
+#| label: required-packages
+#| eval: false
+
+required_packages <- character(0)
+
+missing_packages <- setdiff(required_packages, rownames(installed.packages()))
+if (length(missing_packages) > 0) {
+  install.packages(missing_packages, repos = "https://cloud.r-project.org")
+}
+
+# このファイルでは追加パッケージを使用しません。
+```
 
 こちらのページでは、Rを使った統計モデリングを学ぶための書籍、チュートリアル論文、オンライン教材をまとめています。単なる「本の一覧」ではなく、「まず全体像をつかむ」「必要になった手法を実装する」「理論的背景を補う」という順番で使えるように整理しています。とくにチュートリアル論文は、特定の分析を実際に行う直前に読む資料として位置づけています。
 

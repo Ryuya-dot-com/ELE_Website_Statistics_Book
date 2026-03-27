@@ -56,6 +56,8 @@ mkdir -p "$OUTPUT_DIR"
 echo "[render_book_html] Rendering HTML to: $OUTPUT_DIR"
 (
   cd "$PROJECT_ROOT"
+  echo "[render_book_html] Repairing cached HTML widget dependency paths"
+  Rscript _scripts/fix_cached_htmlwidget_paths.R "$PROJECT_ROOT"
   if [[ ${#QUARTO_ARGS[@]} -gt 0 ]]; then
     /usr/local/bin/quarto render "${QUARTO_ARGS[@]}" --to html --output-dir "$OUTPUT_DIR"
   else

@@ -73,7 +73,9 @@ format:
   html:
     theme: journal
     css: custom.css
-    include-after-body: plot-zoom.html
+    include-after-body:
+      - plot-zoom.html
+      - layout-controls.html
     grid:
       sidebar-width: 280px
       body-width: 1100px
@@ -89,7 +91,7 @@ format:
     code-summary: "コード"
     code-tools: true
     code-copy: hover
-    code-overflow: wrap
+    code-overflow: scroll
     fontsize: 1.1em
     linestretch: 1.8
     mainfont: "Noto Serif JP"

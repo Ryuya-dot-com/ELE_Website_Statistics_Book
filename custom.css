@@ -480,6 +480,37 @@ main.content .anchored .anchorjs-link:hover {
   color: var(--muted-2);
 }
 
+.sidebar-desktop-toggle {
+  position: fixed;
+  top: 5rem;
+  z-index: 1030;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(141, 152, 164, 0.7);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--accent-strong);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(36, 48, 58, 0.1);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sidebar-desktop-toggle:hover,
+.sidebar-desktop-toggle:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: 0 12px 28px rgba(36, 48, 58, 0.14);
+}
+
+.sidebar-desktop-toggle[hidden] {
+  display: none;
+}
+
 /* 右TOC */
 #quarto-margin-sidebar {
   color: var(--muted);
@@ -646,10 +677,15 @@ div.sourceCode,
 
 div.sourceCode {
   margin: 0.25rem 0 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 pre.sourceCode,
+pre > code.sourceCode,
+.sourceCode pre > code.sourceCode,
+.sourceCode pre code,
 .cell-output-stdout pre,
 .cell-output-stderr pre {
   margin: 0;
@@ -659,6 +695,21 @@ pre.sourceCode,
   background: transparent !important;
   border: 0;
   border-radius: 0;
+  white-space: pre !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  min-width: max-content;
+}
+
+pre > code.sourceCode,
+.sourceCode pre > code.sourceCode,
+.sourceCode pre code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  white-space: inherit !important;
+  overflow-wrap: inherit !important;
+  word-break: inherit !important;
 }
 
 .cell-output {
@@ -748,6 +799,11 @@ details.code-fold > .sourceCode,
 details.code-fold > .cell-output,
 details.code-fold > .cell {
   margin: 0;
+}
+
+details.code-fold > .sourceCode {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* callout */
@@ -1096,5 +1152,40 @@ a.footnote-ref:focus {
 
   table:not(.gt_table) {
     font-size: 0.92rem;
+  }
+}
+
+@media (min-width: 992px) {
+  body.sidebar-collapsed #quarto-sidebar {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border-right: 0 !important;
+    opacity: 0;
+    overflow: hidden !important;
+    pointer-events: none;
+  }
+
+  body.sidebar-collapsed #quarto-sidebar > * {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  body.sidebar-collapsed #quarto-sidebar-glass {
+    display: none !important;
+  }
+
+  body.sidebar-collapsed #quarto-document-content,
+  body.sidebar-collapsed .page-navigation {
+    grid-column: page-start / body-content-end !important;
+  }
+
+  body.sidebar-collapsed main.content#quarto-document-content > p,
+  body.sidebar-collapsed main.content#quarto-document-content > ul,
+  body.sidebar-collapsed main.content#quarto-document-content > ol,
+  body.sidebar-collapsed main.content#quarto-document-content > blockquote,
+  body.sidebar-collapsed main.content#quarto-document-content > dl,
+  body.sidebar-collapsed #quarto-document-content > p:first-of-type {
+    max-width: 60em;
   }
 }
