@@ -312,9 +312,7 @@ tibble(
     moments::kurtosis(as.numeric(fluency_ts))
   ), 2)
 ) |>
-  gt() |>
-  tab_header(title = "Descriptive statistics of simulated datasets") |>
-  tab_footnote("Skewness: 0に近いほど左右対称。正なら右裾が長い。Kurtosis: 3が正規分布の基準値。")
+  knitr::kable(caption = "Descriptive statistics of simulated datasets")
 ```
 
 **表の読み方**：Skewness（歪度）が0に近ければ分布は左右対称です。正の値は右裾が長い（高得点方向に外れ値がある）ことを示します。Kurtosis（尖度）は3が正規分布の基準値で、3より大きければ裾が重い（極端な値が出やすい）分布です。
@@ -540,8 +538,7 @@ tibble(
     ifelse(adf_diff$p.value < 0.05, "Stationary", "Non-stationary (unit root)")
   )
 ) |>
-  gt() |>
-  tab_header(title = "ADF test: raw vs. differenced vocabulary scores")
+  knitr::kable(caption = "ADF test: raw vs. differenced vocabulary scores")
 ```
 
 この例では、生データはトレンドのため非定常と判断されやすく、1階差分後の系列は定常に近づくはずです。したがって、この表では「差分前後で結論がどう変わったか」を最初に確認してください。
@@ -577,8 +574,7 @@ tibble(
     ifelse(kpss_raw@teststat > kpss_raw@cval[2], "Reject H0 → Non-stationary", "Fail to reject → Stationary")
   )
 ) |>
-  gt() |>
-  tab_header(title = "ADF vs KPSS: complementary stationarity tests")
+  knitr::kable(caption = "ADF vs KPSS: complementary stationarity tests")
 
 # ndiffs() で必要な差分回数を自動判定
 ndiffs_kpss <- forecast::ndiffs(vocab_ts, test = "kpss")
@@ -940,9 +936,8 @@ tibble(
   statistic = unname(arima_coefs) / arima_se,
   p.value   = 2 * pnorm(-abs(unname(arima_coefs) / arima_se))
 ) |>
-  gt() |>
-  tab_header(title = "ARIMA(1,1,0) coefficients") |>
-  fmt_number(columns = where(is.numeric), decimals = 4)
+  mutate(across(where(is.numeric), ~ round(.x, 4))) |>
+  knitr::kable(caption = "ARIMA(1,1,0) coefficients")
 ```
 
 #### モデル適合度
@@ -960,9 +955,8 @@ tibble(
     fit_vocab_manual$bic
   )
 ) |>
-  gt() |>
-  tab_header(title = "ARIMA(1,1,0) model fit") |>
-  fmt_number(columns = Value, decimals = 2)
+  mutate(Value = round(Value, 2)) |>
+  knitr::kable(caption = "ARIMA(1,1,0) model fit")
 ```
 
 #### 出力の読み方
@@ -1061,9 +1055,8 @@ tibble(
   statistic = unname(auto_coefs) / auto_se,
   p.value   = 2 * pnorm(-abs(unname(auto_coefs) / auto_se))
 ) |>
-  gt() |>
-  tab_header(title = "auto.arima(): selected model coefficients") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "auto.arima(): selected model coefficients")
 
 # モデルの情報量基準
 tibble(
@@ -1356,8 +1349,7 @@ tibble(
   Model = c("auto.arima", "ets"),
   MSE = round(c(mean(e_arima^2, na.rm = TRUE), mean(e_ets^2, na.rm = TRUE)), 2)
 ) |>
-  gt() |>
-  tab_header(title = "tsCV: 1-step-ahead MSE comparison")
+  knitr::kable(caption = "tsCV: 1-step-ahead MSE comparison")
 
 tscv_tbl <- tibble(
   Time = seq_along(fluency_ts),
@@ -1469,8 +1461,7 @@ tibble(
     "自己相関をモデルに組み込み済み"
   )
 ) |>
-  gt() |>
-  tab_header(title = "OLS vs ARIMAX: standard errors comparison")
+  knitr::kable(caption = "OLS vs ARIMAX: standard errors comparison")
 ```
 
 ::: {.callout-warning}
@@ -1556,9 +1547,8 @@ tibble(
   statistic = unname(its_coefs) / its_se,
   p.value   = 2 * pnorm(-abs(unname(its_coefs) / its_se))
 ) |>
-  gt() |>
-  tab_header(title = "ARIMAX: Interrupted Time Series") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "ARIMAX: Interrupted Time Series")
 ```
 
 `step` 係数が介入直後の即座の水準変化、`ramp` 係数が介入後の月あたりの追加的変化を表します。95% CI が0を含まなければ統計的に有意です。
@@ -1607,9 +1597,8 @@ its_results <- tibble(
 )
 
 its_results |>
-  gt() |>
-  tab_header(title = "ITS results: intervention effects on TOEFL scores") |>
-  cols_label(CI_lower = "95% CI lower", CI_upper = "95% CI upper")
+  rename(`95% CI lower` = CI_lower, `95% CI upper` = CI_upper) |>
+  knitr::kable(caption = "ITS results: intervention effects on TOEFL scores")
 ```
 
 #### 結果の読み方
@@ -1676,8 +1665,7 @@ tibble(
     mean(effect_trajectory[post_idx], na.rm = TRUE)
   ), 2)
 ) |>
-  gt() |>
-  tab_header(title = "ITS effect size summary")
+  knitr::kable(caption = "ITS effect size summary")
 
 # 効果量の時間推移
 tibble(Month = post_idx, d = effect_trajectory[post_idx]) |>
@@ -1719,16 +1707,15 @@ autoplot(fc_its) +
 bp <- strucchange::breakpoints(as.numeric(toefl_ts) ~ 1)
 bp_summary <- summary(bp)
 bp_rss <- bp_summary$RSS
-# RSS ???????????????????????????????
+# RSS が行列で返る場合だけ表として整形する
 bp_rss_note <- NULL
 if (is.matrix(bp_rss)) {
   bp_df <- as.data.frame(bp_rss)
   bp_df$n_breaks <- 0:(nrow(bp_df) - 1)
   bp_df |>
     dplyr::select(n_breaks, everything()) |>
-    gt() |>
-    tab_header(title = "Breakpoint Analysis: Model Comparison") |>
-    fmt_number(columns = where(is.numeric), decimals = 2)
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+    knitr::kable(caption = "Breakpoint Analysis: Model Comparison")
 } else {
   bp_rss_note <- "RSS table is not available in this output format; inspect `plot(bp)` and `breakpoints(bp)` directly."
 }
@@ -1898,12 +1885,14 @@ tb_params <- tibble(
   )
 )
 tb_params |>
-  gt() |>
-  tab_header(title = "TBATS model parameters") |>
-  tab_footnote(
-    footnote = "λ = 1 means no Box-Cox transformation was applied.",
-    locations = cells_body(columns = Parameter, rows = Parameter == "Box-Cox λ")
-  )
+  mutate(
+    Parameter = if_else(
+      Parameter == "Box-Cox λ",
+      "Box-Cox λ (1 = no transformation)",
+      Parameter
+    )
+  ) |>
+  knitr::kable(caption = "TBATS model parameters")
 
 tb_comp <- tbats.components(fit_tb)
 tb_comp_tbl <- as_tibble(tb_comp) |>
@@ -1975,14 +1964,11 @@ tibble(
   AIC   = c(fit_tb$AIC, fit_arima_fluency$aic),
   AICc  = c(NA_real_, fit_arima_fluency$aicc)
 ) |>
-  gt() |>
-  tab_header(title = "TBATS vs. ARIMA: model comparison") |>
-  fmt_number(columns = where(is.numeric), decimals = 2) |>
-  sub_missing(missing_text = "—") |>
-  tab_footnote(
-    footnote = "TBATS uses AIC; ARIMA uses AICc. Direct comparison is approximate.",
-    locations = cells_column_labels(columns = AIC)
-  )
+  mutate(
+    AIC = sprintf("%.2f", AIC),
+    AICc = ifelse(is.na(AICc), "—", sprintf("%.2f", AICc))
+  ) |>
+  knitr::kable(caption = "TBATS vs. ARIMA: model comparison")
 
 bind_rows(
   tibble(
@@ -2012,6 +1998,8 @@ bind_rows(
     color = ""
   )
 ```
+
+TBATS は AIC、ARIMA は AICc を出力するため、この比較は近似的な目安として読みます。
 
 この比較図では、将来10週に限った予測中心線の違いを見ます。TBATS と ARIMA の線がほぼ重なるなら、複雑な季節構造を明示しても予測は大きく変わっていません。逆に、周期の山谷や傾きの出方が明確に違うなら、系列の季節構造をどちらがより自然に表しているかを検討する余地があります。
 
@@ -2132,15 +2120,13 @@ fc_tbl <- fc_raw |>
   )
 
 vocab_features |>
-  gt() |>
-  tab_header(title = "Feature summary from feasts::feat_stl()") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Feature summary from feasts::feat_stl()")
 
 fit_glance |>
   dplyr::select(.model, sigma2, AIC, AICc, BIC, MSE, AMSE, MAE) |>
-  gt() |>
-  tab_header(title = "Model summary from glance()") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Model summary from glance()")
 
 ggplot() +
   geom_line(data = vocab_tbl, aes(x = index, y = value), color = "black", linewidth = 0.8) +

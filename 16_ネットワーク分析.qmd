@@ -387,8 +387,6 @@ ggraph(as_tbl_graph(g_toy), layout = "stress") +
 
 **パイプ演算子について**: 本章では、R 4.1 以降で利用できるネイティブパイプ `|>` を用いる。`dplyr` や `tidygraph` のコードも `|>` で一貫して記述できるため、学習者が別のパイプ演算子を追加で覚えなくても読み進められる。書籍やウェブ記事では `%>%` を使った例も多いが、本章では混乱を避けるため `|>` に統一する。
 
-**表の使い分け**: 本章では、定義や判断基準のように値が固定された表は Markdown 表で示し、シミュレーションやモデル推定から得られた結果表だけを `gt` で出力する。これにより、「理解すべき概念」と「今回のデータで得られた結果」を視覚的に区別しやすくする。
-
 ## 例題データ: 協働ネットワークのシミュレーション
 
 以下のシナリオを想定してデータを生成する。
@@ -454,14 +452,12 @@ write.csv(edges, "data/network/edges_collaboration.csv", row.names = FALSE)
 nodes |>
   dplyr::select(-prof_num) |>
   slice_head(n = 8) |>
-  gt::gt() |>
-  tab_header(title = "ノードデータ（学習者属性）の先頭8行")
+  knitr::kable(caption = "ノードデータ（学習者属性）の先頭8行")
 
 edges |>
   slice_head(n = 8) |>
-  gt::gt() |>
-  tab_header(title = "エッジデータ（協働関係）の先頭8行") |>
-  fmt_number(columns = weight, decimals = 0)
+  mutate(weight = round(weight, 0)) |>
+  knitr::kable(caption = "エッジデータ（協働関係）の先頭8行")
 ```
 
 `nodes` と `edges` は役割が異なる。`nodes` は「誰がいるか」を表す属性表であり、`edges` は「誰と誰が結ばれているか」を表す関係表である。ここで、`nodes` の1行が1学習者、`edges` の1行が1ペアの関係であることを先に確認しておくと、その後の `graph_from_data_frame()` が理解しやすい。
@@ -501,8 +497,7 @@ tibble(
     igraph::components(g)$no
   )
 ) |>
-  gt::gt() |>
-  tab_header(title = "構築したグラフの概要")
+  knitr::kable(caption = "構築したグラフの概要")
 ```
 
 ## 可視化（ggraph）
@@ -880,8 +875,7 @@ graph_stats <- tibble(
 )
 
 graph_stats |>
-  gt::gt() |>
-  tab_header(title = "ネットワーク全体の記述統計")
+  knitr::kable(caption = "ネットワーク全体の記述統計")
 ```
 
 最初はすべての指標を同時に見ようとせず、`密度`、`連結成分数`、`推移性` の3つから読むとよい。密度は交流の総量、連結成分数は断片化、推移性は小グループ化の強さを表すため、教室ネットワークの全体像を最短で把握できる。
@@ -963,9 +957,8 @@ node_stats <- tibble(
 #| label: node-centrality-gt
 node_stats |>
   slice_head(n = 10) |>
-  gt::gt() |>
-  tab_header(title = "中心性上位10名（strengthでソート）") |>
-  fmt_number(columns = c(baseline_score, degree, strength, betweenness, closeness_harmonic, eigen), decimals = 3)
+  mutate(across(c(baseline_score, degree, strength, betweenness, closeness_harmonic, eigen), ~ round(.x, 3))) |>
+  knitr::kable(caption = "中心性上位10名（strengthでソート）")
 ```
 
 **解釈の順序**:
@@ -1241,9 +1234,7 @@ algo_comparison <- tibble(
 )
 
 algo_comparison |>
-  gt::gt() |>
-  tab_header(title = "コミュニティ検出アルゴリズムの比較") |>
-  tab_source_note("Louvain: Blondel et al. (2008), Leiden: Traag et al. (2019), Walktrap: Pons & Latapy (2005)")
+  knitr::kable(caption = "コミュニティ検出アルゴリズムの比較")
 ```
 
 **アルゴリズムの使い分け**:
@@ -1251,6 +1242,8 @@ algo_comparison |>
 - **Louvain**: 高速で、まず全体像をつかみたいときの標準的な出発点。
 - **Leiden**: Louvain を改良し、連結性の悪いコミュニティを避けやすい。
 - **Walktrap**: ランダムウォークに基づき、小規模ネットワークの比較に向く。
+
+文献対応は、Louvain = Blondel et al. (2008)、Leiden = Traag et al. (2019)、Walktrap = Pons & Latapy (2005) と整理して読む。
 
 ```{r}
 #| eval: true
@@ -1338,8 +1331,7 @@ community_validation <- tibble(
 )
 
 community_validation |>
-  gt::gt() |>
-  tab_header(title = "コミュニティ検出の外部妥当性サマリー")
+  knitr::kable(caption = "コミュニティ検出の外部妥当性サマリー")
 ```
 
 ```{r}
@@ -1463,9 +1455,8 @@ community_centrality |>
   dplyr::select(community, id, class, strength, betweenness, eigen) |>
   ungroup() |>
   arrange(community, desc(strength)) |>
-  gt::gt() |>
-  tab_header(title = "各コミュニティ内のハブ学習者（上位3名）") |>
-  fmt_number(columns = c(strength, betweenness, eigen), decimals = 3)
+  mutate(across(c(strength, betweenness, eigen), ~ round(.x, 3))) |>
+  knitr::kable(caption = "各コミュニティ内のハブ学習者（上位3名）")
 ```
 
 コミュニティ内でstrengthが突出して高い学習者は、そのサブグループの情報結節点として機能している可能性が高い。betweennessが同時に高い場合は、他コミュニティとの橋渡し役も兼ねている。
@@ -1532,9 +1523,8 @@ dir_stats <- tibble(
 
 dir_stats |>
   slice_head(n = 10) |>
-  gt::gt() |>
-  tab_header(title = "有向ネットワーク中心性: 上位10名（in-degreeでソート）") |>
-  fmt_number(columns = c(pagerank, authority, hub), decimals = 3)
+  mutate(across(c(pagerank, authority, hub), ~ round(.x, 3))) |>
+  knitr::kable(caption = "有向ネットワーク中心性: 上位10名（in-degreeでソート）")
 ```
 
 ```{r}
@@ -1707,8 +1697,7 @@ tibble(
   Value = c(network::network.size(g_net), network::network.edgecount(g_net),
             network::is.directed(g_net), network::is.bipartite(g_net))
 ) |>
-  gt::gt() |>
-  tab_header(title = "Network Summary")
+  knitr::kable(caption = "Network Summary")
 ```
 
 ```{r}
@@ -1745,8 +1734,7 @@ ergm_tbl <- tibble(
 )
 
 ergm_tbl |>
-  gt::gt() |>
-  tab_header(title = "ERGM推定結果")
+  knitr::kable(caption = "ERGM推定結果")
 ```
 
 #### フォレストプロット（係数の視覚的比較）
@@ -1815,8 +1803,7 @@ ergm_or <- tibble(
 )
 
 ergm_or |>
-  gt::gt() |>
-  tab_header(title = "ERGM推定結果: オッズ比への変換")
+  knitr::kable(caption = "ERGM推定結果: オッズ比への変換")
 ```
 
 ERGMの係数はlog-oddsとして解釈する。以下のガイドを参照されたい。
@@ -1914,8 +1901,7 @@ ergm_compare_tbl <- tibble(
   mutate(across(c(AIC, BIC, logLik), ~ round(.x, 2)))
 
 ergm_compare_tbl |>
-  gt::gt() |>
-  tab_header(title = "ERGM Model Comparison")
+  knitr::kable(caption = "ERGM Model Comparison")
 ```
 
 ```{r}
@@ -1927,8 +1913,7 @@ ergm_anova_tbl <- anova(ergm_fit_edges, ergm_fit_homophily, ergm_fit) |>
   as_tibble()
 
 ergm_anova_tbl |>
-  gt::gt() |>
-  tab_header(title = "Nested ERGM Comparison (anova)")
+  knitr::kable(caption = "Nested ERGM Comparison (anova)")
 ```
 
 **比較の読み方**:
@@ -1986,8 +1971,7 @@ qap_summary <- tibble(
 )
 
 qap_summary |>
-  gt::gt() |>
-  tab_header(title = "QAP相関の要約")
+  knitr::kable(caption = "QAP相関の要約")
 ```
 
 ```{r}
@@ -2064,13 +2048,10 @@ mrqap_table <- tibble(
   )
 
 mrqap_table |>
-  gt::gt() |>
-  tab_header(
-    title = "MRQAP回帰結果",
-    subtitle = paste0("置換回数: 2000, 目的変数: 協働回数")
-  ) |>
-  tab_source_note("p値は片側検定。Same Class は右側（正の効果）、Proficiency Gap は左側（負の効果）を検定。")
+  knitr::kable(caption = "MRQAP回帰結果")
 ```
+
+置換回数は 2000、目的変数は協働回数である。p値は片側検定として読み、Same Class は右側（正の効果）、Proficiency Gap は左側（負の効果）を検定している。
 
 ```{r}
 #| eval: true
@@ -2156,9 +2137,8 @@ analysis_df <- node_stats |>
 
 m_gain <- lm(gain ~ scale(baseline_score) + scale(strength) + scale(betweenness) + class, data = analysis_df)
 broom::tidy(m_gain, conf.int = TRUE) |>
-  gt::gt() |>
-  tab_header(title = "OLS: Network Centrality → Learning Gain") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "OLS: Network Centrality → Learning Gain")
 ```
 
 ```{r}
@@ -2185,9 +2165,8 @@ par(mfrow = c(1, 1))
 car::vif(m_gain) |>
   as.data.frame() |>
   tibble::rownames_to_column("Term") |>
-  gt::gt() |>
-  tab_header(title = "VIF (Variance Inflation Factor)") |>
-  fmt_number(columns = where(is.numeric), decimals = 2)
+  mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(caption = "VIF (Variance Inflation Factor)")
 ```
 
 この節では、回帰係数そのものよりも「ネットワーク指標を通常の個票回帰に入れると何が起きるか」を理解することが目的である。したがって、係数の有意性だけでなく、診断図と VIF を見て、通常の回帰の前提がどこまで満たされているかを確認することが重要になる。
@@ -2224,18 +2203,16 @@ m_abroad <- lm(gain ~ pre_score + network_size + prop_l2_contacts + network_dens
 
 ego_data |>
   slice_head(n = 8) |>
-  gt::gt() |>
-  tab_header(title = "留学ネットワークデータ（シミュレーション）の先頭8行") |>
-  fmt_number(columns = c(prop_l2_contacts, network_density, gain), decimals = 2)
+  mutate(across(c(prop_l2_contacts, network_density, gain), ~ round(.x, 2))) |>
+  knitr::kable(caption = "留学ネットワークデータ（シミュレーション）の先頭8行")
 ```
 
 ```{r}
 #| eval: true
 #| label: sla-study-abroad-results
 broom::tidy(m_abroad, conf.int = TRUE) |>
-  gt::gt() |>
-  tab_header(title = "OLS: Study Abroad Network → L2 Gain") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "OLS: Study Abroad Network → L2 Gain")
 ```
 
 このシミュレーションでは、L2話者との接触割合（`prop_l2_contacts`）が熟達度の伸びの主要な予測子となっている。これは @isbell2024 の知見――ネットワークの次数よりもL2使用の質（特にL2話者との接触比率）が重要である――と整合的な結果である。
@@ -2261,9 +2238,8 @@ wtc_data <- node_stats |>
 
 m_wtc <- lm(wtc ~ scale(strength) + scale(betweenness) + class, data = wtc_data)
 broom::tidy(m_wtc, conf.int = TRUE) |>
-  gt::gt() |>
-  tab_header(title = "OLS: Network Centrality → WTC") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "OLS: Network Centrality → WTC")
 ```
 
 ### ピア評価ネットワーク
@@ -2307,8 +2283,7 @@ tibble(
   項目 = c("ノード数", "エッジ数（評価件数）", "互恵性"),
   値 = c(vcount(g_pa), ecount(g_pa), round(reciprocity(g_pa), 3))
 ) |>
-  gt::gt() |>
-  tab_header(title = "ピア評価ネットワークの概要")
+  knitr::kable(caption = "ピア評価ネットワークの概要")
 ```
 
 互恵性（reciprocity）は、「AがBを評価し、かつBもAを評価している」ペアの割合を示す。ランダムな割り当てでは互恵性は低く、自発的な選択では高くなる傾向がある。
@@ -2335,9 +2310,8 @@ pa_stats <- tibble(
 pa_stats |>
   arrange(desc(authority)) |>
   slice_head(n = 10) |>
-  gt::gt() |>
-  tab_header(title = "ピア評価ネットワーク: Authority上位10名") |>
-  fmt_number(columns = c(writing_pre, mean_score_received, hub, authority), decimals = 3)
+  mutate(across(c(writing_pre, mean_score_received, hub, authority), ~ round(.x, 3))) |>
+  knitr::kable(caption = "ピア評価ネットワーク: Authority上位10名")
 ```
 
 ```{r}
@@ -2376,9 +2350,8 @@ ggraph(as_tbl_graph(g_pa), layout = "fr") +
 m_pa <- lm(mean_score_received ~ scale(writing_pre) + scale(indegree) + proficiency,
            data = pa_stats)
 broom::tidy(m_pa, conf.int = TRUE) |>
-  gt::gt() |>
-  tab_header(title = "OLS: Peer Assessment Network → Mean Score Received") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "OLS: Peer Assessment Network → Mean Score Received")
 ```
 
 **ピア評価ネットワークの研究への示唆**:
@@ -3022,8 +2995,7 @@ sensitivity_results <- lapply(thresholds, function(thr) {
 }) |> bind_rows()
 
 sensitivity_results |>
-  gt::gt() |>
-  tab_header(title = "エッジ重みしきい値別のネットワーク指標")
+  knitr::kable(caption = "エッジ重みしきい値別のネットワーク指標")
 ```
 
 この表は「どの値が一番よいか」を選ぶためではなく、**しきい値を動かしたときに結論がどれだけ揺れるか**を見るために使う。密度や連結成分数が急変するなら、エッジ定義に強く依存した結果だと判断すべきである。
@@ -3110,8 +3082,7 @@ missing_comparison <- tibble(
 )
 
 missing_comparison |>
-  gt::gt() |>
-  tab_header(title = "欠測ノード（10%除去）の影響")
+  knitr::kable(caption = "欠測ノード（10%除去）の影響")
 ```
 
 この表では、除去後に密度や推移性がどの程度変わるかを見る。値がほとんど変わらなければ、少数の欠測で全体構造は崩れにくい。逆に連結成分数が増えたり密度が大きく落ちたりするなら、そのネットワークは欠測に敏感である。

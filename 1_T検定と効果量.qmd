@@ -105,6 +105,7 @@ set.seed(2024)
 
 - `tidyverse`: データ生成、整形、可視化、本章全体のパイプラインの共通基盤。
 - `effectsize`: Cohen's *d*、Hedges' *g* などの効果量を一貫して算出する。
+- `gt`: 計算結果と要約統計の表を整形する。
 - `car` / `brunnermunzel`: 前提確認やロバストな 2 群比較で補助的に使う。
 - `compute.es` / `forcats` / `purrr` / `scales`: 効果量の補助計算、因子処理、反復処理、図表整形に使う。
 
@@ -138,12 +139,18 @@ participant_tbl <- tibble(
   )
 )
 
-knitr::kable(
-  participant_tbl |>
-    count(Treatment),
-  caption = "各群の参加者数"
-)
+participant_count_tbl <- participant_tbl |>
+  count(Treatment)
+
+invisible(NULL)
 ```
+
+| Treatment | n |
+|:--|--:|
+| Glossing | 25 |
+| Writing | 25 |
+
+: 各群の参加者数
 
 この時点では、各参加者に Treatment が 1 つだけ割り当てられています。次に、その割り当てに基づいて各項目の得点を作ります。
 
@@ -183,12 +190,28 @@ dat <- tidyr::expand_grid(
 ```{r}
 #| eval: true
 #| label: show-data
-knitr::kable(
-  dat |>
-    slice_head(n = 12),
-  caption = "生データの先頭 12 行"
-)
+data_head_tbl <- dat |>
+  slice_head(n = 12)
+
+invisible(NULL)
 ```
+
+| Participant | Item | Test | Time | Treatment | Score |
+|:--|--:|:--|:--|:--|--:|
+| 1 | 1 | Recall | Immediate | Glossing | 1 |
+| 1 | 1 | Recall | Delayed | Glossing | 1 |
+| 1 | 1 | Recognition | Immediate | Glossing | 1 |
+| 1 | 1 | Recognition | Delayed | Glossing | 1 |
+| 1 | 2 | Recall | Immediate | Glossing | 1 |
+| 1 | 2 | Recall | Delayed | Glossing | 0 |
+| 1 | 2 | Recognition | Immediate | Glossing | 0 |
+| 1 | 2 | Recognition | Delayed | Glossing | 0 |
+| 1 | 3 | Recall | Immediate | Glossing | 1 |
+| 1 | 3 | Recall | Delayed | Glossing | 0 |
+| 1 | 3 | Recognition | Immediate | Glossing | 0 |
+| 1 | 3 | Recognition | Delayed | Glossing | 0 |
+
+: 生データの先頭 12 行
 
 t 検定や ANOVA では、目的変数は連続値として扱える形になっている必要があります。そこで、参加者ごと・条件ごとにスコアを合計し、15 点満点の得点に変換します。
 
@@ -220,10 +243,8 @@ desc_stats <- dat_summarized |>
   ) |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
 
-knitr::kable(
-  desc_stats,
-  caption = "Treatment × Test × Time の記述統計"
-)
+desc_stats |>
+  knitr::kable(caption = "Treatment × Test × Time の記述統計")
 ```
 
 記述統計を見ると、Writing の平均値が Glossing より高く、Immediate の方が Delayed より高い傾向が確認できます。
@@ -418,10 +439,8 @@ shapiro_tbl <- tibble(
     across(c(W, p_value), \(x) round(x, 4))
   )
 
-knitr::kable(
-  shapiro_tbl,
-  caption = "Immediate recall に対する Shapiro-Wilk 検定"
-)
+shapiro_tbl |>
+  knitr::kable(caption = "Immediate recall に対する Shapiro-Wilk 検定")
 ```
 
 Shapiro-Wilk 検定は便利ですが、p 値だけで正規性を機械的に判定しない方が安全です。サンプルサイズが大きいと小さな逸脱でも有意になりやすく、逆に小さいと明らかな歪みを見逃すことがあります。だからこそ、QQ プロットとヒストグラムを併記します。
@@ -487,10 +506,8 @@ levene_tbl <- car::leveneTest(Score ~ Treatment, data = dat_imm) |>
     p_value = round(`Pr(>F)`, 4)
   )
 
-knitr::kable(
-  levene_tbl,
-  caption = "Immediate recall に対する Levene 検定"
-)
+levene_tbl |>
+  knitr::kable(caption = "Immediate recall に対する Levene 検定")
 ```
 
 R の `t.test()` はデフォルトで `var.equal = FALSE`、つまり Welch の t 検定を実行します [@rstatsttest]。そのため、Levene 検定は「Student と Welch のどちらに分岐するか」を決める関門というより、データの散らばりを理解するための補助情報と考える方が実務的です。Welch を標準とする考え方は、近年の推奨とも整合的です [@delacre2017]。
@@ -542,10 +559,8 @@ mean_diff_tbl <- tibble(
   )
 )
 
-knitr::kable(
-  mean_diff_tbl,
-  caption = "平均値差と95%信頼区間の要約"
-)
+mean_diff_tbl |>
+  knitr::kable(caption = "平均値差と95%信頼区間の要約")
 ```
 
 Welch 検定では自由度が小数になることがあります。これは Welch-Satterthwaite 近似によって自由度を調整しているためで、等分散を仮定しない代わりにその不確実性を自由度側へ反映していると考えると理解しやすくなります。
@@ -891,10 +906,8 @@ comparison_tbl <- tibble(
   )
 )
 
-knitr::kable(
-  comparison_tbl,
-  caption = "Student の t 検定と単回帰分析の一致"
-)
+comparison_tbl |>
+  knitr::kable(caption = "Student の t 検定と単回帰分析の一致")
 ```
 
 この表から、**Student の t 検定と、0/1 に符号化した説明変数をもつ `lm()` は同じ平均値差・同じ t 値・同じ p 値を返す**ことがわかります。厳密に一致するのは等分散を仮定する Student の t 検定です。Welch の t 検定は、その考え方を保ったまま等分散を仮定しないように拡張したものです。
@@ -966,10 +979,8 @@ tab_es_plot <- tibble(
 tab_es <- tab_es_plot |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
 
-knitr::kable(
-  tab_es,
-  caption = "Immediate recall の効果量比較"
-)
+tab_es |>
+  knitr::kable(caption = "Immediate recall の効果量比較")
 ```
 
 Hedges g が Cohen's d よりわずかに小さくなるのは、小標本補正が入るためです。サンプルサイズが十分大きければ、両者はほぼ同じ値になります。
@@ -1013,10 +1024,8 @@ estimate_comparison_tbl <- tibble(
   )
 )
 
-knitr::kable(
-  estimate_comparison_tbl,
-  caption = "平均値差と効果量の信頼区間の役割分担"
-)
+estimate_comparison_tbl |>
+  knitr::kable(caption = "平均値差と効果量の信頼区間の役割分担")
 ```
 
 平均値差の 95% 信頼区間は、「教育的に見て何点くらいの差がありそうか」を直接示します。一方、Cohen's d の 95% 信頼区間は、「その差が標準偏差何個分くらいか」を表し、別のテストや別研究との比較に向いています [@lakens2013]。
@@ -1228,10 +1237,8 @@ power_tbl <- tibble(
     power_n50 = scales::percent(power_n50, accuracy = 0.1)
   )
 
-knitr::kable(
-  power_tbl,
-  caption = "効果量別の必要サンプルサイズと n = 50 の検定力"
-)
+power_tbl |>
+  knitr::kable(caption = "効果量別の必要サンプルサイズと n = 50 の検定力")
 ```
 
 中程度の効果量 ($d = 0.5$) を 80% の検出力で捉えたいなら、各群におよそ `r ceiling(power_from_d(d = 0.5, power = 0.80)$n)` 名必要です。

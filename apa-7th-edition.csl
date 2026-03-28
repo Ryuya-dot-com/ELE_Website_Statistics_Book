@@ -57,7 +57,19 @@
   <locale xml:lang="ja">
     <terms>
       <term name="et-al">et al.</term>
+      <term name="edition" form="short">ed.</term>
+      <term name="no date" form="short">n.d.</term>
     </terms>
+    <date form="numeric">
+      <date-part name="year"/>
+      <date-part name="month" prefix="-"/>
+      <date-part name="day" prefix="-"/>
+    </date>
+    <date form="text">
+      <date-part name="month" form="long" suffix=" "/>
+      <date-part name="day" suffix=", "/>
+      <date-part name="year"/>
+    </date>
   </locale>
   <locale xml:lang="da">
     <terms>

@@ -189,7 +189,6 @@ Likert 型データの場合はまず **GRM** → **Mokken** の順に進み、�
 #| message: false
 #| warning: false
 #| eval: true
-# ?????????????
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
 
 pacman::p_load(
@@ -209,7 +208,6 @@ pacman::p_load(
   mvtnorm
 )
 
-# ???????
 options(digits = 3)
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(
@@ -235,125 +233,6 @@ theme_update(legend.position = "bottom")
 safe_aic <- function(mod) extract.mirt(mod, "AIC")
 safe_bic <- function(mod) extract.mirt(mod, "BIC")
 
-# この章では軽い静的表を優先するため、gt 風のパイプを knitr::kable() ベースに変換する
-strip_md <- function(x) {
-  x <- as.character(x)
-  x <- gsub("\\*\\*", "", x)
-  x <- gsub("^`|`$", "", x)
-  x
-}
-
-book_table <- function(data) {
-  structure(
-    list(
-      data = as.data.frame(data),
-      title = NULL,
-      subtitle = NULL,
-      footnotes = character()
-    ),
-    class = "book_table"
-  )
-}
-
-gt <- function(data, ...) book_table(data)
-md <- function(text) strip_md(text)
-
-tab_header <- function(data, title = NULL, subtitle = NULL, ...) {
-  if (!is.null(title)) {
-    data$title <- strip_md(title)
-  }
-  if (!is.null(subtitle)) {
-    data$subtitle <- strip_md(subtitle)
-  }
-  data
-}
-
-tab_footnote <- function(data, footnote, ...) {
-  data$footnotes <- c(data$footnotes, strip_md(footnote))
-  data
-}
-
-resolve_table_columns <- function(data, expr) {
-  idx <- tidyselect::eval_select(rlang::enquo(expr), data = data)
-  names(idx)
-}
-
-fmt_number <- function(data, columns, decimals = 0, ...) {
-  cols <- resolve_table_columns(data$data, {{ columns }})
-  for (col in cols) {
-    if (is.numeric(data$data[[col]]) || is.integer(data$data[[col]])) {
-      vals <- data$data[[col]]
-      data$data[[col]] <- ifelse(
-        is.na(vals),
-        NA_character_,
-        format(round(vals, decimals), nsmall = decimals, scientific = FALSE, trim = TRUE)
-      )
-    }
-  }
-  data
-}
-
-fmt_percent <- function(data, columns, decimals = 0, ...) {
-  cols <- resolve_table_columns(data$data, {{ columns }})
-  for (col in cols) {
-    if (is.numeric(data$data[[col]]) || is.integer(data$data[[col]])) {
-      vals <- data$data[[col]] * 100
-      data$data[[col]] <- ifelse(
-        is.na(vals),
-        NA_character_,
-        paste0(format(round(vals, decimals), nsmall = decimals, scientific = FALSE, trim = TRUE), "%")
-      )
-    }
-  }
-  data
-}
-
-cols_label <- function(data, ...) {
-  labels <- rlang::list2(...)
-  current_names <- names(data$data)
-  for (nm in names(labels)) {
-    if (nm %in% current_names) {
-      current_names[current_names == nm] <- strip_md(labels[[nm]])
-    }
-  }
-  names(data$data) <- current_names
-  data
-}
-
-tab_spanner <- function(data, ...) data
-tab_style <- function(data, ...) data
-data_color <- function(data, ...) data
-tab_options <- function(data, ...) data
-opt_align_table_header <- function(data, ...) data
-
-cell_fill <- function(...) NULL
-cell_text <- function(...) NULL
-cell_borders <- function(...) NULL
-cells_body <- function(...) NULL
-cells_column_labels <- function(...) NULL
-px <- function(...) NULL
-
-knit_print.book_table <- function(x, ...) {
-  caption_parts <- c(x$title, x$subtitle)
-  if (length(x$footnotes) > 0) {
-    caption_parts <- c(caption_parts, paste("Note:", paste(x$footnotes, collapse = "; ")))
-  }
-  caption_parts <- caption_parts[nzchar(caption_parts)]
-  caption <- if (length(caption_parts) > 0) {
-    paste(caption_parts, collapse = "<br>")
-  } else {
-    NULL
-  }
-
-  out <- knitr::kable(
-    x$data,
-    format = "html",
-    caption = caption,
-    escape = FALSE,
-    booktabs = TRUE
-  )
-  knitr::knit_print(out, ...)
-}
 ```
 
 ## どのモデルを選ぶか（選択フロー）
@@ -503,14 +382,12 @@ GRMは「累積ロジット」型で、PCM/RSM（隣接カテゴリ型）とは�
 
 ```{r data-preparation}
 #| eval: true
-# ????????
 data(SAT12)
 
 # Data preprocessing
 SAT12[SAT12 == 8] <- 5  # Unify category 8 to 5
 
-# gt ?????????
-data.frame(
+sat12_overview <- data.frame(
   Metric = c("Sample Size", "Number of Items", "Rating Range (Min)", "Rating Range (Max)"),
   Value = c(
     nrow(SAT12),
@@ -518,14 +395,19 @@ data.frame(
     min(SAT12),
     max(SAT12)
   )
-) |>
-  gt() |>
-  tab_header(
-    title = md("**Data Overview**"),
-    subtitle = "SAT12 Dataset Characteristics"
-  ) |>
-  fmt_number(columns = Value, decimals = 0)
+)
+
+invisible(NULL)
 ```
+
+| Metric | Value |
+|:--|--:|
+| Sample Size | `r nrow(SAT12)` |
+| Number of Items | `r ncol(SAT12)` |
+| Rating Range (Min) | `r min(SAT12)` |
+| Rating Range (Max) | `r max(SAT12)` |
+
+: Data Overview
 
 SAT12 データは 32 項目・5 カテゴリの順序尺度で、GRM の典型的な適用場面です。項目数と標本サイズのバランスを確認した上で、次にデータの最初の数行を確認します。
 
@@ -533,8 +415,9 @@ SAT12 データは 32 項目・5 カテゴリの順序尺度で、GRM の典型�
 
 ```{r data-display}
 #| eval: true
-# ????????
-DT::datatable(SAT12, caption = "SAT12 Dataset: Response Patterns")
+SAT12 |>
+  slice_head(n = 10) |>
+  knitr::kable(caption = "SAT12 Dataset: First 10 Response Patterns")
 ```
 
 各行が1名の受験者、各列が1項目に対応しています。値は 1〜5 の順序カテゴリで、数値が大きいほど高い応答を示します。欠測値がある場合は `NA` と表示されます。
@@ -542,7 +425,6 @@ DT::datatable(SAT12, caption = "SAT12 Dataset: Response Patterns")
 ```{r item-stats-setup}
 #| eval: true
 #| echo: false
-# ????????????????????????
 item_stats <- itemstats(SAT12)
 prop_data <- item_stats$proportions |>
   as.data.frame() |>
@@ -582,7 +464,7 @@ rare_flags <- prop_data |>
 
 rare_flags |>
   dplyr::filter(RareAny) |>
-  DT::datatable(caption = "Rare Categories Detected: Items with any category proportion < 5%")
+  knitr::kable(caption = "Rare Categories Detected: Items with any category proportion < 5%")
 ```
 
 希少カテゴリ（使用率 5% 未満）を持つ項目は、しきい値パラメータの推定が不安定になる可能性があります。該当項目が多い場合は、隣接カテゴリの統合を検討してください。
@@ -593,17 +475,14 @@ rare_flags |>
 
 ```{r grm-estimation}
 #| eval: true
-# ??????????
 fit_grm <- mirt(SAT12, 1, itemtype = 'graded', SE = TRUE, verbose = FALSE)
 
-# ?????? gt ??????
 tibble(
   Statistic = c("Log-Likelihood", "AIC", "BIC", "SABIC"),
   Value = c(fit_grm@Fit$logLik, fit_grm@Fit$AIC, fit_grm@Fit$BIC, fit_grm@Fit$SABIC)
 ) |>
-  gt() |>
-  tab_header(title = "GRM Model Fit") |>
-  fmt_number(columns = Value, decimals = 2)
+  mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(caption = "GRM Model Fit")
 ```
 
 モデルの収束（converged = TRUE）を確認してください。上の表の AIC/BIC/SABIC は**単独では解釈できません**。これらは後のモデル比較（GRM vs GPCM、PCM との比較）でのみ意味を持ちます。値が小さいほど「データへの当てはまりとパラメータの倹約性のバランスが良い」ことを意味します。収束しない場合は、項目の削減やカテゴリの統合を検討します。
@@ -623,7 +502,6 @@ GRM の推定が完了したら、まずモデル全体の適合度を確認し�
 
 ```{r model-fit-assessment}
 #| eval: true
-# ?????????
 model_fit <- M2(fit_grm, type = "C2", calcNULL = FALSE)
 
 # Organize fit indices
@@ -652,37 +530,8 @@ fit_indices <- data.frame(
   )
 )
 
-# gt ?????????
 fit_indices |>
-  gt() |>
-  tab_header(
-    title = md("**Model Fit Indices**"),
-    subtitle = "Graded Response Model Fit Assessment"
-  ) |>
-  tab_style(
-    style = list(
-      cell_fill(color = "#D4EDDA"),
-      cell_text(weight = "bold")
-    ),
-    locations = cells_body(
-      columns = Assessment,
-      rows = Assessment == "✓"
-    )
-  ) |>
-  tab_style(
-    style = list(
-      cell_fill(color = "#F8D7DA"),
-      cell_text(weight = "bold")
-    ),
-    locations = cells_body(
-      columns = Assessment,
-      rows = Assessment == "✗"
-    )
-  ) |>
-  tab_footnote(
-    footnote = "RMSEA: Root Mean Square Error of Approximation, SRMSR: Standardized Root Mean Square Residual",
-    locations = cells_column_labels(columns = Index)
-  )
+  knitr::kable(caption = "Model Fit Indices")
 ```
 
 **適合度の総合判断**: RMSEA < .06、SRMSR < .08、CFI/TLI > .95 が一般的な目安ですが、M2 統計量は大標本で有意になりやすい点に注意が必要です。全指標が基準を満たしていればモデル全体の適合は良好と判断できますが、一部が基準を外れている場合は、外れの程度と他の指標との整合性を総合的に検討してください。
@@ -697,10 +546,8 @@ Yen の $Q_3$ 統計量は、IRT モデルの残差相関を直接測定する�
 
 ```{r grm-local-dependence}
 #| eval: true
-# ?????Q3????
 q3 <- residuals(fit_grm, type = 'Q3')
 
-# ???????????????
 q3_mat <- as.matrix(q3)
 q3_mat[lower.tri(q3_mat, diag = TRUE)] <- NA
 
@@ -715,12 +562,8 @@ ld_df <- which(!is.na(q3_mat), arr.ind = TRUE) |>
 
 ld_df |>
   slice(1:10) |>
-  gt() |>
-  tab_header(
-    title = md("**Local Dependence (Top Q3 Pairs)**"),
-    subtitle = "Higher Q3 suggests local dependence"
-  ) |>
-  fmt_number(columns = Q3, decimals = 3)
+  mutate(Q3 = round(Q3, 3)) |>
+  knitr::kable(caption = "Local Dependence (Top Q3 Pairs)")
 ```
 
 **Q3 結果の解釈ガイド**:
@@ -798,12 +641,7 @@ eigen_df <- data.frame(
 )
 
 eigen_df |>
-  gt() |>
-  tab_header(
-    title = md("**PCA of Residual Correlations**"),
-    subtitle = "Eigenvalues from Q3 residual matrix"
-  ) |>
-  fmt_number(columns = c(Eigenvalue, Ratio_to_1st), decimals = 3)
+  knitr::kable(caption = "PCA of Residual Correlations")
 ```
 
 ```{r grm-pca-scree}
@@ -868,38 +706,13 @@ ggplot(eigen_df, aes(x = Component, y = Eigenvalue)) +
 
 ```{r item-fit-analysis}
 #| eval: true
-# ?????????verbose ??????????????
 item_fit <- mirt::itemfit(fit_grm, fit_stats = c("S_X2", "infit"))
 
-# ???10?????????
 item_fit |>
   slice(1:10) |>
   dplyr::select(item, S_X2, df.S_X2, RMSEA.S_X2, p.S_X2, infit) |>
-  gt() |>
-  tab_header(
-    title = md("**Item Fit Statistics**"),
-    subtitle = "S-X2 Statistics and Infit MNSQ (First 10 Items)"
-  ) |>
-  fmt_number(columns = c(S_X2, RMSEA.S_X2, infit), decimals = 3) |>
-  fmt_number(columns = p.S_X2, decimals = 4) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(
-      columns = RMSEA.S_X2,
-      rows = RMSEA.S_X2 < 0.06
-    )
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(
-      columns = infit,
-      rows = infit >= 0.7 & infit <= 1.3
-    )
-  ) |>
-  tab_footnote(
-    footnote = "RMSEA < 0.06, Infit MNSQ: 0.7-1.3 indicate good fit",
-    locations = cells_column_labels(columns = c(RMSEA.S_X2, infit))
-  )
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Item Fit Statistics")
 ```
 
 **項目適合度の実務的判断**:
@@ -938,11 +751,7 @@ data.frame(
             sprintf("%.3f", mean(pfit$Zh, na.rm = TRUE)),
             sprintf("%.3f", sd(pfit$Zh, na.rm = TRUE)))
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Person Fit Summary (Zh statistic)**"),
-    subtitle = "Zh < -2.0 indicates aberrant response patterns"
-  )
+  knitr::kable(caption = "Person Fit Summary (Zh statistic)")
 ```
 
 **Person fit の解釈**:
@@ -955,40 +764,15 @@ data.frame(
 
 ```{r item-parameters}
 #| eval: true
-# ??????????
 params <- coef(fit_grm, IRTpars = TRUE, simplify = TRUE)
 
-# ?????????????10???
 params$items |>
   as.data.frame() |>
   slice(1:10) |>
   mutate(Item = paste0("Item", 1:10)) |>
   dplyr::select(Item, everything()) |>
-  gt() |>
-  tab_header(
-    title = md("**Item Parameter Estimates**"),
-    subtitle = "Discrimination (a) and Threshold Difficulties (b1-b4)"
-  ) |>
-  fmt_number(columns = -Item, decimals = 3) |>
-  tab_spanner(
-    label = "Discrimination",
-    columns = a
-  ) |>
-  tab_spanner(
-    label = "Threshold Difficulties",
-    columns = starts_with("b")
-  ) |>
-  data_color(
-    columns = a,
-    colors = scales::col_numeric(
-      palette = c("lightblue", "darkblue"),
-      domain = c(0, 2)
-    )
-  ) |>
-  tab_options(
-    table.font.size = 11,
-    heading.title.font.size = 14
-  )
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Item Parameter Estimates")
 ```
 
 識別力（a）が高い項目ほど能力帯による正答確率の変化が急峻で、弁別に貢献します。しきい値（b1〜b4）は各カテゴリ境界に対応する能力水準を示し、b1 が低いほど低能力でもカテゴリ2以上に到達しやすいことを意味します。しきい値間の間隔が極端に狭い場合は、隣接カテゴリの統合を検討してください。
@@ -1019,16 +803,11 @@ disordered <- order_check |> dplyr::filter(!is.na(Ordered) & !Ordered)
 
 if (nrow(disordered) > 0) {
   disordered |>
-    gt() |>
-    tab_header(
-      title = md("**Disordered Thresholds**"),
-      subtitle = "Items with non-increasing thresholds"
-    ) |>
-    fmt_number(columns = MinGap, decimals = 3)
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+    knitr::kable(caption = "Disordered Thresholds")
 } else {
   data.frame(Result = "All items have properly ordered thresholds (b1 < b2 < ... < bK)") |>
-    gt() |>
-    tab_header(title = md("**Threshold Order Check**"))
+    knitr::kable(caption = "Threshold Order Check")
 }
 ```
 
@@ -1105,7 +884,6 @@ ggplot(grm_plot_df, aes(x = b_mean, y = a, label = Item)) +
 #| fig-height: 8
 #| fig-width: 10
 #| eval: true
-# ???????????????6???
 plot(fit_grm, 
      type = 'trace',
      which.items = 1:6,
@@ -1124,7 +902,6 @@ plot(fit_grm,
 #| fig-height: 8
 #| fig-width: 10
 #| eval: true
-# ?????????????6???
 plot(fit_grm,
      type = 'infotrace',
      which.items = 1:6,
@@ -1162,12 +939,7 @@ data.frame(
   Statistic = "Marginal Reliability",
   Value = round(grm_rel, 3)
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Reliability (GRM)**"),
-    subtitle = "Marginal Reliability"
-  ) |>
-  fmt_number(columns = Value, decimals = 3)
+  knitr::kable(caption = "Reliability (GRM)")
 ```
 
 周辺信頼性は CTT の Cronbach's α に相当する IRT 版の指標で、.80 以上が望ましい水準です。IRT の利点として、θ ごとの条件付き標準誤差（上のテスト情報関数の逆数）を参照すれば、能力帯ごとの測定精度をより詳細に評価できます。
@@ -1221,19 +993,14 @@ fit_grm_collapsed <- try(
 
 if (!inherits(fit_grm_collapsed, "try-error")) {
   # 元モデルと統合後モデルの情報量規準を比較
-  data.frame(
-    Model = c("Original (5 categories)", "Collapsed (4 categories)"),
-    AIC = c(safe_aic(fit_grm), safe_aic(fit_grm_collapsed)),
-    BIC = c(safe_bic(fit_grm), safe_bic(fit_grm_collapsed)),
-    Reliability = c(marginal_rxx(fit_grm), marginal_rxx(fit_grm_collapsed))
-  ) |>
-    gt() |>
-    tab_header(
-      title = md("**Category Collapsing: Before vs After**"),
-      subtitle = "Compare fit and reliability after merging categories 1 and 2"
-    ) |>
-    fmt_number(columns = c(AIC, BIC), decimals = 1) |>
-    fmt_number(columns = Reliability, decimals = 3)
+data.frame(
+  Model = c("Original (5 categories)", "Collapsed (4 categories)"),
+  AIC = c(safe_aic(fit_grm), safe_aic(fit_grm_collapsed)),
+  BIC = c(safe_bic(fit_grm), safe_bic(fit_grm_collapsed)),
+  Reliability = c(marginal_rxx(fit_grm), marginal_rxx(fit_grm_collapsed))
+) |>
+  mutate(across(c(AIC, BIC, Reliability), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Category Collapsing: Before vs After")
   # 統合前後のテスト情報関数を重ねて比較
   theta_seq <- seq(-3, 3, by = 0.1)
   info_orig <- testinfo(fit_grm, Theta = matrix(theta_seq))
@@ -1291,12 +1058,8 @@ comp <- data.frame(
 )
 
 comp |>
-  gt() |>
-  tab_header(
-    title = md("**Model Comparison: GRM vs GPCM**"),
-    subtitle = "Information criteria"
-  ) |>
-  fmt_number(columns = c(AIC, BIC, logLik), decimals = 3)
+  mutate(across(c(AIC, BIC, logLik), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Model Comparison: GRM vs GPCM")
 ```
 
 **結果の読み方**: AIC と BIC がともに小さいモデルが優先されます。両指標が一致しない場合、BIC は倹約性を重視（標本サイズに対するペナルティが大きい）、AIC は当てはまりを重視します。GRM と GPCM は異なるリンク関数を使うため、理論的な選択も重要です。累積ロジット（GRM）は「あるカテゴリ以上に反応する確率」をモデル化し、隣接カテゴリ（GPCM）は「隣り合うカテゴリ間の選択確率」をモデル化します。
@@ -1420,13 +1183,23 @@ cat_dist <- sapply(SAT12_0, function(x) table(factor(x, levels = 0:4)))
 cat_prop <- prop.table(cat_dist, margin = 2)
 
 # 各カテゴリの平均使用率
-data.frame(
+category_usage_tbl <- data.frame(
   Category = 0:4,
   Mean_Proportion = round(rowMeans(cat_prop, na.rm = TRUE), 3)
-) |>
-  gt() |>
-  tab_header(title = "Category Usage (0-based Coding)")
+)
+
+invisible(NULL)
 ```
+
+| Category | Mean proportion |
+|--:|--:|
+| 0 | `r category_usage_tbl$Mean_Proportion[category_usage_tbl$Category == 0]` |
+| 1 | `r category_usage_tbl$Mean_Proportion[category_usage_tbl$Category == 1]` |
+| 2 | `r category_usage_tbl$Mean_Proportion[category_usage_tbl$Category == 2]` |
+| 3 | `r category_usage_tbl$Mean_Proportion[category_usage_tbl$Category == 3]` |
+| 4 | `r category_usage_tbl$Mean_Proportion[category_usage_tbl$Category == 4]` |
+
+: Category Usage (0-based Coding)
 
 ### モデル推定
 
@@ -1451,12 +1224,8 @@ thresh_pcm$threshtable[[1]] |>
   as.data.frame() |>
   slice(1:10) |>
   tibble::rownames_to_column("Item") |>
-  gt() |>
-  tab_header(
-    title = md("**PCM Threshold Parameters (eRm: CML)**"),
-    subtitle = "Location = mean of thresholds per item"
-  ) |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "PCM Threshold Parameters (eRm: CML)")
 ```
 
 ```{r rsm-erm-estimation}
@@ -1473,12 +1242,8 @@ if (!inherits(fit_rsm_erm, "try-error")) {
     as.data.frame() |>
     slice(1:10) |>
     tibble::rownames_to_column("Item") |>
-    gt() |>
-    tab_header(
-      title = md("**RSM Threshold Parameters (eRm: CML)**"),
-      subtitle = "Common step structure τ_k shared across items"
-    ) |>
-    fmt_number(columns = where(is.numeric), decimals = 3)
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+    knitr::kable(caption = "RSM Threshold Parameters (eRm: CML)")
 } else {
   message("RSM 推定が特異行列により失敗しました。SAT12 データはカテゴリ分布が項目間で異なるため、",
           "共通ステップ構造の仮定（RSM）が不適合の可能性があります。PCM を優先してください。")
@@ -1504,9 +1269,7 @@ tibble(
   Value = c(fit_pcm_tam$deviance, fit_pcm_tam$ic$AIC, fit_pcm_tam$ic$BIC,
             fit_pcm_tam$ic$Npars, fit_pcm_tam$EAP.rel)
 ) |>
-  gt() |>
-  tab_header(title = md("**PCM Model Summary (TAM: MML)**")) |>
-  fmt_number(columns = Value, decimals = 3)
+  knitr::kable(caption = "PCM Model Summary (TAM: MML)")
 ```
 
 **EAP 信頼性**（EAP reliability）は CTT の Cronbach's α に相当する IRT 版の指標です。事後分布の推定精度を反映し、.80 以上が研究目的では望ましい水準です。Deviance / AIC / BIC はモデル比較で使います（単独では判断不可）。
@@ -1523,9 +1286,7 @@ tibble(
   Value = c(fit_rsm_tam$deviance, fit_rsm_tam$ic$AIC, fit_rsm_tam$ic$BIC,
             fit_rsm_tam$ic$Npars, fit_rsm_tam$EAP.rel)
 ) |>
-  gt() |>
-  tab_header(title = md("**RSM Model Summary (TAM: MML)**")) |>
-  fmt_number(columns = Value, decimals = 3)
+  knitr::kable(caption = "RSM Model Summary (TAM: MML)")
 ```
 
 #### mirt による MML 推定
@@ -1560,9 +1321,7 @@ tibble(
   logLik = c(as.numeric(logLik(fit_pcm_mirt)),
              if (ok_rsm_mirt) as.numeric(logLik(fit_rsm_mirt)) else NULL)
 ) |>
-  gt() |>
-  tab_header(title = md("**PCM vs RSM Model Comparison (mirt)**")) |>
-  fmt_number(columns = c(AIC, BIC, logLik), decimals = 2)
+  knitr::kable(caption = "PCM vs RSM Model Comparison (mirt)")
 
 if (!ok_rsm_mirt) {
   message("RSM (mirt) の推定に失敗しました: 項目間でカテゴリ数が異なるため。PCM を使用してください。")
@@ -1610,12 +1369,7 @@ data.frame(
   Comparison = c("eRm vs TAM", "eRm vs mirt", "TAM vs mirt"),
   Correlation = c(cor_mat[1, 2], cor_mat[1, 3], cor_mat[2, 3])
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Item Location Parameter Correlations Across Packages**"),
-    subtitle = "CML (eRm) vs MML (TAM, mirt)"
-  ) |>
-  fmt_number(columns = Correlation, decimals = 4)
+  knitr::kable(caption = "Item Location Parameter Correlations Across Packages")
 ```
 
 ```{r pcm-package-scatter}
@@ -1678,11 +1432,7 @@ if (!inherits(pcm_m2, "try-error") && !is.null(pcm_m2)) {
   )
 
   fit_pcm_indices |>
-    gt() |>
-    tab_header(
-      title = md("**PCM Global Fit (mirt: M2/C2)**"),
-      subtitle = "Same criteria as GRM section"
-    )
+    knitr::kable(caption = "PCM Global Fit (mirt: M2/C2)")
 } else {
   message("M2 算出に失敗しました（自由度不足等）。項目数やカテゴリ数を確認してください。")
 }
@@ -1793,19 +1543,19 @@ ord_check <- check_ordering(thresh_tam)
 
 ord_check |>
   slice(1:10) |>
-  gt() |>
-  tab_header(
-    title = md("**Threshold Ordering Check (PCM)**"),
+  gt::gt() |>
+  gt::tab_header(
+    title = gt::md("**Threshold Ordering Check (PCM)**"),
     subtitle = "Ordered = TRUE indicates proper category functioning"
   ) |>
-  fmt_number(columns = Min_step, decimals = 3) |>
-  tab_style(
-    style = cell_fill(color = "#FADBD8"),
-    locations = cells_body(columns = Ordered, rows = !Ordered)
+  gt::fmt_number(columns = Min_step, decimals = 3) |>
+  gt::tab_style(
+    style = gt::cell_fill(color = "#FADBD8"),
+    locations = gt::cells_body(columns = Ordered, rows = !Ordered)
   ) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(columns = Ordered, rows = Ordered)
+  gt::tab_style(
+    style = gt::cell_fill(color = "#D4EDDA"),
+    locations = gt::cells_body(columns = Ordered, rows = Ordered)
   )
 ```
 
@@ -1843,36 +1593,36 @@ ifit_df <- data.frame(
 
 ifit_df |>
   slice(1:10) |>
-  gt() |>
-  tab_header(
-    title = md("**PCM Item Fit Statistics (eRm: CML)**"),
+  gt::gt() |>
+  gt::tab_header(
+    title = gt::md("**PCM Item Fit Statistics (eRm: CML)**"),
     subtitle = "Infit/Outfit MSQ and Chi-squared (first 10 items)"
   ) |>
-  fmt_number(columns = c(Infit_MSQ, Outfit_MSQ, Chi_sq, Disc), decimals = 3) |>
-  fmt_number(columns = df, decimals = 0) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(columns = Infit_MSQ,
+  gt::fmt_number(columns = c(Infit_MSQ, Outfit_MSQ, Chi_sq, Disc), decimals = 3) |>
+  gt::fmt_number(columns = df, decimals = 0) |>
+  gt::tab_style(
+    style = gt::cell_fill(color = "#D4EDDA"),
+    locations = gt::cells_body(columns = Infit_MSQ,
                            rows = Infit_MSQ >= 0.7 & Infit_MSQ <= 1.3)
   ) |>
-  tab_style(
-    style = cell_fill(color = "#FADBD8"),
-    locations = cells_body(columns = Infit_MSQ,
+  gt::tab_style(
+    style = gt::cell_fill(color = "#FADBD8"),
+    locations = gt::cells_body(columns = Infit_MSQ,
                            rows = Infit_MSQ < 0.7 | Infit_MSQ > 1.3)
   ) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(columns = Outfit_MSQ,
+  gt::tab_style(
+    style = gt::cell_fill(color = "#D4EDDA"),
+    locations = gt::cells_body(columns = Outfit_MSQ,
                            rows = Outfit_MSQ >= 0.7 & Outfit_MSQ <= 1.3)
   ) |>
-  tab_style(
-    style = cell_fill(color = "#FADBD8"),
-    locations = cells_body(columns = Outfit_MSQ,
+  gt::tab_style(
+    style = gt::cell_fill(color = "#FADBD8"),
+    locations = gt::cells_body(columns = Outfit_MSQ,
                            rows = Outfit_MSQ < 0.7 | Outfit_MSQ > 1.3)
   ) |>
-  tab_footnote(
+  gt::tab_footnote(
     footnote = "Infit/Outfit MSQ: 0.7-1.3 = acceptable, 0.5-1.5 = tolerable. Chi_sq = chi-squared fit statistic.",
-    locations = cells_column_labels(columns = Infit_MSQ)
+    locations = gt::cells_column_labels(columns = Infit_MSQ)
   )
 ```
 
@@ -1948,9 +1698,7 @@ data.frame(
   Statistic = c("Marginal Reliability (PCM)", "EAP Reliability (TAM)"),
   Value = c(round(pcm_rel, 3), round(fit_pcm_tam$EAP.rel, 3))
 ) |>
-  gt() |>
-  tab_header(title = md("**Reliability (PCM)**")) |>
-  fmt_number(columns = Value, decimals = 3)
+  knitr::kable(caption = "Reliability (PCM)")
 ```
 
 #### 人分離指数と人分離信頼性（eRm）
@@ -1976,15 +1724,7 @@ data.frame(
             round(pp_sep$sep.rel, 3),
             round((4 * sep_index + 1) / 3, 1))
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Person Separation (eRm: CML)**"),
-    subtitle = "How many distinct ability levels can the test reliably distinguish?"
-  ) |>
-  tab_footnote(
-    footnote = "Strata >= 3 is generally considered adequate for practical measurement.",
-    locations = cells_body(columns = Statistic, rows = 3)
-  )
+  knitr::kable(caption = "Person Separation (eRm: CML)")
 ```
 
 **人分離指数の解釈**:
@@ -2023,16 +1763,7 @@ comp_all <- data.frame(
 )
 
 comp_all |>
-  gt() |>
-  tab_header(
-    title = md("**Model Comparison: RSM vs PCM vs GPCM vs GRM**"),
-    subtitle = "Information criteria (lower AIC/BIC = better fit)"
-  ) |>
-  fmt_number(columns = c(AIC, BIC, logLik), decimals = 2) |>
-  tab_footnote(
-    footnote = "RSM ⊂ PCM ⊂ GPCM (nested). GRM uses cumulative logit (non-nested with PCM/RSM).",
-    locations = cells_column_labels(columns = Model)
-  )
+  knitr::kable(caption = "Model Comparison: RSM vs PCM vs GPCM vs GRM")
 ```
 
 ```{r pcm-vs-rsm-lrt}
@@ -2124,20 +1855,7 @@ cat_diag <- data.frame(
 )
 
 cat_diag |>
-  gt() |>
-  tab_header(
-    title = md("**Category Diagnostics (Linacre Criteria 1-3)**"),
-    subtitle = "Observations per category and mean ability by category"
-  ) |>
-  fmt_number(columns = Mean_theta, decimals = 3) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(columns = Monotonic, rows = Monotonic == TRUE)
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#FADBD8"),
-    locations = cells_body(columns = Monotonic, rows = Monotonic == FALSE)
-  )
+  knitr::kable(caption = "Category Diagnostics (Linacre Criteria 1-3)")
 ```
 
 ```{r pcm-expected-score}
@@ -2219,45 +1937,22 @@ Aryadoust et al. [-@aryadoust2021]は、応用言語学21誌に掲載された R
 
 **推奨される報告チェックリスト（PCM/RSM 用）**:
 
-```{r pcm-reporting-checklist}
-#| eval: true
-checklist <- data.frame(
-  No = 1:10,
-  Item = c(
-    "Model specification (PCM/RSM, estimation method, software)",
-    "Unidimensionality evidence (PCA of residuals or similar)",
-    "Local independence check (Q3 / residual correlations)",
-    "Category functioning (Linacre 2002 criteria)",
-    "Threshold ordering (ordered vs. disordered)",
-    "Item fit statistics (Infit/Outfit MSQ with criteria)",
-    "Wright Map (person-item map)",
-    "Person separation reliability and separation index",
-    "DIF analysis (if subgroups exist)",
-    "Category probability curves (for problematic items)"
-  ),
-  Priority = c("Essential", "Essential", "Essential", "Essential", "Essential",
-                "Essential", "Essential", "Essential", "Recommended", "Recommended"),
-  Reported_pct = c("96%", "33%", "11%", "42%", "42%",
-                    "69%", "62%", "71%", "28%", "38%")
-)
+| No | Item | Priority | Reported % |
+|---:|:--|:--|--:|
+| 1 | Model specification (PCM/RSM, estimation method, software) | Essential | 96% |
+| 2 | Unidimensionality evidence (PCA of residuals or similar) | Essential | 33% |
+| 3 | Local independence check (Q3 / residual correlations) | Essential | 11% |
+| 4 | Category functioning (Linacre 2002 criteria) | Essential | 42% |
+| 5 | Threshold ordering (ordered vs. disordered) | Essential | 42% |
+| 6 | Item fit statistics (Infit/Outfit MSQ with criteria) | Essential | 69% |
+| 7 | Wright Map (person-item map) | Essential | 62% |
+| 8 | Person separation reliability and separation index | Essential | 71% |
+| 9 | DIF analysis (if subgroups exist) | Recommended | 28% |
+| 10 | Category probability curves (for problematic items) | Recommended | 38% |
 
-checklist |>
-  gt() |>
-  tab_header(
-    title = md("**PCM/RSM Reporting Checklist**"),
-    subtitle = "Based on Aryadoust et al. (2021) review of 215 Rasch studies"
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#FADBD8"),
-    locations = cells_body(columns = Reported_pct,
-                           rows = as.numeric(gsub("%", "", Reported_pct)) < 50)
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(columns = Reported_pct,
-                           rows = as.numeric(gsub("%", "", Reported_pct)) >= 50)
-  )
-```
+: PCM/RSM Reporting Checklist
+
+Note. Based on Aryadoust et al. (2021) review of 215 Rasch studies.
 
 レビュー結果が示すように、「Essential」に分類される項目の多くが半数以下の報告率にとどまっています。特に一次元性（33%）と局所独立性（11%）は報告率が非常に低く、PCM/RSM 分析を報告する際に最も意識すべきポイントです。
 
@@ -2389,9 +2084,16 @@ data.sim.facets |>
     N_topics = n_distinct(topic),
     N_obs = n()
   ) |>
-  gt() |>
-  tab_header(title = md("**Facet Design Overview**"))
+  invisible()
 ```
+
+| Metric | Value |
+|:--|--:|
+| N raters | `r dplyr::n_distinct(data.sim.facets$rater)` |
+| N topics | `r dplyr::n_distinct(data.sim.facets$topic)` |
+| N observations | `r nrow(data.sim.facets)` |
+
+: Facet Design Overview
 
 このデータの応答行列は `r mfrm_response_dim` で、カテゴリは `r mfrm_categories` です。
 
@@ -2409,19 +2111,7 @@ rater_summary <- data.sim.facets |>
   )
 
 rater_summary |>
-  gt() |>
-  tab_header(
-    title = md("**Mean Scores by Rater**"),
-    subtitle = "Descriptive statistics before MFRM adjustment"
-  ) |>
-  fmt_number(columns = c(Mean, SD), decimals = 3) |>
-  data_color(
-    columns = Mean,
-    colors = scales::col_numeric(
-      palette = c("#D4EDDA", "#FADBD8"),
-      domain = NULL
-    )
-  )
+  knitr::kable(caption = "Mean Scores by Rater")
 ```
 
 **読み方**: 採点者間で平均スコアに差があれば、採点者厳しさ（severity）の違いが示唆されます。この差が偶然変動なのか体系的なバイアスなのかを、以下の MFRM で正式に検証します。
@@ -2448,9 +2138,7 @@ tibble(
   Value = c(mod_mfrm$deviance, mod_mfrm$ic$AIC, mod_mfrm$ic$BIC,
             mod_mfrm$ic$Npars, mod_mfrm$EAP.rel)
 ) |>
-  gt() |>
-  tab_header(title = md("**MFRM Model Summary**")) |>
-  fmt_number(columns = Value, decimals = 3)
+  knitr::kable(caption = "MFRM Model Summary")
 ```
 
 **読み方**: EAP 信頼性が .80 以上であれば、MFRM による能力推定は研究目的に十分な精度です。Deviance / AIC / BIC は単独では解釈せず、モデル比較（例: 採点者ファセットの有無）で使用します。N_parameters はモデルの複雑さ（項目 + ステップ + 採点者のパラメータ数）を反映しています。
@@ -2467,12 +2155,8 @@ tibble(
 mod_mfrm$xsi |>
   tibble::rownames_to_column("Parameter") |>
   dplyr::filter(abs(xsi) < 90) |>  # 推定不能パラメータ（99）を除外
-  gt() |>
-  tab_header(
-    title = md("**MFRM: All Facet Parameters (xsi)**"),
-    subtitle = "Item difficulties, step parameters, and rater severities"
-  ) |>
-  fmt_number(columns = c(xsi, se.xsi), decimals = 3)
+  mutate(across(c(xsi, se.xsi), ~ round(.x, 3))) |>
+  knitr::kable(caption = "MFRM: All Facet Parameters (xsi)")
 ```
 
 #### 項目困難度パラメータ
@@ -2490,19 +2174,8 @@ item_params <- mod_mfrm$xsi |>
   mutate(Item = Parameter)
 
 item_params |>
-  gt() |>
-  tab_header(
-    title = md("**Item Difficulty Parameters**"),
-    subtitle = "Higher xsi = more difficult item"
-  ) |>
-  fmt_number(columns = c(xsi, se.xsi), decimals = 3) |>
-  data_color(
-    columns = xsi,
-    colors = scales::col_numeric(
-      palette = c("lightblue", "darkblue"),
-      domain = NULL
-    )
-  )
+  mutate(across(c(xsi, se.xsi), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Item Difficulty Parameters")
 ```
 
 #### 採点者厳しさパラメータ
@@ -2526,20 +2199,8 @@ rater_params <- mod_mfrm$xsi |>
 
 rater_params |>
   dplyr::select(Rater, xsi, se.xsi, Severity) |>
-  gt() |>
-  tab_header(
-    title = md("**Rater Severity Parameters**"),
-    subtitle = "xsi > 0: severe; xsi < 0: lenient"
-  ) |>
-  fmt_number(columns = c(xsi, se.xsi), decimals = 3) |>
-  tab_style(
-    style = cell_fill(color = "#FADBD8"),
-    locations = cells_body(columns = Severity, rows = Severity == "Severe")
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(columns = Severity, rows = Severity == "Lenient")
-  )
+  mutate(across(c(xsi, se.xsi), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Rater Severity Parameters")
 ```
 
 採点者厳しさの差（最大値 − 最小値）が大きい場合：
@@ -2564,20 +2225,8 @@ mfrm_fitdf$Item <- mfrm_fitdf$parameter
 
 mfrm_fitdf |>
   dplyr::select(Item, Infit, Infit_t, Outfit, Outfit_t) |>
-  gt() |>
-  tab_header(
-    title = md("**MFRM Item Fit Statistics**"),
-    subtitle = "Infit/Outfit MSQ (expected = 1.0)"
-  ) |>
-  fmt_number(columns = c(Infit, Infit_t, Outfit, Outfit_t), decimals = 3) |>
-  tab_style(
-    style = cell_fill(color = "#D4EDDA"),
-    locations = cells_body(columns = Infit, rows = Infit >= 0.7 & Infit <= 1.3)
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#FADBD8"),
-    locations = cells_body(columns = Infit, rows = Infit < 0.7 | Infit > 1.3)
-  )
+  mutate(across(c(Infit, Infit_t, Outfit, Outfit_t), ~ round(.x, 3))) |>
+  knitr::kable(caption = "MFRM Item Fit Statistics")
 ```
 
 上の表には項目・ステップ・採点者の全パラメータの適合度が含まれています。採点者の識別には `Item` 列（`parameter` 列由来）で `rater` を含む行を確認してください。
@@ -2601,22 +2250,8 @@ rater_fit <- mfrm_fitdf |>
 
 if (nrow(rater_fit) > 0) {
   rater_fit |>
-    gt() |>
-    tab_header(
-      title = md("**Rater-Level Fit Statistics**"),
-      subtitle = "Infit/Outfit for rater parameters only"
-    ) |>
-    fmt_number(columns = c(Infit, Infit_t, Outfit, Outfit_t), decimals = 3) |>
-    tab_style(
-      style = cell_fill(color = "#FADBD8"),
-      locations = cells_body(columns = Diagnosis,
-                             rows = Diagnosis != "Acceptable")
-    ) |>
-    tab_style(
-      style = cell_fill(color = "#D4EDDA"),
-      locations = cells_body(columns = Diagnosis,
-                             rows = Diagnosis == "Acceptable")
-    )
+    mutate(across(c(Infit, Infit_t, Outfit, Outfit_t), ~ round(.x, 3))) |>
+    knitr::kable(caption = "Rater-Level Fit Statistics")
 } else {
   message("採点者パラメータの適合度が抽出できませんでした。tam.fit() の出力構造を確認してください。")
 }
@@ -2648,9 +2283,7 @@ data.frame(
             max(wle_mfrm$theta, na.rm = TRUE),
             wle_mfrm$WLE.rel[1])
 ) |>
-  gt() |>
-  tab_header(title = md("**Person Ability Estimates (WLE)**")) |>
-  fmt_number(columns = Value, decimals = 3)
+  knitr::kable(caption = "Person Ability Estimates (WLE)")
 ```
 
 **読み方**: WLE 信頼性は受験者能力推定の精度を示します。.70 以上でグループレベルの比較、.80 以上で個人レベルの判定に使用可能です[@bondfox2007]。Mean θ はロジットスケールの平均で、0 が中央（項目困難度と対応）です。SD θ が大きいほど受験者間の能力差が大きいことを意味します。
@@ -2713,11 +2346,7 @@ data.frame(
            "Modest: raw scores may be acceptable")
   )
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Rater Severity Impact Assessment**"),
-    subtitle = "Severity range as proportion of person ability variability"
-  )
+  knitr::kable(caption = "Rater Severity Impact Assessment")
 ```
 
 採点者厳しさのレンジが受験者能力のSDの50%を超える場合、補正なしの素点比較は公平性に重大な問題を持ちます。この場合は WLE による公正スコアの使用を強く推奨します。
@@ -2828,12 +2457,8 @@ thresh_mfrm <- TAM::tam.threshold(mod_mfrm)
 thresh_mfrm |>
   as.data.frame() |>
   tibble::rownames_to_column("Item") |>
-  gt() |>
-  tab_header(
-    title = md("**MFRM Category Thresholds**"),
-    subtitle = "Boundaries between adjacent categories"
-  ) |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "MFRM Category Thresholds")
 ```
 
 ### 実務的ガイダンス
@@ -2915,16 +2540,7 @@ if (!inherits(mod_mfrm_bias, "try-error")) {
       arrange(desc(abs(xsi))) |>
       slice(1:min(15, n())) |>
       dplyr::select(Parameter, xsi, se.xsi, Significant, Direction) |>
-      gt() |>
-      tab_header(
-        title = md("**Rater × Item Bias Parameters**"),
-        subtitle = "Significant = |t| > 2.0 indicates systematic bias"
-      ) |>
-      fmt_number(columns = c(xsi, se.xsi), decimals = 3) |>
-      tab_style(
-        style = cell_fill(color = "#FADBD8"),
-        locations = cells_body(columns = Significant, rows = Significant == TRUE)
-      )
+      knitr::kable(caption = "Rater × Item Bias Parameters")
   } else {
     message("バイアスパラメータが抽出できませんでした（モデル構造を確認してください）。")
   }
@@ -3016,25 +2632,14 @@ ggplot(rater_drift_tbl, aes(x = order, y = severity, color = rater)) +
     ),
     plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
   )
-
-tibble(
-  Model = c("Static MFRM", "Dynamic MFRM / Bayesian rating-order model"),
-  Assumption = c(
-    "Each rater has one fixed severity parameter",
-    "Rater severity can move with order, session, or latent state"
-  ),
-  What_it_catches = c(
-    "Stable harsh vs lenient raters",
-    "Fatigue, warm-up, drift, and sequence effects"
-  ),
-  Typical_use = c(
-    "Standard rubric-based scoring studies",
-    "Long scoring sessions, repeated calibration, operational assessments"
-  )
-) |>
-  gt() |>
-  tab_header(title = "Static vs dynamic views of rater severity")
 ```
+
+| Model | Assumption | What it catches | Typical use |
+|:--|:--|:--|:--|
+| Static MFRM | Each rater has one fixed severity parameter | Stable harsh vs lenient raters | Standard rubric-based scoring studies |
+| Dynamic MFRM / Bayesian rating-order model | Rater severity can move with order, session, or latent state | Fatigue, warm-up, drift, and sequence effects | Long scoring sessions, repeated calibration, operational assessments |
+
+: Static vs dynamic views of rater severity
 
 この図では、A は安定、B は後半ほど厳しくなる疲労型、C は途中から基準がずれるドリフト型です。標準 MFRM では、B や C を**1 本の固定効果**でしか表せません。すると、評定順序の影響が能力推定へ漏れ込みます。ベイズ的に動的 MFRM を組む利点は、採点者ごとの severity trajectory を**事後分布として**取り出せる点です。つまり、「この採点者は後半に厳しくなる確率が高い」といった、運用上の重要な問いに直接答えられます。
 
@@ -3217,46 +2822,26 @@ Engelhard [-@engelhard1994]は、ライティング評価における採点者�
 
 Eckes [-@eckes2015]および Myford & Wolfe [-@myfordwolfe2003; -@myfordwolfe2004]に基づき、MFRM 分析の完全な報告には以下の要素を含めます。
 
-```{r mfrm-reporting-guide}
-#| eval: true
-report_guide <- data.frame(
-  Section = c(
-    "1. Facet Design", "1. Facet Design",
-    "2. Variable Map", "2. Variable Map",
-    "3. Facet Tables", "3. Facet Tables", "3. Facet Tables",
-    "4. Rater Analysis", "4. Rater Analysis", "4. Rater Analysis",
-    "5. Scale Analysis", "5. Scale Analysis",
-    "6. Fair Scores", "6. Fair Scores"
-  ),
-  Element = c(
-    "Facets included (persons, items, raters, tasks, criteria)",
-    "Connectivity/linking design (fully crossed vs. partially linked)",
-    "All facets on common logit scale",
-    "Person distribution, item locations, rater severities",
-    "Logit measure, SE, Infit MSQ, Outfit MSQ per element",
-    "Separation ratio and separation reliability per facet",
-    "Chi-square test of equal severity (for raters)",
-    "Severity range (max - min logits)",
-    "Bias/interaction analysis (rater x criterion, rater x group)",
-    "Identification of misfitting raters (Outfit > 1.5 or Infit < 0.5)",
-    "Category functioning (Linacre 2002 criteria)",
-    "Threshold ordering and category probability curves",
-    "Adjusted person measures accounting for rater severity",
-    "Comparison of raw scores vs. fair scores"
-  )
-)
+| Section | Element |
+|:--|:--|
+| 1. Facet Design | Facets included (persons, items, raters, tasks, criteria) |
+| 1. Facet Design | Connectivity/linking design (fully crossed vs. partially linked) |
+| 2. Variable Map | All facets on common logit scale |
+| 2. Variable Map | Person distribution, item locations, rater severities |
+| 3. Facet Tables | Logit measure, SE, Infit MSQ, Outfit MSQ per element |
+| 3. Facet Tables | Separation ratio and separation reliability per facet |
+| 3. Facet Tables | Chi-square test of equal severity (for raters) |
+| 4. Rater Analysis | Severity range (max - min logits) |
+| 4. Rater Analysis | Bias/interaction analysis (rater x criterion, rater x group) |
+| 4. Rater Analysis | Identification of misfitting raters (Outfit > 1.5 or Infit < 0.5) |
+| 5. Scale Analysis | Category functioning (Linacre 2002 criteria) |
+| 5. Scale Analysis | Threshold ordering and category probability curves |
+| 6. Fair Scores | Adjusted person measures accounting for rater severity |
+| 6. Fair Scores | Comparison of raw scores vs. fair scores |
 
-report_guide |>
-  gt() |>
-  tab_header(
-    title = md("**MFRM Comprehensive Reporting Guide**"),
-    subtitle = "Based on Eckes (2015) and Myford & Wolfe (2003, 2004)"
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#F0F8FF"),
-    locations = cells_body(columns = Section)
-  )
-```
+: MFRM Comprehensive Reporting Guide
+
+Note. Based on Eckes (2015) and Myford & Wolfe (2003, 2004).
 
 #### MFRM 記述例（詳細版: そのまま改変可能）
 
@@ -3396,24 +2981,28 @@ a_matrix <- matrix(c(
 # Difficulty parameters
 d_params <- rnorm(20, mean = 0, sd = 1)
 
-# ??????????????2???????
+# 2因子の潜在能力に相関を持たせる
 theta_cov <- matrix(c(1, 0.3, 0.3, 1), 2, 2)
 theta <- mvtnorm::rmvnorm(500, mean = c(0, 0), sigma = theta_cov)
 
-# ??????
+# 2PL データを生成
 sim_data <- simdata(a_matrix, d_params, N = 500, itemtype = '2PL', Theta = theta)
 
-# ?????????
-data.frame(
+# 生成データのサイズ確認
+sim_data_overview <- data.frame(
   Metric = c("Sample Size", "Number of Items"),
   Value = c(nrow(sim_data), ncol(sim_data))
-) |>
-  gt() |>
-  tab_header(
-    title = md("**Simulated Data**"),
-    subtitle = "Multidimensional IRT Data Generation"
-  )
+)
+
+invisible(NULL)
 ```
+
+| Metric | Value |
+|:--|--:|
+| Sample Size | `r nrow(sim_data)` |
+| Number of Items | `r ncol(sim_data)` |
+
+: Simulated Data
 
 #### モデルの指定と推定
 
@@ -3457,12 +3046,7 @@ efa_comp <- data.frame(
 )
 
 efa_comp |>
-  gt() |>
-  tab_header(
-    title = md("**Exploratory Factor Analysis: Model Comparison**"),
-    subtitle = "Number of factors selected by AIC/BIC (lower = better)"
-  ) |>
-  fmt_number(columns = c(AIC, BIC), decimals = 1)
+  knitr::kable(caption = "Exploratory Factor Analysis: Model Comparison")
 ```
 
 **結果の読み方**: AIC と BIC がともに最小のモデルが最適な因子数です。一般に ΔBIC > 10 は「非常に強い」根拠[@raftery1995]、ΔAIC > 10 は実質的な差とみなされます。今回のシミュレーションデータでは2因子モデルが最適となるはずです（データ生成時に2因子で設計したため）。実データでは、適合度指標だけでなく因子の解釈可能性も考慮して最終決定します。
@@ -3478,12 +3062,8 @@ efa_summary <- summary(efa_2, rotate = "oblimin", suppress = 0.25)
 efa_summary$rotF |>
   as.data.frame() |>
   tibble::rownames_to_column("Item") |>
-  gt() |>
-  tab_header(
-    title = md("**EFA Factor Loadings (oblimin rotation)**"),
-    subtitle = "Loadings < 0.25 suppressed"
-  ) |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "EFA Factor Loadings (oblimin rotation)")
 ```
 
 EFA の結果に基づいて、各因子にどの項目を割り当てるかを決定し、以下の確認的モデル（CFA 的アプローチ）に進みます。
@@ -3499,16 +3079,13 @@ mirt_model <- '
   COV = F1*F2
 '
 
-# ???IRT??????
 fit_mirt <- mirt(sim_data, mirt_model, itemtype = '2PL', verbose = FALSE)
 
-# ?????? gt ?????? — factor loadings
 coef(fit_mirt, simplify = TRUE)$items |>
   as.data.frame() |>
   tibble::rownames_to_column("Item") |>
-  gt() |>
-  tab_header(title = "MIRT Model: Factor Loadings") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "MIRT Model: Factor Loadings")
 ```
 
 ### パラメータ推定結果
@@ -3519,11 +3096,9 @@ coef(fit_mirt, simplify = TRUE)$items |>
 
 ```{r mirt-loadings-display}
 #| eval: true
-# ????????
 mirt_params <- coef(fit_mirt, simplify = TRUE)
 loadings_data <- mirt_params$items[, 1:2]
 
-# ????????
 loadings_df <- data.frame(
   Item = paste0("Item", 1:20),
   F1 = round(loadings_data[,1], 3),
@@ -3537,50 +3112,13 @@ loadings_df <- data.frame(
 )
 
 loadings_df |>
-  gt() |>
-  tab_header(
-    title = md("**Multidimensional IRT Factor Loadings**"),
-    subtitle = "Two-Factor Model Estimates"
-  ) |>
-  tab_spanner(
-    label = "Factor Loadings",
-    columns = c(F1, F2)
-  ) |>
-  data_color(
-    columns = c(F1, F2),
-    colors = scales::col_numeric(
-      palette = c("white", "darkred"),
-      domain = c(0, 2)
-    )
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#FFE4B5"),
-    locations = cells_body(
-      columns = Primary_Factor,
-      rows = Primary_Factor == "F1"
-    )
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#B0E0E6"),
-    locations = cells_body(
-      columns = Primary_Factor,
-      rows = Primary_Factor == "F2"
-    )
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#DDA0DD"),
-    locations = cells_body(
-      columns = Primary_Factor,
-      rows = Primary_Factor == "Both"
-    )
-  )
+  knitr::kable(caption = "Multidimensional IRT Factor Loadings")
 ```
 
 #### 因子間相関と適合度
 
 ```{r mirt-correlation-fit}
 #| eval: true
-# ?????????????
 cov_matrix <- mirt_params$cov
 
 # Convert to correlation matrix
@@ -3592,19 +3130,7 @@ if(is.matrix(cov_matrix) && nrow(cov_matrix) == ncol(cov_matrix)) {
   rownames(cor_df) <- colnames(cor_df) <- c("Factor 1", "Factor 2")
   
   cor_df |>
-    gt(rownames_to_stub = TRUE) |>
-    tab_header(
-      title = md("**Factor Correlation Matrix**"),
-      subtitle = "Estimated Latent Factor Correlations"
-    ) |>
-    fmt_number(columns = everything(), decimals = 3) |>
-    data_color(
-      columns = everything(),
-      colors = scales::col_numeric(
-        palette = c("white", "darkblue"),
-        domain = c(-1, 1)
-      )
-    )
+    knitr::kable(caption = "Factor Correlation Matrix")
 }
 
 # Model fit
@@ -3620,11 +3146,7 @@ data.frame(
     round(mirt_fit$TLI, 3)
   )
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Multidimensional IRT Model Fit**"),
-    subtitle = "Two-Factor Model Fit Indices"
-  )
+  knitr::kable(caption = "Multidimensional IRT Model Fit")
 ```
 
 **因子相関の解釈**: 因子相関行列は、潜在因子間の関連の強さを示します。中程度の相関（.40–.70）であれば、2つの因子を分離して推定する実質的意味があります。相関が .80 を超える場合は、2因子モデルの統計的当てはまりが良くても、解釈上は1因子と区別がつきにくくなるため、簡潔な1因子モデルで十分か再検討してください。逆に、相関が .20 未満であれば、2つの因子がほぼ独立であることを意味し、テストが測定している構成概念の内部構造を反映しています。
@@ -3642,7 +3164,6 @@ data.frame(
 
 ```{r mirt-model-compare}
 #| eval: true
-# ????1????????
 fit_mirt1 <- try(mirt(sim_data, 1, itemtype = '2PL', verbose = FALSE), silent = TRUE)
 ok_1 <- !inherits(fit_mirt1, 'try-error')
 ok_2 <- exists('fit_mirt') && inherits(fit_mirt, 'SingleGroupClass')
@@ -3672,12 +3193,7 @@ comp_mirt <- data.frame(
 )
 
 comp_mirt |>
-  gt() |>
-  tab_header(
-    title = md("**Model Comparison: 1 vs 2 Factors**"),
-    subtitle = "Information criteria and fit indices"
-  ) |>
-  fmt_number(columns = c(AIC, BIC, logLik, RMSEA, SRMSR), decimals = 3)
+  knitr::kable(caption = "Model Comparison: 1 vs 2 Factors")
 ```
 
 **モデル比較の判断基準**: AIC・BIC ともに小さいモデルが情報量規準上は優れています。判断のガイドラインは以下のとおりです：
@@ -3882,7 +3398,6 @@ par(mfrow = c(1, 1))
 ```{r mirt-comp-vs-noncomp-3d}
 #| eval: false
 
-# ???????? MIRT?PC2PL????
 fit_mirt_pc2 <- mirt(sim_data, mirt_model, itemtype = "PC2PL",
                      method = "MHRM", technical = list(NCYCLES = 250), verbose = FALSE)
 
@@ -4053,7 +3568,6 @@ Mokken 分析は順序データ（1–5）にも二値データ（0/1）にも�
 
 ```{r mokken-preparation}
 #| eval: true
-# SAT12 ???????? 2 ??
 SAT12_binary <- ifelse(SAT12 <= 3, 0, 1)
 
 # Ordinal (polytomous) version kept for reference
@@ -4067,12 +3581,7 @@ data.frame(
     mean(SAT12_binary == 1)
   )
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Binarized Data Overview**"),
-    subtitle = "Proportion of Response Categories"
-  ) |>
-  fmt_percent(columns = Proportion, decimals = 1)
+  knitr::kable(caption = "Binarized Data Overview")
 ```
 
 #### 多値（順序）データの扱い
@@ -4086,7 +3595,6 @@ Mokken分析の最初のステップは、項目集合が**尺度として機能
 
 ```{r mokken-h-coefficient}
 #| eval: true
-# ?????????????
 # nice.output=FALSE で数値行列を直接取得（noquote 変換を回避）
 coefH_result <- coefH(SAT12_binary, nice.output = FALSE)
 
@@ -4106,23 +3614,7 @@ overall_H <- data.frame(
 )
 
 overall_H |>
-  gt() |>
-  tab_header(
-    title = md("**Overall Scalability**"),
-    subtitle = "Loevinger's H Coefficient"
-  ) |>
-  tab_style(
-    style = list(
-      cell_fill(color = case_when(
-        overall_H$Value >= 0.5 ~ "#90EE90",
-        overall_H$Value >= 0.4 ~ "#FFFFE0",
-        overall_H$Value >= 0.3 ~ "#FFE4B5",
-        TRUE ~ "#FFB6C1"
-      )),
-      cell_text(weight = "bold")
-    ),
-    locations = cells_body(columns = Interpretation)
-  )
+  knitr::kable(caption = "Overall Scalability")
 ```
 
 全体 H 係数が .30 以上であれば、項目集合が Mokken 尺度としての最低要件を満たしていると判断できます。.50 以上なら「強い尺度」とされ、項目の順序的性質が安定していることを示します。
@@ -4141,11 +3633,7 @@ data.frame(
   Scoring = c("Binary (<=3=0, >=4=1)", "Ordinal (1–5)"),
   H = c(round(h_value, 3), round(h_ord, 3))
 ) |>
-  gt() |>
-  tab_header(
-    title = md("**Overall H by Scoring Scheme**"),
-    subtitle = "Binary vs Ordinal coding"
-  )
+  knitr::kable(caption = "Overall H by Scoring Scheme")
 ```
 
 二値化と順序のままでは H 値が異なることがあります。順序データのほうが情報量が多い分 H が高くなる傾向がありますが、カテゴリ使用が不均衡だと逆に下がることもあります。両方の結果を比較して、二値化の影響を確認してください。
@@ -4176,26 +3664,10 @@ item_H <- data.frame(
   )
 )
 
-# ??10?????
 item_H |>
   arrange(desc(Hi)) |>
   slice(1:10) |>
-  gt() |>
-  tab_header(
-    title = md("**Item Scalability Coefficients**"),
-    subtitle = "Top 10 Items by Hi Value"
-  ) |>
-  data_color(
-    columns = Hi,
-    colors = scales::col_numeric(
-      palette = c("#FFB6C1", "#FFFFE0", "#90EE90"),
-      domain = c(0, 1)
-    )
-  ) |>
-  tab_footnote(
-    footnote = "Hi ≥ 0.5: Strong, 0.4 ≤ Hi < 0.5: Medium, 0.3 ≤ Hi < 0.4: Weak",
-    locations = cells_column_labels(columns = Hi)
-  )
+  knitr::kable(caption = "Item Scalability Coefficients")
 ```
 
 ```{r mokken-hi-barplot}
@@ -4236,7 +3708,6 @@ ggplot(item_H, aes(x = reorder(Item, Hi), y = Hi, fill = Assessment)) +
 #| fig-width: 9.8
 #| warning: false
 #| eval: true
-# ????? Mokken ??????? 2PL ? ICC ???
 fit_2pl_binary <- try(
   mirt(SAT12_binary, 1, itemtype = "2PL", verbose = FALSE),
   silent = TRUE
@@ -4355,12 +3826,7 @@ if (!is.null(hij_num) && nrow(hij_num) > 0) {
 
   hij_df |>
     slice(1:15) |>
-    gt() |>
-    tab_header(
-      title = md("**Top Item Pairs by Hij**"),
-      subtitle = "Pairwise scalability coefficients"
-    ) |>
-    fmt_number(columns = Hij, decimals = 3)
+    knitr::kable(caption = "Top Item Pairs by Hij")
 } else {
   message("Hij の抽出に失敗したためスキップ")
 }
@@ -4398,7 +3864,6 @@ to_scale_map <- function(res, nitems){
 aisp_res <- aisp(SAT12_binary, lowerbound = 0.3)
 mem <- to_scale_map(aisp_res, ncol(SAT12_binary))
 
-# ??????
 scale_levels <- sort(unique(mem))
 scale_levels <- scale_levels[!is.na(scale_levels) & scale_levels > 0]  # 0は未割当て
 
@@ -4426,25 +3891,7 @@ scale_summary <- rbind(
 )
 
 scale_summary |>
-  gt() |>
-  tab_header(
-    title = md("**Automated Item Selection Results**"),
-    subtitle = "Scale Construction with H ≥ 0.3 (AISP)"
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#E8F4FD"),
-    locations = cells_body(
-      columns = everything(),
-      rows = Scale != "Scale0"
-    )
-  ) |>
-  tab_footnote(
-    footnote = "Scale0 contains items not meeting the criterion",
-    locations = cells_body(
-      columns = Scale,
-      rows = 1
-    )
-  )
+  knitr::kable(caption = "Automated Item Selection Results")
 
 # H by selected first scale (if exists)
 if (any(mem == 1)) {
@@ -4453,9 +3900,7 @@ if (any(mem == 1)) {
     Coefficient = c("H (scale)", colnames(SAT12_binary)[mem == 1]),
     Value = c(as.numeric(h_scale1$H), as.numeric(h_scale1$Hi))
   ) |>
-    gt() |>
-    tab_header(title = "Mokken Scale H Coefficients (Scale 1)") |>
-    fmt_number(columns = Value, decimals = 3)
+    knitr::kable(caption = "Mokken Scale H Coefficients (Scale 1)")
 }
 ```
 
@@ -4503,18 +3948,7 @@ if (length(scale_levels)) {
     dplyr::bind_rows()
 
   scale_h |>
-    gt() |>
-    tab_header(
-      title = md("**Scale-level H Coefficients**"),
-      subtitle = "Based on AISP memberships"
-    ) |>
-    data_color(
-      columns = H,
-      colors = scales::col_numeric(
-        palette = c('#FFB6C1', '#FFFFE0', '#90EE90'),
-        domain = c(0, 1)
-      )
-    )
+    knitr::kable(caption = "Scale-level H Coefficients")
 }
 ```
 
@@ -4603,27 +4037,12 @@ violations_to_show <- violations_summary |>
 if (nrow(violations_to_show) > 0) {
   violations_to_show |>
     arrange(desc(Number_of_Violations)) |>
-    gt() |>
-    tab_header(
-      title = md("**Monotonicity Violations**"),
-      subtitle = "Items with Detected Violations"
-    ) |>
-    tab_style(
-      style = cell_fill(color = "#FFE4E1"),
-      locations = cells_body(
-        columns = Number_of_Violations,
-        rows = Number_of_Violations >= 1
-      )
-    )
+    knitr::kable(caption = "Monotonicity Violations")
 } else {
   data.frame(
     Message = "No monotonicity violations detected (or structure unavailable)"
   ) |>
-    gt() |>
-    tab_header(
-      title = md("**Monotonicity Violations**"),
-      subtitle = "Assessment Results"
-    )
+    knitr::kable(caption = "Monotonicity Violations")
 }
 ```
 
@@ -4696,10 +4115,8 @@ violations_summary |>
 
 ```{r mokken-iio-check}
 #| eval: true
-# ?????????
 iio_check <- check.iio(SAT12_binary, method = "MIIO")
 
-# HT ?????
 ht_value <- iio_check$HT
 
 # Handle case where HT might be NULL or not present
@@ -4741,21 +4158,7 @@ iio_stats <- data.frame(
 ht_color <- if (is.na(ht_value)) "#FFF3CD" else if (ht_value >= 0.3) "#D4EDDA" else "#F8D7DA"
 
 iio_stats |>
-  gt() |>
-  tab_header(
-    title = md("**Invariant Item Ordering (IIO) Test**"),
-    subtitle = "Double Monotonicity Model Additional Assumption"
-  ) |>
-  tab_style(
-    style = list(
-      cell_fill(color = ht_color),
-      cell_text(weight = "bold")
-    ),
-    locations = cells_body(
-      columns = Assessment,
-      rows = Assessment != ""
-    )
-  )
+  knitr::kable(caption = "Invariant Item Ordering (IIO) Test")
 ```
 
 ```{r mokken-iio-ordering-plot}
@@ -4868,15 +4271,7 @@ ca_summary <- data.frame(
 )
 
 ca_summary |>
-  gt() |>
-  tab_header(
-    title = md("**Conditional Association Test (Unidimensionality)**"),
-    subtitle = "check.ca(): local independence conditional on total score"
-  ) |>
-  tab_footnote(
-    footnote = "W1 index quantifies conditional association between item pairs; flagged pairs may indicate local dependence.",
-    locations = cells_body(columns = Statistic, rows = 4)
-  )
+  knitr::kable(caption = "Conditional Association Test (Unidimensionality)")
 ```
 
 `check.ca()` は Mokken 特有の一次元性検証で、GRM 節の PCA of residuals とは異なるアプローチです。PCA of residuals はパラメトリックモデルの残差構造を調べるのに対し、`check.ca()` はノンパラメトリックに合計スコアでの条件付き独立性を検定します。両者が一致して一次元性を支持すれば、より強い根拠となります。
@@ -4885,10 +4280,8 @@ ca_summary |>
 
 ```{r mokken-reliability-analysis}
 #| eval: true
-# ????????
 rel_mokken <- check.reliability(SAT12_binary)
 
-# ???????????????????
 alpha_val <- rel_mokken$alpha
 lambda2_val <- rel_mokken$lambda.2  # Note: lambda.2 with a dot
 ms_val <- rel_mokken$MS  # Note: uppercase MS
@@ -4916,23 +4309,7 @@ reliability_comparison <- data.frame(
 )
 
 reliability_comparison |>
-  gt() |>
-  tab_header(
-    title = md("**Reliability Coefficient Comparison**"),
-    subtitle = "Various Reliability Indices in Mokken Scale Analysis"
-  ) |>
-  fmt_number(columns = Value, decimals = 3) |>
-  data_color(
-    columns = Value,
-    colors = scales::col_numeric(
-      palette = c("#FFB6C1", "#FFFFE0", "#90EE90"),
-      domain = c(0.6, 1)
-    )
-  ) |>
-  tab_footnote(
-    footnote = "MS: Reliability considering item ordering, LCRC: Latent class-based reliability",
-    locations = cells_column_labels(columns = Reliability_Index)
-  )
+  knitr::kable(caption = "Reliability Coefficient Comparison")
 ```
 
 3指標がいずれも .70 以上であれば、内的一貫性は十分です。MS（Molenaar-Sijtsma）は項目の順序性を考慮した Mokken 固有の信頼性指標で、α が系統的に真の信頼性を過小推定するのに対し、MS はほぼ不偏な推定を返します。そのため一般に MS ≥ α となります。3指標間の乖離が大きい場合は、等τ等価性の仮定（α の前提）が成り立っていない可能性を示唆します。
@@ -4957,84 +4334,17 @@ GRM・PCM/RSM・MFRM・MIRT・Mokken の各手法を個別に実行してきま�
 
 ### 比較表
 
-```{r method-comparison-table}
-#| eval: true
-# ????????
-comparison_table <- data.frame(
-  Feature = c("Data Type", "Assumptions", "Parameters", "Sample Size", "Computational Load", "Interpretability", "Key Package"),
-  GRM = c(
-    "Ordinal Categories",
-    "Parametric, Unidimensional",
-    "Discrimination + Thresholds",
-    "Medium-Large (300+)",
-    "Moderate",
-    "High",
-    "mirt"
-  ),
-  PCM_RSM = c(
-    "Ordinal Categories",
-    "Rasch (equal discrim.)",
-    "Step difficulties",
-    "Medium (200+)",
-    "Low-Moderate",
-    "Very High",
-    "eRm, TAM, mirt"
-  ),
-  MFRM = c(
-    "Ordinal (multi-facet)",
-    "Rasch (equal discrim.)",
-    "Person + Item + Rater + ...",
-    "Varies by design",
-    "Moderate",
-    "Very High",
-    "TAM"
-  ),
-  MIRT = c(
-    "Binary/Ordinal",
-    "Parametric, Multidimensional",
-    "Factor loadings + Difficulty",
-    "Large (500+)",
-    "High",
-    "Moderate",
-    "mirt"
-  ),
-  Mokken = c(
-    "Binary/Ordinal",
-    "Nonparametric",
-    "H Coefficients",
-    "Small-Medium (100+)",
-    "Low",
-    "High",
-    "mokken"
-  )
-)
+| Feature | GRM | PCM/RSM | MFRM | MIRT | Mokken |
+|:--|:--|:--|:--|:--|:--|
+| Data Type | Ordinal Categories | Ordinal Categories | Ordinal (multi-facet) | Binary/Ordinal | Binary/Ordinal |
+| Assumptions | Parametric, Unidimensional | Rasch (equal discrim.) | Rasch (equal discrim.) | Parametric, Multidimensional | Nonparametric |
+| Parameters | Discrimination + Thresholds | Step difficulties | Person + Item + Rater + ... | Factor loadings + Difficulty | H Coefficients |
+| Sample Size | Medium-Large (300+) | Medium (200+) | Varies by design | Large (500+) | Small-Medium (100+) |
+| Computational Load | Moderate | Low-Moderate | Moderate | High | Low |
+| Interpretability | High | Very High | Very High | Moderate | High |
+| Key Package | `mirt` | `eRm`, `TAM`, `mirt` | `TAM` | `mirt` | `mokken` |
 
-comparison_table |>
-  gt() |>
-  tab_header(
-    title = md("**IRT Method Comparison**"),
-    subtitle = "Features and Applications of Each Method"
-  ) |>
-  tab_spanner(
-    label = "Methods",
-    columns = c(GRM, PCM_RSM, MFRM, MIRT, Mokken)
-  ) |>
-  cols_label(
-    PCM_RSM = "PCM/RSM"
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#F0F8FF"),
-    locations = cells_column_labels(everything())
-  ) |>
-  tab_style(
-    style = cell_borders(
-      sides = "all",
-      color = "#D3D3D3",
-      weight = px(1)
-    ),
-    locations = cells_body()
-  )
-```
+: IRT Method Comparison
 
 ### 探索→確認の2段階設計（MSA→GRM/MIRT）
 
@@ -5074,13 +4384,7 @@ if (length(scale1_items) >= 5) {
     BIC = c(safe_bic(fit_grm), safe_bic(fit_grm_selected)),
     Reliability = c(marginal_rxx(fit_grm), marginal_rxx(fit_grm_selected))
   ) |>
-    gt() |>
-    tab_header(
-      title = md("**Mokken → GRM Handoff: Before vs After Item Selection**"),
-      subtitle = "Items selected by AISP (H >= 0.30) then fitted with GRM"
-    ) |>
-    fmt_number(columns = c(AIC, BIC), decimals = 1) |>
-    fmt_number(columns = Reliability, decimals = 3)
+    knitr::kable(caption = "Mokken → GRM Handoff: Before vs After Item Selection")
 } else {
   message("Mokken AISP で Scale 1 に割り当てられた項目が5個未満のため、GRM 推定をスキップします。",
           "lowerbound を下げるか、項目プールを見直してください。")
@@ -5095,52 +4399,16 @@ if (length(scale1_items) >= 5) {
 
 #### 手法選択のガイドライン
 
-```{r practical-guidelines}
-#| eval: true
-guidelines <- data.frame(
-  Situation = c(
-    "Initial Exploratory Analysis",
-    "Rigorous Measurement Required",
-    "Multiple Abilities to Measure",
-    "Small Sample (N < 200)",
-    "Large-Scale Survey (N > 1000)",
-    "Cross-Cultural Comparison"
-  ),
-  Recommended_Method = c(
-    "Mokken Scale Analysis",
-    "Graded Response Model",
-    "Multidimensional IRT",
-    "Mokken Scale Analysis",
-    "GRM/Multidimensional IRT",
-    "Multidimensional IRT"
-  ),
-  Rationale = c(
-    "Flexible assumptions suitable for exploration",
-    "Detailed parameter estimation possible",
-    "Simultaneous estimation of multiple dimensions",
-    "Nonparametric and robust",
-    "Stable parameter estimation",
-    "Can verify measurement invariance across cultures"
-  )
-)
+| Situation | Recommended Method | Rationale |
+|:--|:--|:--|
+| Initial Exploratory Analysis | Mokken Scale Analysis | Flexible assumptions suitable for exploration |
+| Rigorous Measurement Required | Graded Response Model | Detailed parameter estimation possible |
+| Multiple Abilities to Measure | Multidimensional IRT | Simultaneous estimation of multiple dimensions |
+| Small Sample (N < 200) | Mokken Scale Analysis | Nonparametric and robust |
+| Large-Scale Survey (N > 1000) | GRM/Multidimensional IRT | Stable parameter estimation |
+| Cross-Cultural Comparison | Multidimensional IRT | Can verify measurement invariance across cultures |
 
-guidelines |>
-  gt() |>
-  tab_header(
-    title = md("**Practical Method Selection Guide**"),
-    subtitle = "Recommendations Based on Research Purpose and Context"
-  ) |>
-  tab_style(
-    style = cell_fill(color = "#FFFACD"),
-    locations = cells_body(
-      columns = Recommended_Method
-    )
-  ) |>
-  tab_options(
-    table.font.size = 12,
-    column_labels.font.weight = "bold"
-  )
-```
+: Practical Method Selection Guide
 
 #### データ前処理と設計のベストプラクティス
 - 欠測値: IRTは欠測を自然に扱えるが、系統的欠測（群やカテゴリに偏る）は解釈に影響。設計段階で回避し、事後にパターンを確認。
@@ -5193,9 +4461,8 @@ if (!inherits(fit_lltm, 'try-error')) {
     as.data.frame() |>
     setNames("Estimate") |>
     tibble::rownames_to_column("Parameter") |>
-    gt() |>
-    tab_header(title = "LLTM: Parameters") |>
-    fmt_number(columns = where(is.numeric), decimals = 3)
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+    knitr::kable(caption = "LLTM: Parameters")
 } else {
   message('LLTM 推定に失敗したためスキップ')
 }
@@ -5344,13 +4611,8 @@ deltaR2 <- res_ord$deltaR2
 classJG <- ifelse(deltaR2 < .035, 'A', ifelse(deltaR2 < .07, 'B', 'C'))
 items_out <- if (!is.null(res_ord$names)) res_ord$names else colnames(SAT12)
 
-data.frame(Item = items_out, deltaR2 = round(deltaR2, 3), Class = classJG) |>
-  gt() |>
-  tab_header(
-    title = md("**Polytomous DIF: Ordinal Logistic Regression**"),
-    subtitle = "Jodoin & Gierl classification (A/B/C)"
-  ) |>
-  fmt_number(columns = deltaR2, decimals = 3)
+  data.frame(Item = items_out, deltaR2 = round(deltaR2, 3), Class = classJG) |>
+  knitr::kable(caption = "Polytomous DIF: Ordinal Logistic Regression")
 ```
 
 結果表の読み方：
@@ -5428,12 +4690,7 @@ if (!inherits(mg_constrained, "try-error")) {
     dif_results |>
       as.data.frame() |>
       tibble::rownames_to_column("Item") |>
-      gt() |>
-      tab_header(
-        title = md("**IRT-Based DIF Detection (mirt::DIF)**"),
-        subtitle = "Likelihood ratio test with sequential BIC-based anchor purification"
-      ) |>
-      fmt_number(columns = where(is.numeric), decimals = 3)
+      knitr::kable(caption = "IRT-Based DIF Detection (mirt::DIF)")
   } else {
     message("DIF 検定の実行に失敗しました: ", conditionMessage(attr(dif_results, "condition")))
   }
@@ -5480,7 +4737,7 @@ df_conv <- data.frame(Total = rowSums(SAT12), Theta = as.numeric(theta), T = Tsc
 df_conv |>
   group_by(Total) |>
   summarise(T_med = median(T, na.rm = TRUE), .groups = 'drop') |>
-  DT::datatable(caption = "Score Conversion Table: Total Score to T-Score (via GRM theta)")
+  knitr::kable(caption = "Score Conversion Table: Total Score to T-Score (via GRM theta)")
 ```
 
 ```{r score-conversion-plot}
@@ -5658,17 +4915,7 @@ cross_comp <- data.frame(
 )
 
 cross_comp |>
-  gt() |>
-  tab_header(
-    title = md("**Cross-Model Comparison on SAT12**"),
-    subtitle = "Lower AIC/BIC = better fit; higher reliability = better precision"
-  ) |>
-  fmt_number(columns = c(AIC, BIC), decimals = 1) |>
-  fmt_number(columns = Reliability, decimals = 3) |>
-  tab_footnote(
-    footnote = "MFRM uses different data (data.sim.mfr); MIRT uses simulated data. Both excluded from this table.",
-    locations = cells_title()
-  )
+  knitr::kable(caption = "Cross-Model Comparison on SAT12")
 ```
 
 AIC/BIC が最小のモデルが「最良」とは限りません。Rasch 系（PCM/RSM）は識別力を制約することで特異的客観性を確保し、GRM は識別力を自由推定することで適合度を改善します。研究目的（公平な尺度化 vs 最大の適合）に応じて選択してください。

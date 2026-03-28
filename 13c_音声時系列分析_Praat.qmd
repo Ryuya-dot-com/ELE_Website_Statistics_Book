@@ -82,97 +82,6 @@ theme_speech <- function(base_size = 12) {
 theme_set(theme_speech())
 set.seed(2024)
 
-strip_md <- function(x) {
-  x <- as.character(x)
-  x <- gsub("\\*\\*", "", x)
-  x <- gsub("^`|`$", "", x)
-  x
-}
-
-book_table <- function(data) {
-  structure(
-    list(
-      data = as.data.frame(data),
-      title = NULL,
-      subtitle = NULL,
-      footnotes = character()
-    ),
-    class = "book_table"
-  )
-}
-
-gt <- function(data, ...) book_table(data)
-md <- function(text) strip_md(text)
-
-tab_header <- function(data, title = NULL, subtitle = NULL, ...) {
-  if (!is.null(title)) {
-    data$title <- strip_md(title)
-  }
-  if (!is.null(subtitle)) {
-    data$subtitle <- strip_md(subtitle)
-  }
-  data
-}
-
-tab_footnote <- function(data, footnote, ...) {
-  data$footnotes <- c(data$footnotes, strip_md(footnote))
-  data
-}
-
-resolve_table_columns <- function(data, expr) {
-  idx <- tidyselect::eval_select(rlang::enquo(expr), data = data)
-  names(idx)
-}
-
-fmt_number <- function(data, columns, decimals = 0, ...) {
-  cols <- resolve_table_columns(data$data, {{ columns }})
-  for (col in cols) {
-    if (is.numeric(data$data[[col]]) || is.integer(data$data[[col]])) {
-      vals <- data$data[[col]]
-      data$data[[col]] <- ifelse(
-        is.na(vals),
-        NA_character_,
-        format(round(vals, decimals), nsmall = decimals, scientific = FALSE, trim = TRUE)
-      )
-    }
-  }
-  data
-}
-
-tab_style <- function(data, ...) data
-
-cell_text <- function(...) NULL
-cells_body <- function(...) NULL
-
-print.book_table <- function(x, ...) {
-  caption_parts <- c(x$title, x$subtitle)
-  if (length(x$footnotes) > 0) {
-    caption_parts <- c(caption_parts, paste("Note:", paste(x$footnotes, collapse = "; ")))
-  }
-  caption_parts <- caption_parts[nzchar(caption_parts)]
-  caption <- if (length(caption_parts) > 0) paste(caption_parts, collapse = " - ") else NULL
-
-  print(knitr::kable(x$data, format = "pipe", caption = caption, escape = FALSE))
-  invisible(x)
-}
-
-knit_print.book_table <- function(x, ...) {
-  caption_parts <- c(x$title, x$subtitle)
-  if (length(x$footnotes) > 0) {
-    caption_parts <- c(caption_parts, paste("Note:", paste(x$footnotes, collapse = "; ")))
-  }
-  caption_parts <- caption_parts[nzchar(caption_parts)]
-  caption <- if (length(caption_parts) > 0) paste(caption_parts, collapse = "<br>") else NULL
-
-  out <- knitr::kable(
-    x$data,
-    format = "html",
-    caption = caption,
-    escape = FALSE,
-    booktabs = TRUE
-  )
-  knitr::asis_output(out)
-}
 ```
 
 ## セットアップ
@@ -246,23 +155,15 @@ knit_print.book_table <- function(x, ...) {
 
 一見まったく異なるデータに見えますが、実際には**同じ数学的原理**が貫いています。
 
-```{r}
-#| eval: true
-#| label: macro-micro-table
-tibble(
-  Feature = c("Sampling rate", "Autocorrelation reveals...",
-              "Periodicity", "Decomposition",
-              "Stationarity needed for..."),
-  `Macro (test scores)` = c("1/week or 1/month", "Score dependency (AR structure)",
-                              "Academic calendar (exams)", "Trend + seasonal + remainder",
-                              "ARIMA modeling"),
-  `Micro (speech)` = c("16,000/second", "F0: fundamental frequency (pitch)",
-                         "Vocal fold vibration", "Source (F0) + dplyr::filter(formants) + noise",
-                         "Spectral analysis within a frame")
-) |>
-  gt() |>
-  tab_header(title = "Macro vs. micro time series: conceptual parallels")
-```
+| Feature | Macro (test scores) | Micro (speech) |
+|---|---|---|
+| Sampling rate | 1/week or 1/month | 16,000/second |
+| Autocorrelation reveals... | Score dependency (AR structure) | F0: fundamental frequency (pitch) |
+| Periodicity | Academic calendar (exams) | Vocal fold vibration |
+| Decomposition | Trend + seasonal + remainder | Source (F0) + `dplyr::filter(formants)` + noise |
+| Stationarity needed for... | ARIMA modeling | Spectral analysis within a frame |
+
+: Macro vs. micro time series: conceptual parallels
 
 具体的な対応関係：
 
@@ -1080,12 +981,14 @@ f0_a_cep <- est_f0_cep(as.numeric(vw_a), fs)
 
 ```{r f0_result_table}
 #| eval: true
-gt(tibble(Vowel=c('/i/','/i/','/a/','/a/'), Method=c('ACF','Cepstrum','ACF','Cepstrum'),
-          `F0 (Hz)` = round(c(f0_i_ac, f0_i_cep, f0_a_ac, f0_a_cep),1),
-          `True F0` = 120,
-          `Error (Hz)` = round(c(f0_i_ac, f0_i_cep, f0_a_ac, f0_a_cep) - 120, 1))) |>
-  tab_header(title = 'F0 estimates: ACF vs Cepstrum') |>
-  tab_footnote(footnote = "True F0 = 120 Hz (synthesis parameter). Both methods should yield ≈120 Hz for both vowels.")
+tibble(
+  Vowel = c('/i/', '/i/', '/a/', '/a/'),
+  Method = c('ACF', 'Cepstrum', 'ACF', 'Cepstrum'),
+  `F0 (Hz)` = round(c(f0_i_ac, f0_i_cep, f0_a_ac, f0_a_cep), 1),
+  `True F0` = 120,
+  `Error (Hz)` = round(c(f0_i_ac, f0_i_cep, f0_a_ac, f0_a_cep) - 120, 1)
+) |>
+  knitr::kable(caption = 'F0 estimates: ACF vs Cepstrum')
 ```
 
 合成母音のF0は 120 Hz に設定しました。ACF法とケプストラム法の推定値が両方とも 120 Hz に近ければ、推定が正しく機能しています。/i/ と /a/ で同じF0が推定されるべきです — F0は声帯振動の周期であり、母音の種類には依存しません。
@@ -1190,9 +1093,7 @@ fund_tbl |>
     max_f0 = max(f0_hz, na.rm = TRUE),
     .groups = "drop"
   ) |>
-  gt() |>
-  tab_header(title = "F0 track summary from seewave::fund()") |>
-  fmt_number(columns = c(median_f0, min_f0, max_f0), decimals = 1)
+  knitr::kable(caption = "F0 track summary from seewave::fund()")
 
 ggplot(fund_tbl, aes(x = time, y = f0_hz, color = vowel)) +
   geom_hline(yintercept = 120, linetype = "dashed", color = "grey50") +
@@ -1305,7 +1206,7 @@ plot_spectrum(vw_a, fs) + labs(title='Spectrum of synthetic /a/')
 
 ```{r wav_real_example}
 #| eval: true
-# ??????????????????????
+# サンプル音声がある場合だけ実行
 if (file.exists("data/audio/vowel_i.wav")) {
   w <- readWave('data/audio/vowel_i.wav')            # mono / sample rate
   seewave::oscillo(w)                      # 波形
@@ -1469,16 +1370,13 @@ if (exists('w_ds')) {
     Value  = round(c(dur_sec, as.numeric(rms_amp), zcr_val,
                      as.numeric(prop$cent), as.numeric(prop$sd), as.numeric(prop$skewness)), 4)
   ) |>
-    gt() |>
-    tab_header(title = "Audio descriptive statistics") |>
-    tab_footnote(
-      footnote = "Spectral spread = standard deviation of the spectral distribution; spectral skewness = asymmetry of the spectral shape.",
-      locations = cells_body(columns = Metric, rows = Metric %in% c("Spectral spread (Hz)", "Spectral skewness"))
-    )
+    knitr::kable(caption = "Audio descriptive statistics")
 } else {
   message('Skip stats: w_ds not available')
 }
 ```
+
+`Spectral spread` はスペクトル分布の標準偏差、`spectral skewness` はスペクトル形状の非対称性です。
 
 #### 音響記述統計の読み方
 
@@ -1550,7 +1448,7 @@ if (exists('w_ds')) {
 ```{r wav_edit_save}
 #| eval: true
 if (exists('w_ds')) {
-  # ??????????????????????
+  # 既に読み込んだ波形がある場合だけ編集する
   dur <- length(w_ds@left) / w_ds@samp.rate
   start_t <- 0.2
   end_t   <- 0.6
@@ -1587,12 +1485,6 @@ if (exists('w_ds')) {
 
 以下のコードでは、`data/audio/` フォルダ内のすべての .wav ファイルに対して、前処理（モノラル化・正規化）→ 記述統計（duration / ZCR / RMS / スペクトル重心）の算出を自動化し、結果をCSVに保存します。複数話者・複数項目のデータを一括処理するパイプラインの雛形です。
 
-#### この章での表の使い分け
-
-- **静的な表**は、概念の比較、用語整理、手順の確認に使います。読み手に「この場で意味を理解してほしい」表は、本文の流れを止めない方が有利です。
-- **動的な表**は、ファイル単位・トークン単位の出力のように行数が増える結果表にだけ使います。探索・検索・並べ替えが必要だからです。
-- したがって本章では、`knitr::kable()` や Markdown 表を**教える表**に、`DT::datatable()` を**調べる表**に割り当てています。
-
 ```{r wav_batch}
 #| eval: true
 files <- list.files('data/audio', pattern = '\\.(wav|WAV)$', full.names = TRUE)
@@ -1610,10 +1502,9 @@ summarise_wav <- function(path){
 tbl <- map_dfr(files, summarise_wav)
 write.csv(tbl, 'audio_summary.csv', row.names = FALSE)
 tbl |>
-  DT::datatable(
+  knitr::kable(
     caption = 'Audio files: descriptive stats',
-    filter = 'top',
-    options = list(pageLength = 10, scrollX = TRUE, autoWidth = TRUE)
+    digits = 3
   )
 ```
 
@@ -1695,23 +1586,21 @@ if (file.exists("audio_dataset/metadata/metadata.csv")) {
   features |>
     dplyr::filter(task == "sustained_vowel") |>
     dplyr::group_by(item) |>
-    dplyr::summarise(n = dplyr::n(),
-                     mean_f0 = mean(f0, na.rm = TRUE),
-                     sd_f0   = sd(f0, na.rm = TRUE),
-                     mean_centroid = mean(centroid, na.rm = TRUE), .groups = "drop") |>
-    gt() |>
-    tab_header(title = "Sustained vowels: F0/spectral centroid summary")
+  dplyr::summarise(n = dplyr::n(),
+                   mean_f0 = mean(f0, na.rm = TRUE),
+                   sd_f0   = sd(f0, na.rm = TRUE),
+                   mean_centroid = mean(centroid, na.rm = TRUE), .groups = "drop") |>
+    knitr::kable(caption = "Sustained vowels: F0/spectral centroid summary")
 
   # 8) 文タイプのF0（例）
   features |>
     dplyr::filter(task == "sentence") |>
-    dplyr::mutate(type = dplyr::coalesce(sentence_type, "unknown")) |>
-    dplyr::group_by(type) |>
-    dplyr::summarise(n = dplyr::n(),
-                     mean_f0 = mean(f0, na.rm = TRUE),
-                     sd_f0   = sd(f0, na.rm = TRUE), .groups = "drop") |>
-    gt() |>
-    tab_header(title = "Sentence: F0 summary (by type)")
+  dplyr::mutate(type = dplyr::coalesce(sentence_type, "unknown")) |>
+  dplyr::group_by(type) |>
+  dplyr::summarise(n = dplyr::n(),
+                   mean_f0 = mean(f0, na.rm = TRUE),
+                   sd_f0   = sd(f0, na.rm = TRUE), .groups = "drop") |>
+    knitr::kable(caption = "Sentence: F0 summary (by type)")
 
   # 9) 保存
   write.csv(features, "audio_dataset/metadata/audio_features.csv", row.names = FALSE)
@@ -1898,54 +1787,28 @@ flowchart LR
 
 以下の表は、Praat でよく行う操作に対応する R パッケージと関数の一覧です。
 
-```{r praat_r_correspondence}
-#| eval: true
-tibble(
-  `Praat の操作` = c(
-    "Open → Read from file... (Sound)",
-    "Save → Save as WAV file...",
-    "Edit → TextGrid で注釈を読む",
-    "TextGrid → Tier の追加",
-    "TextGrid → ラベルの設定",
-    "TextGrid → ラベルの検索",
-    "Analyse → To Pitch (ac)...",
-    "Analyse → To Formant (burg)...",
-    "Analyse → To Intensity...",
-    "View → スペクトログラム表示",
-    "View → 波形表示",
-    "Read → Pitch object (.Pitch)",
-    "Read → PitchTier (.PitchTier)",
-    "Read → Formant object (.Formant)",
-    "Read → IntensityTier (.IntensityTier)",
-    "Praat Script の実行"
-  ),
-  `R パッケージ` = c(
-    "tuneR", "tuneR", "rPraat", "rPraat", "rPraat", "rPraat",
-    "seewave", "phonTools", "seewave", "seewave", "seewave",
-    "rPraat", "rPraat", "rPraat", "rPraat", "speakr"
-  ),
-  `R の関数` = c(
-    "readWave()", "writeWave()",
-    "tg.read()", "tg.insertNewIntervalTier()",
-    "tg.setLabel()", "tg.findLabels()",
-    "fund()", "findformants()",
-    "env() / rms()", "spectro()",
-    "oscillo()",
-    "pitch.read()", "pt.read()", "formant.read()",
-    "it.read()", "praat_run()"
-  )
-) |>
-  gt() |>
-  tab_header(title = "Praat → R package correspondence table") |>
-  tab_style(
-    style = cell_text(font = "monospace", size = "small"),
-    locations = cells_body(columns = `R の関数`)
-  ) |>
-  tab_footnote(
-    footnote = "speakr パッケージは Praat がローカルにインストールされている必要があります。",
-    locations = cells_body(columns = `R パッケージ`, rows = `R パッケージ` == "speakr")
-  )
-```
+| Praat の操作 | R パッケージ | R の関数 |
+|---|---|---|
+| Open → Read from file... (Sound) | tuneR | `readWave()` |
+| Save → Save as WAV file... | tuneR | `writeWave()` |
+| Edit → TextGrid で注釈を読む | rPraat | `tg.read()` |
+| TextGrid → Tier の追加 | rPraat | `tg.insertNewIntervalTier()` |
+| TextGrid → ラベルの設定 | rPraat | `tg.setLabel()` |
+| TextGrid → ラベルの検索 | rPraat | `tg.findLabels()` |
+| Analyse → To Pitch (ac)... | seewave | `fund()` |
+| Analyse → To Formant (burg)... | phonTools | `findformants()` |
+| Analyse → To Intensity... | seewave | `env()` / `rms()` |
+| View → スペクトログラム表示 | seewave | `spectro()` |
+| View → 波形表示 | seewave | `oscillo()` |
+| Read → Pitch object (.Pitch) | rPraat | `pitch.read()` |
+| Read → PitchTier (.PitchTier) | rPraat | `pt.read()` |
+| Read → Formant object (.Formant) | rPraat | `formant.read()` |
+| Read → IntensityTier (.IntensityTier) | rPraat | `it.read()` |
+| Praat Script の実行 | speakr | `praat_run()` |
+
+: Praat → R package correspondence table
+
+Note. `speakr` パッケージは Praat がローカルにインストールされている必要があります。
 
 #### 公式ドキュメントから確認できる主要設定
 
@@ -2029,9 +1892,7 @@ word_df <- tibble(
 
 word_df |>
   dplyr::slice(1:6) |>
-  gt() |>
-  tab_header(title = "rPraat sample TextGrid: first labeled intervals") |>
-  fmt_number(columns = duration_ms, decimals = 1)
+  knitr::kable(caption = "rPraat sample TextGrid: first labeled intervals", digits = 1)
 
 # 完全一致検索なので、まずラベルをそのまま指定する
 co_idx <- rPraat::tg.findLabels(tg, tierInd = "word", labelVector = c("co"))[[1]][1]
@@ -2088,9 +1949,7 @@ pt_df <- tibble(
 
 pt_df |>
   dplyr::slice(1:8) |>
-  gt() |>
-  tab_header(title = "PitchTier read with pt.read()") |>
-  fmt_number(columns = c(f0_hz, f0_st), decimals = 2)
+  knitr::kable(caption = "PitchTier read with pt.read()", digits = 2)
 
 # ── Pitch: フレームごとの候補集合 ──
 pitch_path <- file.path(tempdir(), "demo_rPraat.Pitch")
@@ -2193,9 +2052,7 @@ tibble(
   F2 = fmt_arr$frequencyArray[2, mid_idx],
   F3 = fmt_arr$frequencyArray[3, mid_idx]
 ) |>
-  gt() |>
-  tab_header(title = "TextGrid interval + Formant object = one token's formants") |>
-  fmt_number(columns = c(midpoint_sec, F1, F2, F3), decimals = 2)
+  knitr::kable(caption = "TextGrid interval + Formant object = one token's formants", digits = 2)
 ```
 
 この chunk の観察ポイントは、`formant.toArray()` で framewise な行列になることと、**TextGrid の区間中央を使って1トークン1行に集約できる**ことです。研究で使う表は、最終的にこの「label + midpoint + F1/F2/F3」の形に近づいていきます。
@@ -2243,8 +2100,7 @@ tibble(
   channels = snd$nChannels,
   bits = snd$nBits
 ) |>
-  gt() |>
-  tab_header(title = "snd.read() summary for the local vowel_i.wav")
+  knitr::kable(caption = "snd.read() summary for the local vowel_i.wav")
 
 w <- tuneR::Wave(
   left = as.integer(as.vector(snd$sig[, 1]) * 32767),
@@ -2316,8 +2172,7 @@ if (requireNamespace("speakr", quietly = TRUE) &&
     F2 = fmt_arr$frequencyArray[2, mid_idx],
     F3 = fmt_arr$frequencyArray[3, mid_idx]
   ) |>
-    gt() |>
-    tab_header(title = "Formants estimated by Praat via speakr::praat_run()")
+    knitr::kable(caption = "Formants estimated by Praat via speakr::praat_run()", digits = 2)
 } else {
   message("Skip speakr_example: speakr, Praat, or data/audio/vowel_i.wav not available")
 }
@@ -2337,50 +2192,19 @@ if (requireNamespace("speakr", quietly = TRUE) &&
 
 ### パッケージ選択ガイド
 
-```{r package_decision}
-#| eval: true
-tibble(
-  `ユースケース` = c(
-    "TextGrid の注釈データを R に読み込みたい",
-    "Praat で推定した F0 / Formant を R で分析したい",
-    "R だけで F0 を推定したい（Praat 不要）",
-    "R だけでフォルマントを推定したい（Praat 不要）",
-    "Praat スクリプトをバッチ実行したい",
-    "スペクトログラムを R で描画したい",
-    "wav の前処理（トリミング・フィルタ・正規化）",
-    "音響記述統計（RMS, ZCR, spectral centroid）",
-    "F0 contour の GAMM 分析"
-  ),
-  `推奨パッケージ` = c(
-    "rPraat",
-    "rPraat（pitch.read / formant.read）",
-    "seewave（fund）",
-    "phonTools（findformants / lpc）",
-    "speakr（praat_run）",
-    "seewave（spectro）",
-    "tuneR + seewave",
-    "seewave（rms, zcr, specprop）",
-    "rPraat → mgcv（gam）"
-  ),
-  `Praat 必要？` = c(
-    "TextGrid ファイルが必要",
-    ".Pitch / .Formant ファイルが必要",
-    "不要",
-    "不要",
-    "Praat 本体が必要",
-    "不要",
-    "不要",
-    "不要",
-    "Pitch ファイル推奨"
-  )
-) |>
-  gt() |>
-  tab_header(title = "Package selection guide for speech analysis in R") |>
-  tab_style(
-    style = cell_text(font = "monospace", size = "small"),
-    locations = cells_body(columns = `推奨パッケージ`)
-  )
-```
+| ユースケース | 推奨パッケージ | Praat 必要？ |
+|---|---|---|
+| TextGrid の注釈データを R に読み込みたい | `rPraat` | TextGrid ファイルが必要 |
+| Praat で推定した F0 / Formant を R で分析したい | `rPraat` (`pitch.read()` / `formant.read()`) | `.Pitch` / `.Formant` ファイルが必要 |
+| R だけで F0 を推定したい（Praat 不要） | `seewave` (`fund()`) | 不要 |
+| R だけでフォルマントを推定したい（Praat 不要） | `phonTools` (`findformants()` / `lpc()`) | 不要 |
+| Praat スクリプトをバッチ実行したい | `speakr` (`praat_run()`) | Praat 本体が必要 |
+| スペクトログラムを R で描画したい | `seewave` (`spectro()`) | 不要 |
+| wav の前処理（トリミング・フィルタ・正規化） | `tuneR` + `seewave` | 不要 |
+| 音響記述統計（RMS, ZCR, spectral centroid） | `seewave` (`rms()`, `zcr()`, `specprop()`) | 不要 |
+| F0 contour の GAMM 分析 | `rPraat` → `mgcv` (`gam()`) | Pitch ファイル推奨 |
+
+: Package selection guide for speech analysis in R
 
 #### まとめ：4パッケージの役割分担
 

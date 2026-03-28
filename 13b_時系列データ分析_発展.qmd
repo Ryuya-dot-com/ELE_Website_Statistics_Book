@@ -277,9 +277,8 @@ toefl_tidyverts_tbl |>
     `Sum of first 10 ACFs` = round(acf10, 3),
     `First-difference ACF(1)` = round(diff1_acf1, 3),
     `Seasonal ACF(1)` = round(season_acf1, 3)
-  ) |>
-  gt() |>
-  tab_header(title = "Autocorrelation features from feasts::feat_acf()")
+) |>
+  knitr::kable(caption = "Autocorrelation features from feasts::feat_acf()")
 ```
 
 [`ACF()` の公式ドキュメント](https://feasts.tidyverts.org/reference/ACF.html) のとおり、`ACF()` と `PACF()` は相関を tidy な tsibble として返すので、そのまま `autoplot()` に渡せます。まず ACF で「依存がどれくらい長く尾を引くか」を見て、次に PACF で「何ラグ先までが直接依存に近いか」を見ます。下の `feat_acf()` 表は、その印象を 1 行の特徴量に圧縮したものです。`acf1` が高ければ慣性が強く、`season_acf1` が小さければ「月次の反復パターン」より「トレンドや介入」の方が目立つと読めます。
@@ -428,8 +427,7 @@ tibble(
   Criterion = names(lag_choice),
   Selected_lag = as.integer(lag_choice)
 ) |>
-  gt() |>
-  tab_header(title = "Lag-order suggestions from VARselect()")
+  knitr::kable(caption = "Lag-order suggestions from VARselect()")
 
 # 今回は生成過程と lag selection の候補を踏まえ、2ラグで実演
 fit_var <- vars::VAR(d_edu, p = 2, type = "const")
@@ -469,9 +467,8 @@ tibble(
   df = unname(var_serial$serial$parameter),
   p = unname(var_serial$serial$p.value)
 ) |>
-  gt() |>
-  fmt_number(columns = c(Statistic, p), decimals = 3) |>
-  tab_header(title = "Residual whiteness check for VAR")
+  mutate(across(c(Statistic, p), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Residual whiteness check for VAR")
 
 var_roots_complex <- vars::roots(fit_var, modulus = FALSE)
 var_root_tbl <- tibble(
@@ -489,7 +486,7 @@ var_root_tbl <- tibble(
 ```{r}
 #| eval: true
 #| label: var-education
-# VAR ??????
+# VAR 係数を表に整形
 purrr::map_dfr(names(var_summary$varresult), function(eq) {
   coefs <- coef(var_summary$varresult[[eq]])
   tibble(
@@ -501,15 +498,15 @@ purrr::map_dfr(names(var_summary$varresult), function(eq) {
     p = coefs[, "Pr(>|t|)"]
   )
 }) |>
-  gt() |>
-  tab_header(title = "VAR Model Coefficients") |>
-  fmt_number(columns = c(Estimate, Std.Error, t), decimals = 3) |>
-  fmt_number(columns = p, decimals = 4)
+  mutate(
+    across(c(Estimate, Std.Error, t), ~ round(.x, 3)),
+    p = round(p, 4)
+  ) |>
+  knitr::kable(caption = "VAR Model Coefficients")
 
 var_root_tbl |>
-  gt() |>
-  tab_header(title = "VAR roots on the complex plane") |>
-  fmt_number(columns = c(Real, Imaginary, Modulus), decimals = 3)
+  mutate(across(c(Real, Imaginary, Modulus), ~ round(.x, 3))) |>
+  knitr::kable(caption = "VAR roots on the complex plane")
 
 unit_circle <- tibble(
   theta = seq(0, 2 * pi, length.out = 361),
@@ -630,9 +627,8 @@ reading_fevd <- as.data.frame(fevd_result$Reading) |>
   mutate(Horizon = as.integer(Horizon))
 
 reading_fevd |>
-  gt() |>
-  tab_header(title = "Forecast error variance decomposition for Reading") |>
-  fmt_number(columns = -Horizon, decimals = 3)
+  mutate(across(-Horizon, ~ round(.x, 3))) |>
+  knitr::kable(caption = "Forecast error variance decomposition for Reading")
 
 reading_fevd |>
   pivot_longer(-Horizon, names_to = "Shock", values_to = "Share") |>
@@ -794,8 +790,7 @@ tibble(
   )
 ) |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  gt() |>
-  tab_header(title = "DTW comparison: constraints and distance definitions")
+  knitr::kable(caption = "DTW comparison: constraints and distance definitions")
 
 dtw_alignment <- tibble(
   A_week = fit_dtw_sc$index1,
@@ -837,8 +832,7 @@ tibble(
   )
 ) |>
   mutate(Value = round(Value, 3)) |>
-  gt() |>
-  tab_header(title = "DTW alignment summary")
+  knitr::kable(caption = "DTW alignment summary")
 
 dtw_alignment |>
   group_by(A_week) |>
@@ -979,8 +973,7 @@ tibble(
   )
 ) |>
   mutate(Value = round(Value, 3)) |>
-  gt() |>
-  tab_header(title = "DTW summary for Olympic 100m trajectories")
+  knitr::kable(caption = "DTW summary for Olympic 100m trajectories")
 
 ggplot(olympic_alignment, aes(x = men_year, y = women_year, color = lag_olympics)) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey55") +
@@ -1094,8 +1087,7 @@ hmm_ic <- tibble(
 
 hmm_ic |>
   mutate(across(c(logLik, AIC, BIC), ~ round(.x, 2))) |>
-  gt() |>
-  tab_header(title = "HMM model selection (1-3 states)")
+  knitr::kable(caption = "HMM model selection (1-3 states)")
 
 hmm_ic |>
   pivot_longer(c(AIC, BIC), names_to = "Criterion", values_to = "Value") |>
@@ -1180,9 +1172,8 @@ state_emission |>
       TRUE ~ "中間状態"
     )
   ) |>
-  gt() |>
-  tab_header(title = "HMM emission summary by state") |>
-  fmt_number(columns = c(mean_score, sd_score), decimals = 2)
+  mutate(across(c(mean_score, sd_score), ~ round(.x, 2))) |>
+  knitr::kable(caption = "HMM emission summary by state")
 
 score_grid <- seq(min(df_hmm$score) - 5, max(df_hmm$score) + 5, length.out = 250)
 
@@ -1288,9 +1279,8 @@ df_hmm_decoded |>
   group_by(state_global) |>
   mutate(prob = n / sum(n)) |>
   ungroup() |>
-  gt() |>
-  tab_header(title = "Decoded state transitions (empirical proportions)") |>
-  fmt_number(columns = prob, decimals = 3)
+  mutate(prob = round(prob, 3)) |>
+  knitr::kable(caption = "Decoded state transitions (empirical proportions)")
 ```
 
 この例では、`global` と `local` のデコードが異なった時点は `r decode_disagree_n` 個で、`local` デコードは smoothing の事後最大確率状態と `r if (local_matches_smoothing) "一致しました" else "一致しませんでした"`。
@@ -1632,8 +1622,7 @@ tibble(
   )
 ) |>
   mutate(Value = round(Value, 3)) |>
-  gt() |>
-  tab_header(title = "KFAS variance components")
+  knitr::kable(caption = "KFAS variance components")
 ```
 
 このプロットでは、灰色の点と線が観測された TOEFL スコア、色付きの線がカルマンスムーザの推定した「真のトレンド」です。観測値と平滑シグナルのギャップは推定された**測定誤差**に対応し、ギャップが大きいほどモデルは「このデータ点はノイズが大きい」と判断しています。赤破線の介入時点付近で平滑シグナルがジャンプしていれば、SSM もレベル変化を検出していると読めます。`Q`（状態分散）と `H`（観測分散）の関係も重要で、**Q >> H** なら平滑線がデータに密着しやすく、**H >> Q** なら観測ノイズを強く平滑化した滑らかな曲線になります。`Q / H ratio` が **1 よりかなり小さい**なら「真の状態は比較的滑らかで観測ノイズの方が大きい」、**1 よりかなり大きい**なら「状態そのものが毎月かなり動いている」と読めます。
@@ -1711,8 +1700,7 @@ tibble(
   )
 ) |>
   mutate(Value = round(Value, 3)) |>
-  gt() |>
-  tab_header(title = "KFAS residual diagnostic summary")
+  knitr::kable(caption = "KFAS residual diagnostic summary")
 ```
 
 診断では、`predict.SSModel()` の**予測区間**に観測点がおおむね収まっていれば、1 期先予測として大きな破綻はありません。`rstandard.KFS()` の標準化予測誤差は 0 付近に散らばるのが理想で、**±2 を頻繁に超える**なら外れ値、欠落した季節成分、介入効果の見落としを疑います。さらに QQ 図で点が大きく曲がらないかを見て、残差分布が極端に歪んでいないかを確認し、残差 ACF の棒が破線内におおむね収まっていれば**残された系列依存が小さい**と判断しやすくなります。見た目がきれいでも診断で破綻していれば解釈は危ういので、SSM でも残差確認は省けません。ここで使っている予測区間と標準化残差は、[`KFAS` 公式マニュアル](https://cran.r-project.org/web/packages/KFAS/KFAS.pdf) の `predict.SSModel()` と `rstandard.KFS()` に直接基づいています。QQ 図と残差 ACF は、その出力を標準的な時系列残差診断の枠組みに戻して確認するための追加可視化であり、考え方の土台は @helske2017 と @shumway2017 に沿っています。
@@ -1756,8 +1744,7 @@ tibble(
 
 tibble(Model = c("Local Level", "Local Linear Trend"),
        AIC = round(c(AIC_ll, AIC_llt), 1)) |>
-  gt() |>
-  tab_header(title = "AIC comparison: Local Level vs Local Linear Trend (KFAS)")
+  knitr::kable(caption = "AIC comparison: Local Level vs Local Linear Trend (KFAS)")
 ```
 
 **AIC比較の読み方**：AICが小さいモデルが選好されます。ローカルレベル（状態 = レベルのみ）とローカル線形トレンド（状態 = レベル＋傾き）の差が2未満なら実質同等、10以上なら強い差です。TOEFLスコアには明確な上昇トレンドがあるため、ローカル線形トレンドが選択される可能性が高いです。
@@ -1806,8 +1793,7 @@ AIC_ssm_s <- -2 * as.numeric(logLik(f_seas_ssm$model)) + 2 * length(f_seas_ssm$o
 
 tibble(Model = c("Seasonal Dummies + ARIMA", "Seasonal SSM (KFAS)"),
        AIC = round(c(AIC_dummy, AIC_ssm_s), 1)) |>
-  gt() |>
-  tab_header(title = "Seasonal dummies vs seasonal SSM: AIC comparison")
+  knitr::kable(caption = "Seasonal dummies vs seasonal SSM: AIC comparison")
 ```
 
 ダミー回帰は**季節パターンが固定**であることを前提にします。これに対して SSM の季節成分はパターンの緩やかな変化を許容するため、実務では SSM の方が頑健なことが多くなります。
@@ -1863,9 +1849,8 @@ arma_post <- posterior_summary(fit_brm_arma)[c("b_Intercept", "ar[1]", "ma[1]", 
   )
 
 arma_post |>
-  gt() |>
-  tab_header(title = "Bayesian ARMA Model (brms)") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Bayesian ARMA Model (brms)")
 
 arma_post |>
   ggplot(aes(y = forcats::fct_rev(Parameter), x = Estimate, xmin = Q2.5, xmax = Q97.5)) +
@@ -1953,9 +1938,8 @@ gp_post <- posterior_summary(fit_brm_gp)[c("b_Intercept", "sdgp_gptime_sc", "lsc
   )
 
 gp_post |>
-  gt() |>
-  tab_header(title = "Bayesian GP Model (brms)") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Bayesian GP Model (brms)")
 
 gp_post |>
   ggplot(aes(y = forcats::fct_rev(Parameter), x = Estimate, xmin = Q2.5, xmax = Q97.5)) +
@@ -2089,8 +2073,8 @@ ggplot(cp_tbl, aes(x = cp, y = posterior)) +
   theme_book()
 
 cp_summary_tbl |>
-  gt() |>
-  tab_header(title = "Bayesian changepoint summary (educational two-segment model)")
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Bayesian changepoint summary (educational two-segment model)")
 ```
 
 この図の読み方は単純です。**高い棒ほど、その月が変化点である事後確率が高い**という意味です。`breakpoints()` のように 1 点だけ返すのではなく、「月11も月12も月13もありうるが、その中では月12が最有力」といった**不確実性ごとの報告**ができます。教育研究では、これはかなり重要です。実際の介入は、実施日ぴったりではなく、数週間かけて浸透することが多いからです。
@@ -2362,9 +2346,8 @@ ggplot(rl_post_tbl, aes(x = alpha, y = beta, fill = post)) +
   theme_book()
 
 rl_summary_tbl |>
-  gt() |>
-  fmt_number(columns = c(Posterior_mean, True_value), decimals = 3) |>
-  tab_header(title = "Bayesian recovery of RL parameters from trial-by-trial data")
+  mutate(across(c(Posterior_mean, True_value), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Bayesian recovery of RL parameters from trial-by-trial data")
 ```
 
 この posterior surface は、「どの学習率 $\alpha$ と choice consistency $\beta$ が、この試行系列を最もよく説明するか」を示しています。赤点はシミュレーションで使った真値で、下の表はその真値と事後平均を並べた簡単な recovery check です。ベイズの良さは、**最尤値1個**で終わらず、$\alpha$ と $\beta$ の不確実性や相関構造まで見えることです。被験者が複数いれば、これを **階層ベイズ** に拡張して、個人差と集団平均を同時に推定できます [@daw2011; @ahn2017]。

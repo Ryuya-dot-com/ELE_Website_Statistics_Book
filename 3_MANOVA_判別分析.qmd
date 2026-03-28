@@ -19,9 +19,7 @@ required_packages <- c(
   "effectsize",
   "emmeans",
   "forcats",
-  "gt",
   "heplots",
-  "knitr",
   "pacman",
   "patchwork",
   "purrr",
@@ -47,7 +45,7 @@ if (length(missing_packages) > 0) {
 - `MASS` / `candisc`: 線形判別分析と正準判別分析を扱う。
 - `MVN` / `biotools` / `heplots`: 多変量正規性、Box's M、HE プロットなど MANOVA の前提確認と可視化を支える。
 - `effectsize` / `emmeans` / `broom`: 効果量、追跡比較、結果の整形を担当する。
-- `tidyverse` / `GGally` / `patchwork` / `gt` / `WebPower`: データ整形、探索図、図の合成、表、検定力分析を補助する。
+- `tidyverse` / `GGally` / `patchwork` / `WebPower`: データ整形、探索図、図の合成、表、検定力分析を補助する。
 
 ```{r}
 #| eval: true
@@ -65,7 +63,6 @@ suppressWarnings(pacman::p_load(
   biotools,
   effectsize,
   emmeans,
-  gt,
   GGally,
   broom,
   patchwork,
@@ -93,6 +90,7 @@ theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
     plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
   ))
 theme_update(legend.position = "bottom")
+
 ```
 
 ## はじめに
@@ -385,10 +383,8 @@ simulated |>
     Recognition_Mean = mean(Recognition),
     .groups = "drop"
   ) |>
-  mutate(across(c(Recall_Mean, Recognition_Mean), ~ round(.x, 2))) |>
-  knitr::kable(
-    caption = "Simulated Design Overview: sample size and means by Treatment × Time"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(caption = "Simulated Design Overview: sample size and means by Treatment × Time")
 ```
 
 **出力の読み方**:
@@ -451,15 +447,8 @@ group_centers <- simulated |>
   mutate(Group_label = str_replace(Group, "_", "\n"))
 
 desc_tbl |>
-  mutate(
-    across(
-      c(Recall_Mean, Recall_SD, Recognition_Mean, Recognition_SD, Recall_CI, Recognition_CI),
-      ~ round(.x, 2)
-    )
-  ) |>
-  knitr::kable(
-    caption = "Descriptive Statistics: dependent variables by group"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(caption = "Descriptive Statistics: dependent variables by group")
 
 p_recall <- ggplot(desc_tbl, aes(x = Time, y = Recall_Mean, group = Treatment, color = Treatment)) +
   geom_errorbar(aes(ymin = Recall_Mean - Recall_CI, ymax = Recall_Mean + Recall_CI), width = 0.08) +
@@ -505,10 +494,8 @@ tibble(
     TRUE ~ "高すぎる: 多重共線性の懸念"
   )
 ) |>
-  mutate(Correlation = round(Correlation, 3)) |>
-  knitr::kable(
-    caption = "DV Correlation Check: confirming suitability for MANOVA"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "DV Correlation Check: confirming suitability for MANOVA")
 ```
 
 ```{r}
@@ -612,10 +599,8 @@ hz_overall$multivariate_normality |>
     p_value = p.value,
     Decision = if_else(p.value < 0.05, "MVNからの逸脱を示唆", "MVNを棄却せず")
   ) |>
-  mutate(across(c(Statistic, p_value), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "Minimal HZ Test Example: single-step implementation in R"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Minimal HZ Test Example: single-step implementation in R")
 ```
 
 **`MVN::mvn()` の読み方**:
@@ -657,14 +642,8 @@ mvn_tbl <- simulated |>
   ungroup()
 
 mvn_tbl |>
-  mutate(
-    Statistic = round(Statistic, 3),
-    p_value = round(p_value, 3),
-    alpha = round(alpha, 2)
-  ) |>
-  knitr::kable(
-    caption = "Multivariate Normality by Group: Henze-Zirkler test"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Multivariate Normality by Group: Henze-Zirkler test")
 ```
 
 ```{r}
@@ -680,10 +659,8 @@ hz_action_tbl <- mvn_tbl |>
   dplyr::select(Group, Statistic, p_value, Decision, Action)
 
 hz_action_tbl |>
-  mutate(across(c(Statistic, p_value), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "HZ Interpretation Guide: decision and recommended next action"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "HZ Interpretation Guide: decision and recommended next action")
 ```
 
 #### HZ検定の補助: マハラノビス距離による外れ値診断
@@ -713,13 +690,8 @@ mahal_tbl <- simulated |>
   ungroup()
 
 mahal_tbl |>
-  mutate(
-    Cutoff = round(Cutoff, 3),
-    Outlier_Rate = round(Outlier_Rate, 3)
-  ) |>
-  knitr::kable(
-    caption = "Mahalanobis Outlier Screening: group-wise outlier rate with chi-square cutoff (97.5%)"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Mahalanobis Outlier Screening: group-wise outlier rate with chi-square cutoff (97.5%)")
 ```
 
 **マハラノビス距離の読み方**:
@@ -846,10 +818,8 @@ assump_obj <- check_manova_assumptions(
 )
 
 assump_obj$summary |>
-  knitr::kable(
-    caption = "Reusable Assumption Pipeline: single-call diagnostic summary",
-    digits = 3
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Reusable Assumption Pipeline: single-call diagnostic summary")
 ```
 
 **一括チェック結果の読み方**:
@@ -886,14 +856,8 @@ box_tbl <- tibble(
 )
 
 box_tbl |>
-  mutate(
-    Statistic = round(Statistic, 3),
-    df = round(df, 0),
-    p_value = round(p_value, 3)
-  ) |>
-  knitr::kable(
-    caption = "Homogeneity of Covariance Matrices: Box's M test"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Homogeneity of Covariance Matrices: Box's M test")
 ```
 
 **`Box's M` の読み方**:
@@ -926,9 +890,8 @@ assumption_summary <- tibble(
 )
 
 assumption_summary |>
-  knitr::kable(
-    caption = "Assumption Checklist (Practical Summary): what to check before running MANOVA"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Assumption Checklist (Practical Summary): what to check before running MANOVA")
 ```
 
 ## MANOVAの実行
@@ -965,17 +928,9 @@ manova_tbl <- purrr::map_dfr(
 )
 
 manova_tbl |>
-  gt() |>
-  tab_header(
-    title = "MANOVA Test Statistics",
-    subtitle = "Treatment, Time, and interaction effects"
-  ) |>
-  fmt_number(columns = c(Statistic, Approx_F, p_value), decimals = 3) |>
-  fmt_number(columns = c(df1, df2), decimals = 0) |>
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = p_value, rows = p_value < 0.05)
-  )
+  mutate(across(c(Statistic, Approx_F, p_value), ~ round(.x, 3))) |>
+  mutate(across(c(df1, df2), ~ round(.x, 0))) |>
+  knitr::kable(caption = "MANOVA Test Statistics: Treatment, Time, and interaction effects")
 ```
 
 **MANOVA出力の読み方**:
@@ -1002,12 +957,8 @@ pillai_focus <- manova_tbl |>
   )
 
 pillai_focus |>
-  gt() |>
-  tab_header(
-    title = "Primary Inference (Pillai)",
-    subtitle = "Recommended primary multivariate test"
-  ) |>
-  fmt_number(columns = c(Statistic, Approx_F, p_value), decimals = 3)
+  mutate(across(c(Statistic, Approx_F, p_value), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Primary Inference (Pillai): Recommended primary multivariate test")
 ```
 
 ```{r}
@@ -1066,13 +1017,8 @@ multivariate_eta2 <- pillai_focus |>
   dplyr::select(Effect, Statistic, s, Multivariate_eta2, Size_label)
 
 multivariate_eta2 |>
-  mutate(
-    Statistic = round(Statistic, 3),
-    Multivariate_eta2 = round(Multivariate_eta2, 3)
-  ) |>
-  knitr::kable(
-    caption = "Multivariate Effect Size: approximate multivariate eta-squared based on Pillai's trace"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Multivariate Effect Size: approximate multivariate eta-squared based on Pillai's trace")
 ```
 
 **補助指標の読み方**:
@@ -1124,10 +1070,8 @@ tibble(
   H_Recall_Recog = c(H_treatment[1,2], H_time[1,2], H_interaction[1,2]),
   H_Recog_Recog = c(H_treatment[2,2], H_time[2,2], H_interaction[2,2])
 ) |>
-  mutate(across(-Effect, ~ round(.x, 2))) |>
-  knitr::kable(
-    caption = "Hypothesis SSCP Matrices (H): between-group variation for each effect"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(caption = "Hypothesis SSCP Matrices (H): between-group variation for each effect")
 ```
 
 **H行列の読み方**:
@@ -1266,17 +1210,13 @@ lda_coef <- as.data.frame(lda_fit$scaling) |>
   rownames_to_column("Variable")
 
 lda_coef |>
-  mutate(across(starts_with("LD"), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "LDA Coefficients: linear discriminant function loadings"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA Coefficients: linear discriminant function loadings")
 
 centroid_tbl <- as_tibble(lda_fit$means, rownames = "Group")
 centroid_tbl |>
-  mutate(across(c(Recall, Recognition), ~ round(.x, 2))) |>
-  knitr::kable(
-    caption = "Group Centroids: means of predictors by group"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(caption = "Group Centroids: means of predictors by group")
 ```
 
 **LDA係数の読み方**:
@@ -1307,10 +1247,8 @@ structure_tbl <- as.data.frame(structure_coefs) |>
   as_tibble()
 
 structure_tbl |>
-  mutate(across(starts_with("LD"), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "Structure Coefficients: correlations between DVs and discriminant functions"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Structure Coefficients: correlations between DVs and discriminant functions")
 
 coef_compare_plot_tbl <- bind_rows(
   lda_coef |>
@@ -1396,13 +1334,11 @@ prop_trace_tbl <- tibble(
 
 prop_trace_tbl |>
   mutate(
-    Eigenvalue = round(Eigenvalue, 3),
     Proportion = scales::percent(Proportion, accuracy = 0.1),
     Cumulative = scales::percent(Cumulative, accuracy = 0.1)
   ) |>
-  knitr::kable(
-    caption = "Proportion of Trace: variance explained by each discriminant function"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Proportion of Trace: variance explained by each discriminant function")
 ```
 
 ```{r}
@@ -1467,15 +1403,13 @@ cm_lda_plot_tbl <- as.data.frame(cm_lda) |>
 
 as.data.frame.matrix(cm_lda) |>
   rownames_to_column("Actual") |>
-  knitr::kable(
-    caption = "LDA Confusion Matrix (LOOCV): rows = Actual, columns = Predicted"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA Confusion Matrix (LOOCV): rows = Actual, columns = Predicted")
 
 lda_metric_tbl |>
   mutate(Value = scales::percent(Value, accuracy = 0.1)) |>
-  knitr::kable(
-    caption = "LDA Classification Metrics: LOOCV-based performance"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA Classification Metrics: LOOCV-based performance")
 ```
 
 ```{r}
@@ -1559,15 +1493,13 @@ lda_acc_ci <- calc_accuracy_ci(cm_lda)
 
 lda_class_tbl |>
   mutate(across(c(Recall, Precision, F1), ~ scales::percent(.x, accuracy = 0.1))) |>
-  knitr::kable(
-    caption = "LDA Class-wise Performance: recall, precision, and F1 by group"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA Class-wise Performance: recall, precision, and F1 by group")
 
 lda_acc_ci |>
   mutate(across(c(Accuracy, CI_low, CI_high), ~ scales::percent(.x, accuracy = 0.1))) |>
-  knitr::kable(
-    caption = "LDA Accuracy with 95% CI: exact binomial confidence interval"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA Accuracy with 95% CI: exact binomial confidence interval")
 ```
 
 ### LDA判別空間の可視化
@@ -1629,9 +1561,8 @@ comparison_tbl <- tibble(
 
 comparison_tbl |>
   mutate(across(c(Overall_Accuracy, Balanced_Accuracy), ~ scales::percent(.x, accuracy = 0.1))) |>
-  knitr::kable(
-    caption = "LDA vs QDA: cross-validated classification performance"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA vs QDA: cross-validated classification performance")
 ```
 
 ```{r}
@@ -1645,9 +1576,8 @@ bind_rows(
 ) |>
   dplyr::select(Method, Group, Support, Recall, Precision, F1) |>
   mutate(across(c(Recall, Precision, F1), ~ scales::percent(.x, accuracy = 0.1))) |>
-  knitr::kable(
-    caption = "LDA/QDA Class-wise Comparison: per-group classification quality"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA/QDA Class-wise Comparison: per-group classification quality")
 
 bind_rows(
   lda_acc_ci |> mutate(Method = "LDA"),
@@ -1655,9 +1585,8 @@ bind_rows(
 ) |>
   dplyr::select(Method, Correct, Total, Accuracy, CI_low, CI_high) |>
   mutate(across(c(Accuracy, CI_low, CI_high), ~ scales::percent(.x, accuracy = 0.1))) |>
-  knitr::kable(
-    caption = "LDA/QDA Accuracy with 95% CI: overall uncertainty of classification accuracy"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "LDA/QDA Accuracy with 95% CI: overall uncertainty of classification accuracy")
 ```
 
 ```{r}
@@ -1757,9 +1686,8 @@ demo_qda <- run_discriminant_cv(
 
 bind_rows(demo_lda$summary, demo_qda$summary) |>
   mutate(across(c(Overall_Accuracy, Balanced_Accuracy, Chance_Level), ~ scales::percent(.x, accuracy = 0.1))) |>
-  knitr::kable(
-    caption = "Reusable DA Function Demo: single-call LDA/QDA cross-validated summaries"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Reusable DA Function Demo: single-call LDA/QDA cross-validated summaries")
 ```
 
 ## 単変量追跡分析（Follow-up）: 補助的追跡法
@@ -1795,17 +1723,9 @@ followup_tbl <- bind_rows(
   dplyr::select(Outcome, term, df, statistic, p.value, p_holm)
 
 followup_tbl |>
-  gt() |>
-  tab_header(
-    title = "Univariate Follow-up Tests",
-    subtitle = "ANOVA with Holm-adjusted p-values"
-  ) |>
-  fmt_number(columns = c(statistic, p.value, p_holm), decimals = 4) |>
-  fmt_number(columns = df, decimals = 0) |>
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = p_holm, rows = p_holm < 0.05)
-  )
+  mutate(across(c(statistic, p.value, p_holm), ~ round(.x, 4))) |>
+  mutate(across(df, ~ round(.x, 0))) |>
+  knitr::kable(caption = "Univariate Follow-up Tests: ANOVA with Holm-adjusted p-values")
 ```
 
 **追跡ANOVAの読み方**:
@@ -1831,10 +1751,8 @@ eta_tbl <- bind_rows(
   dplyr::select(Outcome, Parameter, Eta2_partial, CI_low, CI_high)
 
 eta_tbl |>
-  mutate(across(c(Eta2_partial, CI_low, CI_high), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "Effect Sizes: partial eta-squared for follow-up ANOVAs"
-  )
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Effect Sizes: partial eta-squared for follow-up ANOVAs")
 ```
 
 ```{r}
@@ -1900,13 +1818,16 @@ pairwise_tbl <- bind_rows(pairs_recall, pairs_recognition)
 
 pairwise_tbl |>
   dplyr::select(Outcome, contrast, estimate, SE, df, t.ratio, p.value) |>
-  gt() |>
-  tab_header(
-    title = "Post-hoc Pairwise Comparisons",
-    subtitle = "Estimated marginal means (Holm-adjusted)"
+  mutate(
+    estimate = round(estimate, 4),
+    SE = round(SE, 4),
+    df = round(df, 0),
+    t.ratio = round(t.ratio, 4),
+    p.value = round(p.value, 4)
   ) |>
-  fmt_number(columns = c(estimate, SE, t.ratio, p.value), decimals = 4) |>
-  fmt_number(columns = df, decimals = 0)
+  knitr::kable(
+    caption = "Post-hoc Pairwise Comparisons: Estimated marginal means (Holm-adjusted)"
+  )
 ```
 
 ```{r}
@@ -1980,10 +1901,8 @@ simulated_cov |>
     Proficiency_SD = sd(Proficiency),
     .groups = "drop"
   ) |>
-  mutate(across(c(Proficiency_Mean, Proficiency_SD), ~ round(.x, 2))) |>
-  knitr::kable(
-    caption = "Covariate Overview: proficiency by Treatment × Time"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 2))) |>
+  knitr::kable(caption = "Covariate Overview: proficiency by Treatment × Time")
 ```
 
 ### 傾きの等質性を図で確認する
@@ -2050,9 +1969,8 @@ slope_tbl <- tibble(
   )
 
 slope_tbl |>
-  knitr::kable(
-    caption = "Homogeneity-of-Slopes Check: interactions involving the covariate"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Homogeneity-of-Slopes Check: interactions involving the covariate")
 ```
 
 ### 共変量を調整した MANCOVA
@@ -2083,9 +2001,8 @@ mancova_tbl <- tibble(
   )
 
 mancova_tbl |>
-  knitr::kable(
-    caption = "MANCOVA (Pillai): treatment, time, and proficiency-adjusted multivariate effects"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "MANCOVA (Pillai): treatment, time, and proficiency-adjusted multivariate effects")
 ```
 
 ### 調整後平均を図で読む
@@ -2193,10 +2110,8 @@ tibble(
     round(wp_result$power, 3)
   )
 ) |>
-  knitr::kable(
-    caption = "Power Analysis for Current Design: WebPower::wp.kanova() MANOVA approximation",
-    digits = 3
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Power Analysis for Current Design: WebPower::wp.kanova() MANOVA approximation")
 ```
 
 **検定力分析の読み方**:
@@ -2254,9 +2169,8 @@ tibble(
   Required_N = ceiling(wp_n$n),
   Per_Group = ceiling(wp_n$n / 4)
 ) |>
-  knitr::kable(
-    caption = "Required Sample Size: for 4 groups, 2 DVs, f = 0.25, power = .80"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Required Sample Size: for 4 groups, 2 DVs, f = 0.25, power = .80")
 ```
 
 #### 英語教育研究における効果量の目安
@@ -2473,9 +2387,8 @@ summary_tbl <- tibble(
 )
 
 summary_tbl |>
-  knitr::kable(
-    caption = "Chapter Summary: key numbers to report"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Chapter Summary: key numbers to report")
 ```
 
 ## まとめ

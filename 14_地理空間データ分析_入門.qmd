@@ -38,7 +38,6 @@ if (length(missing_packages) > 0) {
   install.packages(missing_packages, repos = "https://cloud.r-project.org")
 }
 
-# jpndistrict ????????????? rnaturalearth / geodata ???????
 ```
 
 
@@ -553,11 +552,9 @@ latest_rank_tbl <- dplyr::bind_rows(
     transmute(Group = "Bottom 5", Prefecture = pref_name, Score = eng_score)
 )
 
-knitr::kable(
-  latest_rank_tbl,
-  align = c("l", "l", "r"),
-  caption = "Top and Bottom Prefectures in the Latest Year"
-)
+latest_rank_tbl |>
+  mutate(Score = round(Score, 1)) |>
+  knitr::kable(caption = "Top and Bottom Prefectures in the Latest Year")
 ```
 
 この表の役割は、地図で見えた印象を数値で確かめることです。地図では「まとまり」が見やすく、表では「順位と値」が見やすいので、両者を往復すると理解が安定します。
@@ -613,26 +610,20 @@ summary_tbl <- pref_panel |>
   )
 
 summary_tbl |>
-  gt::gt() |>
-  gt::tab_header(
-    title = gt::md("**年次の要約（シミュレーションデータ）**"),
-    subtitle = "英語スコア・教員TOEIC・英検取得率の年次推移"
+  mutate(
+    mean_score = round(mean_score, 2),
+    sd_score = round(sd_score, 2),
+    avg_toeic = round(avg_toeic, 0),
+    avg_eiken = scales::percent(avg_eiken, accuracy = 0.1)
   ) |>
-  gt::fmt_number(columns = c(mean_score, sd_score), decimals = 2) |>
-  gt::fmt_number(columns = c(avg_toeic), decimals = 0) |>
-  gt::fmt_percent(columns = c(avg_eiken), decimals = 1) |>
-  gt::cols_label(
-    year = "年",
-    mean_score = "平均スコア",
-    sd_score = "SD",
-    avg_toeic = "教員TOEIC（平均）",
-    avg_eiken = "英検率（平均）"
+  rename(
+    年 = year,
+    `平均スコア` = mean_score,
+    SD = sd_score,
+    `教員TOEIC（平均）` = avg_toeic,
+    `英検率（平均）` = avg_eiken
   ) |>
-  gt::tab_style(
-    style = gt::cell_text(weight = "bold"),
-    locations = gt::cells_column_labels(everything())
-  ) |>
-  gt::opt_row_striping()
+  knitr::kable(caption = "年次の要約（シミュレーションデータ）: 英語スコア・教員TOEIC・英検取得率の年次推移")
 ```
 
 **読み方**: 平均スコアが年々上昇しているか、SDが安定しているか（バラツキの変化がないか）を確認します。急激な変動はデータ品質の問題（尺度変更、測定方法の変更等）を疑う手がかりになります。
@@ -693,11 +684,15 @@ growth_safe <- pref_panel |>
 growth_safe |>
   dplyr::select(pref_name, year, eng_score, growth_pct, log_diff_pct) |>
   head(10) |>
-  gt::gt() |>
-  gt::tab_header(title = gt::md("**対前年伸び率の例**")) |>
-  gt::fmt_number(columns = c(eng_score, growth_pct, log_diff_pct), decimals = 2) |>
-  gt::cols_label(pref_name = "都道府県", year = "年", eng_score = "スコア",
-                 growth_pct = "伸び率(%)", log_diff_pct = "対数差分(%)")
+  mutate(across(c(eng_score, growth_pct, log_diff_pct), ~ round(.x, 2))) |>
+  rename(
+    都道府県 = pref_name,
+    年 = year,
+    スコア = eng_score,
+    `伸び率(%)` = growth_pct,
+    `対数差分(%)` = log_diff_pct
+  ) |>
+  knitr::kable(caption = "対前年伸び率の例")
 ```
 
 パネル整形で頻出する失敗は4つあります。欠損年を補完しないまま可視化して「観測がない」のか「値が低い」のかを混同すること、`pref_name × year` の重複で `left_join()` 後に行数が膨張すること、前年比でゼロ割が起こること、`group_by(pref_name)` を忘れたまま `lag()` を計算して別県の前年度値を参照してしまうことです。ここでは、その4つを順番に潰してから後半の空間分析に進みます。
@@ -779,10 +774,8 @@ moran_tbl <- tibble::tibble(
 )
 
 moran_tbl |>
-  gt::gt() |>
-  gt::tab_header(title = gt::md("**Global Moran's I Test**")) |>
-  gt::fmt_number(columns = c(`Moran's I`, Expectation, Variance), decimals = 4) |>
-  gt::fmt_number(columns = c(`p-value`), decimals = 4)
+  mutate(across(c(`Moran's I`, Expectation, Variance, `p-value`), ~ round(.x, 4))) |>
+  knitr::kable(caption = "Global Moran's I Test")
 ```
 
 この表の役割は、あとで報告や論文に書くときに必要な最小限の数値を整理することです。図で「まとまりがありそう」と感じた印象を、1つの統計量と p 値で言い直すための表だと考えると位置づけが明確になります。
@@ -863,23 +856,15 @@ cold_top <- lisa_df |>
   dplyr::arrange(Ii) |>
   dplyr::slice_head(n = 10)
 
-hot_tbl <- hot_top |>
-  gt::gt() |>
-  gt::tab_header(title = gt::md("**LISA: High-High (Top)**")) |>
-  gt::fmt_number(columns = c(eng_score, Ii, Z, p_perm), decimals = 3) |>
-  gt::cols_label(pref_name = "Prefecture", eng_score = "Score", Ii = "Local I", Z = "Z", p_perm = "p (perm.)") |>
-  gt::tab_style(style = gt::cell_text(weight = "bold"), locations = gt::cells_column_labels(everything())) |>
-  gt::opt_row_striping()
+hot_top |>
+  mutate(across(c(eng_score, Ii, Z, p_perm), ~ round(.x, 3))) |>
+  rename(Prefecture = pref_name, Score = eng_score, `Local I` = Ii, `p (perm.)` = p_perm) |>
+  knitr::kable(caption = "LISA: High-High (Top)")
 
-cold_tbl <- cold_top |>
-  gt::gt() |>
-  gt::tab_header(title = gt::md("**LISA: Low-Low (Top)**")) |>
-  gt::fmt_number(columns = c(eng_score, Ii, Z, p_perm), decimals = 3) |>
-  gt::cols_label(pref_name = "Prefecture", eng_score = "Score", Ii = "Local I", Z = "Z", p_perm = "p (perm.)") |>
-  gt::tab_style(style = gt::cell_text(weight = "bold"), locations = gt::cells_column_labels(everything())) |>
-  gt::opt_row_striping()
-
-htmltools::tagList(hot_tbl, cold_tbl)
+cold_top |>
+  mutate(across(c(eng_score, Ii, Z, p_perm), ~ round(.x, 3))) |>
+  rename(Prefecture = pref_name, Score = eng_score, `Local I` = Ii, `p (perm.)` = p_perm) |>
+  knitr::kable(caption = "LISA: Low-Low (Top)")
 ```
 
 表と地図を合わせて読むと、空間分析では「場所」と「数値」を別々に確認する必要があることが分かります。地図は位置関係、表は強さと順位の確認に向いています。

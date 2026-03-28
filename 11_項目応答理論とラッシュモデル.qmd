@@ -13,7 +13,6 @@ required_packages <- c(
   "eRm",
   "ggrepel",
   "glue",
-  "gt",
   "knitr",
   "lme4",
   "mirt",
@@ -95,7 +94,7 @@ $$
 - `eRm` / `mirt` / `TAM` / `sirt`: Rasch、2PL/3PL、部分得点、DIF、等化周辺の主要 IRT モデルを担当する。
 - `tidyverse`: データ整形、可視化、結果の整頓の共通基盤。
 - `psych` / `lme4`: 古典的指標との比較や補助的なモデル化に使う。
-- `gt` / `glue` / `scales` / `ggrepel`: 表、報告文、図のラベル整形と重なり回避を支える。
+- `knitr` / `glue` / `scales` / `ggrepel`: 表、報告文、図のラベル整形と重なり回避を支える。
 
 ```{r}
 #| eval: true
@@ -108,7 +107,6 @@ if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repo
 
 pacman::p_load(
   tidyverse,
-  gt,
   eRm,
   mirt,
   TAM,
@@ -138,6 +136,7 @@ theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
     plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
   ))
 theme_update(legend.position = "bottom")
+
 ```
 
 ### 先行研究マップ（参考）
@@ -512,12 +511,9 @@ exp_coef_tbl <- as.data.frame(coef(summary(glmm_exp_fit))) |>
   dplyr::select(term, Estimate, `Std. Error`, `z value`, odds_ratio)
 
 exp_coef_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Predictor", "Logit estimate", "SE", "z", "Odds ratio"),
-    caption = "Explanatory extension: item features predict response probability in a toy GLMM mirroring Dunn (2024)"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Predictor", "Logit estimate", "SE", "z", "Odds ratio")) |>
+  knitr::kable(caption = "Explanatory extension: item features predict response probability in a toy GLMM mirroring Dunn (2024)")
 ```
 
 ```{r}
@@ -763,12 +759,9 @@ item_screen_tbl |>
     group_gap,
     true_b
   ) |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Pass rate", "Item-rest r", "Missing rate", "Group gap", "True b"),
-    caption = "Raw item screening before IRT: pass rate, corrected item-rest correlation, missingness, and group gap"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Pass rate", "Item-rest r", "Missing rate", "Group gap", "True b")) |>
+  knitr::kable(caption = "Raw item screening before IRT: pass rate, corrected item-rest correlation, missingness, and group gap")
 ```
 
 因子分析や Rasch 推定の前に記述統計を見る理由は明確です。**p-value（通過率）** が 0 や 1 に近すぎる項目は能力差を区別しにくく、**corrected item-rest correlation** が低い、あるいは負の項目は、誤答キー・曖昧な文面・局所依存・多次元性の兆候になりえます。さらに、**群差** はそのまま DIF とは言えませんが、「後で詳しく見るべき項目」を早めに見つけるスクリーニングとして有用です。`TAM` の公式マニュアルでも、`tam.ctt()` が classical test theory based statistics、`tam.fa()` が exploratory factor analysis として並んでおり、実務上も**まず項目の素朴な振る舞いを見てから潜在構造を疑う**順番が安全です[@tam2025]。
@@ -844,12 +837,9 @@ tam_item_screen_tbl <- as_tibble(tam_ctt) |>
   arrange(pass_rate)
 
 tam_item_screen_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Pass rate", "rpb.WLE", "Mean theta if correct"),
-    caption = "TAM item analysis using WLE"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Pass rate", "rpb.WLE", "Mean theta if correct")) |>
+  knitr::kable(caption = "TAM item analysis using WLE")
 ```
 
 この表では、`rpb.WLE` が「その項目に正答した人は、推定能力も高いか」を表します。値が高いほど、その項目は高能力者と低能力者をうまく分けています。`mean_theta_if_correct` は、正答者の平均能力なので、「本当に高能力帯の受験者が正解しているのか」を簡便に確認するための列です。`tam.ctt()` の良さは、**項目分析と能力推定を切り離さずに見られる**点にあります。
@@ -898,16 +888,13 @@ ggplot(score_df, aes(x = total_score, fill = group)) +
 
 rasch_fit <- eRm::RM(resp_df)
 
-# Rasch ???????????? gt ??????
+# 項目困難度を表に整形
 coef(rasch_fit) |>
   as.data.frame() |>
   setNames("Estimate") |>
   tibble::rownames_to_column("Item") |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    caption = "Rasch model item parameters estimated by eRm::RM()"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Rasch model item parameters estimated by eRm::RM()")
 ```
 
 前節で Rasch 推定を実行しました。次に、推定された項目困難度の意味を確認し、Wright Map で受験者と項目の関係を可視化します。
@@ -927,12 +914,9 @@ item_difficulty_tbl <- tibble(
   arrange(b_est)
 
 item_difficulty_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Difficulty (b)"),
-    caption = "Estimated item difficulty under the Rasch model"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Difficulty (b)")) |>
+  knitr::kable(caption = "Estimated item difficulty under the Rasch model")
 ```
 
 ```{r}
@@ -1062,12 +1046,9 @@ fit_tbl <- tibble(
   arrange(desc(outfit_msq))
 
 fit_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Infit MSQ", "Outfit MSQ", "Infit z", "Outfit z"),
-    caption = "Item fit statistics for the Rasch model"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Infit MSQ", "Outfit MSQ", "Infit z", "Outfit z")) |>
+  knitr::kable(caption = "Item fit statistics for the Rasch model")
 ```
 
 Infit MSQ と Outfit MSQ がおおむね 0.7〜1.3 の範囲に収まっていれば、Rasch モデルの期待に概ね沿った反応パターンと解釈できます。Outfit が大きい項目（例: 1.5 を超える場合）は、能力と不釣り合いな正解・不正解パターン（外れ値的反応）の影響を受けている可能性があります。ここで重要なのは、**fit が良いことと separation が高いことは別問題**だという点です。fit が良くてもテストが短すぎれば人を十分に区別できませんし、逆に separation が高くても misfit 項目があれば尺度解釈は危うくなります。
@@ -1109,12 +1090,9 @@ misfit_compare <- tibble(
   arrange(desc(outfit_msq))
 
 misfit_compare |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Infit MSQ", "Outfit MSQ", "Status"),
-    caption = "Misfit demo: Item10 was deliberately corrupted to create unexpected responses"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Infit MSQ", "Outfit MSQ", "Status")) |>
+  knitr::kable(caption = "Misfit demo: Item10 was deliberately corrupted to create unexpected responses")
 ```
 
 このデモでは、高能力者が不正解・低能力者が正解するパターンを Item10 に人為的に埋め込んでいるため、Rasch モデルの「能力が高いほど正答確率が高い」という期待に反します。結果として Infit/Outfit が他の項目より明確に大きくなります。実データでこのような項目があれば、曖昧な選択肢、文化的バイアス、誤答キー、局所依存などを再検討する必要があります。
@@ -1215,12 +1193,9 @@ q3_pairs <- as.data.frame(as.table(q3_mat)) |>
 
 q3_pairs |>
   slice_head(n = 10) |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item 1", "Item 2", "Q3"),
-    caption = "Top residual correlations (Yen's Q3)"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item 1", "Item 2", "Q3")) |>
+  knitr::kable(caption = "Top residual correlations (Yen's Q3)")
 ```
 
 Q3 の絶対値が 0.20 を大きく超える項目ペアは、局所依存（LD）の**候補**です。LD が見られる場合は、テストレット構造（同一パッセージに基づく複数項目など）の存在を確認し、必要に応じてテストレットモデルや bi-factor モデルの適用を検討します。
@@ -1320,11 +1295,8 @@ cmp
 cmp_tbl <- as_tibble(cmp, rownames = "model")
 
 cmp_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    caption = "Model comparison: 1PL vs 2PL vs 3PL (interpret likelihood comparisons with caution for boundary parameters)"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Model comparison: 1PL vs 2PL vs 3PL (interpret likelihood comparisons with caution for boundary parameters)")
 ```
 
 モデル比較表で AIC/BIC が小さいモデルがデータへの当てはまりが良いことを意味しますが、パラメータ数の増加（2PL: +19、3PL: +38）に対するゲインが実質的かどうかを判断することが重要です。シミュレーションデータは Rasch で生成しているため、1PL が最適になることが期待されます。
@@ -1349,21 +1321,15 @@ guess_tbl <- as_tibble(par_3pl, rownames = "item") |>
   dplyr::arrange(desc(g))
 
 disc_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Discrimination (a)", "Difficulty (b)"),
-    caption = "2PL item parameters"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Discrimination (a)", "Difficulty (b)")) |>
+  knitr::kable(caption = "2PL item parameters")
 
 guess_tbl |>
   slice_head(n = 10) |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Discrimination (a)", "Difficulty (b)", "Guessing (g)"),
-    caption = "Top guessing parameters in 3PL"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Discrimination (a)", "Difficulty (b)", "Guessing (g)")) |>
+  knitr::kable(caption = "Top guessing parameters in 3PL")
 ```
 
 2PL の識別力 \(a\) が項目間で大きく異なる場合は、Rasch の等識別力仮定が不適切である可能性を示唆します。3PL の当て推量パラメータ \(g\) が 0.25 を超える項目は、推定が不安定か、選択肢の質に問題がある可能性があります。
@@ -1591,12 +1557,9 @@ tam_b_tbl <- tam_mml$xsi |>
   )
 
 tam_b_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "TAM MML", "TAM JML"),
-    caption = "TAM item difficulty estimates"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "TAM MML", "TAM JML")) |>
+  knitr::kable(caption = "TAM item difficulty estimates")
 ```
 
 ```{r}
@@ -1619,12 +1582,9 @@ tam_wle_summary <- tibble(
 )
 
 tam_itemfit_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Outfit MSQ", "Infit MSQ", "Outfit p", "Infit p"),
-    caption = "TAM item fit"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Outfit MSQ", "Infit MSQ", "Outfit p", "Infit p")) |>
+  knitr::kable(caption = "TAM item fit")
 ```
 
 TAM の WLE（Warm 推定量）信頼性は、Rasch 文脈での人物推定の信頼性係数です。今回の `theta` 平均は `r round(tam_wle_summary$mean_theta, 3)`、標準偏差は `r round(tam_wle_summary$sd_theta, 3)`、WLE reliability は `r round(tam_wle_summary$wle_rel, 3)` でした。一般には 0.80 を超えていれば実用上十分とされます。
@@ -1650,12 +1610,9 @@ sirt_b_tbl <- as_tibble(sirt_mml$item) |>
   )
 
 sirt_b_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "sirt MML", "sirt JML"),
-    caption = "sirt item difficulty estimates"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "sirt MML", "sirt JML")) |>
+  knitr::kable(caption = "sirt item difficulty estimates")
 ```
 
 ```{r}
@@ -1666,18 +1623,12 @@ sirt_fit_tbl <- as_tibble(sirt_fit$modelfit.test)
 sirt_stat_tbl <- as_tibble(sirt_fit$statlist)
 
 sirt_fit_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    caption = "sirt model fit tests"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "sirt model fit tests")
 
 sirt_stat_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    caption = "sirt residual fit summary"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "sirt residual fit summary")
 ```
 
 SRMSR（Standardized Root Mean Square Residual）が 0.05 未満であれば、モデルの残差適合が良好と判断できます。
@@ -1699,12 +1650,9 @@ cross_pkg_tbl <- item_difficulty_tbl |>
   mutate(b_mirt_rasch = mirt_rasch_b[item])
 
 cross_pkg_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "eRm", "TAM", "sirt", "mirt"),
-    caption = "Cross-package Rasch difficulty comparison"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "eRm", "TAM", "sirt", "mirt")) |>
+  knitr::kable(caption = "Cross-package Rasch difficulty comparison")
 ```
 
 ```{r}
@@ -1801,12 +1749,9 @@ dif_tbl <- as.data.frame(dif_result) |>
   dplyr::select(item, X2, df, p, adj_p)
 
 dif_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "Chi-square", "df", "p", "Adjusted p"),
-    caption = "DIF screening results for uniform DIF"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "Chi-square", "df", "p", "Adjusted p")) |>
+  knitr::kable(caption = "DIF screening results for uniform DIF")
 ```
 
 DIF スクリーニングの結果、調整済み p 値（FDR 補正）が有意な項目が DIF 候補です。シミュレーションでは Item05 と Item17 に DIF を埋め込んでいるため、これらが検出されることが期待されます。
@@ -1833,12 +1778,9 @@ dif_effect_tbl <- tibble(
   arrange(desc(abs_delta_b))
 
 dif_effect_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Item", "b: L1 Japanese", "b: L1 Other", "Delta b", "|Delta b|"),
-    caption = "DIF effect size by item"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Item", "b: L1 Japanese", "b: L1 Other", "Delta b", "|Delta b|")) |>
+  knitr::kable(caption = "DIF effect size by item")
 ```
 
 \(\Delta b\) の大きい項目は、群間で項目困難度が実質的に異なることを意味します。ただし、何を「大きい」とみなすかはテスト長・用途・尺度変換に依存します。研究報告では、\(\Delta b\) をそのまま提示しつつ、DIF の検出結果、内容妥当性、テストレベルでの影響と合わせて解釈するのが無難です。
@@ -1922,11 +1864,8 @@ dif_type_tbl <- bind_rows(
   arrange(adj_p)
 
 dif_type_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    caption = "Uniform vs non-uniform DIF under a 2PL multiple-group model"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Uniform vs non-uniform DIF under a 2PL multiple-group model")
 ```
 
 Uniform DIF（困難度のみの差）と Non-uniform DIF（識別力にも差）を分離して検定することで、DIF の性質を特定できます。Uniform DIF のみの項目は困難度の調整で対処可能ですが、Non-uniform DIF がある場合は能力帯によって群差が逆転しうるため、より慎重な内容検討が必要です。
@@ -2020,12 +1959,9 @@ bias_effect_tbl <- bind_rows(
 )
 
 bias_effect_tbl |>
-  knitr::kable(
-    format = "pipe",
-    digits = 3,
-    col.names = c("Outcome", "Term", "Estimate", "SE", "t", "p"),
-    caption = "Bias impact check after conditioning on anchor-based ability"
-  )
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  setNames(c("Outcome", "Term", "Estimate", "SE", "t", "p")) |>
+  knitr::kable(caption = "Bias impact check after conditioning on anchor-based ability")
 ```
 
 バイアス影響チェックの結果、アンカー能力で条件付けた後もなお suspect score（DIF 項目の合計）に有意な群差が残っていれば、DIF が実際にスコアに影響を与えている（DTF: Differential Test Functioning）と判断できます。逆に、全項目合計点では群差が吸収される場合もあり、DIF の影響は項目レベルとテストレベルで異なりうる点に注意が必要です。

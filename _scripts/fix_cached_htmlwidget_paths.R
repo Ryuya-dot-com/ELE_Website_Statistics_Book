@@ -3,11 +3,11 @@
 args <- commandArgs(trailingOnly = TRUE)
 project_root <- if (length(args) >= 1) args[[1]] else "."
 
-dt_path <- system.file("htmlwidgets/lib/datatables", package = "DT")
-if (!nzchar(dt_path)) {
-  stop("DT htmlwidgets path not found.", call. = FALSE)
+dt_lib_root <- system.file("htmlwidgets/lib", package = "DT")
+if (!nzchar(dt_lib_root)) {
+  stop("DT htmlwidgets lib path not found.", call. = FALSE)
 }
-dt_path <- normalizePath(dt_path, winslash = "/", mustWork = TRUE)
+dt_lib_root <- normalizePath(dt_lib_root, winslash = "/", mustWork = TRUE)
 
 rdata_files <- Sys.glob(file.path(project_root, "*_cache", "html", "*.RData"))
 patched_files <- 0L
@@ -33,14 +33,23 @@ for (rdata_file in rdata_files) {
       if (is.null(src_file) || !is.character(src_file) || length(src_file) != 1) {
         next
       }
-      if (!grepl("DT/htmlwidgets/lib/datatables$", src_file, fixed = FALSE)) {
-        next
-      }
-      if (identical(src_file, dt_path)) {
+      match <- regexec("DT/htmlwidgets/lib/([^/]+)$", src_file)
+      captures <- regmatches(src_file, match)[[1]]
+      if (length(captures) != 2) {
         next
       }
 
-      obj[[i]]$src$file <- dt_path
+      dep_dir <- captures[[2]]
+      dt_dep_path <- system.file(file.path("htmlwidgets/lib", dep_dir), package = "DT")
+      if (!nzchar(dt_dep_path)) {
+        next
+      }
+      dt_dep_path <- normalizePath(dt_dep_path, winslash = "/", mustWork = TRUE)
+      if (identical(src_file, dt_dep_path)) {
+        next
+      }
+
+      obj[[i]]$src$file <- dt_dep_path
       patched_dependencies <- patched_dependencies + 1L
       changed <- TRUE
     }

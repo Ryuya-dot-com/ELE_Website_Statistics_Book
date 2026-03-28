@@ -145,12 +145,8 @@ tibble(
   Variance = c(ctt_var_person, ctt_var_task, ctt_var_residual),
   Percent  = round(100 * c(ctt_var_person, ctt_var_task, ctt_var_residual) / ctt_var_total, 1)
 ) |>
-  gt() |>
-  tab_header(
-    title = "一般化可能性理論的な分散分解：CTTが隠す情報",
-    subtitle = "同じデータでも、誤差の内訳が見える"
-  ) |>
-  fmt_number(columns = Variance, decimals = 3)
+  mutate(Variance = round(Variance, 3)) |>
+  knitr::kable(caption = "一般化可能性理論的な分散分解：CTTが隠す情報 — 同じデータでも、誤差の内訳が見える")
 ```
 
 この例では、CTT の $\alpha$ が1つの数値しか返さないのに対し、混合効果モデル（一般化可能性理論の計算基盤）は誤差を要因ごとに分解する。これが一般化可能性理論の出発点である。
@@ -637,14 +633,22 @@ one_facet <- tibble(
 )
 
 # データのワイド形式表示
-one_facet |>
+one_facet_preview <- one_facet |>
   pivot_wider(names_from = Item, values_from = Score) |>
-  mutate(Mean = rowMeans(across(starts_with("I")))) |>
-  gt() |>
-  tab_header(title = "手計算用データ: 5人 × 4項目（p × i 交差設計）") |>
-  fmt_number(columns = Mean, decimals = 1) |>
-  tab_source_note("全体平均 = 5.2")
+  mutate(Mean = rowMeans(across(starts_with("I"))))
+
+invisible(NULL)
 ```
+
+| Person | I1 | I2 | I3 | I4 | Mean |
+|:--|--:|--:|--:|--:|--:|
+| P1 | 6 | 5 | 4 | 5 | 5.0 |
+| P2 | 8 | 7 | 7 | 6 | 7.0 |
+| P3 | 4 | 3 | 5 | 4 | 4.0 |
+| P4 | 7 | 6 | 6 | 5 | 6.0 |
+| P5 | 5 | 4 | 3 | 4 | 4.0 |
+
+: 手計算用データ: 5人 × 4項目（p × i 交差設計）, 全体平均 = 5.2
 
 ::: {.panel-tabset}
 
@@ -693,14 +697,12 @@ anova_table <- tibble(
 )
 
 anova_table |>
-  gt() |>
-  tab_header(
-    title = "ANOVA表（p × i 交差設計）",
-    subtitle = "手計算の結果"
+  mutate(
+    SS = round(SS, 3),
+    df = round(df, 0),
+    MS = if_else(is.na(MS), "—", formatC(MS, format = "f", digits = 3))
   ) |>
-  fmt_number(columns = c(SS, MS), decimals = 3) |>
-  fmt_number(columns = df, decimals = 0) |>
-  sub_missing(missing_text = "—")
+  knitr::kable(caption = "ANOVA表（p × i 交差設計）: 手計算の結果")
 ```
 
 この ANOVA テーブルでは、平均平方（MS）が各変動要因の「1自由度あたりの変動量」を表す。$MS_p$（受験者間）が $MS_{pi,e}$（残差）より十分に大きければ、テストが受験者間の実力差を検出していることを意味する。逆に $MS_i$（項目間）が大きい場合は、項目間の難易度差が大きいことを示す。
@@ -716,9 +718,8 @@ anova_table |>
 aov_check <- aov(Score ~ Person + Item, data = one_facet |>
                    mutate(Person = factor(Person), Item = factor(Item)))
 broom::tidy(aov_check) |>
-  gt() |>
-  tab_header(title = "ANOVA: Variance Components Check") |>
-  fmt_number(columns = where(is.numeric), decimals = 4)
+  mutate(across(where(is.numeric), ~ round(.x, 4))) |>
+  knitr::kable(caption = "ANOVA: Variance Components Check")
 ```
 
 ### 期待平均平方から分散成分へ
@@ -758,16 +759,17 @@ tibble(
   Variance  = c(var_p, var_i, var_pi_e, var_total),
   Percent   = c(var_p, var_i, var_pi_e, var_total) / var_total * 100
 ) |>
-  gt() |>
-  tab_header(
-    title = "分散成分の推定結果",
-    subtitle = "期待平均平方（EMS）から算出"
+  mutate(
+    Variance = round(Variance, 3),
+    Percent = round(Percent, 3)
   ) |>
-  fmt_number(columns = c(Variance, Percent), decimals = 3) |>
-  cols_label(
-    Source = "成分", Formula = "計算式",
-    Variance = "推定値", Percent = "割合 (%)"
-  )
+  rename(
+    成分 = Source,
+    計算式 = Formula,
+    推定値 = Variance,
+    `割合 (%)` = Percent
+  ) |>
+  knitr::kable(caption = "分散成分の推定結果: 期待平均平方（EMS）から算出")
 ```
 
 分散成分の割合を見ると、受験者（Person）の分散が全体に占める割合がテストの「信号対雑音比」を示す。この割合が大きければテストが個人差をよく捉えていることを意味し、小さければ誤差成分に埋もれていることを意味する。一方、残差（Residual = 交互作用 + 偶然誤差）の割合が大きいのは、課題と受験者の交互作用や未測定の偶然要因による変動が支配的であることを示す。この残差を減らすこと――すなわち、課題数を増やして交互作用を平均化する、あるいは実施条件を標準化して偶然誤差を抑える――が測定精度向上の鍵である。
@@ -829,16 +831,17 @@ tibble(
   Value = c(G_coef, Phi_coef),
   Use_case = c("クラス内順位づけ、プレースメント", "合否判定、到達度判定")
 ) |>
-  gt() |>
-  tab_header(
-    title = "G Coefficient と Phi Coefficient の手計算結果",
-    subtitle = glue("4項目での推定値（n_i = {n_i}）")
+  mutate(
+    Error_variance = round(Error_variance, 3),
+    Value = round(Value, 3)
   ) |>
-  fmt_number(columns = c(Error_variance, Value), decimals = 3) |>
-  cols_label(
-    Coefficient = "係数", Error_variance = "誤差分散",
-    Value = "値", Use_case = "用途"
-  )
+  rename(
+    係数 = Coefficient,
+    誤差分散 = Error_variance,
+    値 = Value,
+    用途 = Use_case
+  ) |>
+  knitr::kable(caption = glue("G Coefficient と Phi Coefficient の手計算結果: 4項目での推定値（n_i = {n_i}）"))
 ```
 
 ### Cronbach αとの一致の確認
@@ -898,18 +901,14 @@ comparison <- tibble(
   mutate(Difference = Hand_calculation - lme4_estimate)
 
 comparison |>
-  gt() |>
-  tab_header(
-    title = "手計算と lme4 の分散成分の比較",
-    subtitle = "REML推定で完全一致を確認"
+  mutate(across(c(Hand_calculation, lme4_estimate, Difference), ~ round(.x, 4))) |>
+  rename(
+    成分 = Source,
+    手計算 = Hand_calculation,
+    lme4 = lme4_estimate,
+    差 = Difference
   ) |>
-  fmt_number(columns = c(Hand_calculation, lme4_estimate, Difference), decimals = 4) |>
-  cols_label(
-    Source = "成分",
-    Hand_calculation = "手計算",
-    lme4_estimate = "lme4",
-    Difference = "差"
-  )
+  knitr::kable(caption = "手計算と lme4 の分散成分の比較: REML推定で完全一致を確認")
 ```
 
 手計算と `lme4` の結果が一致することが確認できた。以降の分析では `lme4` を使い、より複雑な設計にも対応する。
@@ -1015,7 +1014,8 @@ create_brennan_data <- function() {
 Brennan.3.2 <- create_brennan_data()
 
 Brennan.3.2 |>
-  DT::datatable(caption = "スピーキング評価データ — 設計: p × t × r:t（評価者はタスクにネスト）")
+  slice_head(n = 12) |>
+  knitr::kable(caption = "スピーキング評価データの先頭12行 — 設計: p × t × r:t（評価者はタスクにネスト）")
 ```
 
 ::: {.callout-note}
@@ -1092,12 +1092,8 @@ universe_score_demo <- Brennan.3.2 |>
 universe_score_demo |>
   select(-Abs_difference) |>
   slice_head(n = 8) |>
-  gt() |>
-  tab_header(
-    title = "観測得点 vs 推定 Universe Score",
-    subtitle = "複数条件で平均するほど差は縮小する"
-  ) |>
-  fmt_number(columns = c(One_observed_score, Universe_score_hat, Difference), decimals = 3)
+  mutate(across(c(One_observed_score, Universe_score_hat, Difference), ~ round(.x, 3))) |>
+  knitr::kable(caption = "観測得点 vs 推定 Universe Score")
 ```
 
 ### lme4による分散成分推定
@@ -1177,43 +1173,21 @@ tab_model(g_model)
 #| code-summary: "コード"
 g_study_results <- extract_variance_components(g_model)
 
-g_study_table <- g_study_results |>
-  gt() |>
-  tab_header(
-    title = "G Study: 分散成分の推定結果（lme4）",
-    subtitle = "p × t × r:t ネスト設計") |>
-  fmt_number(columns = var, decimals = 4) |>
-  fmt_number(columns = percent, decimals = 1) |>
-  fmt_number(columns = n, decimals = 0) |>
-  cols_label(
-    source = "Source",
-    var = "Variance",
-    percent = "Percent (%)",
-    n = "n") |>
-  tab_footnote(
-    footnote = "Person分散が大きいほど信頼性が高くなりやすい。",
-    locations = cells_column_labels(columns = percent)) |>
-  tab_source_note(
-    source_note = "Note: 大きいResidual分散は測定改善の余地を示唆する。")
-
-person_row <- which(g_study_results$source == "Person")
-if (length(person_row) > 0) {
-  g_study_table <- g_study_table |>
-    tab_style(
-      style = list(cell_fill(color = "#e6f3ff"), cell_text(weight = "bold")),
-      locations = cells_body(columns = percent, rows = person_row))
-}
-
-residual_row <- which(g_study_results$source == "Residual")
-if (length(residual_row) > 0) {
-  g_study_table <- g_study_table |>
-    tab_style(
-      style = cell_fill(color = "#ffe6e6"),
-      locations = cells_body(columns = percent, rows = residual_row))
-}
-
-g_study_table
+g_study_results |>
+  mutate(
+    var = round(var, 4),
+    percent = round(percent, 1),
+    n = round(n, 0)
+  ) |>
+  rename(
+    Source = source,
+    Variance = var,
+    `Percent (%)` = percent
+  ) |>
+  knitr::kable(caption = "G Study: 分散成分の推定結果（lme4）")
 ```
+
+この表では、まず `Person` 行の比率が十分に大きいかを確認します。`Person` 分散が大きいほど受験者間の安定した差を捉えやすく、逆に `Residual` 行が大きい場合は測定改善の余地が大きいと読めます。
 
 ### gtheoryパッケージとの並列確認
 
@@ -1232,9 +1206,8 @@ g_fit <- gtheory::gstudy(
 )
 
 as.data.frame(g_fit$components) |>
-  gt() |>
-  tab_header(title = "gtheory::gstudy() Variance Components") |>
-  fmt_number(columns = where(is.numeric), decimals = 4)
+  mutate(across(where(is.numeric), ~ round(.x, 4))) |>
+  knitr::kable(caption = "gtheory::gstudy() Variance Components")
 ```
 
 `gtheory` パッケージの結果が `lme4` の推定値とほぼ一致していることを確認できた。両者の推定値に微小な差がある場合は、推定アルゴリズムの違い（REML vs Henderson の方法 III）に起因する。実務上、差が分散成分の 5% 以内であれば問題ない。このような並列確認は、実装上のバグや仕様の違いを早期に検出するための良い習慣である。
@@ -1317,43 +1290,21 @@ g_action_priority <- g_study_results |>
   select(Priority, Source, percent, Interpretation, First_action)
 
 g_action_priority |>
-  gt() |>
-  tab_header(
-    title = "G Study のアクション優先度",
-    subtitle = "分散分解から最初の設計改善アクションへ"
-  ) |>
-  fmt_number(columns = percent, decimals = 1) |>
-  cols_label(
-    Priority = "優先度",
-    Source = "成分",
-    percent = "割合 (%)",
-    Interpretation = "解釈",
-    First_action = "推奨される最初のアクション"
-  )
+  mutate(percent = round(percent, 1)) |>
+  knitr::kable(caption = "G Study のアクション優先度")
 ```
 
-```{r}
-#| label: mapping-table
-#| code-summary: "コード"
+| 一般化可能性理論の記法 | `lme4` の項 | `gtheory` の記法 |
+|:--|:--|:--|
+| `p (Person)` | `(1|Person)` | `facet p` |
+| `t (Task)` | `(1|Task)` | `facet t` |
+| `r:t (Rater nested in Task)` | `(1|Rater)` | `facet r:t` |
+| `p×t (interaction)` | `(1|Person:Task)` | `facet p:t` |
+| `e (Residual)` | `Residual` | `unmodeled/random error` |
 
-mapping_tbl <- tibble::tibble(
-  PDF_notation = c("p (Person)", "t (Task)", "r:t (Rater nested in Task)", "p×t (interaction)", "e (Residual)"),
-  lmer_term    = c("(1|Person)", "(1|Task)", "(1|Rater)", "(1|Person:Task)", "Residual"),
-  gtheory_term = c("facet p", "facet t", "facet r:t", "facet p:t", "unmodeled/random error"),
-  variance     = g_study_results$var[match(c("Person","Task","Rater","Person:Task","Residual"), g_study_results$source)]
-)
+: 一般化可能性理論 vs `lme4` vs `gtheory` の記法対応
 
-mapping_tbl |>
-  gt() |>
-  tab_header(title = "一般化可能性理論 vs lme4 vs gtheory の記法対応", subtitle = "分散成分の等価性") |>
-  fmt_number(columns = variance, decimals = 4) |>
-  cols_label(
-    PDF_notation = "一般化可能性理論の記法",
-    lmer_term = "lme4の項",
-    gtheory_term = "gtheory の記法",
-    variance = "推定分散"
-  )
-```
+各成分の推定分散そのものは、直前の G study 成分表を参照してください。
 
 この対応表は、文献（Brennan 記法）、`lme4` の出力名、`gtheory` パッケージの出力名を並べて示している。G 理論の文献では $\sigma^2_{pr:t,e}$ のように添字で誤差構造を表すが、R のパッケージではモデル式の項名（`Person:Task` など）で表す。論文を読む際やソフトウェア間で結果を照合する際に、この対応関係が不可欠となる。
 
@@ -1446,10 +1397,9 @@ comparison <- data.frame(
 )
 
 comparison |>
-  gt::gt() |>
-  gt::tab_header(title = "Bootstrap vs Profile Confidence Intervals") |>
-  gt::tab_spanner(label = "Bootstrap (500 resamples)", columns = c(Boot_Lower, Boot_Upper)) |>
-  gt::tab_spanner(label = "Profile Likelihood", columns = c(Profile_Lower, Profile_Upper))
+  knitr::kable(
+    caption = "Bootstrap vs Profile Confidence Intervals"
+  )
 ```
 
 ブートストラップ法とプロファイル尤度法の信頼区間を比較すると、多くの場合に類似した結果が得られるが、以下の状況で乖離が生じうる:
@@ -1668,10 +1618,8 @@ minPhi <- d_results |>
     .groups = "drop")
 
 left_join(minG, minPhi, by = "RaterCount") |>
-  gt() |>
-  tab_header(title = glue::glue("目標値 {target} を達成する最小タスク数"), subtitle = "評価者数ごと") |>
-  sub_missing(missing_text = "達成不可") |>
-  cols_label(RaterCount = "評価者数", Min_Tasks_for_G = "G ≥ 目標", Min_Tasks_for_Phi = "Φ ≥ 目標")
+  mutate(across(c(Min_Tasks_for_G, Min_Tasks_for_Phi), ~ ifelse(is.na(.x), "達成不可", as.character(.x)))) |>
+  knitr::kable(caption = glue::glue("目標値 {target} を達成する最小タスク数"))
 ```
 
 ### 設計候補の絞り込み
@@ -1699,16 +1647,9 @@ d_shortlist <- d_results_numeric |>
   slice_head(n = 12)
 
 d_shortlist |>
-  gt() |>
-  tab_header(
-    title = "D Study: 設計候補ショートリスト",
-    subtitle = glue("G ≥ {target_g} または Φ ≥ {target_phi} を満たす設計")
-  ) |>
-  fmt_number(columns = c(Generalizability, Dependability), decimals = 3) |>
-  cols_label(
-    TaskCount = "タスク数", RaterCount = "評価者数",
-    Generalizability = "G", Dependability = "Φ",
-    CostIndex = "コスト指数", UseCase = "主な用途"
+  mutate(across(c(Generalizability, Dependability), ~ round(.x, 3))) |>
+  knitr::kable(
+    caption = glue("D Study: 設計候補ショートリスト（G ≥ {target_g} または Φ ≥ {target_phi}）")
   )
 ```
 
@@ -1746,16 +1687,8 @@ one_step_design <- one_step_design |>
   mutate(Delta_G = G - base_g, Delta_Phi = Phi - base_phi)
 
 one_step_design |>
-  gt() |>
-  tab_header(
-    title = "+1ステップの設計比較",
-    subtitle = "どの1手が最も信頼性を改善するか？"
-  ) |>
-  fmt_number(columns = c(G, Phi, Delta_G, Delta_Phi), decimals = 3) |>
-  cols_label(
-    Scenario = "シナリオ", Tasks = "タスク数", Raters = "評価者数/課題",
-    G = "G", Phi = "Φ", Delta_G = "ΔG", Delta_Phi = "ΔΦ"
-  )
+  mutate(across(c(G, Phi, Delta_G, Delta_Phi), ~ round(.x, 3))) |>
+  knitr::kable(caption = "+1ステップの設計比較")
 ```
 
 ```{r}
@@ -1840,35 +1773,10 @@ d_table_data <- d_results |>
   pivot_wider(names_from = RaterCount, values_from = c(Generalizability, Dependability), names_sep = "_")
 
 d_table <- d_table_data |>
-  gt() |>
-  tab_header(
-    title = "D Study: Task × Rater の組み合わせと信頼性",
-    subtitle = "代表的な設計の G/Φ 値") |>
-  fmt_number(columns = -TaskCount, decimals = 3) |>
-  cols_label(
-    TaskCount = "タスク数",
-    Generalizability_2 = "2名", Generalizability_5 = "5名", Generalizability_10 = "10名",
-    Dependability_2 = "2名", Dependability_5 = "5名", Dependability_10 = "10名") |>
-  tab_spanner(label = "G Coefficient（相対）", columns = starts_with("Generalizability")) |>
-  tab_spanner(label = "Phi Coefficient（絶対）", columns = starts_with("Dependability"))
-
-reliability_cols <- names(d_table_data)[-1]
-for (col in reliability_cols) {
-  rows_high <- which(d_table_data[[col]] >= 0.8)
-  if (length(rows_high) > 0) {
-    d_table <- d_table |>
-      tab_style(style = cell_fill(color = "#e6ffe6"),
-                locations = cells_body(columns = !!col, rows = rows_high))
-  }
-  rows_mid <- which(d_table_data[[col]] >= 0.7 & d_table_data[[col]] < 0.8)
-  if (length(rows_mid) > 0) {
-    d_table <- d_table |>
-      tab_style(style = cell_fill(color = "#fff3cd"),
-                locations = cells_body(columns = !!col, rows = rows_mid))
-  }
-}
-
-d_table
+  mutate(across(-TaskCount, ~ round(.x, 3))) |>
+  knitr::kable(
+    caption = "D Study: Task × Rater の組み合わせと信頼性"
+  )
 ```
 
 #### 折れ線図
@@ -2026,17 +1934,8 @@ speaking_design_tbl <- speaking_scenarios |>
   ungroup()
 
 speaking_design_tbl |>
-  gt() |>
-  tab_header(
-    title = "スピーキング評価: 用途別の推奨最小設計",
-    subtitle = "D Study 結果に基づく設計選定"
-  ) |>
-  fmt_number(columns = c(Target, Achieved), decimals = 3) |>
-  cols_label(
-    UseCase = "用途", Metric = "主指標", Target = "目標値",
-    RecommendedTasks = "最小タスク数", RecommendedRaters = "最小評価者数",
-    Achieved = "達成値"
-  )
+  mutate(across(c(Target, Achieved), ~ round(.x, 3))) |>
+  knitr::kable(caption = "スピーキング評価: 用途別の推奨最小設計")
 ```
 
 ```{r}
@@ -2168,13 +2067,8 @@ budget_top <- budget_choice |>
 
 budget_top |>
   select(Design, TotalCost, Generalizability, Dependability) |>
-  gt() |>
-  tab_header(
-    title = paste0("予算 ≤ ", budget_cap, " でのトップ設計"),
-    subtitle = "目的: Phi の最大化（合否判定）"
-  ) |>
-  fmt_number(columns = c(Generalizability, Dependability), decimals = 3) |>
-  cols_label(Design = "設計", TotalCost = "コスト合計", Generalizability = "G", Dependability = "Φ")
+  mutate(across(c(Generalizability, Dependability), ~ round(.x, 3))) |>
+  knitr::kable(caption = paste0("予算 ≤ ", budget_cap, " でのトップ設計"))
 ```
 
 ```{r}
@@ -2400,8 +2294,8 @@ vc_crossed |>
     percent = round(percent, 1)
   ) |>
   select(Source, Variance = vcov, `%` = percent) |>
-  gt::gt() |>
-  gt::tab_header(title = "Variance Components: Fully Crossed p × t × r Design")
+  mutate(across(c(Variance, `%`), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Variance Components: Fully Crossed p × t × r Design")
 ```
 
 完全交差設計では 7 つの分散成分が推定される。ネスト設計（5 成分）と比較して、Person × Rater（$\sigma^2_{pr}$）と Task × Rater（$\sigma^2_{tr}$）が追加で分離されている。$\sigma^2_{pr}$ が大きい場合は「特定の受験者に対して特定の評価者が甘い/厳しい」パターンが存在し、$\sigma^2_{tr}$ が大きい場合は「特定の課題で特定の評価者が異なる基準を適用している」ことを示唆する。
@@ -2586,13 +2480,16 @@ create_rajaratnam_data <- function() {
 
 Rajaratnam.2 <- create_rajaratnam_data()
 
-Rajaratnam.2 |>
-  group_by(Subtest, Item) |>
-  summarise(n = n(), .groups = "drop") |>
-  pivot_wider(names_from = Item, values_from = n, values_fill = 0) |>
-  gt() |>
-  tab_header(title = "多変量データの構造", subtitle = "サブテスト × 項目の度数")
+invisible(NULL)
 ```
+
+| Subtest | Items | Persons per item | Total observations |
+|:--|:--|--:|--:|
+| Listening | `Listening_I1`-`Listening_I4` | 40 | 160 |
+| Grammar | `Grammar_I1`-`Grammar_I4` | 40 | 160 |
+| Reading | `Reading_I1`-`Reading_I4` | 40 | 160 |
+
+: 多変量データの構造
 
 ### 多変量 G Study
 
@@ -2631,21 +2528,8 @@ mv_g_combined <- bind_rows(mv_g_results)
 
 mv_g_table <- mv_g_combined |>
   select(Subtest, source, var, percent) |>
-  gt() |>
-  tab_header(title = "多変量 G Study: サブテスト別分散成分", subtitle = "lme4 による推定") |>
-  fmt_number(columns = var, decimals = 4) |>
-  fmt_number(columns = percent, decimals = 1) |>
-  cols_label(Subtest = "Subtest", source = "Source", var = "Variance", percent = "Percent (%)")
-
-person_rows <- which(mv_g_combined$source == "Person")
-if (length(person_rows) > 0) {
-  mv_g_table <- mv_g_table |>
-    tab_style(
-      style = list(cell_fill(color = "#e6f3ff"), cell_text(weight = "bold")),
-      locations = cells_body(columns = percent, rows = person_rows))
-}
-
-mv_g_table
+  mutate(var = round(var, 4), percent = round(percent, 1)) |>
+  knitr::kable(caption = "多変量 G Study: サブテスト別分散成分")
 ```
 
 #### 可視化
@@ -2720,14 +2604,8 @@ mv_g_summary <- mv_g_combined |>
   )
 
 mv_g_summary |>
-  gt() |>
-  tab_header(title = "サブテスト別の診断サマリー", subtitle = "信号の強さと優先アクション") |>
-  fmt_number(columns = c(Person_pct, Item_pct, Residual_pct, Main_error_pct), decimals = 1) |>
-  cols_label(
-    Subtest = "Subtest", Person_pct = "Person (%)", Item_pct = "Item (%)",
-    Residual_pct = "Residual (%)", Main_error = "主要誤差源",
-    Main_error_pct = "主要誤差 (%)", Signal_strength = "信号の強さ",
-    Priority_action = "推奨アクション")
+  mutate(across(c(Person_pct, Item_pct, Residual_pct, Main_error_pct), ~ round(.x, 1))) |>
+  knitr::kable(caption = "サブテスト別の診断サマリー")
 ```
 
 :::
@@ -2768,9 +2646,8 @@ subtest_cov$correlation |>
   as.data.frame() |>
   mutate(Subtest = rownames(subtest_cov$correlation)) |>
   select(Subtest, everything()) |>
-  gt() |>
-  tab_header(title = "サブテスト間の相関行列", subtitle = "Person効果の相関") |>
-  fmt_number(columns = -Subtest, decimals = 3)
+  mutate(across(-Subtest, ~ round(.x, 3))) |>
+  knitr::kable(caption = "サブテスト間の相関行列")
 ```
 
 サブテスト間相関が $r = .60-.70$ の範囲にあるのは、Content・Fluency・Pronunciation が関連はあるが独立した技能であることを示す。もし $r > .85$ であれば2つのサブテストがほぼ同じ構成概念を測定している可能性があり、一方を省略して項目数を他方に再配分することを検討する。逆に $r < .30$ であれば、サブテストは完全に異なる技能を測定しており、合成得点の解釈が難しくなる。
@@ -2796,12 +2673,8 @@ mv_corr_pairs <- as.data.frame(as.table(subtest_cov$correlation)) |>
   )
 
 mv_corr_pairs |>
-  gt() |>
-  tab_header(title = "サブテスト間相関の解釈と重み付けへの示唆") |>
-  fmt_number(columns = Correlation, decimals = 3) |>
-  cols_label(
-    Subtest_A = "Subtest A", Subtest_B = "Subtest B",
-    Correlation = "相関", Relation = "解釈", Weighting_hint = "重み付けの示唆")
+  mutate(Correlation = round(Correlation, 3)) |>
+  knitr::kable(caption = "サブテスト間相関の解釈と重み付けへの示唆")
 ```
 
 ::: {.callout-note}
@@ -2885,21 +2758,8 @@ mv_d_table_data <- bind_rows(lapply(mv_d_results, function(x) {
 }))
 
 mv_d_table <- mv_d_table_data |>
-  gt() |>
-  tab_header(title = "多変量 D Study: 重み付け別の合成得点信頼性", subtitle = "lme4 による推定") |>
-  fmt_number(columns = c(Universe_Var, G_coefficient, Phi_coefficient, SEM_Rel, SEM_Abs), decimals = 3) |>
-  cols_label(Scenario = "シナリオ", Weights = "重み", Universe_Var = "宇宙分散",
-    G_coefficient = "G", Phi_coefficient = "Φ", SEM_Rel = "SEM (相対)", SEM_Abs = "SEM (絶対)")
-
-for (i in 1:nrow(mv_d_table_data)) {
-  if (mv_d_table_data$G_coefficient[i] >= 0.8 || mv_d_table_data$Phi_coefficient[i] >= 0.8) {
-    mv_d_table <- mv_d_table |>
-      tab_style(style = list(cell_fill(color = "#e6ffe6"), cell_text(weight = "bold")),
-        locations = cells_body(columns = c(G_coefficient, Phi_coefficient), rows = i))
-  }
-}
-
-mv_d_table
+  mutate(across(c(Universe_Var, G_coefficient, Phi_coefficient, SEM_Rel, SEM_Abs), ~ round(.x, 3))) |>
+  knitr::kable(caption = "多変量 D Study: 重み付け別の合成得点信頼性")
 ```
 
 ```{r}
@@ -2959,10 +2819,7 @@ tibble::tribble(
   "合否判定", "Max Φ", best_phi$Scenario, "カットスコアの正確な判定",
   "進捗フィードバック", "Min SEM_Abs", best_sem$Scenario, "得点の不確実性の最小化"
 ) |>
-  gt() |>
-  tab_header(title = "多変量 D Study: 目的別の推奨シナリオ") |>
-  cols_label(Purpose = "決定の目的", Priority_metric = "主指標",
-    Recommended_scenario = "推奨シナリオ", Why = "理由")
+  knitr::kable(caption = "多変量 D Study: 目的別の推奨シナリオ")
 ```
 
 重み付けシナリオの比較から、以下の実務的示唆が得られる。等重み配分は最も安定した G coefficientを返す傾向があるが、特定のサブテストを強調すると、そのサブテストの Person 分散と残差分散の比に依存して合成信頼性が変動する。Person 分散が大きく残差が小さいサブテストに重みを集中させると、合成 G coefficientは向上する。
@@ -3158,8 +3015,8 @@ vc_testlet |>
     percent = round(percent, 1)
   ) |>
   select(Source, Variance = vcov, `%` = percent) |>
-  gt::gt() |>
-  gt::tab_header(title = "Variance Components: Testlet Design p × t × i:t")
+  mutate(across(c(Variance, `%`), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Variance Components: Testlet Design p × t × i:t")
 ```
 
 テストレット分析の結果から、以下の実務的示唆が得られる:
@@ -3321,8 +3178,8 @@ vc_writing |>
     percent = round(percent, 1)
   ) |>
   select(Source, Variance = vcov, `%` = percent) |>
-  gt::gt() |>
-  gt::tab_header(title = "Variance Components: Writing Assessment (p × prompt × rater)")
+  mutate(across(c(Variance, `%`), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Variance Components: Writing Assessment (p × prompt × rater)")
 ```
 
 ライティング評価の分散成分には、スピーキング評価とは異なるパターンが現れやすい。特に **Person × Prompt（受験者×トピック交互作用）** が大きくなる傾向があるのは、受験者のトピックに関する背景知識や関心が得点に影響するためである。この成分が大きい場合、プロンプト数の増加が信頼性改善に最も効果的である。
@@ -3436,8 +3293,8 @@ vc_long |>
     percent = round(percent, 1)
   ) |>
   select(Source, Variance = vcov, `%` = percent) |>
-  gt::gt() |>
-  gt::tab_header(title = "Variance Components: Longitudinal Design (p × t × o)")
+  mutate(across(c(Variance, `%`), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Variance Components: Longitudinal Design (p × t × o)")
 ```
 
 縦断設計の結果から:
@@ -3515,14 +3372,8 @@ tibble::tribble(
   "P(|z| > 3)", prop_abs3, "≤ 0.03", ifelse(prop_abs3 <= 0.03, "OK", "要確認"), "データ入力・採点の異常を確認",
   "cor(|z|, fitted)", het_cor, "|r| < 0.20", ifelse(abs(het_cor) < 0.20, "OK", "要確認"), "課題難易度の偏りと尺度圧縮を確認"
 ) |>
-  gt() |>
-  tab_header(title = "モデル診断チェックリスト", subtitle = "診断プロットの数値的補助") |>
-  fmt_number(columns = Value, decimals = 3) |>
-  cols_label(Metric = "指標", Value = "値", Rule_of_thumb = "目安",
-    Status = "状態", First_action = "要確認の場合のアクション") |>
-  tab_style(
-    style = list(cell_fill(color = "#fff3cd"), cell_text(weight = "bold")),
-    locations = cells_body(columns = Status, rows = Status == "要確認"))
+  mutate(Value = round(Value, 3)) |>
+  knitr::kable(caption = "モデル診断チェックリスト")
 ```
 
 :::
@@ -3649,14 +3500,8 @@ tibble(
   Phi = c(optimistic_result["Phi"], normal["Phi"], pessimistic_result["Phi"])
 ) |>
   mutate(across(c(G, Phi), ~ round(.x, 3))) |>
-  gt::gt() |>
-  gt::tab_header(
-    title = "Sensitivity Analysis: D-Study Predictions Under Uncertainty",
-    subtitle = glue::glue("Target design: {n_t_target} tasks \u00d7 {n_r_target} raters")
-  ) |>
-  gt::tab_style(
-    style = gt::cell_fill(color = "#e8f5e9"),
-    locations = gt::cells_body(rows = Scenario == "Normal (point estimate)")
+  knitr::kable(
+    caption = glue::glue("Sensitivity Analysis: D-Study Predictions Under Uncertainty (target: {n_t_target} tasks × {n_r_target} raters)")
   )
 ```
 
@@ -3744,11 +3589,8 @@ icc_results |>
     )
   ) |>
   arrange(desc(ICC)) |>
-  gt() |>
-  tab_header(title = "ICC: 成分別のアクションマップ",
-    subtitle = paste0("最大成分: ", icc_results$Level[which.max(icc_results$ICC)])) |>
-  fmt_number(columns = ICC, decimals = 3) |>
-  cols_label(Level = "成分", ICC = "ICC", Interpretation = "解釈", Priority_action = "推奨アクション")
+  mutate(ICC = round(ICC, 3)) |>
+  knitr::kable(caption = "ICC: 成分別のアクションマップ")
 ```
 
 ```{r}
@@ -3957,11 +3799,11 @@ summary_data <- data.frame(
     "合成得点の信頼性は高い"))
 
 summary_data |>
-  gt() |>
-  tab_header(title = "分析結果のサマリー", subtitle = "lme4 による一般化可能性理論の実装") |>
-  fmt_number(columns = c(G_coefficient, Phi_coefficient), decimals = 3) |>
-  sub_missing(missing_text = "—") |>
-  cols_label(Analysis = "分析", G_coefficient = "G", Phi_coefficient = "Φ", Key_Finding = "主要知見")
+  mutate(
+    G_coefficient = ifelse(is.na(G_coefficient), "—", sprintf("%.3f", G_coefficient)),
+    Phi_coefficient = ifelse(is.na(Phi_coefficient), "—", sprintf("%.3f", Phi_coefficient))
+  ) |>
+  knitr::kable(caption = "分析結果のサマリー")
 ```
 
 ### 実践的推奨事項

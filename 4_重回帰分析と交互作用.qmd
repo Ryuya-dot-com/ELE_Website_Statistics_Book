@@ -388,7 +388,9 @@ wide_scores <- wide_scores |>
     )
   )
 
-DT::datatable(wide_scores, caption = "Data Overview: First 8 Rows")
+wide_scores |>
+  slice_head(n = 10) |>
+  knitr::kable(caption = "Data Overview: First 10 Rows of the Simulated Dataset")
 ```
 
 ## 回帰係数と因果解釈
@@ -566,9 +568,7 @@ causal_coef_tbl |>
     conf.high = round(conf.high, 3),
     true_effect
   ) |>
-  knitr::kable(
-    caption = "Illustration of Omitted Variable Bias in a Toy Regression"
-  )
+  knitr::kable(caption = "Illustration of Omitted Variable Bias in a Toy Regression")
 ```
 
 **この例の読み方**:
@@ -655,29 +655,35 @@ X_dummy <- model.matrix(
   data = design_dummy
 )
 
-as_tibble(X_dummy) |>
-  mutate(Treatment = design_dummy$Treatment, Time = design_dummy$Time, .before = 1) |>
-  gt() |>
-  tab_header(title = "Design Matrix Preview (2x2, Proficiency=Aptitude=0)")
+design_matrix_preview <- as_tibble(X_dummy) |>
+  mutate(Treatment = design_dummy$Treatment, Time = design_dummy$Time, .before = 1)
 
-tibble(
-  Term = c(
-    "(Intercept)", "Treatment1", "Time1", "Treatment1:Time1",
-    "Treatment1:Proficiency", "Time1:Proficiency", "Aptitude"
-  ),
-  Interpretation = c(
-    "全条件の平均（sum coding下）",
-    "Treatment 主効果（Writing vs Glossing の平均差方向）",
-    "Time 主効果（Immediate vs Delayed の平均差方向）",
-    "Treatment × Time の差の差",
-    "Treatment による Proficiency 傾き差",
-    "Time による Proficiency 傾き差",
-    "Aptitude の主効果"
-  )
-) |>
-  gt() |>
-  tab_header(title = "係数項と設計行列列の対応")
+invisible(NULL)
 ```
+
+`Proficiency = 0`, `Aptitude = 0` に固定しているので、`Treatment1:Proficiency`、
+`Time1:Proficiency`、`Aptitude` 列はすべて 0 になります。
+
+| Treatment | Time | `(Intercept)` | `Treatment1` | `Time1` | `Treatment1:Time1` |
+|:--|:--|--:|--:|--:|--:|
+| Glossing | Immediate | 1 | 1 | 1 | 1 |
+| Glossing | Delayed | 1 | 1 | -1 | -1 |
+| Writing | Immediate | 1 | -1 | 1 | -1 |
+| Writing | Delayed | 1 | -1 | -1 | 1 |
+
+: Design Matrix Preview (2x2, `Proficiency = Aptitude = 0`)
+
+| Term | Interpretation |
+|:--|:--|
+| `(Intercept)` | 全条件の平均（sum coding下） |
+| `Treatment1` | Treatment の sum coding 列（Glossing = +1, Writing = -1） |
+| `Time1` | Time の sum coding 列（Immediate = +1, Delayed = -1） |
+| `Treatment1:Time1` | Treatment × Time の差の差 |
+| `Treatment1:Proficiency` | Treatment による Proficiency 傾き差 |
+| `Time1:Proficiency` | Time による Proficiency 傾き差 |
+| `Aptitude` | Aptitude の主効果 |
+
+: 係数項と設計行列列の対応
 
 ### 設計行列の属性確認（公式仕様）
 
@@ -705,14 +711,28 @@ assign_tbl <- tibble(
 
 contrast_tbl <- enframe(attr(X_theory, "contrasts"), name = "Factor", value = "Contrast")
 
-assign_tbl |>
-  gt() |>
-  tab_header(title = "model.matrix() の assign 属性（列と項の対応）")
-
-contrast_tbl |>
-  gt() |>
-  tab_header(title = "model.matrix() の contrasts 属性")
+invisible(NULL)
 ```
+
+| Column | Assign | Term |
+|:--|--:|:--|
+| `(Intercept)` | 0 | `(Intercept)` |
+| `Treatment1` | 1 | `Treatment` |
+| `Time1` | 2 | `Time` |
+| `Proficiency` | 3 | `Proficiency` |
+| `Aptitude` | 4 | `Aptitude` |
+| `Treatment1:Time1` | 5 | `Treatment:Time` |
+| `Treatment1:Proficiency` | 6 | `Treatment:Proficiency` |
+| `Time1:Proficiency` | 7 | `Time:Proficiency` |
+
+: `model.matrix()` の `assign` 属性
+
+| Factor | Contrast | Level coding |
+|:--|:--|:--|
+| `Treatment` | `contr.sum(2)` | Glossing = +1, Writing = -1 |
+| `Time` | `contr.sum(2)` | Immediate = +1, Delayed = -1 |
+
+: `model.matrix()` の `contrasts` 属性
 
 :::
 
@@ -842,9 +862,7 @@ invisible(NULL)
 ```{r}
 #| eval: true
 coding_pred_diff_tbl |>
-  gt() |>
-  tab_header(title = "Prediction Invariance Check (vs Sum Coding)") |>
-  fmt_number(columns = where(is.numeric), decimals = 10)
+  knitr::kable(caption = "Prediction Invariance Check (vs Sum Coding)", digits = 10)
 
 ggplot(
   coding_pred_tbl,
@@ -883,8 +901,7 @@ ggplot(
 coding_coef_tbl |>
   dplyr::select(Coding, term, estimate, std.error, p.value, conf.low, conf.high) |>
   mutate(across(where(is.numeric), ~ round(., 4))) |>
-  gt() |>
-  tab_header(title = "Coefficient Table Across Coding Schemes")
+  knitr::kable(caption = "Coefficient Table Across Coding Schemes")
 ```
 
 ### dominance analysis は coding で変わるか
@@ -896,14 +913,10 @@ coding_coef_tbl |>
 ```{r}
 #| eval: true
 coding_dominance_tbl |>
-  gt() |>
-  tab_header(title = "Dominance Weights Across Coding Schemes") |>
-  fmt_number(columns = general_dominance, decimals = 6)
+  knitr::kable(caption = "Dominance Weights Across Coding Schemes", digits = 6)
 
 coding_dominance_diff_tbl |>
-  gt() |>
-  tab_header(title = "Coding Invariance Check for Dominance Weights") |>
-  fmt_number(columns = where(is.numeric), decimals = 10)
+  knitr::kable(caption = "Coding Invariance Check for Dominance Weights", digits = 10)
 ```
 
 ```{r}
@@ -969,9 +982,7 @@ m_theory <- lm(
   data = wide_scores
 )
 broom::tidy(m_theory, conf.int = TRUE) |>
-  gt() |>
-  tab_header(title = "Theory-Driven Model") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Theory-Driven Model", digits = 3)
 ```
 
 ### 探索的モデル（補助）
@@ -982,9 +993,7 @@ m_full <- lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wi
 m_step <- step(m_full, direction = "both", trace = 0)
 
 broom::tidy(m_step, conf.int = TRUE) |>
-  gt() |>
-  tab_header(title = "Stepwise Model") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Stepwise Model", digits = 3)
 performance::compare_performance(m_theory, m_step)
 ```
 
@@ -1182,11 +1191,9 @@ ggplot(
 
 ```{r}
 #| eval: true
-knitr::kable(
-  influence_top_tbl |>
-    mutate(across(where(is.numeric), ~ round(., 3))),
-  caption = "Top Cases by Cook's Distance"
-)
+influence_top_tbl |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  knitr::kable(caption = "Top Cases by Cook's Distance")
 ```
 
 この図は、**横軸が leverage、縦軸が残差、点の大きさが Cook's distance** です。  
@@ -1444,10 +1451,10 @@ invisible(NULL)
 ```{r}
 #| eval: true
 coef_main_tbl |>
-  gt() |>
-  tab_header(title = "Theory-Driven Model: Coefficient Summary") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Theory-Driven Model: Coefficient Summary", digits = 3)
 
+# `tab_model()` は sjPlot 固有の表示を確認するための補助例であり、
+# 本章の標準出力は上の gt 表を基準にする。
 tab_model(m_theory)
 ```
 
@@ -1456,14 +1463,10 @@ tab_model(m_theory)
 ```{r}
 #| eval: true
 std_coef_tbl |>
-  gt() |>
-  tab_header(title = "Standardized Parameters") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Standardized Parameters", digits = 3)
 
 effect_size_tbl |>
-  gt() |>
-  tab_header(title = "Model-Level Effect Size (R², adjusted R², f²)") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Model-Level Effect Size (R², adjusted R², f²)", digits = 3)
 ```
 
 ### 補助分析: Dominance Analysis
@@ -1479,9 +1482,7 @@ effect_size_tbl |>
 ```{r}
 #| eval: true
 dominance_tbl |>
-  gt() |>
-  tab_header(title = "General Dominance Weights for Model Terms") |>
-  fmt_number(columns = general_dominance, decimals = 3)
+  knitr::kable(caption = "General Dominance Weights for Model Terms", digits = 3)
 ```
 
 ```{r}
@@ -1674,9 +1675,7 @@ ggplot(pred_focus_ci, aes(x = Proficiency, y = fit)) +
 ```{r}
 #| eval: true
 interval_width_tbl |>
-  gt() |>
-  tab_header(title = "Interval Width Summary (PI is expected to be wider)") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Interval Width Summary (PI is expected to be wider)", digits = 3)
 ```
 
 ### 推論の頑健化（OLS / HC3 / Bootstrap）
@@ -1687,9 +1686,7 @@ interval_width_tbl |>
 ```{r}
 #| eval: true
 robust_inference_tbl |>
-  gt() |>
-  tab_header(title = "Robust Inference for Interaction Terms") |>
-  fmt_number(columns = where(is.numeric), decimals = 4)
+  knitr::kable(caption = "Robust Inference for Interaction Terms", digits = 4)
 ```
 
 この表は、**係数の値そのもの**よりも、
@@ -1796,13 +1793,10 @@ ggplot(surface_gap_df, aes(x = Proficiency, y = Aptitude, fill = Writing_minus_G
 #| eval: true
 if (robust_available) {
   robust_compare_tbl |>
-    gt() |>
-    tab_header(title = "Coefficient Comparison: OLS vs HC3") |>
-    fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Coefficient Comparison: OLS vs HC3")
 } else {
   tibble(Note = "sandwich/lmtest 未インストールのため HC3 比較をスキップ") |>
-    gt() |>
-    tab_header(title = "Coefficient Comparison: OLS vs HC3")
+  knitr::kable(caption = "Coefficient Comparison: OLS vs HC3")
 }
 ```
 
@@ -1923,13 +1917,11 @@ invisible(NULL)
 #| eval: true
 slopes_prof_emtrends_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
-  gt() |>
-  tab_header(title = "Simple Slopes by Treatment and Time")
+  knitr::kable(caption = "Simple Slopes by Treatment and Time")
 
 slopes_prof_contrasts_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
-  gt() |>
-  tab_header(title = "Slope Differences (Holm-adjusted)")
+  knitr::kable(caption = "Slope Differences (Holm-adjusted)")
 ```
 
 ### 3) 条件付き平均差（-1SD, 0, +1SD）
@@ -1938,8 +1930,7 @@ slopes_prof_contrasts_tbl |>
 #| eval: true
 emm_treat_prof_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
-  gt() |>
-  tab_header(title = "Conditional Group Differences by Proficiency")
+  knitr::kable(caption = "Conditional Group Differences by Proficiency")
 ```
 
 ### 4) 可視化（傾き差フォレスト + 条件付き平均）
@@ -1999,14 +1990,10 @@ $\\beta_{Prof} + c_{Trt}\\beta_{Trt\\times Prof} + c_{Time}\\beta_{Time\\times P
 ```{r}
 #| eval: true
 slope_formula_check_tbl |>
-  gt() |>
-  tab_header(title = "Simple Slopes: emtrends vs Manual Formula") |>
-  fmt_number(columns = where(is.numeric), decimals = 6)
+  knitr::kable(caption = "Simple Slopes: emtrends vs Manual Formula", digits = 6)
 
 slope_contrast_formula_tbl |>
-  gt() |>
-  tab_header(title = "Slope Contrast: emtrends vs Manual Formula") |>
-  fmt_number(columns = where(is.numeric), decimals = 6)
+  knitr::kable(caption = "Slope Contrast: emtrends vs Manual Formula", digits = 6)
 ```
 
 :::
@@ -2117,9 +2104,7 @@ glh_tbl <- bind_rows(
 )
 
 glh_tbl |>
-  gt() |>
-  tab_header(title = "General Linear Hypotheses via Lβ") |>
-  fmt_number(columns = where(is.numeric), decimals = 4)
+  knitr::kable(caption = "General Linear Hypotheses via Lβ", digits = 4)
 ```
 
 ### `emmeans` / `emtrends` との一致確認
@@ -2166,9 +2151,7 @@ glh_validation_tbl <- tibble(
 )
 
 glh_validation_tbl |>
-  gt() |>
-  tab_header(title = "Cross-check: Lβ vs emmeans/emtrends") |>
-  fmt_number(columns = where(is.numeric), decimals = 8)
+  knitr::kable(caption = "Cross-check: Lβ vs emmeans/emtrends", digits = 8)
 ```
 
 :::
@@ -2313,9 +2296,7 @@ dat_multi <- tibble(
 
 m_hayes <- lm(Score ~ Treatment3 * Proficiency + Aptitude, data = dat_multi)
 broom::tidy(m_hayes, conf.int = TRUE) |>
-  gt() |>
-  tab_header(title = "Hayes-Style Multi-Category Model") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Hayes-Style Multi-Category Model", digits = 3)
 ```
 
 ```{r}
@@ -2589,8 +2570,7 @@ invisible(NULL)
 ```{r}
 #| eval: true
 pwr_targets |>
-  gt() |>
-  tab_header(title = "Target Sample Size by Scenario")
+  knitr::kable(caption = "Target Sample Size by Scenario", digits = 3)
 ```
 
 #### 文献ベースのパワー曲線
@@ -2621,8 +2601,7 @@ if (interaction_power_available) {
 ```{r}
 #| eval: true
 pwr_compare_tbl |>
-  gt() |>
-  tab_header(title = "Analytic vs Monte Carlo Power Check")
+  knitr::kable(caption = "Analytic vs Monte Carlo Power Check", digits = 3)
 ```
 
 #### ΔR²シミュレーション（Brown/MMR対応）
@@ -2630,8 +2609,7 @@ pwr_compare_tbl |>
 ```{r}
 #| eval: true
 power_min80 |>
-  gt() |>
-  tab_header(title = "Minimum N for 80% Power (ΔR² approach)")
+  knitr::kable(caption = "Minimum N for 80% Power (ΔR² approach)", digits = 3)
 
 ggplot(power_grid, aes(x = N, y = power)) +
   geom_line() +
@@ -2650,9 +2628,7 @@ ggplot(power_grid, aes(x = N, y = power)) +
 ```{r}
 #| eval: true
 coding_power_tbl |>
-  gt() |>
-  tab_header(title = "Power and Coding: Same Term vs Same Coefficient") |>
-  fmt_number(columns = c(power, ci_low, ci_high, se_mc), decimals = 3)
+  knitr::kable(caption = "Power and Coding: Same Term vs Same Coefficient", digits = 3)
 ```
 
 ```{r}
@@ -2758,17 +2734,15 @@ ggplot(
 
 ### 迷ったときのチェックポイント（1分版）
 
-```{r}
-#| eval: true
-tibble::tribble(
-  ~Step, ~What_to_check, ~Decision_rule,
-  "1. 交互作用係数", "`summary(m_theory)` の `Treatment × Proficiency`", "p < .05 かつ符号が理論と整合",
-  "2. Simple slope", "`summary(slopes_bauer$contrasts)`", "傾き差の有意性を確認",
-  "3. 条件付き平均差", "`emmeans(... | Proficiency)`", "-1SD/0/+1SD の差を比較",
-  "4. 図の整合", "`emmip()`", "線の交差・傾き方向が統計結果と一致",
-  "5. 頑健性", "`check_model()` と HC3", "結論が大きく変わらない"
-)
-```
+| Step | What to check | Decision rule |
+|:--|:--|:--|
+| 1. 交互作用係数 | `summary(m_theory)` の `Treatment × Proficiency` | `p < .05` かつ符号が理論と整合 |
+| 2. Simple slope | `summary(slopes_bauer$contrasts)` | 傾き差の有意性を確認 |
+| 3. 条件付き平均差 | `emmeans(... | Proficiency)` | `-1SD/0/+1SD` の差を比較 |
+| 4. 図の整合 | `emmip()` | 線の交差・傾き方向が統計結果と一致 |
+| 5. 頑健性 | `check_model()` と HC3 | 結論が大きく変わらない |
+
+: 迷ったときのチェックポイント（1分版）
 
 ## 拡張: within-subjects の場合
 
@@ -2859,9 +2833,7 @@ within_wide |>
     .groups = "drop"
   ) |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "Within-Subjects Example: immediate, delayed, and change scores by treatment"
-  )
+  knitr::kable(caption = "Within-Subjects Example: Immediate, Delayed, and Change Scores by Treatment")
 ```
 
 ### 変化量を見る図
@@ -2950,9 +2922,7 @@ m_within_change <- lm(
 
 broom::tidy(m_within_change, conf.int = TRUE) |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "Change-Score Regression for a Two-Time-Point Within-Subjects Design"
-  )
+  knitr::kable(caption = "Change-Score Regression for a Two-Time-Point Within-Subjects Design")
 ```
 
 ### 変化量に対する simple slope
@@ -2968,16 +2938,12 @@ within_slopes <- emtrends(
 summary(within_slopes$emtrends, infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "Simple Slopes on Change Scores"
-  )
+  knitr::kable(caption = "Simple Slopes on Change Scores")
 
 summary(within_slopes$contrasts, infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(
-    caption = "Treatment Difference in Proficiency Slopes for Change Scores"
-  )
+  knitr::kable(caption = "Treatment Difference in Proficiency Slopes for Change Scores")
 ```
 
 ```{r}
@@ -3052,9 +3018,7 @@ submission_desc_tbl <- wide_scores |>
   )
 
 submission_desc_tbl |>
-  gt() |>
-  tab_header(title = "Table A. Descriptive Statistics by Treatment and Time") |>
-  fmt_number(columns = where(is.numeric), decimals = 3)
+  knitr::kable(caption = "Table A. Descriptive Statistics by Treatment and Time", digits = 3)
 ```
 
 ### Table B: 主要係数 + 頑健推論
@@ -3065,14 +3029,10 @@ submission_coef_tbl <- coef_main_tbl |>
   dplyr::select(term, estimate, std.error, conf.low, conf.high, p.value)
 
 submission_coef_tbl |>
-  gt() |>
-  tab_header(title = "Table B1. OLS Coefficients with 95% CI") |>
-  fmt_number(columns = where(is.numeric), decimals = 4)
+  knitr::kable(caption = "Table B1. OLS Coefficients with 95% CI", digits = 4)
 
 robust_inference_tbl |>
-  gt() |>
-  tab_header(title = "Table B2. Robust Inference for Interaction Terms (HC3 / Bootstrap)") |>
-  fmt_number(columns = where(is.numeric), decimals = 4)
+  knitr::kable(caption = "Table B2. Robust Inference for Interaction Terms (HC3 / Bootstrap)", digits = 4)
 ```
 
 ### Figure A: 交互作用図（投稿用）
@@ -3171,8 +3131,7 @@ key_slope <- slopes_prof_contrasts_tbl |>
 
 bind_rows(key_interaction, key_slope) |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
-  gt() |>
-  tab_header(title = "Report-Ready Key Statistics")
+  knitr::kable(caption = "Report-Ready Key Statistics")
 ```
 
 - モデル: `lm(Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude)`
