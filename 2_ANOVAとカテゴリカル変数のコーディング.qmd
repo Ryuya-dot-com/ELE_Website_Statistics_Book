@@ -1,7 +1,9 @@
 ---
-title: "ANOVAとカテゴリカル変数コーディング"
+title: "ANOVAとカテゴリカル変数のコーディング"
 bibliography: references_anova.bib
 csl: apa-7th-edition.csl
+execute:
+  cache: false
 ---
 
 ```{r}
@@ -17,9 +19,9 @@ required_packages <- c(
   "emmeans",
   "faux",
   "gt",
-  "pacman",
   "performance",
   "purrr",
+  "ragg",
   "scales",
   "tibble",
   "tidyr",
@@ -33,9 +35,9 @@ if (length(missing_packages) > 0) {
 ```
 
 
-## はじめに
+## はじめに {.unnumbered}
 
-英語教育研究では、次のような問いがしばしば立てられます。
+本章へようこそ。英語教育研究では、次のような問いがしばしば立てられます。
 
 - 「注釈付き読解（Glossing）は、作文練習（Writing）より語彙学習に効果的か？」
 - 「テスト時点（直後 vs 遅延）によって、学習の保持は異なるか？」
@@ -47,14 +49,15 @@ if (length(missing_packages) > 0) {
 
 ### 前提知識
 
-本章では、回帰分析の基礎（係数・p値・R²の意味）を理解していることを前提とします。t検定の経験があれば、本章の内容は自然に接続します。
+本章では、平均・分散・p値・効果量の基本的な考え方を理解していることを前提とします。t検定の経験があれば、本章の内容は自然に接続します。回帰分析や行列の表記も扱いますが、まずは「平均差が、ばらつきに比べて十分大きいか」を見る手続きとしてANOVAを理解します。
 
 ### この章の到達目標
 
-1. ANOVAを線形モデル $\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}$ として理解し、設計行列 $\mathbf{X}$ の役割を説明できる
-2. 被験者間・被験者内・混合計画の違いを理解し、各仮定（特に球面性）を正しく確認できる
-3. `afex` と `emmeans` を使って、混合ANOVAの主効果・交互作用・事後比較を再現可能に実行・報告できる
+1. ANOVAを「群平均の差」と「群内のばらつき」の比較として説明できる
+2. 参加者間・参加者内・混合計画の違いを理解し、各仮定（特に球面性）を正しく確認できる
+3. `afex` と `emmeans` を使って、混合計画ANOVAの主効果・交互作用・事後比較を再現可能に実行・報告できる
 4. Treatment / Sum / Helmert / Polynomial codingの違いを理解し、研究質問に適したコーディングを選択できる
+5. ANOVAを線形モデル $\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}$ として捉え、設計行列 $\mathbf{X}$ の役割を説明できる
 
 **本章の流れ**:
 
@@ -65,9 +68,18 @@ if (length(missing_packages) > 0) {
 #| label: pre-setup
 #| include: false
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
-pacman::p_load(tidyverse)
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+chapter_packages_minimal <- c("tidyverse")
+missing_packages_minimal <- setdiff(chapter_packages_minimal, rownames(installed.packages()))
+if (length(missing_packages_minimal) > 0) {
+  stop(
+    "Install required packages before rendering this chapter: ",
+    paste(missing_packages_minimal, collapse = ", "),
+    call. = FALSE
+  )
+}
+
+suppressPackageStartupMessages(library(tidyverse))
+theme_set(theme_bw(base_size = 12, base_family = "sans") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -86,9 +98,63 @@ theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
 theme_update(legend.position = "bottom")
 ```
 
-## 1. ANOVAを回帰モデルとして捉える
+## ANOVAを回帰モデルとして捉える {#sec-anova-regression}
+
+### まず平均差とばらつきで考える
+
+ANOVAの最初の直感は単純です。**群平均の差が、各群の中のばらつきに比べてどのくらい大きいか**を見ます。群平均が離れていても、各群の得点が大きく重なっていれば、差は不確実です。逆に群平均の差が群内ばらつきに比べて大きければ、F値は大きくなります。
+
+```{r}
+#| eval: true
+#| label: fig-anova-signal-noise
+#| fig-cap: "ANOVAの直感：群平均の差と群内ばらつき"
+#| fig-alt: "3群の得点分布を示す図。各群の観測値、箱ひげ図、群平均が表示され、群平均の差と群内ばらつきの関係を確認できる。"
+#| fig-width: 7.5
+#| fig-height: 4.8
+
+set.seed(2024)
+anova_intuition_tbl <- tibble(
+  Group = factor(rep(c("Control", "Glossing", "Keyword"), each = 45),
+                 levels = c("Control", "Glossing", "Keyword")),
+  Score = c(
+    rnorm(45, mean = 50, sd = 8),
+    rnorm(45, mean = 57, sd = 8),
+    rnorm(45, mean = 62, sd = 8)
+  )
+)
+
+anova_intuition_means <- anova_intuition_tbl |>
+  group_by(Group) |>
+  summarise(Mean = mean(Score), .groups = "drop")
+
+ggplot(anova_intuition_tbl, aes(x = Group, y = Score, color = Group)) +
+  geom_jitter(width = 0.12, alpha = 0.42, size = 1.8) +
+  geom_boxplot(width = 0.42, alpha = 0.16, outlier.shape = NA) +
+  geom_point(
+    data = anova_intuition_means,
+    aes(y = Mean),
+    color = "black",
+    fill = "white",
+    shape = 21,
+    size = 3.4,
+    stroke = 1
+  ) +
+  labs(
+    title = "群平均の差は、群内ばらつきとの比較で読む",
+    x = NULL,
+    y = "語彙テスト得点"
+  ) +
+  theme(legend.position = "none")
+```
+
+この図では、点の散らばりが**群内のばらつき**、白丸が**群平均**です。ANOVAのF検定は、この「群平均の離れ具合」が「同じ群の中の自然な散らばり」に比べて十分大きいかを、F分布で評価します。
 
 ### 共通の枠組み
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本サブセクション(共通の枠組み・なぜコーディングが重要なのか・F検定の意味)は線形代数の表記が多めです。**ANOVA を実際に走らせるイメージを先につかみたい場合は、@sec-anova-design (研究計画と仮定)へ進んでも構いません**。後で戻ってきても理解できる構成にしています。
+:::
 
 ANOVAも回帰も、基本式は同じです。
 
@@ -100,6 +166,8 @@ $$
 - $\mathbf{X}$: 設計行列（カテゴリカル変数はコーディングされる）
 - $\boldsymbol{\beta}$: 係数
 - $\boldsymbol{\varepsilon}$: 誤差
+
+ここでの $\boldsymbol{\varepsilon} \sim N(0, \sigma^2\mathbf{I})$ は、独立した観測値を扱う単純な参加者間モデルの表記です。反復測定や混合計画では、同じ参加者から複数の測定値が得られるため、参加者内の相関や誤差層を別に扱う必要があります。本章では直感を保つために単純な線形モデル表記から始め、混合計画では `afex::aov_ez()` が参加者IDに基づく誤差構造を扱います。
 
 この数式で鍵となるのが**設計行列 $\mathbf{X}$** です。回帰分析では $\mathbf{X}$ に連続変数（英語力スコアなど）がそのまま入りますが、ANOVAでは**カテゴリカル変数を数値に変換して** $\mathbf{X}$ に入れます。この変換が「コントラストコーディング」の正体です。
 
@@ -114,12 +182,23 @@ $$
 | 5 | Keyword | 1 | 0 | 1 |
 | 6 | Keyword | 1 | 0 | 1 |
 
-カテゴリカル予測子が $k$ 水準なら、通常 $k-1$ 本のコントラスト列が必要です。この $\mathbf{X}$ の中身（0/1の配置）が**コーディング方式によって変わる**のが、セクション6で詳しく学ぶ内容です。
+カテゴリカル予測子が $k$ 水準なら、通常 $k-1$ 本のコントラスト列が必要です。この $\mathbf{X}$ の中身（0/1の配置）が**コーディング方式によって変わる**のが、@sec-contrast-coding で詳しく学ぶ内容です。
 
 ::: {.callout-important}
 #### 核心原則
 
-**どのコーディングを選ぶかで係数 $\boldsymbol{\beta}$ の意味は変わるが、同じモデル空間なら適合値や全体検定（F値）は本質的に同じ**です（Schad et al., 2020）。
+**どのコーディングを選ぶかで係数 $\boldsymbol{\beta}$ の意味は変わるが、同じモデル空間なら適合値や全体的な一要因検定は本質的に同じ**です。ただし、不均衡な多要因モデルで Type III 平方和の主効果を読む場合など、項ごとのF検定はコーディングに依存しえます [@schad2020]。
+:::
+
+::: {.callout-note}
+#### 用語ミニ辞典:Type I / II / III 平方和(SS)
+本章では「Type III 平方和」が早い段階から登場します。詳細な解説は @sec-contrast-coding 後半に置いていますが、初読の便宜のために 1 文ずつ要約しておきます。
+
+- **Type I(逐次 SS)**:モデル式に書いた**順番通り**に効果を投入し、それぞれの寄与を測る方法。順番に依存
+- **Type II(階層的 SS)**:**同レベル以下の効果のみで調整**して効果を測る方法。交互作用がない前提に向く
+- **Type III(独自 SS)**:**他のすべての効果を調整した上で**各効果を測る方法。要因実験で標準的だが、コーディング(特に Sum coding)とセットで使う必要がある
+
+要因実験で交互作用を保ったまま各主効果を評価するときは Type III + Sum coding を選ぶのが本書の標準です。詳しくは @sec-contrast-coding を参照してください。
 :::
 
 ### なぜコーディングが重要なのか
@@ -138,7 +217,7 @@ $$
 \hat{\mathbf{y}} = \mathbf{X}\hat{\boldsymbol{\beta}}
 $$
 
-は同じになります。したがって、コーディング選択は「分析結果を変える魔法」ではなく、**どの研究質問を係数から直接読めるようにするか**を決める設計作業です。
+は同じになります。したがって、コーディング選択は「分析結果そのものを任意に変える操作」ではなく、**どの研究質問を係数から直接読めるようにするか**を決める設計作業です。
 
 | 変わるもの | 変わらないもの |
 |---|---|
@@ -160,17 +239,19 @@ $$
 - F ≈ 1: 効果による変動と誤差変動が同程度 → 群間に体系的な差がない可能性が高い
 - F >> 1: 効果による変動が誤差変動よりはるかに大きい → 群間に体系的な差がある可能性が高い
 
-F値に対応するp値は、「帰無仮説（群間に差がない）のもとでこのF値以上が得られる確率」です。p < .05 なら、偶然でこれほど大きなF値が出る確率は5%未満であり、通常は帰無仮説を棄却します。
+F値に対応するp値は、「帰無仮説（群間に差がない）のもとでこのF値以上が得られる確率」です。p < .05 なら、**帰無仮説が正しいと仮定したとき**に観測されたF値以上が得られる確率が 5% 未満であり、通常は帰無仮説を棄却します。p 値は **「結果が偶然によるものである確率」や「帰無仮説が正しい確率」ではない**点に注意してください(逆向き条件付き確率の混同を避けるため)。
 
 なお、2群比較では $t^2 = F$ が成り立つため、t検定とANOVAは対立概念ではなく同一枠組みの特殊ケースです。3群以上の比較ではt検定を繰り返すと多重検定の問題が生じるため、ANOVAが必要になります。
 
 ### F分布をどう読むか
 
-F統計量は、**帰無仮説が正しいときにどのくらいの値を取りやすいか**を F 分布で評価します。F 分布は 0 未満を取りえず、通常は右に裾の長い形になります。観測された F 値が右端のまれな領域に入るほど、「誤差だけでは説明しにくい」と判断します。
+F統計量は、**帰無仮説が正しいときにどのくらいの値を取りやすいか**をF分布で評価します。F分布は0未満を取りえず、通常は右に裾の長い形になります。観測されたF値が右端のまれな領域に入るほど、「誤差だけでは説明しにくい」と判断します。
 
 ```{r}
 #| eval: true
-#| label: f-distribution-visual
+#| label: fig-f-distribution-visual
+#| fig-cap: "F分布と右側確率"
+#| fig-alt: "F分布の密度曲線と観測F値の位置を示し、観測F値より右側の領域がp値に対応することを示す図。"
 #| fig-width: 7
 #| fig-height: 4.6
 
@@ -193,22 +274,22 @@ ggplot(f_dist_tbl, aes(x = x, y = density)) +
   geom_line(linewidth = 1, color = "#2b8cbe") +
   geom_vline(xintercept = observed_f_example, linetype = "dashed") +
   annotate("text", x = observed_f_example + 0.4, y = max(f_dist_tbl$density) * 0.8,
-           label = paste0("Observed F = ", observed_f_example), hjust = 0, size = 4) +
+           label = paste0("観測F = ", observed_f_example), hjust = 0, size = 4) +
   labs(
-    title = "The F Distribution and a Right-Tail p Value",
-    x = "F statistic",
-    y = "Density"
+    title = "F分布と右側確率",
+    x = "F統計量",
+    y = "密度"
   )
 ```
 
 **読み方**:
 
-- 山の左側は「よくある F 値」、右端の塗りつぶし部分は「これ以上に大きい F 値が出る確率」です
+- 山の左側は「よくあるF値」、右端の塗りつぶし部分は「これ以上に大きいF値が出る確率」です
 - p値は**縦の高さ**ではなく、右端の**面積**です
-- 自由度 `df1`, `df2` が変わると F 分布の形も変わるので、同じ F = 4.5 でも p値は常に同じではありません
-- 2群比較では `t^2 = F` なので、t検定を F 分布で読み直したものと考えてよいです
+- 自由度 `df1`, `df2` が変わるとF分布の形も変わるので、同じ F = 4.5 でもp値は常に同じではありません
+- 2群比較では `t^2 = F` なので、t検定をF分布で読み直したものと考えてよいです
 
-## 2. 研究計画と仮定
+## 研究計画と仮定 {#sec-anova-design}
 
 ### 英語教育研究での典型デザイン
 
@@ -216,11 +297,11 @@ ggplot(f_dist_tbl, aes(x = x, y = density)) +
 
 | デザイン | 構造 | 英語教育での典型例 |
 |---------|------|-------------------|
-| **被験者間計画** | 各参加者が1条件のみ | 指導法A群（n=60）vs 指導法B群（n=60）で語彙テストを比較 |
-| **被験者内計画** | 各参加者が全条件を経験 | 同一学習者の直後テスト・1週間後テスト・1か月後テストを比較 |
-| **混合計画** | 被験者間 + 被験者内の組合せ | 指導法（被験者間）× テスト時点（被験者内） |
+| **参加者間計画** | 各参加者が1条件のみ | 指導法A群（n=60）vs 指導法B群（n=60）で語彙テストを比較 |
+| **参加者内計画** | 各参加者が全条件を経験 | 同一学習者の直後テスト・1週間後テスト・1か月後テストを比較 |
+| **混合計画** | 参加者間 + 参加者内の組合せ | 指導法（参加者間）× テスト時点（参加者内） |
 
-研究課題が「群間差の検証」であれば、まず同一参加者を複数条件で測定しているかを確認します。測定していなければ被験者間計画、測定していれば次に「全要因が被験者内か」を判定し、全要因が被験者内なら被験者内計画、被験者間要因も含まれるなら混合計画を選択します。混合計画は英語教育研究で最も頻出し、本章の主要実装例もこの設計に基づきます。
+研究課題が「群間差の検証」であれば、まず同一参加者を複数条件で測定しているかを確認します。測定していなければ参加者間計画、測定していれば次に「全要因が参加者内か」を判定し、全要因が参加者内なら参加者内計画、参加者間要因も含まれるなら混合計画を選択します。混合計画は英語教育研究で最も頻出し、本章の主要実装例もこの設計に基づきます。
 
 本章の実装例は、英語教育研究で最も頻出する**混合計画**を中心に扱います。
 
@@ -230,7 +311,9 @@ ggplot(f_dist_tbl, aes(x = x, y = density)) +
 
 ```{r}
 #| eval: true
-#| label: design-structure-visual
+#| label: fig-design-structure-visual
+#| fig-cap: "参加者間・参加者内・混合計画における観測の配置"
+#| fig-alt: "参加者間計画、参加者内計画、混合計画の3種類について、各参加者がどの条件で測定されるかをタイルで示す図。"
 #| fig-width: 8
 #| fig-height: 5.2
 
@@ -272,9 +355,9 @@ ggplot(design_vis, aes(x = Occasion, y = Participant, fill = factor(Measured))) 
   scale_fill_manual(values = c("0" = "#f0f0f0", "1" = "#9ecae1"), guide = "none") +
   facet_wrap(~ Design, scales = "free_x") +
   labs(
-    title = "How Observations Are Organized in Between, Within, and Mixed Designs",
+    title = "参加者間・参加者内・混合計画の観測配置",
     x = NULL,
-    y = "Participant"
+    y = "参加者"
   )
 ```
 
@@ -291,7 +374,7 @@ ANOVAが妥当な推論を行うためには、いくつかの前提条件（仮
 
 | 仮定 | 何を要求するか | 主な確認方法 | 注意点 |
 |---|---|---|---|
-| 独立性 | 観測単位間の誤差が独立 | 研究デザインで担保 | 統計手法だけでは救済不能 |
+| 独立性 | 観測単位間の誤差が独立 | 研究デザインで担保 | 事後的な補正は困難 |
 | 正規性 | 残差が概ね正規 | QQプロット, Shapiro-Wilk検定 | 大標本（n > 30）では頑健 |
 | 等分散性 | 群間で残差分散が類似 | Levene検定, 残差プロット | 群サイズが等しければ頑健 |
 | 回帰傾きの等質性 | 共変量の傾きが条件で大きく変わらない | 共変量 × 条件の交互作用 | 共変量を入れるときのみ確認 |
@@ -299,26 +382,77 @@ ANOVAが妥当な推論を行うためには、いくつかの前提条件（仮
 
 **各仮定の実務的な意味**:
 
-- **独立性**: 最も重要な仮定です。ある学習者の誤差が別の学習者に影響しないこと。例えば、同じ教室で相互に影響し合う状況では独立性が破れます。この仮定は研究デザインで担保するものであり、統計手法では事後的に救済できません（クラスタ構造がある場合は混合モデル[Ch.6]を検討）
-- **正規性**: 残差（予測からのずれ）が正規分布に従うこと。群あたり n > 30 であれば、中心極限定理によりANOVAは軽度の非正規性に対して頑健です。正誤データ（0/1）のように明らかに非正規な場合は、ロジスティック回帰（Ch.5-6）を使います
-- **等分散性**: 群間で分散が大きく異ならないこと。群サイズが等しい場面では比較的頑健ですが、最大SD / 最小SD < 3 といった基準は**あくまで実務上の目安**です。大きな違反がある場合はWelch ANOVAやロバスト法を検討します
+- **独立性**: 最も重要な仮定です。ある学習者の誤差が別の学習者に影響しないこと。例えば、同じ教室で相互に影響し合う状況では独立性が破れます。この仮定は研究デザインで担保するものであり、事後的な補正は困難です。クラスや学校に入れ子になったデータでは、最初からクラスタ構造を扱う混合モデル（Ch.6）を検討します
+- **正規性**: 残差（予測からのずれ）が正規分布に従うこと。群あたり n > 30 は実務上の目安で、ANOVAは軽度の非正規性に対して比較的頑健です。ただし、外れ値が強い場合や正誤データ（0/1）のように明らかに非正規な場合は、ロバスト法やロジスティック回帰を扱う章を検討します
+- **等分散性**: 群間で分散が大きく異ならないこと。群サイズが等しい場面では比較的頑健ですが、最大SD / 最小SD < 3 といった基準は**あくまで実務上の目安**です。大きな違反がある場合の代替手法は後述の「等分散違反への代替手法 — Welch とロバスト法」タブで扱います
 - **回帰傾きの等質性**: 共変量を入れるなら、共変量と条件の関係が条件間で大きく変わらないことも確認します。例えば習熟度と得点の関係が Glossing 群と Writing 群で大きく異なるなら、単純な「調整済み平均」の解釈は不十分になります
 - **球面性**: 反復測定要因が3水準以上の場合に確認が必要です。「各時点ペアの差得点の分散が等しい」という条件で、違反時はGreenhouse-Geisser補正を適用します。**2水準の反復測定要因では自動的に満たされます**（差の分散が1つしかないため）
 
 球面性と複合対称性は同じではありません。**複合対称性は球面性より強い仮定**であり、本章の診断では球面性だけを確認すれば十分です。
 
-仮定の具体的な検証手順はセクション5で、コードとともに詳しく解説します。
+仮定の具体的な検証手順は @sec-anova-assumptions で、コードとともに詳しく解説します。
 
-## 3. データ生成（英語教育の想定）
+::: {.callout-tip}
+#### 設計を選ぶ前のチェック
+
+分析名を選ぶ前に、次の5点を確認します。
+
+1. 独立した単位は「参加者」か、「クラス」や「学校」か
+2. 同じ参加者を複数回測っているか
+3. 同じ項目（単語・文・課題）が複数参加者に繰り返し出ているか
+4. 得点は連続量として扱えるか、それとも正誤やカウントか
+5. 反復測定要因に3水準以上があり、球面性確認が必要か
+
+このチェックで「参加者も項目も繰り返し出る」「クラスに入れ子になっている」と分かった場合、ANOVAだけでなく混合モデルも候補になります。
+:::
+
+### 計画段階での検定力見積り
+
+研究を始める前に、想定する効果量を検出するのに何人必要かを見積もります。一要因デザインなら `pwr::pwr.anova.test()`、要因/混合計画なら `Superpower` [@superpowerpkg] パッケージのシミュレーションベース手法が現代的な選択肢です。事前検定力分析は「何人必要か」を決めるための第一歩ですが、@lakens2022sample が体系化したように、近年は **「実質的に意味のある最小効果量」 (smallest effect size of interest, SESOI)** を事前に決めて、その値に対して計画する発想が推奨されています。L2 研究では @plonsky2014 の L2 専用参照値や先行メタ分析 [例: @norris2000] の効果量分布を起点に SESOI を設定するのが現実的です。
+
+```r
+# 一要因 between(3群、効果量 f = 0.25 = "中" 程度、α = .05、検定力 80%)
+pwr::pwr.anova.test(k = 3, f = 0.25, sig.level = 0.05, power = 0.80)
+# → n(各群)を返す
+
+# 要因/混合計画(Superpower:ANOVA_design でデザインを記述 → ANOVA_power で検定力)
+library(Superpower)
+design <- ANOVA_design(
+  design = "2b*2w",                     # 2 between × 2 within
+  n = 30,                                # 各群の参加者数
+  mu = c(20, 22, 22, 26),                # セル平均(順序は design による)
+  sd = 5,                                # 全体 SD
+  r = 0.5,                               # within 要因の参加者内相関
+  labelnames = c("Instruction", "Glossing", "Writing",
+                 "Time", "Immediate", "Delayed")
+)
+ANOVA_power(design, alpha_level = 0.05, nsims = 1000)
+# → 主効果・交互作用ごとに検出力(%)を返す
+```
+
+::: {.callout-tip}
+#### a priori vs. observed power
+**事前検定力分析(a priori)** は研究計画段階で「何人必要か」を決めるためのもので、研究設計に役立ちます。一方、**観測後検定力(observed power、事後検定力)** は同じデータから p 値と検定力を計算しているため、新しい情報をほとんど提供しません [@hoenig2001]。**研究を始める前に行うのが鉄則**です。
+:::
+
+詳細な検定力分析の手順は第1章の「サンプルサイズと検定力分析」節も参照してください。
+
+## データ生成（英語教育の想定） {#sec-anova-data}
 
 ここでは、語彙学習に関する典型的な英語教育研究を想定したシミュレーションデータを作成します。
 
-**研究設定**: 120名の大学生を2つの語彙指導法に割り当て（被験者間）、直後テストと遅延テストの両方で語彙テスト得点を測定する（被験者内）。
+**研究設定**: 120名の大学生を2つの語彙指導法に割り当て（参加者間）、直後テストと遅延テストの両方で語彙テスト得点を測定する（参加者内）。
+
+::: {.callout-note}
+#### シミュレーション設定の注意
+
+この章のデータは、ANOVAとコーディングを説明するための新しい教育用シミュレーションです。第1章の例とは別のデータ生成過程を使っており、ここでは Glossing が Writing より高いという方向に意図的に設定しています。
+:::
 
 | 要素 | 変数名 | 内容 |
 |------|--------|------|
-| 被験者間要因 | `Instruction` | `Glossing`（注釈付き読解）vs `Writing`（作文練習） |
-| 被験者内要因 | `Time` | `Immediate`（直後テスト）vs `Delayed`（遅延テスト） |
+| 参加者間要因 | `Instruction` | `Glossing`（注釈付き読解）vs `Writing`（作文練習） |
+| 参加者内要因 | `Time` | `Immediate`（直後テスト）vs `Delayed`（遅延テスト） |
 | 共変量 | `Proficiency` | 標準化された英語力スコア |
 | 目的変数 | `Score` | 語彙テスト得点 |
 
@@ -327,13 +461,13 @@ ANOVAが妥当な推論を行うためには、いくつかの前提条件（仮
 | パッケージ | 用途 | 本章での使用箇所 |
 |-----------|------|----------------|
 | `tidyverse` | データ操作・可視化 | 全体 |
-| `afex` | ANOVAの実行（Type III SS、球面性補正） | セクション4 |
-| `emmeans` | 推定周辺平均と事後比較 | セクション4 |
-| `effectsize` | 効果量の算出（η², ω²） | セクション4 |
-| `performance` | モデル診断とR² | セクション5 |
-| `car` | Levene検定 | セクション5 |
-| `broom` | モデル出力の整形 | セクション6 |
-| `faux` | コントラスト列の可視化・因子コーディング補助 | セクション6 |
+| `afex` | ANOVAの実行（Type III SS、球面性補正） | @sec-mixed-anova |
+| `emmeans` | 推定周辺平均と事後比較 | @sec-posthoc-emmeans |
+| `effectsize` | 効果量の算出（η², ω²） | @sec-mixed-anova |
+| `performance` | モデル診断とR² | @sec-anova-assumptions |
+| `car` | Levene検定 | @sec-anova-assumptions |
+| `broom` | モデル出力の整形 | @sec-contrast-coding |
+| `faux` | コントラスト列の可視化・因子コーディング補助 | @sec-contrast-coding |
 | `gt` | テーブル出力 | 全体 |
 
 ```{r}
@@ -342,23 +476,34 @@ ANOVAが妥当な推論を行うためには、いくつかの前提条件（仮
 #| message: false
 #| warning: false
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
-pacman::p_load(
-  tidyverse,
-  afex,
-  emmeans,
-  effectsize,
-  performance,
-  car,
-  broom,
-  faux,
-  gt,
-  MASS
+chapter_packages <- c(
+  "tidyverse",
+  "afex",
+  "emmeans",
+  "effectsize",
+  "performance",
+  "car",
+  "broom",
+  "faux",
+  "gt",
+  "ragg"
 )
+missing_packages <- setdiff(chapter_packages, rownames(installed.packages()))
+if (length(missing_packages) > 0) {
+  stop(
+    "Install required packages before rendering this chapter: ",
+    paste(missing_packages, collapse = ", "),
+    call. = FALSE
+  )
+}
 
-set.seed(2024)
+invisible(lapply(
+  setdiff(chapter_packages, "ragg"),
+  function(pkg) suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+))
+
 afex::set_sum_contrasts()
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+theme_set(theme_bw(base_size = 12, base_family = "sans") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -394,7 +539,7 @@ plot_check_model_separate <- function(
 
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
-      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+      theme_bw(base_size = 12, base_family = "sans") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -434,8 +579,9 @@ plot_check_model_separate <- function(
 
 ```{r}
 #| eval: true
-#| label: make-data
+#| label: tbl-descriptive-instruction-time
 
+set.seed(2024)
 n_participants <- 120
 
 id_tbl <- tibble(
@@ -483,7 +629,9 @@ dat |>
 
 ```{r}
 #| eval: true
-#| label: quick-plot
+#| label: fig-mixed-anova-means
+#| fig-cap: "指導法と時点ごとの記述的平均得点と95%信頼区間"
+#| fig-alt: "Glossing群とWriting群のImmediateおよびDelayed得点の記述的平均と95%信頼区間を線で結んだ図。"
 #| fig-width: 8
 #| fig-height: 4.8
 
@@ -501,9 +649,9 @@ ggplot(summary_dat, aes(x = Time, y = Mean, color = Instruction, group = Instruc
   geom_line(linewidth = 0.9) +
   geom_errorbar(aes(ymin = Mean - CI, ymax = Mean + CI), width = 0.08) +
   labs(
-    title = "Estimated Means with 95% CIs Across Time by Instruction",
-    x = "Time",
-    y = "Score"
+    title = "指導法と時点ごとの記述的平均",
+    x = "時点",
+    y = "語彙テスト得点"
   )
 ```
 
@@ -512,11 +660,70 @@ ggplot(summary_dat, aes(x = Time, y = Mean, color = Instruction, group = Instruc
 - 2本の線が**平行でない**場合 → **交互作用**の存在を示唆します。つまり、指導法の効果が時点によって異なる可能性があります
 - Glossingの線がWritingの線の上にある → 注釈指導の**主効果**を示唆
 - 両線がImmediateからDelayedに向かって下がる → 時点の**主効果**（記憶の減衰）を示唆
-- エラーバーは**95%信頼区間**です。ただし、**信頼区間の重なりだけで有意性を判定してはいけません**。有意差の判断は次の ANOVA と `emmeans` の結果で行います
+- エラーバーは生データから計算した**記述的な95%信頼区間**です。モデル調整済みの推定周辺平均（EMM）や反復測定用の信頼区間ではありません
+- **信頼区間の重なりだけで有意性を判定してはいけません**。有意差の判断は次の ANOVA と `emmeans` の結果で行います
 
 これらの視覚的パターンを、次のセクションで統計的に検定します。
 
-## 4. 混合要因ANOVAの実行
+平均だけを見ると、個々の学習者がどの程度ばらついているかは見えにくくなります。混合計画では、同じ参加者がImmediateとDelayedの両方に登場するため、**個人ごとの変化線**も確認しておくと、時点差と交互作用の直感がつかみやすくなります。
+
+```{r}
+#| eval: true
+#| label: fig-participant-change
+#| fig-cap: "参加者ごとのImmediateからDelayedへの変化"
+#| fig-alt: "各群18名のImmediate得点とDelayed得点を線で結び、太線で全参加者平均の変化を示した図。Glossing群とWriting群で、直後から遅延への低下の大きさを比較できる。"
+#| fig-width: 8
+#| fig-height: 4.8
+
+set.seed(2025)
+sample_participants <- dat |>
+  distinct(Participant, Instruction) |>
+  group_by(Instruction) |>
+  slice_sample(n = 18) |>
+  ungroup()
+
+participant_change_tbl <- dat |>
+  semi_join(sample_participants, by = c("Participant", "Instruction"))
+
+participant_mean_line_tbl <- summary_dat
+
+ggplot(
+  participant_change_tbl,
+  aes(x = Time, y = Score, group = Participant, color = Instruction)
+) +
+  geom_line(alpha = 0.35, linewidth = 0.6) +
+  geom_point(alpha = 0.65, size = 1.8) +
+  geom_line(
+    data = participant_mean_line_tbl,
+    aes(x = Time, y = Mean, group = Instruction, color = Instruction),
+    inherit.aes = FALSE,
+    linewidth = 1.25
+  ) +
+  geom_point(
+    data = participant_mean_line_tbl,
+    aes(x = Time, y = Mean, color = Instruction),
+    inherit.aes = FALSE,
+    shape = 21,
+    fill = "white",
+    size = 3,
+    stroke = 1
+  ) +
+  labs(
+    title = "同じ参加者の変化を見る",
+    x = NULL,
+    y = "語彙テスト得点"
+  )
+```
+
+**確認してほしいこと**:
+
+この図では、見やすさのため各群18名のみを細線で表示し、太線は全参加者にもとづく群平均を示しています。
+
+1. 多くの参加者でImmediateからDelayedへ線が下がっているか
+2. Glossing群とWriting群で、低下の傾きが同じくらいか
+3. 平均線だけでなく、個人差がどの程度あるか
+
+## 混合計画ANOVAの実行 {#sec-mixed-anova}
 
 ### 結果を読む順番
 
@@ -527,16 +734,19 @@ ANOVA の出力は情報量が多いので、**研究質問ごとに「どの表
 | 指導法の効果は時点で変わるか？ | ANOVA 表 | `Instruction:Time` の `F` と `p.value` | 有意なら `emmeans` の単純主効果へ |
 | 全体として Glossing は Writing より高いか？ | ANOVA 表 | `Instruction` の `F`, `p.value`, `pes` | 交互作用が小さいときに解釈 |
 | 全体として直後テストは遅延テストより高いか？ | ANOVA 表 | `Time` の `F`, `p.value`, `pes` | 交互作用が小さいときに解釈 |
+| 習熟度によって時間変化の大きさは変わるか？ | ANOVA 表 | `Proficiency:Time` の `F` と `p.value` | 大きければ共変量の扱いを再検討 |
 | どの条件間に何点差があるか？ | `emmeans` の比較表 | `estimate`, `SE`, `p.value` | 95% CI と合わせて報告 |
 | 差はどの程度大きいか？ | 効果量表 | `partial eta2`, `generalized eta2`, `partial omega2` | 実質的意義を議論 |
 
 ### 主効果・交互作用
 
-この混合計画では、ANOVAは以下の3つのF検定を出力します。
+この混合計画では、研究上の中心となるF検定は以下の3つです。
 
 1. **Instructionの主効果**: 全体として、Glossingの得点はWritingより高いか？
 2. **Timeの主効果**: 全体として、直後テストの得点は遅延テストより高いか？
 3. **Instruction × Time の交互作用**: 指導法の効果は時点によって異なるか？
+
+加えて、共変量 `Proficiency` を入れているため、`Proficiency` の主効果と `Proficiency:Time` も出力されます。`Proficiency:Time` は「習熟度が高い学習者ほど保持低下が小さい/大きいか」を表す補助的な効果です。共変量を入れる場合、この項も隠さず確認します。
 
 ::: {.callout-important}
 #### 交互作用を先に確認する
@@ -546,11 +756,37 @@ ANOVA の出力は情報量が多いので、**研究質問ごとに「どの表
 
 以下のコードでは `afex::aov_ez()` を使います。`afex`は Type III平方和、偏η²（偏イータ2乗）、球面性補正を統一的に扱えるため、混合計画ANOVAの標準的なツールです。
 
-ここでの `Proficiency` は**参加者ごとに1つだけ測定された被験者間共変量**です。もし共変量が時点ごとに変化するなら、単純な混合ANOVA/ANCOVA ではなく、線形混合モデルで扱うほうが自然です。
+::: {.callout-note}
+#### `aov_ez()` の引数の意味
+- `id`:参加者を識別する列名
+- `dv`:目的変数(dependent variable)
+- `between`:参加者間要因(参加者ごとに 1 水準のみ取る要因)
+- `within`:参加者内要因(同じ参加者が複数水準を経験する要因)
+- `covariate`:共変量(`observed = ` で指定した変数は推定周辺平均算出時の調整に使われる)
+- `type = 3`:Type III SS(本章のミニ辞典 callout を参照)。要因実験で交互作用を保ったまま各主効果を評価する標準的な選択
+- `anova_table = list(es = "pes")`:effect size として partial eta-squared(偏η²)を出力
+
+なお、`Score ~ Instruction * Time + Proficiency * Time` のような **formula 構文(`~` `+` `*` `:` `(1|id)` 等)の意味**は、第 2 章「Rの基本的な使い方」の「**モデル式(formula)の読み方**」節で解説しています。`coef()` `confint()` `predict()` `broom::tidy()` などの **モデルオブジェクトの解剖**も同章を参照してください。
+:::
+
+::: {.callout-important}
+#### 混合計画の F 検定は誤差項が異なる
+混合計画 ANOVA の出力表で、行ごとの $F$ 値に**異なる分母(誤差平均平方 MSE)**が使われていることがあります。これは「全体の誤差を 1 つに合わせる」のではなく、**効果の種類に応じて適切な誤差項を選ぶ**ためです。
+
+| 効果の種類 | 分母に使う誤差項 | 直感 |
+|---|---|---|
+| **参加者間効果**(例:Instruction) | 参加者間誤差 = MS$_{\text{participants nested in Instruction}}$ | 「同じ条件内の参加者間ばらつき」を基準にする |
+| **参加者内効果**(例:Time) | 参加者×時点の誤差 = MS$_{\text{participants} \times \text{Time}}$ | 「同じ参加者の時点間変動」を基準にする |
+| **参加者間×参加者内 交互作用**(例:Instruction:Time) | 同上(参加者×時点の誤差) | 「条件差の時点間変動」を「個人差の時点間変動」と比較 |
+
+`afex::aov_ez()` はこれを自動的に処理しますが、**同じ ANOVA 表でも各行の MSE が異なる**ことを知っておくと、Instruction の F が小さくて Time の F が大きい(あるいはその逆)という結果も自然に解釈できます。
+:::
+
+ここでの `Proficiency` は**参加者ごとに1つだけ測定された参加者間共変量**です。もし共変量が時点ごとに変化するなら、単純な混合計画ANOVA/ANCOVA ではなく、線形混合モデルで扱うほうが自然です。
 
 ```{r}
 #| eval: true
-#| label: mixed-anova
+#| label: tbl-mixed-anova
 
 fit_aov <- aov_ez(
   id = "Participant",
@@ -558,6 +794,7 @@ fit_aov <- aov_ez(
   between = "Instruction",
   within = "Time",
   covariate = "Proficiency",
+  observed = "Proficiency",
   factorize = FALSE,
   data = dat,
   type = 3,
@@ -573,27 +810,33 @@ anova_numeric_tbl <- fit_aov$anova_table |>
   as_tibble()
 
 anova_takehome_tbl <- anova_numeric_tbl |>
-  dplyr::filter(Effect %in% c("Instruction", "Time", "Instruction:Time", "Proficiency")) |>
+  dplyr::filter(Effect %in% c(
+    "Instruction", "Time", "Instruction:Time",
+    "Proficiency", "Proficiency:Time"
+  )) |>
   rename(p_raw = `Pr(>F)`) |>
   transmute(
     Effect,
-    Question = dplyr::recode(
+    Question = dplyr::case_match(
       Effect,
-      Instruction = "Are Glossing and Writing different overall?",
-      Time = "Are Immediate and Delayed different overall?",
-      `Instruction:Time` = "Does the instruction effect change over time?",
-      Proficiency = "Does proficiency explain additional score variance?"
+      "Instruction" ~ "全体としてGlossingとWritingは異なるか？",
+      "Time" ~ "全体としてImmediateとDelayedは異なるか？",
+      "Instruction:Time" ~ "指導法の効果は時点によって変わるか？",
+      "Proficiency" ~ "習熟度は追加的な得点差を説明するか？",
+      "Proficiency:Time" ~ "時点差は習熟度によって変わるか？"
     ),
     F = round(F, 2),
     p = if_else(p_raw < .001, "< .001", sprintf("%.3f", p_raw)),
     `partial eta2` = round(pes, 3),
     `How to read it` = dplyr::case_when(
-      Effect == "Instruction:Time" & p_raw < .05 ~ "There is an interaction, so simple effects should be read before main effects.",
-      Effect == "Instruction:Time" ~ "The interaction is small enough that the main effects are easier to interpret directly.",
-      Effect == "Instruction" & p_raw < .05 ~ "Instruction explains a reliable overall difference.",
-      Effect == "Time" & p_raw < .05 ~ "Scores change reliably across the two time points.",
-      Effect == "Proficiency" & p_raw < .05 ~ "The covariate accounts for additional between-student variation.",
-      TRUE ~ "The evidence for this effect is weak in this sample."
+      Effect == "Instruction:Time" & p_raw < .05 ~ "交互作用があるため、主効果より先に単純主効果を読む。",
+      Effect == "Instruction:Time" ~ "交互作用の証拠は弱く、主効果を要約しやすい。",
+      Effect == "Instruction" & p_raw < .05 ~ "指導法が全体的な得点差を説明している。",
+      Effect == "Time" & p_raw < .05 ~ "2時点間で得点が明確に変化している。",
+      Effect == "Proficiency" & p_raw < .05 ~ "習熟度が参加者間の得点差を追加的に説明している。",
+      Effect == "Proficiency:Time" & p_raw < .05 ~ "時点差が習熟度に依存しているため、単純な時点主効果だけでは不十分。",
+      Effect == "Proficiency:Time" ~ "時点差が習熟度に依存する証拠は弱い。",
+      TRUE ~ "この標本では、この効果の証拠は弱い。"
     )
   )
 
@@ -602,22 +845,22 @@ anova_display_tbl |>
   knitr::kable(caption = "Mixed ANOVA (Type III; dependent variable: Score)")
 ```
 
-The dependent variable in this ANOVA table is `Score`.
+このANOVA表の目的変数は `Score` です。
 
 ```{r}
 #| eval: true
-#| label: mixed-anova-takehome
+#| label: tbl-mixed-anova-takehome
 
 anova_takehome_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "How the ANOVA Table Answers the Four Research Questions")
+  knitr::kable(caption = "ANOVA表が主要な研究質問にどう答えるか")
 ```
 
 **ANOVA出力の読み方**:
 
 | 列名 | 意味 | 読み方 |
 |------|------|--------|
-| `Effect` | 検定対象の効果 | Instruction（主効果）、Time（主効果）、Instruction:Time（交互作用）、Proficiency（共変量） |
+| `Effect` | 検定対象の効果 | Instruction（主効果）、Time（主効果）、Instruction:Time（交互作用）、Proficiency（共変量）、Proficiency:Time（共変量と時点の関係） |
 | `df` | 自由度（分子, 分母） | F分布の形状を決定するパラメータ |
 | `MSE` | 誤差の平均平方 | 誤差変動の大きさ（F値の分母） |
 | `F` | F統計量 | 大きいほど効果が顕著 |
@@ -627,12 +870,12 @@ anova_takehome_tbl |>
 **解釈の手順**:
 
 1. **交互作用（Instruction:Time）** の p値を最初に確認する
-2. 交互作用が有意 → セクション4.2の事後比較に進む
-3. 交互作用が非有意 → 主効果（Instruction, Time）の解釈が直接的に可能
+2. 交互作用が有意 → @sec-posthoc-emmeans の事後比較に進む
+3. 交互作用が統計的に検出されず、図・効果量・信頼区間からも実質的な違いが小さいと判断できる → 主効果（Instruction, Time）を要約しやすい
 
-**この表を一文で言うと**: `Instruction:Time` が有意なら「どちらの指導法が良いか」は時点ごとに言い分ける必要があり、非有意なら主効果の文章をそのまま使いやすくなります。
+**この表を一文で言うと**: `Instruction:Time` が有意なら「どちらの指導法が良いか」は時点ごとに分けて記述する必要があり、非有意でも図・効果量・信頼区間を確認してから主効果を要約します。
 
-### 事後比較（推定周辺平均）
+### 事後比較（推定周辺平均） {#sec-posthoc-emmeans}
 
 ANOVAのF検定は「全体的に差があるか」を示しますが、「どの群ペアが具体的にどの程度異なるか」は教えてくれません。そこで**事後比較（post-hoc comparisons）**を行います。
 
@@ -645,7 +888,7 @@ ANOVAのF検定は「全体的に差があるか」を示しますが、「ど�
 
 `summary(model)` の係数表は、**コーディング方式に依存した特定のペア比較**しか示しません。例えば Treatment coding では参照群との差のみが直接読めます。一方 `emmeans()` は、コーディングに依存しない**モデル整合的な推定平均**を計算し、任意のペア比較を統一的に行えます。
 
-以下のコードでは、2種類の比較を行います。
+以下のコードでは、2種類の比較familyを事前に分けます。同じfamily内のp値に対して Holm 補正をかけるため、2×2デザインでも補正が実際に適用されます。
 
 - **第1の比較**: 各時点（Immediate / Delayed）内で指導法を比較 → 「直後テストでGlossing > Writingか？ 遅延テストではどうか？」
 - **第2の比較**: 各指導法（Glossing / Writing）内で時点を比較 → 「Glossing群は直後→遅延で有意に低下するか？ Writing群ではどうか？」
@@ -656,10 +899,12 @@ ANOVAのF検定は「全体的に差があるか」を示しますが、「ど�
 
 emm <- emmeans(fit_aov, ~ Instruction * Time)
 
-pair_instruction_within_time <- pairs(emm, by = "Time", adjust = "holm") |>
+pair_instruction_within_time <- pairs(emm, by = "Time") |>
+  summary(by = NULL, adjust = "holm", infer = c(TRUE, TRUE)) |>
   as.data.frame()
 
-pair_time_within_instruction <- pairs(emm, by = "Instruction", adjust = "holm") |>
+pair_time_within_instruction <- pairs(emm, by = "Instruction") |>
+  summary(by = NULL, adjust = "holm", infer = c(TRUE, TRUE)) |>
   as.data.frame()
 
 posthoc_takehome_tbl <- bind_rows(
@@ -671,9 +916,9 @@ posthoc_takehome_tbl <- bind_rows(
       Estimate = estimate,
       p.value,
       Interpretation = case_when(
-        estimate < 0 & p.value < .05 ~ "Writing is lower than Glossing at this time point.",
-        estimate > 0 & p.value < .05 ~ "Writing is higher than Glossing at this time point.",
-        TRUE ~ "The instruction difference is not clearly supported at this time point."
+        estimate < 0 & p.value < .05 ~ "この時点ではWritingはGlossingより低い。",
+        estimate > 0 & p.value < .05 ~ "この時点ではWritingはGlossingより高い。",
+        TRUE ~ "この時点で指導法差があるという証拠は弱い。"
       )
     ),
   pair_time_within_instruction |>
@@ -684,9 +929,9 @@ posthoc_takehome_tbl <- bind_rows(
       Estimate = estimate,
       p.value,
       Interpretation = case_when(
-        estimate > 0 & p.value < .05 ~ "Immediate scores are higher than Delayed scores in this group.",
-        estimate < 0 & p.value < .05 ~ "Delayed scores are higher than Immediate scores in this group.",
-        TRUE ~ "The time difference is not clearly supported in this group."
+        estimate > 0 & p.value < .05 ~ "この群ではImmediate得点がDelayed得点より高い。",
+        estimate < 0 & p.value < .05 ~ "この群ではDelayed得点がImmediate得点より高い。",
+        TRUE ~ "この群で時点差があるという証拠は弱い。"
       )
     )
 ) |>
@@ -694,11 +939,21 @@ posthoc_takehome_tbl <- bind_rows(
     Estimate = round(Estimate, 3),
     p.value = if_else(p.value < .001, "< .001", sprintf("%.3f", p.value))
   )
+```
+
+```{r}
+#| eval: true
+#| label: tbl-posthoc-instruction-time
 
 pair_instruction_within_time |>
   as.data.frame() |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
   knitr::kable(caption = "Pairwise Comparisons: Instruction within Time (Holm-adjusted)")
+```
+
+```{r}
+#| eval: true
+#| label: tbl-posthoc-time-instruction
 
 pair_time_within_instruction |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
@@ -707,7 +962,7 @@ pair_time_within_instruction |>
 
 ```{r}
 #| eval: true
-#| label: posthoc-takehome-table
+#| label: tbl-posthoc-takehome
 
 posthoc_takehome_tbl |>
   knitr::kable(caption = "A Plain-Language Summary of the Follow-Up Tests")
@@ -728,9 +983,17 @@ posthoc_takehome_tbl |>
 
 **この表を一文で言うと**: ANOVA が「差がどこかにある」と教え、`emmeans` が「その差はどの条件間で、何点分か」を具体的に示します。
 
+::: {.callout-tip}
+#### 理解チェック
+
+`Instruction within Time` の `estimate` が負で、contrast が `Writing - Glossing` の場合、どちらの群が高いでしょうか。
+
+**解答例**: `Writing - Glossing` が負なので、Writingの推定平均はGlossingより低い。つまり、その時点ではGlossing群のほうが高いと読みます。
+:::
+
 **多重比較補正（Holm法）について**:
 
-複数のペア比較を同時に行うと、偶然に有意な結果が出る確率が高まります（多重検定の問題）。Holm法は、**Bonferroni補正より検出力が高く、かつファミリーワイズの第1種過誤率を制御する**方法です。特段の理由がなければ、Holm法が推奨されます。Tukey法は全ペア比較に特化しており、3群以上の場合に適しています。
+複数のペア比較を同時に行うと、偶然に有意な結果が出る確率が高まります（多重検定の問題）。Holm法は、**Bonferroni補正より検出力が高く、かつファミリーワイズの第1種過誤率(FWER)を制御する**方法です(Holm 法は **追加の独立性仮定を必要とせず、検定統計量の任意の同時分布のもとで** Bonferroni を一様に dominate します)。特段の理由がなければ Holm 法が推奨されます。**Tukey HSD** は「群数 $k$ のすべてのペア比較($k(k-1)/2$ 通り)」専用に設計されており、ペア比較の集合が「全ペア」のときに最も検出力が高くなります。比較が「事前に指定した特定のペアのみ」の場合は Holm のほうが向きます。
 
 ### なぜ下位検定で p値調整が必要なのか
 
@@ -746,7 +1009,9 @@ $$
 
 ```{r}
 #| eval: true
-#| label: multiplicity-visual
+#| label: fig-multiplicity-visual
+#| fig-cap: "下位検定の数が増えるほど偽陽性率が上がる"
+#| fig-alt: "比較回数が1から10に増えるにつれて、少なくとも1つの偽陽性が生じる確率が増えることを示す折れ線図。"
 #| fig-width: 7
 #| fig-height: 4.6
 
@@ -766,27 +1031,30 @@ ggplot(multiplicity_tbl, aes(x = Comparisons, y = FamilywiseError)) +
   geom_point(size = 2.2, color = "#cb181d") +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
-    title = "Family-Wise Error Increases as More Follow-Up Tests Are Run",
-    x = "Number of follow-up tests",
-    y = "Probability of at least one false positive"
+    title = "下位検定が増えるほど偽陽性率は上がる",
+    x = "下位検定の数",
+    y = "少なくとも1つの偽陽性が出る確率"
   )
 ```
 
-| Rank | Holm threshold |
-|---:|---:|
-| 1 | 0.013 |
-| 2 | 0.017 |
-| 3 | 0.025 |
-| 4 | 0.050 |
+```{r}
+#| eval: true
+#| label: tbl-holm-thresholds
 
-: Holm correction thresholds when 4 follow-up tests are conducted
+holm_threshold_tbl |>
+  knitr::kable(caption = "4つの下位検定に対するHolm補正の閾値")
+```
 
 **Holm法の読み方**:
 
 1. p値を小さい順に並べる
 2. 最小の p値を `α / m` と比べる
 3. 次を `α / (m - 1)`、その次を `α / (m - 2)` と比べる
-4. どこかで棄却できなくなったら、それより後ろは採択する
+4. どこかで棄却できなくなったら、それ以降は有意とは判断しない
+
+::: {.callout-note}
+**図と表の役割の違い:** 上の図は「もし $m$ 個の検定が独立なら、α=.05 で **少なくとも 1 つ**で偽陽性が出る確率は $1-(1-\alpha)^m$(Šidák FWER)」という**直感を示す**ものです。一方、下の表で示した Holm 法の閾値 $\alpha/m, \alpha/(m-1), \dots, \alpha/1$ は **Bonferroni のステップダウン版**で、独立性の仮定を必要とせずどんな同時分布でも FWER を制御します。Holm はこの厳しい(Bonferroni 流の)閾値を起点にしながら、ステップダウンで検出力を上げる工夫です。Šidák のステップダウン版(Holm-Šidák)も存在しますが、Holm 単独は通常 Bonferroni ベースを指します。
+:::
 
 **実務上の使い分け**:
 
@@ -803,20 +1071,35 @@ ggplot(multiplicity_tbl, aes(x = Comparisons, y = FamilywiseError)) +
 #| label: effect-size
 
 r2_fit <- performance::r2(
-  lm(Score ~ Instruction * Time + Proficiency, data = dat)
+  lm(Score ~ Instruction * Time + Proficiency * Time, data = dat)
 )
 
-effect_size_tbl <- eta_squared(fit_aov, partial = TRUE, ci = 0.95) |>
+effect_size_tbl <- eta_squared(
+  fit_aov,
+  partial = TRUE,
+  ci = 0.95,
+  alternative = "two.sided"
+) |>
   as.data.frame() |>
   dplyr::select(Parameter, Eta2_partial, CI_low, CI_high) |>
   left_join(
-    eta_squared(fit_aov, generalized = TRUE, ci = 0.95) |>
+    eta_squared(
+      fit_aov,
+      generalized = "Proficiency",
+      ci = 0.95,
+      alternative = "two.sided"
+    ) |>
       as.data.frame() |>
       dplyr::select(Parameter, Eta2_generalized),
     by = "Parameter"
   ) |>
   left_join(
-    omega_squared(fit_aov, partial = TRUE, ci = 0.95) |>
+    omega_squared(
+      fit_aov,
+      partial = TRUE,
+      ci = 0.95,
+      alternative = "two.sided"
+    ) |>
       as.data.frame() |>
       dplyr::select(Parameter, Omega2_partial),
     by = "Parameter"
@@ -832,7 +1115,8 @@ effect_size_tbl <- eta_squared(fit_aov, partial = TRUE, ci = 0.95) |>
 
 r2_tbl <- tibble(
   Metric = c("R2", "Adjusted R2"),
-  Value = round(c(r2_fit$R2, r2_fit$R2_adjusted), 3)
+  Value = round(c(r2_fit$R2, r2_fit$R2_adjusted), 3),
+  Note = "Fixed-effect lm summary only; participant-level dependence is handled in the mixed ANOVA above."
 )
 
 effect_size_reading_tbl <- effect_size_tbl |>
@@ -848,6 +1132,7 @@ effect_size_reading_tbl <- effect_size_tbl |>
       Effect == "Time" ~ "Use this to describe the size of forgetting or retention loss.",
       Effect == "Instruction:Time" ~ "Use this to describe how strongly the instruction effect changes across time.",
       Effect == "Proficiency" ~ "Use this to describe the extra variance associated with proficiency.",
+      Effect == "Proficiency:Time" ~ "Use this to describe whether retention loss varies by proficiency.",
       TRUE ~ "Use this as supporting information."
     )
   )
@@ -855,15 +1140,25 @@ effect_size_reading_tbl <- effect_size_tbl |>
 
 ```{r}
 #| eval: true
-#| label: effect-size-table
+#| label: tbl-fixed-effect-r2
 
 r2_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Model-Level Explanatory Power")
+  knitr::kable(caption = "Supplementary Fixed-Effect R2 Summary")
+```
+
+```{r}
+#| eval: true
+#| label: tbl-effect-size-summary
 
 effect_size_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
   knitr::kable(caption = "Effect-Size Summary for the Mixed ANOVA")
+```
+
+```{r}
+#| eval: true
+#| label: tbl-effect-size-phrasing
 
 effect_size_reading_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
@@ -872,10 +1167,10 @@ effect_size_reading_tbl |>
 
 **出力の読み方**:
 
-- **R²**（全体モデル）: 全予測子（Instruction, Time, 交互作用, Proficiency）が目的変数の分散のどの程度を説明するかを示す
+- **R²**（補助的な全体モデル）: 固定効果だけを `lm()` で要約した参考値です。本章の主分析は参加者内依存を扱う混合計画ANOVAなので、R²は推論の主指標ではなく、全体的な説明力の補足としてのみ読みます
 - **偏η²（partial eta-squared）**: 特定の効果が、**その効果に対応する誤差項を基準にして**どの程度の分散を占めるかを示す
-- **一般化η²（generalized eta-squared）**: 混合計画や反復測定計画でも比較しやすいように調整した効果量。研究間比較ではこちらも有用
-- **偏ω²（partial omega-squared）**: η²の不偏推定量。サンプルサイズの影響を補正するため、η²よりやや小さくなる
+- **一般化η²（generalized eta-squared）**: Olejnik & Algina (2003) によって提案された、混合計画や反復測定計画でも研究間で比較しやすいように調整された効果量。`effectsize::eta_squared(model, generalized = "Proficiency")` の `generalized` 引数には **「測定された(observed)変数」**(無作為割り付けではなく観測しただけの変数 — 本章では `Proficiency`)の名前を渡します。これは Olejnik & Algina の公式が **「観測変数か操作変数か」**で分母の構成を変えるためです。**この指定を間違えると一般化η²の値が大きく変わる**ため、共変量・分類変数の性質を正しく分類してください
+- **偏ω²（partial omega-squared）**: 母集団の説明分散割合 $\omega^2_p$ の(ほぼ)不偏推定量。最も単純な参加者間 ANOVA(between-subjects)では $\sigma^2_{\text{effect}} = \sum_i \alpha_i^2/a$($\alpha_i$ は群効果、$a$ は群数)として定義し、$\omega^2_p = \sigma^2_{\text{effect}} / (\sigma^2_{\text{effect}} + \sigma^2_{\text{error}})$ になります。**標本 η² は同じ母集団量を上方バイアスをもって推定するのに対し、ω̂² はこれをほぼ不偏に推定**します。したがって通常 ω² < η² の関係になります。**混合計画や反復測定計画では、上の式の分母は対応する誤差項の期待平均平方(MS の期待値)に置き換わる**ため、$\sigma^2_{\text{error}}$ の構成が設計に依存して変わります(`effectsize::omega_squared()` は内部でこれを処理します)
 
 **Cohen（1988）の効果量解釈基準**:
 
@@ -884,42 +1179,83 @@ effect_size_reading_tbl |>
 | 偏η²（偏イータ2乗） | .01 | .06 | .14 |
 | 偏ω²（偏オメガ2乗） | .01 | .06 | .14 |
 
+::: {.callout-note}
+これらの基準値は厳密には @cohen1988 が表に挙げた効果量 $f$ ($f = .10, .25, .40$) を $\eta^2 = f^2 / (1 + f^2)$ で η² へ換算した値です (それぞれ .0099, .0588, .1379 を四捨五入)。この換算は @cohen1992 の "Power Primer" を含めて広く流通している実務目安ですが、Cohen 自身が partial η² 用に直接導出したものではありません。
+:::
+
+::: {.callout-tip}
+#### SLA 研究での経験的目安: Plonsky & Oswald (2014)
+応用言語学・SLA の文脈では、Cohen の目安は実態より厳しすぎるという指摘があります。@plonsky2014 は L2 研究 346 本のメタレビューに基づき、**研究デザイン別の経験的参照値**を提案しました ($d$ ベース)。
+
+| 指標 | 小 | 中 | 大 |
+|---|---|---|---|
+| 群間 *d* | 0.40 | 0.70 | 1.00 |
+| 群内 *d* | 0.60 | 1.00 | 1.40 |
+| 相関係数 *r* | 0.25 | 0.40 | 0.60 |
+
+η² へ直接の対応表は提案されていませんが、SLA 系の論文では Cohen の伝統的目安と Plonsky & Oswald の参照値の **両方を併記**するのが現代的な作法です。
+:::
+
 **η² と ω² の使い分け**:
 
 - **偏η²**: 報告に最も広く使われる。計算が単純で解釈しやすい。ただしサンプルサイズが小さいと過大推定になりやすい
-- **偏ω²**: 母集団パラメータの不偏推定量。サンプルサイズが小さい研究（n < 50）では ω² が望ましい
+- **偏ω²**: 母集団パラメータの(ほぼ)不偏推定量。サンプルサイズが小さい研究（n < 50）では ω² が望ましい
 - **実務的には**: 偏η² + 95%信頼区間を主指標とし、混合計画では一般化η²を補助的に添えると比較可能性が高まります。ω² は補助指標として有用です
 
-**R²との関係**: R²はモデル全体の説明力、偏η²は個別効果の局所的な効果量です。**偏η²は R² の内訳ではなく、足し合わせても R² にはなりません。** したがって、`R² = .45` と `Instruction の偏η² = .07` を「45%のうち7%」のようには解釈しません。
+::: {.callout-warning}
+#### 効果量 CI が 0 を含むことについて(`alternative = "two.sided"` の注意)
+本章のコードは `effectsize::eta_squared(..., alternative = "two.sided")` で **両側等尾区間**を計算しています。η² や ω² は **0 以上に有界**な量であるため、論文報告で慣例的な「両側 95% CI」を用いると、F 検定が有意な場合でも **CI 下限が 0 にぴったり一致する/0 を含む**ことが起こり得ます。これは矛盾ではなく、p 値(片側の検定)と両側 CI が**異なる帰無仮説のもとで定義されている**ためです。
+
+選択肢は次の通りです。
+
+| 選択 | 引数 | 性質 |
+|---|---|---|
+| **片側 CI**(下限が必ず 0 以上、F の p 値と直接対応) | `alternative = "greater"` | Steiger (2004) の推奨。CI が 0 を含まない ⇔ F が有意 |
+| **両側等尾 CI**(論文で「95% CI」と書きやすい慣例形式) | `alternative = "two.sided"` | F が有意でも下限が 0 に張り付くことがある(報告時に解釈の説明が必要) |
+
+本章では論文の慣例に合わせて両側を採用していますが、**「F は有意なのに CI 下限が 0」と読者を混乱させたくない**場合は、報告時に片側 CI を併記するか、`alternative = "greater"` に切り替えてください。
+:::
+
+**R²との関係**: ここでのR²は固定効果モデルの全体的な説明力を補助的に見せるための値であり、混合計画ANOVAの効果量ではありません。偏η²は個別効果の局所的な効果量です。**偏η²は R² の内訳ではなく、足し合わせても R² にはなりません。** したがって、`R² = .45` と `Instruction の偏η² = .07` を「45%のうち7%」のようには解釈しません。
 
 **この節を一文で言うと**: p値は「差が偶然か」を、効果量は「その差がどれくらい大きいか」を答えます。報告では両方が必要です。
 
-## 5. 仮定診断と実務判断
+## 仮定診断と実務判断 {#sec-anova-assumptions}
 
 ANOVAの結果を報告する前に、モデルの前提条件が大きく破綻していないかを確認します。ここで重要な考え方を先に述べます。
 
 ::: {.callout-important}
 ### 仮定違反 ≠ 分析不可能
 
-仮定の検定で p < .05 が出ても、それだけで「ANOVAが使えない」わけではありません。ANOVAは多くの仮定違反に対して**頑健（robust）**です。特に：
+仮定の検定で p < .05 が出ても、それだけで「ANOVAが使えない」わけではありません。ANOVAは多くの仮定違反に対して**ある条件のもとでは頑健(robust)**です。ただし**頑健性は無条件ではない**ので、以下を踏まえて判断します。
 
-- **正規性**: 群あたり n > 30 であれば、中心極限定理により多少の非正規性は問題になりにくい
-- **等分散性**: 群間のサンプルサイズが等しければ、分散比が 3:1 程度まで頑健
-- **球面性**: 2水準の反復測定要因では自動的に満たされる
+- **正規性**:群あたり n > 30 は目安で、多少の非正規性に対しては Type I エラー率が比較的安定します。ただし、**重い裾(heavy-tailed)分布や強い歪みがあると、Type I エラー率は保たれても検定力(power)は低下します** [@wilcox2021]。これがロバスト法(トリム平均、`WRS2`)を検討する動機です
+- **等分散性**:**群サイズが等しい場合**には軽度の分散差には頑健ですが、**群サイズが不等で分散も大きく異なる**(特に小さい群が大きい分散をもつ)ときは Type I エラー率が大きく崩れます。この場合は後述「等分散違反への代替手法」タブの Welch / WRS2 を用います
+- **球面性**:2水準の反復測定要因では自動的に満たされます。3水準以上で違反すると Type I エラー率が膨張しますので、GG / HF 補正を適用します
 
-重要なのは「仮定が完全に満たされているか」ではなく、「違反の程度がどのくらいか」「結論に影響するか」を総合的に判断することです。
+頑健性が**必ずしも成立しない**条件を整理すると次の通りです。
+
+| 条件 | リスク | 推奨対処 |
+|---|---|---|
+| 不等分散 + 不等 n(特に小群が大分散) | Type I エラー率の歪み | Welch / WRS2(後述「等分散違反への代替手法」タブ) |
+| 重い裾分布 / 強い歪み / 外れ値 | 検定力の低下 | トリム平均ベース(`WRS2::t1way`, `bwtrim`) |
+| 強い天井効果・床効果 | 効果量の歪み | GLM(第5章)、順序回帰(第5章)へ |
+| クラスタ構造(教室・学校) | 独立性違反 → α 膨張 | 混合効果モデル(第6章) |
+| 球面性違反(3水準+) | F の自由度過大 → α 膨張 | GG / HF 補正 |
+
+重要なのは「仮定が完全に満たされているか」ではなく、「**どの違反パターンが、どの推論にどう影響するか**」を見極めることです。
 :::
 
 以下では、正規性・等分散性・傾きの等質性・総合診断・球面性の順に確認します。ここで大事なのは、**混合計画では long 形式のデータに素朴な `lm()` を1本当てて残差を見るだけでは、参加者内依存を無視してしまう**という点です。
 
 本章のように反復測定要因が2水準なら、診断を次の2本に分けると解釈が揃います。
 
-1. **参加者平均モデル** `MeanScore ~ Instruction * Proficiency`  
-   被験者間主効果と共変量調整の妥当性を見る
-2. **変化量モデル** `DiffScore ~ Instruction * Proficiency`  
+1. **参加者平均モデル** `MeanScore ~ Instruction * Proficiency`
+   参加者間主効果と共変量調整の妥当性を見る
+2. **変化量モデル** `DiffScore ~ Instruction * Proficiency`
    時点差と交互作用を差得点として捉え、残差形状と共変量調整を確認する
 
-この分け方なら、混合ANOVAで問いたい「群の水準差」と「時間変化の差」を、参加者レベルで明示的に診断できます。
+この分け方なら、混合計画ANOVAで問いたい「群の水準差」と「時間変化の差」を、参加者レベルで明示的に診断できます。
 
 ```{r}
 #| eval: true
@@ -938,10 +1274,16 @@ dat_diag <- dat |>
 fit_between_diag <- lm(MeanScore ~ Instruction * Proficiency, data = dat_diag)
 fit_change_diag <- lm(DiffScore ~ Instruction * Proficiency, data = dat_diag)
 
+dat_diag <- dat_diag |>
+  mutate(
+    MeanResidual = residuals(fit_between_diag),
+    DiffResidual = residuals(fit_change_diag)
+  )
+
 shapiro_between <- shapiro.test(residuals(fit_between_diag))
 shapiro_change <- shapiro.test(residuals(fit_change_diag))
-levene_between <- car::leveneTest(MeanScore ~ Instruction, data = dat_diag)
-levene_change <- car::leveneTest(DiffScore ~ Instruction, data = dat_diag)
+levene_between <- car::leveneTest(MeanResidual ~ Instruction, data = dat_diag)
+levene_change <- car::leveneTest(DiffResidual ~ Instruction, data = dat_diag)
 
 slope_homogeneity_tbl <- bind_rows(
   broom::tidy(fit_between_diag) |>
@@ -963,8 +1305,8 @@ assumption_summary_tbl <- tibble(
   Check = c(
     "Shapiro-Wilk on participant-mean residuals",
     "Shapiro-Wilk on change-score residuals",
-    "Levene test on participant means",
-    "Levene test on change scores"
+    "Levene test on participant-mean model residuals",
+    "Levene test on change-score model residuals"
   ),
   Statistic = c(
     unname(shapiro_between$statistic),
@@ -991,9 +1333,9 @@ slope_plot_mean <- ggplot(
   geom_point(alpha = 0.45, size = 2) +
   geom_smooth(method = "lm", se = TRUE, linewidth = 0.9) +
   labs(
-    title = "Participant Means by Proficiency and Instruction",
-    x = "Proficiency (standardized)",
-    y = "Participant mean score"
+    title = "習熟度と参加者平均得点の関係",
+    x = "習熟度（標準化）",
+    y = "参加者平均得点"
   )
 
 slope_plot_change <- ggplot(
@@ -1003,9 +1345,9 @@ slope_plot_change <- ggplot(
   geom_point(alpha = 0.45, size = 2) +
   geom_smooth(method = "lm", se = TRUE, linewidth = 0.9) +
   labs(
-    title = "Change Scores by Proficiency and Instruction",
-    x = "Proficiency (standardized)",
-    y = "Delayed - Immediate"
+    title = "習熟度と得点変化の関係",
+    x = "習熟度（標準化）",
+    y = "Delayed - Immediate（得点差）"
   )
 ```
 
@@ -1015,7 +1357,7 @@ slope_plot_change <- ggplot(
 
 ```{r}
 #| eval: true
-#| label: assumption-summary-table
+#| label: tbl-assumption-summary
 
 assumption_summary_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
@@ -1033,8 +1375,8 @@ assumption_summary_tbl |>
 
 **実務的な判断**:
 
-- `participant-mean residuals` は被験者間主効果まわりの残差、`change-score residuals` は時点差・交互作用まわりの残差として読む
-- p > .05 の場合: 残差は正規分布と有意に異ならない → 問題なし
+- `participant-mean residuals` は参加者間主効果まわりの残差、`change-score residuals` は時点差・交互作用まわりの残差として読む
+- p > .05 の場合: 残差が正規分布から大きく外れている証拠は弱い
 - p < .05 の場合: 統計的には非正規だが、**サンプルサイズが大きいと些細な逸脱でも有意になる**。本データでは参加者数が 120 名あるため、QQプロットで視覚的に確認するほうが実用的
 - **QQプロットの読み方**（`check_model()`左上パネル）:
   - 点が対角線に沿う → 正規性OK
@@ -1053,19 +1395,60 @@ assumption_summary_tbl |>
 
 **実務的な判断**:
 
-- p > .05: 群間で分散は有意に異ならない → 等分散性OK
+- p > .05: 群間で分散が大きく異なる証拠は弱い
 - p < .05 かつ分散比 < 3: 軽微な違反。群サイズが等しい本データでは、結論が大きく変わらないことが多い
-- p < .05 かつ分散比 > 3: 深刻な違反。Welch ANOVAやロバスト法を検討
+- p < .05 かつ分散比 > 3: 深刻な違反。後述「等分散違反への代替手法」タブの Welch / ロバスト法を検討
 
 **分散比の確認方法**:
 
-群ごとの標準偏差を確認し、最大SDと最小SDの比が3未満かどうかを見ます。
+共変量を含むモデルでは、群ごとの**残差**標準偏差を確認し、最大SDと最小SDの比が極端でないかを見ます。生の得点SDは記述統計として有用ですが、ANCOVAの等分散性判断では残差を見るほうが対応しています。
 
 ```text
-dat |> group_by(Instruction, Time) |> summarise(SD = sd(Score))
+dat_diag |>
+  group_by(Instruction) |>
+  summarise(
+    SD_mean_residual = sd(MeanResidual),
+    SD_change_residual = sd(DiffResidual)
+  )
 ```
 
-最大SD / 最小SD < 3 であれば、実務的には問題ありません。
+最大SD / 最小SD < 3 はあくまで実務上の目安です。検定結果、残差プロット、外れ値の有無と合わせて判断します。
+
+### 等分散違反への代替手法 — Welch とロバスト法
+
+等分散性が大きく崩れたとき、何を使うかは **デザインによって違います**。本書ではこれまで「Welch ANOVA」と総称してきましたが、厳密には次のように使い分けます。
+
+| デザイン | 推奨手法 | 主な R 関数 |
+|---|---|---|
+| **一要因 between** | Welch (1951) の $F^*$ 検定(Satterthwaite 自由度) | `oneway.test(y ~ group, var.equal = FALSE)` |
+| **要因 between(2要因以上)** | トリム平均ベースのロバスト ANOVA | `WRS2::t2way()`, `WRS2::t3way()` |
+| **混合計画(between × within)** | トリム平均ベースのロバスト混合 ANOVA | `WRS2::bwtrim()` |
+| **完全 within** | トリム平均ベースの参加者内 ANOVA | `WRS2::rmanova()` |
+
+::: {.callout-warning}
+#### 「Welch ANOVA」の拡張は限定的
+`oneway.test(..., var.equal = FALSE)` は **一要因 between デザインでのみ**直接適用できる古典的な Welch (1951) の $F^*$ 検定です。要因 between デザインへの拡張としては Welch–James 検定および Johansen 検定が存在し、R では `welchADF` パッケージで利用できます。ただし base R には混合計画への直接的な拡張が含まれていないため、**実務では `WRS2` のトリム平均ベース手法**(`bwtrim`, `t1way` 等)**を使うのが現代的な選択肢**となっています [@delacre2017; @wilcox2021]。
+:::
+
+**一要因デザインでの Welch の例**(本章の混合計画とは別に、Time = Immediate のデータで指導法を比較すると仮定):
+
+```r
+# Welch one-way ANOVA — 一要因 between
+oneway.test(Score ~ Instruction, data = dat_immediate, var.equal = FALSE)
+
+# 比較:Student の(等分散仮定の)one-way
+oneway.test(Score ~ Instruction, data = dat_immediate, var.equal = TRUE)
+```
+
+**混合計画でのロバスト代替**:
+
+```r
+# 20% トリム平均ベースの bwtrim(between × within)
+WRS2::bwtrim(formula = Score ~ Instruction * Time,
+             id = Participant, data = dat, tr = 0.2)
+```
+
+近年の応用統計では、**等分散の前提が満たされる保証がない以上、Welch をデフォルト**にすべきという議論が有力です [@delacre2017; @delacre2019]。@delacre2019 は一要因 ANOVA に対する Welch の $F$ 検定を classical $F$ 検定の代替として既定運用すべきだと議論しています。本章の主分析は混合計画 ANOVA で行いますが、等分散違反が深刻なときの選択肢として上記を覚えておくとよいでしょう。
 
 ### 共変量の傾き等質性
 
@@ -1073,7 +1456,7 @@ dat |> group_by(Instruction, Time) |> summarise(SD = sd(Score))
 
 ```{r}
 #| eval: true
-#| label: slope-homogeneity-table
+#| label: tbl-slope-homogeneity
 
 slope_homogeneity_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
@@ -1082,7 +1465,7 @@ slope_homogeneity_tbl |>
 
 **読み方**:
 
-- `participant mean` 側の交互作用は、被験者間主効果の調整が習熟度で大きく変わっていないかを見る
+- `participant mean` 側の交互作用は、参加者間主効果の調整が習熟度で大きく変わっていないかを見る
 - `change score` 側の交互作用は、時間変化の大きさが習熟度で条件別に大きく変わっていないかを見る
 - 交互作用が小さく、推定値も不安定でなければ、本章のような共変量調整付き ANOVA の要約は概ね妥当
 
@@ -1090,7 +1473,9 @@ slope_homogeneity_tbl |>
 
 ```{r}
 #| eval: true
-#| label: slope-homogeneity-plot-mean
+#| label: fig-slope-homogeneity-mean
+#| fig-cap: "参加者平均モデルにおける習熟度と得点の関係"
+#| fig-alt: "習熟度と参加者平均得点の散布図に、Instructionごとの回帰線を重ねた図。"
 #| fig-width: 7
 #| fig-height: 4.8
 
@@ -1099,7 +1484,9 @@ slope_plot_mean
 
 ```{r}
 #| eval: true
-#| label: slope-homogeneity-plot-change
+#| label: fig-slope-homogeneity-change
+#| fig-cap: "変化量モデルにおける習熟度と得点変化の関係"
+#| fig-alt: "習熟度とDelayed minus Immediateの変化量の散布図に、Instructionごとの回帰線を重ねた図。"
 #| fig-width: 7
 #| fig-height: 4.8
 
@@ -1118,7 +1505,9 @@ slope_plot_change
 
 ```{r}
 #| eval: true
-#| label: assumption-plots-between
+#| label: fig-assumption-plots-between
+#| fig-cap: "参加者平均モデルの診断プロット"
+#| fig-alt: "参加者平均モデルについて、残差、正規性、外れ値、共線性などの診断結果を複数パネルで示す図。"
 
 plot_check_model_separate(
   fit_between_diag,
@@ -1128,7 +1517,9 @@ plot_check_model_separate(
 
 ```{r}
 #| eval: true
-#| label: assumption-plots-change
+#| label: fig-assumption-plots-change
+#| fig-cap: "変化量モデルの診断プロット"
+#| fig-alt: "変化量モデルについて、残差、正規性、外れ値、共線性などの診断結果を複数パネルで示す図。"
 
 plot_check_model_separate(
   fit_change_diag,
@@ -1164,9 +1555,25 @@ plot_check_model_separate(
 
 1. **Mauchly検定**で球面性を確認する
 2. p < .05 で球面性が棄却された場合、**自由度補正**を適用する:
-   - ε（イプシロン）< 0.75 → **Greenhouse-Geisser（GG）補正**（保守的）
-   - ε ≥ 0.75 → **Huynh-Feldt（HF）補正**（やや自由度を回復）
+   - ε（イプシロン）< 0.75 → **Greenhouse-Geisser（GG）補正**(保守的)
+   - ε ≥ 0.75 → **Huynh-Feldt（HF）補正**(やや自由度を回復)
 3. `afex`では `anova_table = list(correction = "GG")` で自動補正される
+
+::: {.callout-note}
+ε = 0.75 を境とした GG / HF の使い分けは Girden (1992) によって広く普及した**実務的ヒューリスティック**であり、補正手法そのものの数学的性質ではありません。GG はつねに定義可能(0 < ε ≤ 1 を保証)で、HF は ε̂ > 1 のとき 1 にトランケートされます。論文での報告時にはどの補正を使ったかを明記してください [@maxwell2017designing]。
+:::
+
+::: {.callout-tip}
+#### 「常に GG 補正」を推奨する立場
+近年は、**Mauchly 検定の検出力不足**(特にサンプルサイズが小さい SLA 研究で顕著)を理由に、検定して条件付きで補正するのではなく、**常に Greenhouse-Geisser 補正をかけて報告する**運用が推奨されることもあります [@abdi2010greenhouse; @maxwell2017designing]。Mauchly 検定が p > .05 だったとしても球面性が成り立っていることの「証明」にはならず、むしろ検出できなかっただけのことが多いためです。
+
+実用上は次のいずれかを採用してください:
+
+- **保守的アプローチ**:3 水準以上の参加者内要因では常に GG 補正を適用 → `anova_table = list(correction = "GG")`
+- **古典的アプローチ**:Mauchly で球面性を確認 → 棄却された場合のみ補正 → 本節で示した手順
+
+どちらを採用したかを論文の Method に明記すれば、再現性は確保できます。
+:::
 
 以下は3時点以上のデータに対する球面性検定のコード例です（本章のデータには該当しないため `eval: false` としています）。
 
@@ -1189,7 +1596,7 @@ plot_check_model_separate(
 
 :::
 
-## 6. カテゴリカル変数のコーディング
+## カテゴリカル変数のコーディング {#sec-contrast-coding}
 
 ANOVAを回帰モデルとして扱う場合、カテゴリカル変数（例：指導法の種類）を数値に変換する必要があります。この変換方法が**コントラストコーディング（contrast coding）**です。
 
@@ -1198,13 +1605,22 @@ ANOVAを回帰モデルとして扱う場合、カテゴリカル変数（例：
 ::: {.callout-important}
 ### コーディング選択の核心原則
 
-**コーディングは「係数の意味」を変える。**
-ただし同じモデル空間なら、適合値・残差・全体的なモデル適合（F値やR²）は本質的に変わらない。
+**コーディングは「係数の意味」を変えます。**
+ただし同じモデル空間なら、適合値・残差・一要因モデルの全体的なF検定やR²は本質的には変わりません。多要因の不均衡デザインで Type III 平方和を使う場合は、項ごとの検定がコーディングに依存し得ます。
 
 つまり、コーディング選択は「どの比較を回帰係数から直接読み取りたいか」によって決まります。
 :::
 
-以下では、同一の3群データに対して4種類のコーディングを順に適用し、係数の意味がどう変わるかを比較します。
+先に実務上の選択基準を示すと、次のようになります。迷った場合は「自分の研究質問を一番直接読める係数」を選びます。
+
+| 研究質問の例 | 第一候補のコーディング | 係数が直接示すもの |
+|---|---|---|
+| 「Glossing指導はControl群より効果的か？」 | **Treatment** | 各処遇群と参照群（Control）の差 |
+| 「各指導法は全体平均からどの程度ずれるか？」 | **Sum** | 各群の全体平均（grand mean）からの偏差 |
+| 「まず近い水準との差を順に見たい」 | **Helmert** | R標準では各水準と先行水準群の平均との差 |
+| 「CEFR A1→B2で得点は線形に伸びるか、曲線的か？」 | **Polynomial** | 線形・二次・三次のトレンド成分 |
+
+以下では、同一の3群データに対して4種類のコーディングを順に適用し、係数の意味がどう変わるかを比較します。`model.matrix()`、仮説行列、Type I/II/III 平方和、シミュレーションは発展的な確認です。最初に読むときは Treatment、Sum、`emmeans` の役割分担を押さえれば十分です。
 
 ### 比較用データ（3群）
 
@@ -1218,7 +1634,7 @@ ANOVAを回帰モデルとして扱う場合、カテゴリカル変数（例：
 
 ```{r}
 #| eval: true
-#| label: contrast-data
+#| label: tbl-contrast-data
 
 set.seed(2024)
 
@@ -1243,11 +1659,11 @@ dat_c |>
 
 ### `faux`で設計行列を可視化する
 
-以降の4種類の解説では、R標準の `contr.*` 関数を使ってコーディングを示します。加えて、教育・教材用途では `faux` の `add_contrast()` / `contr_code_*()` を使うと、設計行列の列をデータフレーム上で直接確認できるため、学習者に「どの比較をしているか」を示しやすくなります（@debruine2020faux）。
+以降の4種類の解説では、R標準の `contr.*` 関数を使ってコーディングを示します。加えて、教育・教材用途では `faux` の `add_contrast()` / `contr_code_*()` を使うと、設計行列の列をデータフレーム上で直接確認できるため、学習者に「どの比較をしているか」を示しやすくなります [@debruine2020faux]。
 
 ```{r}
 #| eval: true
-#| label: faux-coding-visualization
+#| label: tbl-faux-treatment-coding
 
 mini_faux_treat <- dat_c |>
   group_by(Group) |>
@@ -1264,22 +1680,15 @@ mini_faux_treat_preview <- mini_faux_treat |>
   distinct(Group, Glossing_vs_Control, Keyword_vs_Control) |>
   arrange(Group)
 
-invisible(NULL)
+mini_faux_treat_preview |>
+  knitr::kable(caption = "`faux::add_contrast()` で作る Treatment Coding")
 ```
-
-| Group | Glossing_vs_Control | Keyword_vs_Control |
-|---|---:|---:|
-| Control | 0 | 0 |
-| Glossing | 1 | 0 |
-| Keyword | 0 | 1 |
-
-: `faux::add_contrast()` で作る Treatment Coding
 
 `add_cols = TRUE` を指定すると、コントラスト列がデータフレームに直接追加されます。これにより、0/1（あるいは-1/0/1）の重みづけを「表」として確認できます。次の例では、同じ `Group` 因子に対して3種類のコーディング行列を並べます。
 
 ```{r}
 #| eval: true
-#| label: faux-coding-matrix
+#| label: tbl-faux-coding-matrix
 
 faux_contrast_mats <- list(
   Treatment = contrasts(faux::contr_code_treatment(dat_c$Group, base = 1)),
@@ -1287,38 +1696,17 @@ faux_contrast_mats <- list(
   Helmert = contrasts(faux::contr_code_helmert(dat_c$Group))
 )
 
-faux_contrast_preview <- purrr::imap_dfr(faux_contrast_mats, function(mat, coding_name) {
+faux_contrast_preview <- purrr::imap(faux_contrast_mats, function(mat, coding_name) {
   as.data.frame(mat) |>
     tibble::rownames_to_column("Level") |>
     pivot_longer(-Level, names_to = "Contrast", values_to = "Weight") |>
     mutate(Coding = coding_name, .before = 1)
-})
+}) |>
+  purrr::list_rbind()
 
-invisible(NULL)
+faux_contrast_preview |>
+  knitr::kable(caption = "`faux` で作る各コーディングの重み行列")
 ```
-
-| Coding | Level | Contrast | Weight |
-|---|---|---|---:|
-| Treatment | Control | Group1 | 0 |
-| Treatment | Control | Group2 | 0 |
-| Treatment | Glossing | Group1 | 1 |
-| Treatment | Glossing | Group2 | 0 |
-| Treatment | Keyword | Group1 | 0 |
-| Treatment | Keyword | Group2 | 1 |
-| Sum | Control | Group1 | 1 |
-| Sum | Control | Group2 | 0 |
-| Sum | Glossing | Group1 | 0 |
-| Sum | Glossing | Group2 | 1 |
-| Sum | Keyword | Group1 | -1 |
-| Sum | Keyword | Group2 | -1 |
-| Helmert | Control | Group1 | -1 |
-| Helmert | Control | Group2 | -1 |
-| Helmert | Glossing | Group1 | 1 |
-| Helmert | Glossing | Group2 | -1 |
-| Helmert | Keyword | Group1 | 0 |
-| Helmert | Keyword | Group2 | 2 |
-
-: `faux` で作る各コーディングの重み行列
 
 **実務上の使い分け**:
 
@@ -1328,7 +1716,12 @@ invisible(NULL)
 
 ### `model.matrix()` で設計行列 $\mathbf{X}$ を読む（公式ドキュメント準拠）
 
-Rの `model.matrix()` は、式（formula）と因子コントラスト指定から設計行列 $\mathbf{X}$ を構成する関数です（@rstatsmodelmatrix）。カテゴリカル変数の数値化自体は `contrasts()` と `contr.*` 系関数で定義されます（@rstatscontrasts; @rstatscontrast）。
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本サブセクション以下、「仮説行列 $\mathbf{H}$ と係数 $\boldsymbol{\beta}$ の対応」「研究質問をコントラスト重みに翻訳する4ステップ」「交互作用の設計行列を読む(2×2 と 2×3)」までは線形代数中心の発展的内容です。**初読では「Treatment coding(ダミーコーディング)」(@sec-contrast-coding 内の次のサブセクション)へ飛ばし、感覚を掴んでから戻ってきても構いません**。
+:::
+
+Rの `model.matrix()` は、式（formula）と因子コントラスト指定から設計行列 $\mathbf{X}$ を構成する関数です [@rstatsmodelmatrix]。カテゴリカル変数の数値化自体は `contrasts()` と `contr.*` 系関数で定義されます [@rstatscontrasts; @rstatscontrast]。
 
 以下では、同じ `Group` 因子に対して Treatment と Sum の設計行列を作り、`model.matrix()` が返す列の意味を確認します。
 
@@ -1365,21 +1758,15 @@ model_matrix_attr_tbl <- tibble(
   )
 )
 
-invisible(NULL)
+model_matrix_attr_tbl |>
+  knitr::kable(caption = "`model.matrix()` の属性情報")
 ```
-
-| Attribute | Treatment | Sum |
-|---|---|---|
-| `assign` | `0, 1, 1` | `0, 1, 1` |
-| `contrasts` | `Group = contr.treatment(3)` | `Group = contr.sum(3)` |
-
-: `model.matrix()` の属性情報
 
 **解釈のポイント**:
 
 - `assign` は「どの列がどの項（term）に対応するか」を示す。`~ Group` では切片が0、`Group`由来の列が1になる
 - `contrasts` は各因子にどのコントラスト関数が適用されたかを記録する
-- `contrast` の公式ドキュメントが示す通り、**Treatment codingは切片に直交しない**一方で、Sum/Helmertは（均衡デザインなら）切片に直交する（@rstatscontrast）
+- `contrast` の公式ドキュメントが示す通り、Sum/Helmert の**コントラストベクトル(水準上の重み)は常に和が 0** であり、切片(=全 1 ベクトル)と直交します。Treatment coding では和が 1 になるため直交しません [@rstatscontrast]
 
 | Coding | Column sums | Orthogonal to intercept? |
 |---|---|---|
@@ -1389,16 +1776,25 @@ invisible(NULL)
 
 : コントラスト列の和（切片との直交性チェック）
 
-### 仮説行列 $\mathbf{H}$ と係数 $\boldsymbol{\beta}$ の対応（Schad et al., 2020）
+::: {.callout-note}
+**水準レベルの直交性とデザイン全体の直交性は別物です**。Sum / Helmert はコントラスト**ベクトル**そのものは常に切片と直交しますが、**設計行列の列同士の直交性**は群サイズに依存します(均衡デザインでのみ直交)。Type III SS が Sum coding を必要とするのは、後者(設計行列レベル)の直交性とは別の理由 — 主効果検定が「他のすべての効果を平均化したときの効果」として解釈できるようにするため — です。
+:::
 
-Schad et al.（2020）は、「言語化された研究仮説を**重みつき比較（contrast weights）**として明示し、そこから回帰係数の解釈を一貫させる」ことを強調しています（@schad2020）。3群のTreatment codingでは、群平均ベクトル $\boldsymbol{\mu}$ と係数ベクトル $\boldsymbol{\beta}$ の関係を次のように書けます。
+### 仮説行列 $\mathbf{H}$ と係数 $\boldsymbol{\beta}$ の対応
+
+Schad et al. [-@schad2020] は、「言語化された研究仮説を**重みつき比較（contrast weights）**として明示し、そこから回帰係数の解釈を一貫させる」ことを強調しています。3群のTreatment codingでは、群平均ベクトル $\boldsymbol{\mu}$ と係数ベクトル $\boldsymbol{\beta}$ の関係を次のように書けます。
 
 $$
 \boldsymbol{\beta} = \mathbf{H}\boldsymbol{\mu}, \quad
 \boldsymbol{\mu} = \mathbf{S}\boldsymbol{\beta}
 $$
 
-ここで $\mathbf{H}$ は「どの平均差を係数として取り出すか」を定義する仮説行列、$\mathbf{S}$ はその逆変換（一般化逆行列）です。
+ここで $\mathbf{H}$ は「どの平均差を係数として取り出すか」を定義する**仮説行列**(hypothesis matrix)、$\mathbf{S} = \mathbf{H}^{-1}$ はその逆行列です($\mathbf{H}$ が正方かつ正則のとき)。コントラスト数が水準数より少ない非正方の場合は一般化逆行列 $\mathbf{H}^+$ を用います。
+
+::: {.callout-note}
+#### 表記法と Schad et al. (2020) の対応
+本章では $\boldsymbol{\beta} = \mathbf{H}\boldsymbol{\mu}$ の形に統一しています。Schad et al. [-@schad2020] も同じ役割の行列を **hypothesis matrix $\mathbf{H}_c$** と呼び、これを通じて $\boldsymbol{\beta}$ を $\boldsymbol{\mu}$ の線形結合として表します。彼らが**契約行列 (contrast matrix) $\mathbf{X}_c$** と呼ぶものは、本章の $\mathbf{S} = \mathbf{H}^{-1}$ に対応し、$\mathbf{X}_c = \mathbf{H}_c^{-1}$ の関係でモデルの設計行列を構成する側に使われます (4 ステップ手順の最後のステップ)。記号の使い分けは異なるものの、**「H が β = Hμ の方向で意味を担い、その逆行列がモデル当てはめ側に使われる」**という構造は本章と Schad et al. で一致しています。
+:::
 
 ```{r}
 #| eval: true
@@ -1434,11 +1830,11 @@ tibble(
   knitr::kable(caption = "仮説行列 H と回帰係数の一致（Treatment）")
 ```
 
-この表の `Match = TRUE` は、係数が「モデルが偶然出した数値」ではなく、**事前に定めた比較（重み）から論理的に導かれる量**であることを示しています。Schad et al.（2020）の実務的メッセージは、ここにあります。
+この表の `Match = TRUE` は、係数が「モデルが偶然出した数値」ではなく、**事前に定めた比較（重み）から論理的に導かれる量**であることを示しています。Schad et al. [-@schad2020] の実務的メッセージは、ここにあります。
 
 ### 研究質問をコントラスト重みに翻訳する4ステップ
 
-Schad et al.（2020）の実務的な核は、「まず研究質問を重みに変換し、その後にモデルを当てる」ことです（@schad2020）。実装の手順は次の4段階です。
+Schad et al. [-@schad2020] の実務的な核は、「まず研究質問を重みに変換し、その後にモデルを当てる」ことです。実装の手順は次の4段階です。
 
 1. 比較対象の群平均ベクトル $\boldsymbol{\mu}$ を定義する
 2. 研究質問を「群平均の線形結合」として重みで書く
@@ -1472,28 +1868,20 @@ invisible(NULL)
 
 ```{r}
 #| eval: true
-#| label: question-weights-table
+#| label: tbl-question-weights
 
 contrast_recipe_preview <- contrast_recipe |>
   mutate(Weight_Sum = Control + Glossing + Keyword)
 
-invisible(NULL)
+contrast_recipe_preview |>
+  knitr::kable(caption = "研究質問を重みに落とし込んだ例")
 ```
-
-| Question | Control | Glossing | Keyword | Weight_Sum |
-|---|---:|---:|---:|---:|
-| Glossing - Control | -1.0 | 1.0 | 0.0 | 0.0 |
-| Keyword - Control | -1.0 | 0.0 | 1.0 | 0.0 |
-| Keyword - Glossing | 0.0 | -1.0 | 1.0 | 0.0 |
-| Treatment mean - Control | -1.0 | 0.5 | 0.5 | 0.0 |
-
-: 研究質問を重みに落とし込んだ例
 
 #### 推定値テーブル
 
 ```{r}
 #| eval: true
-#| label: question-estimate-table
+#| label: tbl-question-estimate
 
 contrast_recipe |>
   rowwise() |>
@@ -1517,7 +1905,7 @@ contrast_recipe |>
 
 ### 交互作用の設計行列を読む（2×2 と 2×3）
 
-交互作用は「差の差（difference-in-differences）」として理解すると明確です。`model.matrix()` を使って列を直接見ると、どの列がどの比較を担っているかが確認できます（@rstatsmodelmatrix）。
+交互作用は「差の差（difference-in-differences）」として理解すると明確です。`model.matrix()` を使って列を直接見ると、どの列がどの比較を担っているかが確認できます [@rstatsmodelmatrix]。
 
 ```{r}
 #| eval: true
@@ -1560,7 +1948,7 @@ invisible(NULL)
 
 ```{r}
 #| eval: true
-#| label: interaction-design-2x2
+#| label: tbl-interaction-design-2x2
 
 as_tibble(X_2x2) |>
   mutate(Method = design_2x2$Method, Time = design_2x2$Time, .before = 1) |>
@@ -1571,7 +1959,7 @@ as_tibble(X_2x2) |>
 
 ```{r}
 #| eval: true
-#| label: interaction-design-2x3
+#| label: tbl-interaction-design-2x3
 
 as_tibble(X_2x3) |>
   mutate(Method = design_2x3$Method, Session = design_2x3$Session, .before = 1) |>
@@ -1588,7 +1976,7 @@ as_tibble(X_2x3) |>
 
 **2×3で追加される点**:
 
-- `Method2:Session2`, `Method2:Session3` は、それぞれ Post基準・Delayed基準での追加的な群間差
+- `Method2:Session2`, `Method2:Session3` は、Preを基準にしたPost / Delayedにおける追加的な群間差
 - 交互作用列が複数になるのは、反復測定因子が2水準を超えるため
 
 ### Treatment coding（ダミーコーディング）
@@ -1636,7 +2024,7 @@ tidy(fit_treat) |>
 
 **利点**: 係数を読むだけで「各処遇群が統制群よりどれだけ効果的か」が直接わかります。
 
-**限界**: Glossing vs Keyword の直接比較はこの表から読めません（差は計算可能ですがSEの算出が複雑）。全ペアの比較が必要な場合は `emmeans()` を用います（セクション4.2参照）。
+**限界**: Glossing vs Keyword の直接比較はこの表から読めません（差は計算可能ですがSEの算出が複雑）。全ペアの比較が必要な場合は `emmeans()` を用います（@sec-posthoc-emmeans 参照）。
 
 ### Sum coding（偏差コーディング）
 
@@ -1663,7 +2051,7 @@ tidy(fit_sum) |>
   knitr::kable(caption = "Coefficient Table: Sum Coding")
 ```
 
-**設計行列の読み方**: 各行の合計が0になるのが"Sum" codingの特徴です。最後の水準（Keyword）は −1, −1 として、他の2水準の「裏返し」として暗黙的に定義されます。
+**設計行列の読み方**: 各コントラスト列の合計が0になるのが"Sum" codingの特徴です。最後の水準（Keyword）は −1, −1 として、他の2水準の「裏返し」として暗黙的に定義されます。
 
 **係数表の読み方**:
 
@@ -1682,7 +2070,7 @@ ANOVAのF検定は「全体的に群間に差があるか」を問います。�
 
 ### Helmert coding（逐次比較コーディング）
 
-**段階的・累積的な比較を行うコーディングです。**各水準を、その「後に続く水準の平均」と比較します。
+**段階的・累積的な比較を行うコーディングです。**R標準の `contr.helmert()` では、各水準を、その「前にある水準群の平均」と比較します。
 
 このコーディングは、水準に自然な順序がある場合に有効です。英語教育研究では：
 
@@ -1692,8 +2080,8 @@ ANOVAのF検定は「全体的に群間に差があるか」を問います。�
 
 **Helmert codingが答える問い**:
 
-1. **第1比較**: Control は、Glossing・Keyword の平均と異なるか？（統制群 vs 処遇群全体）
-2. **第2比較**: Glossing は Keyword と異なるか？（処遇群間の差）
+1. **第1比較**: Glossing は Control と異なるか？
+2. **第2比較**: Keyword は Control・Glossing の平均と異なるか？
 
 ```{r}
 #| eval: true
@@ -1719,18 +2107,31 @@ tidy(fit_helm) |>
 | 係数 | 比較内容 | 解釈例 |
 |-----|---------|--------|
 | `(Intercept)` | 全体平均 | ≈ 56.7（Sum codingの切片と同じ） |
-| `Group1` | Control vs (Glossing + Keyword) の平均 | 統制群と処遇群全体の差（スケーリング済み）|
-| `Group2` | Glossing vs Keyword | 2つの処遇群間の差（スケーリング済み）|
+| `Group1` | Glossing vs Control | Glossing と Control の差（スケーリング済み）|
+| `Group2` | Keyword vs (Control + Glossing) の平均 | Keyword と先行2水準平均との差（スケーリング済み）|
 
 ::: {.callout-warning}
-#### Rの `contr.helmert()` はReverse Helmert
+#### Helmert coding の「forward / reverse」名称は文献で揺れている
 
-Rの `contr.helmert()` は、各水準を**先行する水準群の平均**と比較する「逆Helmert」です。教科書によっては「後続水準の平均と比較する」定義が使われることがあります。解釈の方向に注意してください。
+R の `contr.helmert()` は、**各水準を先行する水準群の平均と比較する**コントラスト($k$ 番目の係数 = 第 $k$ 水準と第 1〜$k-1$ 水準の平均の差)を返します。これを「forward Helmert」と呼ぶ文献もあれば「reverse Helmert」と呼ぶ文献もあり、**用語自体が業界で完全に固まっていません**(SAS の `DEVIATION` や SPSS の "Helmert" は逆方向の比較を返すことがあるため、参照する文献によって意味が反転します)。
 
-係数のスケーリングにも注意が必要です。Rの出力をそのまま「差」として読むには、比較する群数に応じたスケーリング因子を考慮する必要があります。実務的には、具体的な群平均差は `emmeans()` で確認するほうが確実です。
+実務的には用語に頼らず、**実際の重み行列を `contrasts(x)` で確認すること**が最も安全です。本章の Helmert 例では `contr.helmert(3)` の重みは以下のようになります:
+
+```
+        [,1] [,2]
+Control   -1   -1
+Glossing   1   -1
+Keyword    0    2
+```
+
+つまり、第 1 列は「Glossing - Control」、第 2 列は「Keyword - (Control + Glossing)/2」を **(スケーリング前の) 方向**として表します。
+
+係数のスケーリングにも注意が必要です。R の `contr.helmert(k)` の **第 $j$ 列**は重みが $\{-1, -1, \dots, -1, j, 0, \dots, 0\}$ の形になっていますが、これは「(第 $j+1$ 水準) - (先行 $j$ 水準の平均)」を **そのまま**返す形ではありません。実際の平均差を取り出すには、**$j$ 列目の係数を $j+1$ で割る**必要があります。
+
+具体例:`contr.helmert(3)` の 2 列目の重みは $\{-1, -1, 2\}$ です。`lm()` の係数をそのまま「Keyword と (Control + Glossing)/2 の平均差」と読みたいなら、**係数を 3(= $j+1$ で $j=2$)で割って**ください。1 列目(重み $\{-1, 1, 0\}$)の場合は **$j=1$** なので 2 で割ります。実務的には、具体的な群平均差は `emmeans()` で取り出すほうが安全です。
 :::
 
-**いつ使うか**: 研究仮説が「統制群 vs 処遇群全体 → 処遇群間の差」という階層的な構造をもつ場合に適しています。例えば、まず「何らかの介入をすること自体に効果があるか」を確認し、次に「介入の種類による差があるか」を検討する、という段階的な問いに対応します。
+**いつ使うか**: 研究仮説が「隣接・累積する水準を順に比較する」構造をもつ場合に適しています。もし「統制群 vs 処遇群全体 → 処遇群間の差」という前向きの階層比較をしたいなら、R標準の `contr.helmert()` ではなく、研究質問に合わせたカスタムコントラストを明示します。
 
 ### 順序尺度にはPolynomial coding
 
@@ -1746,7 +2147,7 @@ Polynomial codingは、こうしたトレンドの各成分を独立に検定し
 
 ```{r}
 #| eval: true
-#| label: polynomial-coding
+#| label: tbl-polynomial-coding
 
 set.seed(2024)
 
@@ -1777,7 +2178,7 @@ tidy(fit_poly) |>
 |-----|------|---------|
 | `CEFR.L`（Linear） | **線形成分**: レベルが上がると得点が直線的に上昇するか | p < .05 → 有意な線形トレンドあり |
 | `CEFR.Q`（Quadratic） | **二次成分**: 伸び方に曲線的パターン（加速・減速）があるか | p < .05 → 直線からの有意な逸脱 |
-| `CEFR.C`（Cubic） | **三次成分**: さらに複雑な変動があるか | 通常は無視可。有意なら解釈が困難 |
+| `CEFR.C`（Cubic） | **三次成分**: さらに複雑な変動があるか | 通常は主要な解釈対象にしない。有意なら慎重に扱う |
 
 **解釈の手順**:
 
@@ -1840,7 +2241,7 @@ invisible(NULL)
 
 ```{r}
 #| eval: true
-#| label: coef-vs-emmeans-coef
+#| label: tbl-coef-vs-emmeans-coef
 
 tidy(fit_role) |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
@@ -1851,7 +2252,7 @@ tidy(fit_role) |>
 
 ```{r}
 #| eval: true
-#| label: coef-vs-emmeans-emm
+#| label: tbl-coef-vs-emmeans-emm
 
 emmeans(fit_role, ~ Group) |>
   pairs(adjust = "holm") |>
@@ -1865,7 +2266,12 @@ emmeans(fit_role, ~ Group) |>
 
 ### 不均衡デザインでの Type I / II / III SS（群サイズ不等）
 
-群サイズが不均衡になると、平方和タイプの違いが結果に影響します。`car::Anova()` のType II/IIIと通常のANOVA（Type I）を並べると、差が明確に確認できます（@fox2026car）。`afex` が混合計画で Type III を標準化している背景もここにあります（@singmann2025afex）。
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本サブセクションと次の「なぜ Type III が誤解されやすいのか」「反復シミュレーションで『不変』と『可変』を分けて確認する」は、**Type III と Sum coding がなぜ標準的な組み合わせなのか**を厳密に確認する発展的内容です。**初読では @sec-coding-choice (研究質問に基づくコーディング選択)へ飛ばしても構いません**。実際に不均衡デザインを分析する段階で戻ってきてください。
+:::
+
+群サイズが不均衡になると、平方和タイプの違いが結果に影響します。`car::Anova()` のType II/IIIと通常のANOVA（Type I）を並べると、差が明確に確認できます [@fox2026car]。`afex` が混合計画で Type III を標準化している背景もここにあります [@singmann2025afex]。
 
 ```{r}
 #| eval: true
@@ -1883,7 +2289,7 @@ cell_plan_unbal <- tribble(
   "Keyword", "Delayed", 25, 57
 )
 
-dat_unbal <- purrr::pmap_dfr(
+dat_unbal <- purrr::pmap(
   cell_plan_unbal,
   function(Group, Time, n, mu) {
     tibble(
@@ -1893,6 +2299,7 @@ dat_unbal <- purrr::pmap_dfr(
     )
   }
 ) |>
+  purrr::list_rbind() |>
   mutate(
     Group = factor(Group, levels = c("Control", "Glossing", "Keyword")),
     Time = factor(Time, levels = c("Immediate", "Delayed"))
@@ -1953,7 +2360,7 @@ ss_compare_tbl <- bind_rows(
   extract_ss(fit_unbal_sum, "Sum", "I"),
   extract_ss(fit_unbal_sum, "Sum", "II"),
   extract_ss(fit_unbal_sum, "Sum", "III")
-) 
+)
 
 ss_compare_plot_tbl <- ss_compare_tbl |>
   mutate(
@@ -1977,6 +2384,10 @@ fit_unbal_sum_reordered <- lm(
     )
 )
 
+# 注:このコードは Group と Time の主効果が anova() の出力で
+# 1 行目・2 行目に来ることを前提に位置(`[1]`, `[2]`)で取り出しています。
+# モデル式や項数が変わると位置が変わるため、汎用的に書く場合は
+# rownames(anova(fit))[i] や broom::tidy(fit) で行名指定するのが安全です。
 type1_order_tbl <- tibble(
   Formula_Order = c("Score ~ Group * Time", "Score ~ Time * Group"),
   TypeI_F_Group = c(
@@ -1998,9 +2409,9 @@ cell_size_plot <- ggplot(
   geom_text(aes(label = n), color = "white", fontface = "bold", size = 4.2) +
   scale_fill_gradient(low = "#9ecae1", high = "#08519c") +
   labs(
-    title = "Cell Sizes in the Unbalanced 3x2 Design",
-    x = "Time",
-    y = "Group",
+    title = "不均衡な3x2デザインのセルサイズ",
+    x = "時点",
+    y = "群",
     fill = "n"
   )
 
@@ -2012,9 +2423,9 @@ ss_compare_plot <- ggplot(
   geom_line(linewidth = 0.8) +
   facet_wrap(~ Coding) +
   labs(
-    title = "F Values Across Sum-of-Squares Types",
+    title = "平方和タイプによってF値はどう変わるか",
     x = NULL,
-    y = "F statistic",
+    y = "F統計量",
     color = "SS type"
   )
 
@@ -2026,25 +2437,17 @@ invisible(NULL)
 
 ```{r}
 #| eval: true
-#| label: unbalanced-cellsize-table
+#| label: tbl-unbalanced-cellsize
 
-invisible(NULL)
+cell_size_tbl |>
+  knitr::kable(caption = "不均衡デザインのセルサイズ")
 ```
-
-| Group | Time | n | mu |
-|---|---|---:|---:|
-| Control | Immediate | 90 | 50 |
-| Control | Delayed | 35 | 45 |
-| Glossing | Immediate | 30 | 58 |
-| Glossing | Delayed | 80 | 54 |
-| Keyword | Immediate | 65 | 63 |
-| Keyword | Delayed | 25 | 57 |
-
-: 不均衡デザインのセルサイズ
 
 ```{r}
 #| eval: true
-#| label: unbalanced-cellsize-plot
+#| label: fig-unbalanced-cellsize
+#| fig-cap: "不均衡な3×2デザインのセルサイズ"
+#| fig-alt: "GroupとTimeの各セルに含まれるサンプルサイズをヒートマップで示す図。"
 #| fig-width: 6.5
 #| fig-height: 4.5
 
@@ -2055,7 +2458,7 @@ cell_size_plot
 
 ```{r}
 #| eval: true
-#| label: unbalanced-ss-compare
+#| label: tbl-unbalanced-ss-compare
 
 ss_compare_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
@@ -2064,7 +2467,9 @@ ss_compare_tbl |>
 
 ```{r}
 #| eval: true
-#| label: unbalanced-ss-plot
+#| label: fig-unbalanced-ss
+#| fig-cap: "平方和タイプとコーディングによるF値の違い"
+#| fig-alt: "Type I、Type II、Type III平方和における各効果のF値を、Treatment codingとSum codingで比較する図。"
 #| fig-width: 7.5
 #| fig-height: 4.8
 
@@ -2075,7 +2480,7 @@ ss_compare_plot
 
 ```{r}
 #| eval: true
-#| label: type1-order-dependence
+#| label: tbl-type1-order-dependence
 
 type1_order_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
@@ -2092,7 +2497,7 @@ type1_order_tbl |>
 **図の読み方**:
 
 - セルサイズのヒートマップで偏りが大きいほど、Type I の順序依存は強く出やすい
-- `F Values Across Sum-of-Squares Types` では、同じ効果でも SS タイプで F が動くことを確認する
+- 「平方和タイプによってF値はどう変わるか」の図では、同じ効果でも SS タイプで F が動くことを確認する
 - とくに Type III を使うなら、`Treatment` と `Sum` で同じ意味の主効果になっているかを必ず確認する
 
 **実務ルール**:
@@ -2121,7 +2526,7 @@ cell_plan_type3 <- tribble(
   "Glossing", "Delayed", 120, 46
 )
 
-dat_type3 <- purrr::pmap_dfr(
+dat_type3 <- purrr::pmap(
   cell_plan_type3,
   function(Group, Time, n, mu) {
     tibble(
@@ -2131,6 +2536,7 @@ dat_type3 <- purrr::pmap_dfr(
     )
   }
 ) |>
+  purrr::list_rbind() |>
   mutate(
     Group = factor(Group, levels = c("Control", "Glossing")),
     Time = factor(Time, levels = c("Immediate", "Delayed"))
@@ -2186,16 +2592,18 @@ type3_counterexample_plot <- dat_type3 |>
   geom_line(linewidth = 0.9) +
   scale_size_continuous(range = c(3, 9)) +
   labs(
-    title = "Counterexample: The Same Data Can Yield Different Type III Tests",
+    title = "反例：同じデータでもType III検定は変わりうる",
     x = NULL,
-    y = "Cell mean",
-    size = "Cell n"
+    y = "セル平均",
+    size = "セルn"
   )
 ```
 
 ```{r}
 #| eval: true
-#| label: type3-counterexample-plot
+#| label: fig-type3-counterexample
+#| fig-cap: "Type III主効果がコーディングで変わる反例"
+#| fig-alt: "ImmediateとDelayedで群差の方向が反転し、セルサイズも偏っている2×2デザインのセル平均を示す図。"
 #| fig-width: 7
 #| fig-height: 4.8
 
@@ -2204,11 +2612,11 @@ type3_counterexample_plot
 
 ```{r}
 #| eval: true
-#| label: type3-counterexample-table
+#| label: tbl-type3-counterexample
 
 type3_group_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Why the Group Main Effect Changes under Type III")
+  knitr::kable(caption = "Type IIIでGroup主効果が変わる理由")
 ```
 
 **どう読むか**:
@@ -2270,7 +2678,8 @@ simulate_invariance_once <- function(seed) {
   )
 }
 
-sim_invariance <- purrr::map_dfr(1:200, ~ simulate_invariance_once(3000 + .x))
+sim_invariance <- purrr::map(1:200, \(i) simulate_invariance_once(3000 + i)) |>
+  purrr::list_rbind()
 
 invariance_summary_tbl <- tibble(
   Metric = c(
@@ -2301,11 +2710,11 @@ coef_dist_tbl <- sim_invariance |>
     values_to = "Coefficient"
   ) |>
   mutate(
-    Coding = dplyr::recode(
+    Coding = dplyr::case_match(
       Coding,
-      beta1_t = "Treatment",
-      beta1_s = "Sum",
-      beta1_h = "Helmert"
+      "beta1_t" ~ "Treatment",
+      "beta1_s" ~ "Sum",
+      "beta1_h" ~ "Helmert"
     )
   )
 
@@ -2317,7 +2726,7 @@ invisible(NULL)
 
 ```{r}
 #| eval: true
-#| label: invariance-monte-carlo-summary
+#| label: tbl-invariance-monte-carlo-summary
 
 invariance_summary_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
@@ -2328,7 +2737,9 @@ invariance_summary_tbl |>
 
 ```{r}
 #| eval: true
-#| label: invariance-monte-carlo-plot
+#| label: fig-invariance-monte-carlo
+#| fig-cap: "コーディング方式ごとの第1係数の分布"
+#| fig-alt: "Treatment、Sum、Helmertの3種類のコーディングで、第1係数の値が異なる分布になることを示す箱ひげ図。"
 #| fig-width: 7
 #| fig-height: 4.6
 
@@ -2336,9 +2747,9 @@ ggplot(coef_dist_tbl, aes(x = Coding, y = Coefficient, fill = Coding)) +
   geom_boxplot(width = 0.55, alpha = 0.75, outlier.shape = NA) +
   geom_jitter(width = 0.12, alpha = 0.2, size = 0.9) +
   labs(
-    title = "First Coefficient Distribution Across Coding Schemes",
+    title = "第1係数の分布はコーディング方式で変わる",
     x = NULL,
-    y = "Coefficient value"
+    y = "係数値"
   ) +
   theme(legend.position = "none")
 ```
@@ -2348,9 +2759,9 @@ ggplot(coef_dist_tbl, aes(x = Coding, y = Coefficient, fill = Coding)) +
 
 - 予測値とF値の一致率は1.000に近づく（モデル適合は不変）
 - 係数平均はコーディングで異なる（パラメータの意味は可変）
-- したがって、コーディングは「どの質問を係数として直接読むか」を決める設計作業である
+- したがって、コーディングは「どの質問を係数として直接読むか」を決める設計作業
 
-## 7. 研究質問に基づくコーディング選択
+## 研究質問に基づくコーディング選択 {#sec-coding-choice}
 
 ここまで4つのコーディング方式を見てきました。実際の研究でどれを選ぶかは、**リサーチクエスチョンが何を問うているか**によって決まります。
 
@@ -2358,7 +2769,7 @@ ggplot(coef_dist_tbl, aes(x = Coding, y = Coefficient, fill = Coding)) +
 |---|---|---|
 | 「Glossing指導はControl群より効果的か？」 | **Treatment** | 各処遇群と参照群（Control）の差 |
 | 「各指導法は全体平均からどの程度ずれるか？」 | **Sum** | 各群の全体平均（grand mean）からの偏差 |
-| 「まず処遇群全体が統制群と異なるか、次に処遇群間の差は？」 | **Helmert** | 逐次的・階層的な群比較 |
+| 「近い水準との差を順に見たい」 | **Helmert** | R標準では各水準と先行水準群の平均との差 |
 | 「CEFR A1→B2で得点は線形に伸びるか、曲線的か？」 | **Polynomial** | 線形・二次・三次のトレンド成分 |
 
 選択の実務手順は次の通りです。まず統制群のような明確な参照群がある場合は Treatment coding を優先します。参照群がない場合は水準に順序があるかを確認し、順序がありトレンド形状（線形・曲線）に関心があるなら Polynomial coding、順序はあるがトレンド形状が主眼でなければ Sum coding を選びます。順序がない場合は、段階的・階層的比較が自然なら Helmert coding、そうでなければ Sum coding が第一候補になります。
@@ -2367,24 +2778,32 @@ ggplot(coef_dist_tbl, aes(x = Coding, y = Coefficient, fill = Coding)) +
 
 1. **最も単純で直感的なコーディングを選ぶ**: 係数を見て即座に「答え」がわかるものが良いコーディングです
 2. **統制群がある介入研究なら Treatment が第一候補**: 英語教育研究の多くはこのパターンに該当します
-3. **複数のコーディングで試しても問題なし**: 予測値・F値は変わらないので、「別のコーディングで見たらどう解釈できるか」を確認するのは健全な実践です
+3. **複数のコーディングで確認するのは有用**: 同じモデル空間なら予測値は変わらないため、「別のコーディングで見たらどう解釈できるか」を確認するのは健全な実践です。ただし、不均衡な多要因モデルのType III検定では、コーディング依存性を明記します
 
-## 8. ANOVAの限界と F1・F2 分析
+::: {.callout-tip}
+#### コーディング選択の練習
 
-本章の ANOVA は、**参加者だけをランダム要因として考える要約モデル**としては有用です。しかし、SLA や心理言語学では、参加者だけでなく**項目（語、文、課題、評定課題など）も変動源**になります。ここで古典的に問題になるのが、Clark (1973) の **language-as-fixed-effect fallacy** です。
+研究質問が「2つの処遇群（Glossing, Keyword）の平均は統制群（Control）より高いか」なら、どのような重みが自然でしょうか。
+
+**解答例**: `Control = -1`, `Glossing = 0.5`, `Keyword = 0.5` と置くと、「処遇群平均 − 統制群」を1本の比較として表せます。これはTreatment codingの係数表から直接読むより、計画比較として明示したほうが分かりやすい問いです。
+:::
+
+## ANOVAの限界と F1・F2 分析 {#sec-f1-f2}
+
+本章の ANOVA は、**参加者だけをランダム要因として考える要約モデル**としては有用です。しかし、SLA や心理言語学では、参加者だけでなく**項目（語、文、課題、評定課題など）も変動源**になります。ここで古典的に問題になるのが、Clark [-@clark1973] の **language-as-fixed-effect fallacy** です。
 
 ### F1・F2 分析とは何か
 
 心理言語学では、かつて次の2種類の分析を並行して報告する慣習がありました。
 
-- **F1 analysis**: 参加者をランダム要因とみなす分析  
+- **F1 analysis**: 参加者をランダム要因とみなす分析
   各参加者について条件平均を作り、条件差を検定する
-- **F2 analysis**: 項目をランダム要因とみなす分析  
+- **F2 analysis**: 項目をランダム要因とみなす分析
   各項目について参加者平均を作り、条件差を検定する
 
 狙いは単純で、**参加者にだけ一般化できるのか、項目にだけ一般化できるのか、両方に一般化できるのか**を切り分けることです。2条件比較なら、F1/F2 は t検定で示しても本質は同じで、`t^2 = F` なので2水準 ANOVA と等価です。
 
-Clark (1973) は、参加者平均だけを見て有意だったからといって、新しい語や新しい文に一般化してよいとは限らないと指摘しました。これが後の mixed-effects modeling への流れにつながります（@clark1973; @baayen2008）。
+Clark [-@clark1973] は、参加者平均だけを見て有意だったからといって、新しい語や新しい文に一般化してよいとは限らないと指摘しました。これが後の mixed-effects modeling への流れにつながります [@baayen2008]。
 
 ### LDTのミニシミュレーション
 
@@ -2394,7 +2813,7 @@ Clark (1973) は、参加者平均だけを見て有意だったからといっ�
 #| eval: true
 #| label: f1f2-setup
 
-set.seed(3)
+set.seed(14)
 
 n_subjects_f1f2 <- 40
 n_items_per_condition <- 24
@@ -2410,7 +2829,7 @@ item_tbl_f1f2 <- tibble(
     rep(c("Low neighborhood", "High neighborhood"), each = n_items_per_condition),
     levels = c("Low neighborhood", "High neighborhood")
   ),
-  u_item = rnorm(2 * n_items_per_condition, mean = 0, sd = 90)
+  u_item = rnorm(2 * n_items_per_condition, mean = 0, sd = 130)
 )
 
 dat_f1f2 <- tidyr::crossing(
@@ -2421,7 +2840,7 @@ dat_f1f2 <- tidyr::crossing(
   left_join(item_tbl_f1f2, by = "Item") |>
   mutate(
     mu = 700 +
-      if_else(Condition == "High neighborhood", 20, 0) +
+      if_else(Condition == "High neighborhood", 10, 0) +
       u_subject + u_item,
     RT = rnorm(n(), mean = mu, sd = 80)
   )
@@ -2436,14 +2855,21 @@ item_means_f2 <- dat_f1f2 |>
   summarise(RT = mean(RT), .groups = "drop")
 
 f1_test <- t.test(
-  subject_means_f1$`Low neighborhood`,
   subject_means_f1$`High neighborhood`,
+  subject_means_f1$`Low neighborhood`,
   paired = TRUE
 )
 
+f2_high <- item_means_f2 |>
+  filter(Condition == "High neighborhood") |>
+  pull(RT)
+f2_low <- item_means_f2 |>
+  filter(Condition == "Low neighborhood") |>
+  pull(RT)
+
 f2_test <- t.test(
-  RT ~ Condition,
-  data = item_means_f2,
+  f2_high,
+  f2_low,
   var.equal = TRUE
 )
 
@@ -2452,7 +2878,7 @@ f1f2_tbl <- tibble(
   Unit = c("participants", "items"),
   `Mean difference (ms)` = c(
     mean(subject_means_f1$`High neighborhood` - subject_means_f1$`Low neighborhood`),
-    unname(diff(rev(f2_test$estimate)))
+    unname(f2_test$estimate[1] - f2_test$estimate[2])
   ),
   Statistic = c(
     unname(f1_test$statistic),
@@ -2482,7 +2908,7 @@ f1f2_plot_tbl <- tibble(
   Analysis = c("F1 (by-subjects)", "F2 (by-items)"),
   Estimate = c(
     mean(subject_means_f1$`High neighborhood` - subject_means_f1$`Low neighborhood`),
-    unname(diff(rev(f2_test$estimate)))
+    unname(f2_test$estimate[1] - f2_test$estimate[2])
   ),
   CI_low = c(f1_test$conf.int[1], f2_test$conf.int[1]),
   CI_high = c(f1_test$conf.int[2], f2_test$conf.int[2])
@@ -2491,35 +2917,59 @@ f1f2_plot_tbl <- tibble(
 
 ```{r}
 #| eval: true
-#| label: f1f2-table
+#| label: tbl-f1f2
 
 f1f2_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "A Concrete Example of Divergent F1 and F2 Conclusions")
+  knitr::kable(caption = "F1とF2で結論が分かれる具体例")
 ```
 
 ```{r}
 #| eval: true
-#| label: f1f2-plot
+#| label: fig-f1f2
+#| fig-cap: "F1とF2で一般化の結論が分かれる例"
+#| fig-alt: "F1分析とF2分析の条件差推定値と信頼区間を横方向に示し、F1ではゼロをまたがずF2では不確実性が大きいことを示す図。"
 #| fig-width: 7
 #| fig-height: 4.6
 
 ggplot(f1f2_plot_tbl, aes(x = Estimate, y = Analysis)) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
-  geom_errorbarh(aes(xmin = CI_low, xmax = CI_high), height = 0.18, linewidth = 0.8) +
+  geom_errorbar(
+    aes(xmin = CI_low, xmax = CI_high),
+    orientation = "y",
+    height = 0.18,
+    linewidth = 0.8
+  ) +
   geom_point(size = 3.2, color = "#2b8cbe") +
   labs(
-    title = "The Same Experiment Can Support F1 but Not F2",
-    x = "Condition difference in RT (ms)",
+    title = "同じ実験でもF1とF2の結論は分かれうる",
+    x = "条件差（High neighborhood - Low neighborhood, ms）",
     y = NULL
   )
 ```
 
 **読み方**:
 
+- 横軸は `High neighborhood - Low neighborhood` です。正の値は High neighborhood 条件の反応時間が長いことを意味します
 - この例では、参加者を単位にすると条件差は明瞭で、F1 は有意になります
 - しかし項目を単位にすると、項目間ばらつきが大きいため F2 は有意になりません
 - つまり、「この条件差は新しい参加者には一般化できそうだが、新しい項目には一般化できるとは限らない」という状況です
+
+::: {.callout-warning}
+#### このシミュレーションは「説明用にチューニング」されています
+本デモでは、F1 と F2 で結論が分かれる挙動をはっきり見せるために、項目間 SD (`u_item`) を意図的に大きく設定しています。実データでは、F1 が常に F2 より「強い」とは限らず、効果サイズ・項目数・参加者数の組合せによって優劣は変わります。本例から得るべき教訓は **「F1 と F2 は別の一般化主張を支える」**であり、「F2 は F1 より弱い」ではありません。
+:::
+
+::: {.callout-tip}
+#### Clark (1973) の minF′ について
+Clark の元論文では、F1 と F2 を組み合わせた **minF′(min-F prime)** と呼ばれる検定統計量も提案されました。これは F1 と F2 から計算され、参加者と項目の両方を同時にランダム要因として扱う近似的な解です。
+
+$$
+\text{minF}^\prime = \frac{F_1 \cdot F_2}{F_1 + F_2}
+$$
+
+歴史的には F1 と F2 を別々に報告するのではなく、minF′ を主指標とすることが推奨されました。ただし現在の応用言語学・心理言語学では、minF′ よりも **線形混合効果モデル(`lmer`)で参加者と項目を同時にランダム効果として扱う**のが標準です(第 6 章)。本章では minF′ を歴史的記述として紹介するにとどめます。
+:::
 
 ### なぜ mixed model へ進むのか
 
@@ -2530,40 +2980,185 @@ F1/F2 は歴史的に重要な工夫ですが、限界も大きいです。
 - 参加者と項目を**同時に**ランダム要因として扱えない
 - 共変量や複雑な交互作用を入れると、設計が急に煩雑になる
 
-そのため、現在は **participants と items を同時に random effects として扱う mixed-effects model** が標準的です（@baayen2008）。この章では ANOVA と coding の理解を優先し、mixed model の具体的な実装は別章に譲ります。ただし、**項目変動が明らかに大きい研究では、ANOVA だけで議論を閉じない**という判断はこの章の時点で持っておくべきです。
+そのため、現在は **participants と items を同時に random effects として扱う mixed-effects model** が標準的です [@baayen2008]。この章では ANOVA と coding の理解を優先し、mixed model の具体的な実装は別章に譲ります。ただし、**項目変動が明らかに大きい研究では、ANOVA だけで議論を閉じない**という判断はこの章の時点で持っておくべきです。
 
-## 9. 報告テンプレート（英語教育論文向け）
+## 報告テンプレート（英語教育論文向け） {#sec-anova-reporting}
 
-ANOVA結果を査読者に明確かつ再現可能な形で伝えるための報告テンプレートを示します。以下のテンプレートでは、Rインラインコードを用いて本章のデータから実際の統計値を自動挿入しています。
+ANOVA結果を査読者に明確かつ再現可能な形で伝えるための報告テンプレートを示します。ここでは、ヘルパー関数で処理を隠さず、**Rでどの値を取り出し、APAスタイルではどう書くか**を一つずつ確認します。本章のテンプレートは APA 第 7 版と *Language Learning* の Open Methods ガイドライン [@norris2015] を主な参照枠としています。同ガイドラインは記述統計、効果量、CI、検定力、再現に必要な分析手続きの開示を必須項目に挙げています。
+
+APAスタイルで統計値を書くときの基本は次の通りです。
+
+| 報告対象 | APAでの書き方 | 注意点 |
+|---|---|---|
+| F検定 | *F*(df1, df2) = 5.24, *p* = .024 | *F* と *p* はイタリック。p値の先頭0は省く |
+| p値 | *p* = .032 / *p* < .001 | `p = 0.000` とは書かない |
+| 効果量 | $\eta_p^2$ = .043 | 偏η²なら partial を明示する |
+| 信頼区間 | 95% CI [.012, .104] | 下限・上限を角括弧で示す |
+| 事後比較 | *M*~diff~ = -5.21, *SE* = 1.31, 95% CI [-7.80, -2.62] | 差の向きも本文で説明する |
+
+### 1. ANOVA表から報告値を取り出す
+
+まず、`afex::aov_ez()` が返した ANOVA 表から、APA報告に必要な `df1`, `df2`, `F`, `p`, 偏η²を取り出します。p値と偏η²は、APAに合わせて先頭の0を落とした表示列も作ります。
 
 ```{r}
 #| eval: true
-#| label: report-prep
-#| echo: false
+#| label: tbl-apa-anova-values
 
-# 報告用の値を抽出（数値データを直接取得）
-aov_raw <- fit_aov$anova_table
+aov_raw <- fit_aov$anova_table |>
+  as.data.frame() |>
+  tibble::rownames_to_column("Effect") |>
+  as_tibble()
 
-# ヘルパー関数: 効果名で行を取得
-get_F <- function(effect) round(aov_raw[effect, "F"], 2)
-get_p <- function(effect) {
-  p <- aov_raw[effect, "Pr(>F)"]
-  if (p < .001) return("< .001")
-  paste0("= ", format(round(p, 3), nsmall = 3))
-}
-get_pes <- function(effect) round(aov_raw[effect, "pes"], 3)
+apa_anova_values <- aov_raw |>
+  filter(Effect %in% c(
+    "Instruction", "Time", "Instruction:Time",
+    "Proficiency", "Proficiency:Time"
+  )) |>
+  transmute(
+    Effect,
+    df1 = `num Df`,
+    df2 = `den Df`,
+    F = F,
+    p = `Pr(>F)`,
+    eta_p2 = pes,
+    df_APA = paste0(
+      if_else(abs(df1 - round(df1)) < 1e-8, as.character(round(df1)), sprintf("%.2f", df1)),
+      ", ",
+      if_else(abs(df2 - round(df2)) < 1e-8, as.character(round(df2)), sprintf("%.2f", df2))
+    ),
+    F_APA = sprintf("%.2f", F),
+    p_APA = if_else(p < .001, "< .001", paste0("= ", str_remove(sprintf("%.3f", p), "^0"))),
+    eta_p2_APA = str_remove(sprintf("%.3f", eta_p2), "^0")
+  )
 
-# emmeansの比較結果を取得
-emm_by_time <- as.data.frame(pairs(emm, by = "Time", adjust = "holm"))
-emm_by_inst <- as.data.frame(pairs(emm, by = "Instruction", adjust = "holm"))
+instruction_apa <- apa_anova_values |> filter(Effect == "Instruction")
+time_apa <- apa_anova_values |> filter(Effect == "Time")
+interaction_apa <- apa_anova_values |> filter(Effect == "Instruction:Time")
+proficiency_time_apa <- apa_anova_values |> filter(Effect == "Proficiency:Time")
 
-# 効果量
-es_eta <- as.data.frame(eta_squared(fit_aov, partial = TRUE, ci = 0.95))
+apa_anova_values |>
+  select(Effect, df_APA, F_APA, p_APA, eta_p2_APA) |>
+  knitr::kable(caption = "APAスタイルで報告するANOVA値")
 ```
 
-::: {.panel-tabset}
+### 2. 事後比較を取り出す
 
-### 交互作用が有意な場合
+次に、`emmeans` から単純主効果を取り出します。`summary(..., infer = c(TRUE, TRUE))` を使うと、推定値・標準誤差・自由度・t値・p値に加えて、信頼区間も同時に得られます。
+
+```{r}
+#| eval: true
+#| label: tbl-apa-posthoc-values
+
+emm_by_time <- pairs(emm, by = "Time") |>
+  summary(by = NULL, adjust = "holm", infer = c(TRUE, TRUE)) |>
+  as.data.frame()
+
+emm_by_inst <- pairs(emm, by = "Instruction") |>
+  summary(by = NULL, adjust = "holm", infer = c(TRUE, TRUE)) |>
+  as.data.frame()
+
+apa_posthoc_values <- bind_rows(
+  emm_by_time |>
+    transmute(
+      Family = "Instruction within Time",
+      Condition = as.character(Time),
+      Contrast = contrast,
+      Mdiff = estimate,
+      SE = SE,
+      df = df,
+      t = t.ratio,
+      p = p.value,
+      CI_low = lower.CL,
+      CI_high = upper.CL
+    ),
+  emm_by_inst |>
+    transmute(
+      Family = "Time within Instruction",
+      Condition = as.character(Instruction),
+      Contrast = contrast,
+      Mdiff = estimate,
+      SE = SE,
+      df = df,
+      t = t.ratio,
+      p = p.value,
+      CI_low = lower.CL,
+      CI_high = upper.CL
+    )
+) |>
+  mutate(
+    Mdiff_APA = sprintf("%.2f", Mdiff),
+    SE_APA = sprintf("%.2f", SE),
+    df_APA = if_else(abs(df - round(df)) < 1e-8, as.character(round(df)), sprintf("%.2f", df)),
+    t_APA = sprintf("%.2f", t),
+    p_APA = if_else(p < .001, "< .001", paste0("= ", str_remove(sprintf("%.3f", p), "^0"))),
+    CI_APA = paste0("[", sprintf("%.2f", CI_low), ", ", sprintf("%.2f", CI_high), "]"),
+    Direction = case_when(
+      Family == "Instruction within Time" & Mdiff < 0 ~ "Writing group scored lower than the Glossing group",
+      Family == "Instruction within Time" & Mdiff > 0 ~ "Writing group scored higher than the Glossing group",
+      Family == "Time within Instruction" & Mdiff > 0 ~ "Immediate scores were higher than Delayed scores",
+      Family == "Time within Instruction" & Mdiff < 0 ~ "Delayed scores were higher than Immediate scores",
+      TRUE ~ "The direction should be checked from the contrast label"
+    )
+  )
+
+imm_instruction <- apa_posthoc_values |>
+  filter(Family == "Instruction within Time", Condition == "Immediate")
+
+del_instruction <- apa_posthoc_values |>
+  filter(Family == "Instruction within Time", Condition == "Delayed")
+
+apa_posthoc_values |>
+  select(Family, Condition, Contrast, Mdiff_APA, SE_APA, df_APA, t_APA, p_APA, CI_APA, Direction) |>
+  knitr::kable(caption = "APAスタイルで報告する事後比較")
+```
+
+### 3. 効果量の信頼区間を取り出す
+
+APAスタイルでは、p値だけでなく効果量と信頼区間を併記すると、効果の大きさと不確実性を同時に伝えられます。`effectsize::eta_squared()` は既定では片側区間（`alternative = "greater"`）を返すため、ここでは論文報告で読みやすい両側区間を得るために `alternative = "two.sided"` を明示します。
+
+```{r}
+#| eval: true
+#| label: tbl-apa-effect-size-values
+
+apa_effect_values <- eta_squared(
+  fit_aov,
+  partial = TRUE,
+  ci = 0.95,
+  alternative = "two.sided"
+) |>
+  as_tibble() |>
+  filter(Parameter %in% c(
+    "Instruction", "Time", "Instruction:Time",
+    "Proficiency", "Proficiency:Time"
+  )) |>
+  transmute(
+    Effect = Parameter,
+    eta_p2 = Eta2_partial,
+    CI_low,
+    CI_high,
+    eta_p2_APA = str_remove(sprintf("%.3f", eta_p2), "^0"),
+    CI_APA = paste0(
+      "[",
+      str_remove(sprintf("%.3f", CI_low), "^0"),
+      ", ",
+      str_remove(sprintf("%.3f", CI_high), "^0"),
+      "]"
+    )
+  )
+
+instruction_es <- apa_effect_values |> filter(Effect == "Instruction")
+time_es <- apa_effect_values |> filter(Effect == "Time")
+interaction_es <- apa_effect_values |> filter(Effect == "Instruction:Time")
+proficiency_time_es <- apa_effect_values |> filter(Effect == "Proficiency:Time")
+
+apa_effect_values |>
+  select(Effect, eta_p2_APA, CI_APA) |>
+  knitr::kable(caption = "APAスタイルで報告する偏η²と95%信頼区間")
+```
+
+### 4. APAスタイルで文章化する
+
+上の3つの表を確認したうえで、Method と Results を文章に落とし込みます。数値はRインラインコードで入れていますが、値の取り出し方は上の表で一つずつ確認済みです。
 
 **Method（方法セクション）**:
 
@@ -2572,9 +3167,9 @@ A 2 (Instruction: Glossing vs. Writing) × 2 (Time: Immediate vs.
 Delayed) mixed-design ANOVA was conducted with Proficiency as a
 covariate, using the afex package with Type III sums of squares
 and sum coding for categorical variables. Effect sizes are reported
-as partial η² with 95% confidence intervals. Post-hoc pairwise
-comparisons of estimated marginal means were computed using the
-emmeans package, with Holm adjustment for multiple comparisons.
+as partial eta squared (ηp²) with 95% confidence intervals. Post hoc
+pairwise comparisons of estimated marginal means were computed using
+the emmeans package, with Holm adjustment for multiple comparisons.
 Homogeneity of regression slopes was checked by testing
 Instruction × Proficiency interactions in participant-level
 diagnostic models.
@@ -2582,13 +3177,13 @@ diagnostic models.
 
 **Results（結果セクション）**:
 
-> The mixed ANOVA revealed a significant main effect of Instruction, *F*(1, 117) = `r get_F("Instruction")`, *p* `r get_p("Instruction")`, partial $\eta^2$ = `r get_pes("Instruction")`, a significant main effect of Time, *F*(1, 117) = `r get_F("Time")`, *p* `r get_p("Time")`, partial $\eta^2$ = `r get_pes("Time")`, and a significant Instruction × Time interaction, *F*(1, 117) = `r get_F("Instruction:Time")`, *p* `r get_p("Instruction:Time")`, partial $\eta^2$ = `r get_pes("Instruction:Time")`.
+> The mixed-design ANOVA showed an Instruction effect, *F*(`r instruction_apa$df_APA`) = `r instruction_apa$F_APA`, *p* `r instruction_apa$p_APA`, $\eta_p^2$ = `r instruction_es$eta_p2_APA`, 95% CI `r instruction_es$CI_APA`; a Time effect, *F*(`r time_apa$df_APA`) = `r time_apa$F_APA`, *p* `r time_apa$p_APA`, $\eta_p^2$ = `r time_es$eta_p2_APA`, 95% CI `r time_es$CI_APA`; and an Instruction × Time interaction, *F*(`r interaction_apa$df_APA`) = `r interaction_apa$F_APA`, *p* `r interaction_apa$p_APA`, $\eta_p^2$ = `r interaction_es$eta_p2_APA`, 95% CI `r interaction_es$CI_APA`. The Proficiency × Time term was also inspected, *F*(`r proficiency_time_apa$df_APA`) = `r proficiency_time_apa$F_APA`, *p* `r proficiency_time_apa$p_APA`, $\eta_p^2$ = `r proficiency_time_es$eta_p2_APA`, 95% CI `r proficiency_time_es$CI_APA`.
 
-> Holm-adjusted pairwise comparisons indicated that at the Immediate test, `r if(emm_by_time$estimate[emm_by_time$Time == "Immediate"] < 0) "the Writing group scored lower than the Glossing group" else "the Writing group scored higher than the Glossing group"`, *M*~diff~ = `r round(emm_by_time$estimate[emm_by_time$Time == "Immediate"], 2)`, *SE* = `r round(emm_by_time$SE[emm_by_time$Time == "Immediate"], 2)`, *p* `r if(emm_by_time$p.value[emm_by_time$Time == "Immediate"] < .001) "< .001" else paste0("= ", format(round(emm_by_time$p.value[emm_by_time$Time == "Immediate"], 3), nsmall = 3))`.
+> Holm-adjusted pairwise comparisons indicated that at the Immediate test, `r imm_instruction$Direction`, *M*~diff~ = `r imm_instruction$Mdiff_APA`, *SE* = `r imm_instruction$SE_APA`, 95% CI `r imm_instruction$CI_APA`, *t*(`r imm_instruction$df_APA`) = `r imm_instruction$t_APA`, *p* `r imm_instruction$p_APA`. At the Delayed test, `r del_instruction$Direction`, *M*~diff~ = `r del_instruction$Mdiff_APA`, *SE* = `r del_instruction$SE_APA`, 95% CI `r del_instruction$CI_APA`, *t*(`r del_instruction$df_APA`) = `r del_instruction$t_APA`, *p* `r del_instruction$p_APA`.
 
 **査読者チェックリスト**:
 
-1. デザイン記述（要因数・水準・被験者間/内）を明記したか？
+1. デザイン記述（要因数・水準・参加者間/内）を明記したか？
 2. 共変量の有無と選定理由を説明したか？
 3. 共変量を入れた場合、傾きの等質性をどう確認したかを明記したか？
 4. Type III SSの使用を明記したか？
@@ -2598,36 +3193,86 @@ diagnostic models.
 
 ### 主効果のみ報告
 
-交互作用が非有意な場合は、主効果を直接報告できます。
+交互作用が統計的に検出されず、図・効果量・信頼区間からも条件差の変化が小さいと判断できる場合は、主効果を要約して報告できます。
 
 ```text
 The Instruction × Time interaction was not significant,
-F(1, 117) = X.XX, p = .XXX, partial η² = .XXX, indicating
-that the effect of instruction did not differ across time points.
-The main effect of Instruction was significant, F(1, 117) = X.XX,
-p = .XXX, partial η² = .XXX, with the Glossing group scoring
-higher than the Writing group overall. The main effect of Time
-was also significant, F(1, 117) = X.XX, p < .001, partial η²
-= .XXX, reflecting a decline in scores from the immediate to
-the delayed test.
+F(df1, df2) = X.XX, p = .XXX, ηp² = .XXX, 95% CI [.XXX, .XXX],
+indicating that the effect of instruction did not differ across
+time points.
+The main effect of Instruction was significant, F(df1, df2) = X.XX,
+p = .XXX, ηp² = .XXX, 95% CI [.XXX, .XXX], with the Glossing group
+scoring higher than the Writing group overall. The main effect of
+Time was also significant, F(df1, df2) = X.XX, p < .001, ηp² = .XXX,
+95% CI [.XXX, .XXX], reflecting a decline in scores from the
+immediate to the delayed test.
 ```
 
-**ポイント**: 交互作用が非有意であることを先に述べ、主効果の解釈が条件付きでないことを明示します。
+**ポイント**: 交互作用のp値だけでなく、交互作用の効果量・信頼区間・プロットを確認したうえで、主効果の要約が妥当かを判断します。
 
 ### 帰無結果の報告
 
 統計的に有意な結果が得られなかった場合も、効果量と信頼区間を報告することが重要です。
 
 ```text
-The main effect of Instruction was not significant, F(1, 117) =
-X.XX, p = .XXX, partial η² = .XXX, 95% CI [.XXX, .XXX]. The
-observed effect size was small (partial η² < .06), and the
-confidence interval included zero, suggesting that the difference
-between Glossing and Writing instruction was negligible in this
-sample.
+The main effect of Instruction was not statistically clear,
+F(df1, df2) = X.XX, p = .XXX, ηp² = .XXX, 95% CI [.XXX, .XXX].
+The point estimate was small, but the confidence interval indicated
+uncertainty; the data were compatible with no reliable difference
+between Glossing and Writing instruction in this sample.
 ```
 
 **ポイント**: 「有意でなかった = 効果がない」ではありません。信頼区間を報告することで、効果の大きさの不確実性を伝えます。
+
+### 等価性検定で「実質的な差はない」と主張する {#sec-anova-tost}
+
+「`p > .05` だから差がない」と書くことはできない、という論点は第1章の「[「有意差がない」と「等価である」は違う]」節で扱いました。本章のような ANOVA / ANCOVA でも、**「群間に実質的な差はない」と積極的に主張したいときは等価性検定 (equivalence testing) を併用する**のが現代的なアプローチです [@lakens2018equiv]。
+
+ANOVA の文脈での実装は、対比較レベルで `TOSTER` パッケージを使うのが最も簡単です。下位ペア比較に対して **two one-sided tests (TOST)** を適用し、事前に決めた等価性境界の内側に 90% 信頼区間が収まれば「実質的に等価」と判断できます。
+
+```r
+# TOSTER パッケージで対比較に等価性検定
+# 例:Immediate 時点での Glossing vs Writing の差が ±2 点以内に収まるか
+library(TOSTER)
+
+# 方法 1:生データから群別 SD・n を計算して tsum_TOST に渡す
+group_stats <- dat |>
+  dplyr::filter(Time == "Immediate") |>
+  dplyr::group_by(Instruction) |>
+  dplyr::summarise(
+    n  = dplyr::n(),
+    m  = mean(Score),
+    sd = sd(Score),
+    .groups = "drop"
+  )
+
+TOSTER::tsum_TOST(
+  m1 = group_stats$m[1],   m2 = group_stats$m[2],
+  sd1 = group_stats$sd[1], sd2 = group_stats$sd[2],
+  n1 = group_stats$n[1],   n2 = group_stats$n[2],
+  low_eqbound = -2, high_eqbound = 2,   # 等価性境界(原単位、点数)
+  eqbound_type = "raw"
+)
+
+# 方法 2:emmeans が返す SE × √n から SD を逆算する方法もあるが、
+# 上の「生データから直接 SD を計算」が最も誤りが少ない
+```
+
+::: {.callout-warning}
+#### emmeans の SE を SD と取り違えない
+`emmeans()` の出力に含まれる `SE` は **平均値の標準誤差**(SE)であり、群内の **標準偏差**(SD)とは異なります(SE = SD/√n)。`tsum_TOST()` の `sd1/sd2` 引数には **SD を渡す**必要があります。生データが手元にあるなら、上のように `dplyr::summarise()` で SD を計算して渡すのが最も安全です。
+:::
+
+**等価性境界(SESOI: smallest effect size of interest)** は事前に決めておく必要があります。SLA 研究では、テストの満点・項目数・先行研究の効果量を踏まえて「これより小さければ実質的に意味がない」と判断できる差を選びます。例えば 30 点満点のテストで 1 点未満の差なら教育的に意味がないと判断する、という具合です。
+
+::: {.callout-tip}
+#### ANOVA の文脈での等価性検定の使いどころ
+- **介入の非劣性主張**:「新しい指導法 X は従来法 Y と統計的に同等」と言いたいとき
+- **共変量の妥当性確認**:「Proficiency の影響を統制した後でも、群間差は実質的にゼロ」と確認したいとき
+- **事前登録された帰無仮説の積極的検証**:登録時に「差がないと予測する」と書いた場合の確認
+
+ANOVA 全体の F 検定に対する等価性検定は理論的には可能ですが、**実務上はほぼ常に下位対比較レベルで TOST を行う**のが標準的です。
+:::
 
 ### 再現性に必要な情報
 
@@ -2635,15 +3280,13 @@ sample.
 
 | 必須情報 | 記載理由 | 記載例 |
 |---------|---------|--------|
-| **Rバージョン** | 関数の挙動がバージョンで異なりうる | R version 4.3.1 |
-| **主要パッケージ** | パッケージ更新で結果が変わりうる | afex 1.3-1, emmeans 1.10 |
+| **Rバージョン** | 関数の挙動がバージョンで異なりうる | R version `r paste0(R.version$major, ".", R.version$minor)` |
+| **主要パッケージ** | パッケージ更新で結果が変わりうる | afex `r as.character(packageVersion("afex"))`, emmeans `r as.character(packageVersion("emmeans"))` |
 | **コーディング方式** | 係数の意味が変わる | Sum coding via `set_sum_contrasts()` |
 | **SS（平方和）のタイプ** | Type I/II/IIIで結果が異なりうる | Type III sums of squares |
 | **共変量診断** | ANCOVA 解釈の前提が変わる | Homogeneity of regression slopes checked |
 | **多重比較補正法** | 補正法で p値が変わる | Holm adjustment |
 | **効果量指標** | η²/ω²/η²Gで値が異なる | Partial η² (and generalized η² when needed) with 95% CIs |
-
-:::
 
 ### 報告の統合例（Method + Results）
 
@@ -2651,9 +3294,11 @@ sample.
 
 **Results**: [上記テンプレートの Results を続ける]
 
-## 10. トラブルシューティング（実務で詰まりやすい点）
+## トラブルシューティング（実務で詰まりやすい点） {#sec-anova-troubleshooting}
 
-### 交互作用が有意なのに主効果だけで結論を出す
+ANOVA で実際に解析を進めるとき、誰もが一度は遭遇しやすい 5 つのつまずきポイントを取り上げます。該当する項目だけ参照する形でも構いません。
+
+### 交互作用が有意なのに主効果だけで結論を出してしまったら?
 
 **症状**: 「Instructionの主効果が有意なので、Glossingが効果的である」と報告したが、査読者から「交互作用が有意なのに主効果だけで議論するのは不適切」と指摘される。
 
@@ -2661,7 +3306,7 @@ sample.
 
 **修正**: 交互作用が有意なら、必ず `emmeans()` で各条件内の比較（simple effects）を報告してください。主効果は「補助情報」として扱い、単純主効果を中心に議論します。
 
-### 球面性と複合対称性の混同
+### 球面性と複合対称性を混同してしまったら?
 
 **症状**: 「Mauchly検定で p > .05 だったので、複合対称性が成り立つ」と記述してしまう。
 
@@ -2669,7 +3314,7 @@ sample.
 
 **修正**: 「球面性が満たされた」と正しく記述してください。Mauchly検定で p > .05 → 球面性は棄却されない、p < .05 → GG/HF補正を適用。
 
-### 係数表だけでペア比較を判断する
+### 係数表だけでペア比較を判断してしまったら?
 
 **症状**: `summary(model)` の係数表を見て、「Group2の p < .05 だからGlossing > Control」「Group3の p > .05 だからKeyword = Control」と判断する。しかし、コーディングを変えると異なる結論に見える。
 
@@ -2677,7 +3322,7 @@ sample.
 
 **修正**: ANOVAの全体検定後は、必ず `emmeans()` で事後比較を行ってください。`emmeans` の結果はコーディングに依存しない統一的な推定値を提供します。
 
-### p値と効果量を混同する
+### p値と効果量を混同してしまったら?
 
 **症状**: 「p < .001 なので大きな効果がある」または「p = .04 なので効果は小さい」と解釈する。
 
@@ -2685,7 +3330,7 @@ sample.
 
 **修正**: 常に p値と効果量（偏η² + 95% CI）を併記してください。解釈は「統計的有意性」（p値）と「実質的意義」（効果量）を分離して議論します。
 
-### コーディング方式を論文に記載しない
+### コーディング方式を論文に記載し忘れたら?
 
 **症状**: コードでは `set_sum_contrasts()` を使っているが、論文のMethodセクションにコーディング方式の記載がない。査読者から再現性を問われる。
 
@@ -2700,7 +3345,17 @@ represent deviations from the grand mean, consistent with
 standard ANOVA interpretation.
 ```
 
-## 11. 発展学習（読書順）
+## 次に読む章 {#sec-anova-next}
+
+ここまでお疲れさまでした。本章では、1つの目的変数に対するANOVAとカテゴリカル変数のコーディングを扱いました。**「ANOVAは回帰モデルの一形態である」** という統一的視点と、Treatment / Sum / Helmert / Polynomial の各コーディングが「何との比較」を意味するかという理解は、後続の回帰系・混合効果系の章すべてで土台となります。
+
+次のステップとしては、研究質問に応じて以下の章が候補になります。
+
+- [MANOVAと判別分析](3_MANOVA_判別分析.qmd): 目的変数が複数ある場合に、群差をどのようにまとめて検定するかを学ぶ
+- [重回帰分析と交互作用](4_重回帰分析と交互作用.qmd): ANOVAで扱った交互作用を、連続予測子を含む回帰モデルへ拡張する
+- [混合効果モデル・2値ロジスティック回帰](6_混合効果モデル_2値ロジスティック回帰.qmd): 参加者・項目・クラスなどの入れ子構造や反復測定を、より柔軟に扱う
+
+## 発展学習（読書順） {#sec-anova-further-reading}
 
 ### コントラストコーディングの理論
 
@@ -2740,7 +3395,7 @@ standard ANOVA interpretation.
 - @benshachar2020 — `effectsize`: 効果量指標と標準化パラメータの算出
 - @debruine2020faux — `faux`: 因子計画データのシミュレーションとコントラストコーディング補助
 
-## 参考文献
+## 参考文献 {.unnumbered}
 
 ::: {#refs}
 :::

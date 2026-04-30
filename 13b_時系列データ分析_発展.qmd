@@ -1,8 +1,8 @@
 ---
-title: "時系列データ分析（発展）：VAR・DTW・HMM・状態空間モデル・ベイズ時系列"
+title: "時系列データ分析（発展）：GAMM・VAR・DTW・HMM・状態空間モデル・ベイズ時系列"
 bibliography: references_timeseries.bib
 nocite: |
-  @hyndman2021, @shin2016, @shumway2017, @ortega2005, @verspoor2008, @gu2015, @debot2007, @turner2021, @bernal2017, @li2025, @fant1960, @boersma2023, @thomas2007, @cohen1988_ts, @hillenbrand1995, @flege1995, @dejong2009, @derwing2009, @saito2022, @bores2023rpraat, @coretta2023speakr
+  @hyndman2021, @shin2016, @shumway2017, @ortega2005, @verspoor2008, @gu2015, @debot2007, @turner2021, @bernal2017, @li2025, @fant1960, @boersma2023, @thomas2007, @cohen1988_ts, @hillenbrand1995, @flege1995, @dejong2009, @derwing2009, @saito2016, @bores2023rpraat, @coretta2023speakr, @maris2007cluster, @sassenhagen2019cluster
 ---
 
 ```{r}
@@ -19,16 +19,21 @@ tidyverts_packages <- c(
 
 required_packages <- c(
   "KFAS",
+  "MASS",
   "brms",
   "depmixS4",
   "dplyr",
   "dtw",
   "forcats",
   "forecast",
+  "gratia",
   "ggtime",
   "gt",
+  "itsadug",
+  "mgcv",
   "pacman",
   "patchwork",
+  "permuco",
   "purrr",
   "scales",
   "tibble",
@@ -74,6 +79,10 @@ pacman::p_load(
   fabletools,
   vars,
   urca,
+  mgcv,
+  gratia,
+  itsadug,
+  permuco,
   dtw,
   depmixS4,
   tsibble,
@@ -135,18 +144,19 @@ fluency_ts <- ts(fluency_wpm, frequency = 10)
 
 ## はじめに
 
-前章では、`ARIMA`・`ETS`・`介入時系列分析 (ITS)` を使って、単一系列の予測と介入効果検証を扱いました。本章ではそこから一歩進めて、**複数系列の相互作用**、**時間ずれを含む軌跡比較**、**潜在状態の推定**、そして**ベイズ的な変化点・逐次学習モデル**へ進みます。
+前章では、`ARIMA`・`ETS`・`介入時系列分析 (ITS)` を使って、単一系列の予測と介入効果検証を扱いました。本章ではそこから一歩進めて、**試行内・発話内の非線形時間変化**、**複数系列の相互作用**、**時間ずれを含む軌跡比較**、**潜在状態の推定**、そして**ベイズ的な変化点・逐次学習モデル**へ進みます。
 
-中心となる問いは、次の4種類です。
+中心となる問いは、次の5種類です。
 
-1. 複数の変数は、時間をまたいでどう先行・追随し合うか。
-2. 時間軸がずれた2つの系列は、どの程度似ているか。
-3. 観測列の背後に、どのような潜在状態や潜在学習曲線があるか。
-4. 変化点や trial-by-trial の更新過程を、ベイズ的にどう推定するか。
+1. 試行内・発話内の時間コースは、条件ごとにどのような曲線を描くか。
+2. 複数の変数は、時間をまたいでどう先行・追随し合うか。
+3. 時間軸がずれた2つの系列は、どの程度似ているか。
+4. 観測列の背後に、どのような潜在状態や潜在学習曲線があるか。
+5. 変化点や trial-by-trial の更新過程を、ベイズ的にどう推定するか。
 
-読み進め方の目安は次のとおりです。最短ルートは `VAR` → `DTW` → `HMM` → `状態空間モデル` です。ベイズまで含めて読みたい場合は、さらに `brms`、`ベイズ変化点検出`、`強化学習モデル` を続けます。音声研究へつなげたい場合は、次章 `音声時系列分析：Praat・rPraat・音響分析` に進むと、DTW や状態推定の発想が音声データにどう接続するかが見えます。
+読み進め方の目安は次のとおりです。実験・生理計測・音声軌跡を扱うなら、まず `GAMM` で連続時間の条件差を確認し、その後に `HMM`・`状態空間モデル`・`DTW` へ進みます。教室研究や週次・月次の複数指標を扱うなら、`VAR` → `DTW` → `HMM` → `状態空間モデル` の順序で進むと自然です。ベイズまで含めて読みたい場合は、さらに `brms`、`ベイズ変化点検出`、`強化学習モデル` を続けます。音声研究へつなげたい場合は、次章 `音声時系列分析：Praat・rPraat・音響分析` に進むと、DTW や状態推定の発想が音声データにどう接続するかが見えます。
 
-本章の到達目標は、`VAR` で複数系列のクロスラグ関係と impulse response を解釈し、`DTW` で時間ずれを含む学習軌跡や音声系列の類似性を可視化し、`HMM` と `SSM` を潜在状態・潜在学習曲線の推定という観点から使い分け、さらにベイズ変化点検出と強化学習モデルを `Stan` / `brms` ベースの時系列拡張として位置づけられるようになることです。
+本章の到達目標は、`GAMM` で連続時間の条件差と差分曲線を読み、`VAR` で複数系列のクロスラグ関係と impulse response を解釈し、`DTW` で時間ずれを含む学習軌跡や音声系列の類似性を可視化し、`HMM` と `SSM` を潜在状態・潜在学習曲線の推定という観点から使い分け、さらにベイズ変化点検出と強化学習モデルを `Stan` / `brms` ベースの時系列拡張として位置づけられるようになることです。
 
 ## セットアップ
 
@@ -155,9 +165,13 @@ fluency_ts <- ts(fluency_wpm, frequency = 10)
 ### 主なパッケージの役割
 
 - `tsibble`・`tsibbledata`・`fable`・`feasts`・`fabletools`: tidyverts 流の時系列データ構造、予測、分解、特徴量抽出を担う。
-- `vars`・`urca`: VAR とその診断、特に Johansen の共和分検定 `urca::ca.jo()` を扱う。
-- `dtw`・`depmixS4`・`KFAS`: 動的時間伸縮、隠れマルコフモデル、状態空間モデルを担当する。
-- `brms`: 後半のベイズ時系列モデルを担当する。
+- `vars`・`urca`: VAR とその診断、特に Johansen の共和分検定 `urca::ca.jo()` を扱います。
+- `dtw`・`depmixS4`・`KFAS`: 動的時間伸縮、隠れマルコフモデル、状態空間モデルを担当します。
+- `mgcv`: GAMM による連続時間・軌跡データの非線形モデリングを担当します。
+- `gratia`・`itsadug`: GAMM の smooth 診断、差分曲線、残差自己相関の点検を補助します。
+- `permuco`: ERP/EEG などの時間窓・波形データで cluster-based permutation test を実行します。
+- `MASS`: 予測差を確率尺度で可視化するための係数シミュレーションに使う。
+- `brms`: 後半のベイズ時系列モデルを担当します。
 
 ### 追加の前提
 
@@ -165,11 +179,11 @@ fluency_ts <- ts(fluency_wpm, frequency = 10)
 - `brms` 節とその後のベイズ時系列は、R パッケージに加えて **Stan のコンパイル環境**が必要です。Windows では Rtools、macOS では Xcode Command Line Tools を先に入れてください。
 - `cmdstanr` は必須ではありませんが推奨です。利用可能なら、この章では `options(brms.backend = "cmdstanr")` を自動で設定します。未導入の場合は `brms` の既定 backend にフォールバックします。
 
-したがって、最短ルートで読むなら前半の `VAR`・`DTW`・`HMM`・`SSM` から進み、ベイズ節は第7章のセットアップを済ませた後に読む、という順序が安全です。
+したがって、実験・生理計測・音声軌跡を扱うなら `GAMM` から進み、教室研究や集計時系列を扱うなら前半の `VAR`・`DTW`・`HMM`・`SSM` から進む、という読み方が安全です。ベイズ節は第7章のセットアップを済ませた後に読むと、Stan 周りの環境差で本文の流れが止まりにくくなります。
 
 ## 手法別ガイド
 
-本章では、前章の `ARIMA / ETS / ITS` を前提として、**その先で検討する発展手法**を整理します。VAR は複数系列のクロスラグ、DTW は時間ずれを含む軌跡比較、HMM は潜在状態推定、SSM は欠測と測定誤差の分離、ベイズ時系列は変化点や trial-by-trial の潜在更新過程に向きます。
+本章では、前章の `ARIMA / ETS / ITS` を前提として、**その先で検討する発展手法**を整理します。GAMM は試行内・発話内の非線形時間コース、VAR は複数系列のクロスラグ、DTW は時間ずれを含む軌跡比較、HMM は潜在状態推定、SSM は欠測と測定誤差の分離、ベイズ時系列は変化点や trial-by-trial の潜在更新過程に向きます。
 
 以下では、**既存研究での具体例**と**本書での応用イメージ**を分けて示し、どの問いにどの手法が自然かを見通せるようにします。
 
@@ -177,8 +191,9 @@ fluency_ts <- ts(fluency_wpm, frequency = 10)
 
 | 手法 | 既存研究の具体例 | 何を時系列化・整列したか | 本書での応用イメージ |
 |---|---|---|---|
+| `GAMM` | 音声・調音データでは、[@wieling2018gamm] が L1/L2 英語話者の articulatory trajectory を GAMM で分析するチュートリアルを示し、[@soskuthy2021gamm] が動的音声分析での GAMM 戦略を比較・整理しています。 | F0, formant, tongue trajectory, AOI 注視率、pupil などの連続時間コース | VWP の target-looking、pupil dilation、F0 contour、発音訓練前後の軌跡差を、条件別 smooth と差分曲線で読む |
 | `VAR` | SLA 方法論では、[@freeborn2023] が CDST/SLA 研究における dynamic network analysis と VAR / graphical VAR / multilevel VAR の可能性を整理。教育学では、[@li2020] が STEM 学習での自己調整学習行動を multilevel VAR で分析。 | 学習行動・感情・方略などが、次の時点の別の行動や状態をどれだけ予測するか | 語彙・読解・聴解・不安・WTC を週次で測定し、どの変数が次週のどの変数を先導するかを見る |
-| `DTW` | [@shi2016] はシャドーイング音声の自動評価に DTW を用い、[@fujiwara2025] は相互シャドーイング音声の listening disfluency と phonetic / prosodic gap の定量化に PPG-DTW を用いた。 | モデル音声と学習者音声、あるいは shadowing と script-shadowing の時間軸対応 | 聞こえた音声と学習者の追唱音声を整列し、語・句単位の遅れや disfluency の山を可視化する |
+| `DTW` | [@shi2016] はシャドーイング音声の自動評価に DTW を用い、[@fujiwara2025] は相互シャドーイング音声の listening disfluency と phonetic / prosodic gap の定量化に PPG-DTW を用いました。 | モデル音声と学習者音声、あるいは shadowing と script-shadowing の時間軸対応 | 聞こえた音声と学習者の追唱音声を整列し、語・句単位の遅れや disfluency の山を可視化する |
 | `HMM` | SLA では [@maie2025] が L2 skill acquisition の 3-stage model を HMM で検討。心理言語学では [@liao2024] が英単語読みにおける eye movement pattern を HMM で分析。教育学では [@jeong2010] が inquiry cycle の学習行動推移を HMM で分析。 | 反応時間、視線系列、学習ログなどの背後にある潜在フェーズ | declarative / procedural / automatic、あるいは停滞期 / 移行期 / 伸長期を潜在状態として推定する |
 | `SSM` | 学習研究では [@smith2005] が population / individual learning curve を state-space random-effects model で推定。教育学では [@wang2016] が MOOC の at-risk learner を nonlinear state-space model で捉えた。 | ノイズのある観測列の背後にある潜在学習曲線・潜在エンゲージメント状態 | テスト得点を観測値、真の熟達度を潜在状態として扱い、欠測週を `NA` のまま推定する |
 
@@ -189,14 +204,363 @@ fluency_ts <- ts(fluency_wpm, frequency = 10)
 - とくに `VAR` と `SSM` は、SLA での直接の実証例よりも、**隣接分野からの方法移入**として理解した方が正確です。
 - 一方で `DTW` と `HMM` は、シャドーイング研究や skill acquisition research の文脈で、すでにかなり自然な接続先があります。
 
-文献の厚さは手法ごとに均一ではありません。SLA の直接例が比較的見つけやすいのは `DTW` と `HMM`、教育学での実装例が厚いのは `VAR`・`HMM`・`SSM`、心理言語学に近い連続データの実例が豊富なのは `HMM`・`SSM`・`RL` です。したがって本章では、**どの分野で既存研究が厚いか**と**どこからが本書の応用提案か**を分けて書くことを重視します。
+文献の厚さは手法ごとに均一ではありません。SLA の直接例が比較的見つけやすいのは `DTW` と `HMM`、教育学での実装例が厚いのは `VAR`・`HMM`・`SSM`、心理言語学に近い連続データの実例が豊富なのは `GAMM`・`HMM`・`SSM`・`RL` です。したがって本章では、**どの分野で既存研究が厚いか**と**どこからが本書の応用提案か**を分けて書くことを重視します。
 
-以後の各節では、関数の役割や出力名は `vars`・`dtw`・`depmixS4`・`KFAS`・`brms`・`tsibble`・`feasts`・`fabletools` の**公式ドキュメント**に依拠し、分野でどのような問いが立てられてきたか、どのような解釈が妥当かは**先行研究**に依拠して説明します。本書独自の応用案は「本書での応用」や「想定する用途」と明示し、既存研究の事実とは混同しないようにします。
+### 実験・生理計測データへの接続
+
+Eye-tracking、ERP/EEG、pupillometry、音声軌跡のようなデータでは、前処理済みの表が非常に長くなります。典型的には、`participant`, `item`, `condition`, `time_ms`, `electrode` または `AOI`, `amplitude` または `proportion` のような列を持ちます。この段階で重要なのは、信号処理のツールと統計モデリングのツールを分けて考えることです。
+
+| データ | 前処理の現実的な入口 | Rでの統計入口 | 本章との接続 |
+|---|---|---|---|
+| ERP/EEG | MNE-Python / EEGLAB | time-window LMM, `permuco::clusterlm()` | cluster permutation, SSM |
+| Eye-tracking reading | tracker付属ソフト / `eyetrackingR` / `gazeR` | fixation/IA summary, GAMM | DTW, HMM, GAMM |
+| Visual World Paradigm | AOI割当後の time-bin table | binomial GLMM / GAMM | 潜在状態・時間軸の非線形 |
+| Pupillometry | blink補正・baseline correction | GAMM / SSM | smooth trend と潜在状態 |
+| 音声軌跡 | Praat / rPraat / forced alignment | F0/F1/F2 trajectory GAMM | DTW, SSM |
+
+MNE-Python や EEGLAB の詳細な使い方は本書の主範囲ではありませんが、読者は公式チュートリアルで前処理の標準手順を確認し、R には解析単位を明示した long table を渡す、という流れを採ると再現性を保ちやすくなります。ERP/EEG の cluster-based permutation test は、多数の時点・電極を同時に扱うための有力な方法ですが、cluster の開始時点や終了時点を精密な onset/offset として断定する方法ではありません[@maris2007cluster; @sassenhagen2019cluster]。
+
+R に渡す表では、まず「1 行が何を表すか」を固定します。ここが曖昧だと、同じ `time_ms` を使っていても、trial-level の 2 値反応、participant-level の比率、electrode-level の振幅が混ざり、モデル式の意味が崩れます。
+
+| 研究データ | 1 行の単位 | 必須に近い列 | 応答変数の例 | 最初に確認する図 |
+|---|---|---|---|---|
+| VWP / time-bin eye-tracking | participant × item × condition × time bin | `participant_id`, `item_id`, `condition`, `time_ms`, `trial_id` | `look_target`、AOI 比率 | 条件別の注視確率曲線 |
+| Reading eye-tracking | participant × item × interest area | `participant_id`, `item_id`, `condition`, `ia_label` | fixation duration, regression path duration | IA ごとの分布と外れ値 |
+| Pupillometry | participant × item × condition × time bin | `participant_id`, `item_id`, `condition`, `time_ms`, `baseline` | baseline-corrected pupil | 条件別の平均 pupil curve |
+| ERP/EEG time-window | participant × condition × electrode × time point/window | `participant_id`, `condition`, `electrode`, `time_ms` | amplitude | 波形図、電極別 topography |
+| F0 / formant contour | speaker × item × condition × normalized time | `speaker_id`, `item_id`, `condition`, `time_norm` | F0, F1, F2 | 条件別・話者別 contour |
+
+この表を作る段階で、除外基準、baseline correction、time bin 幅、artifact rejection、AOI や electrode の定義を別列または別ファイルに残します。統計モデルの式だけでは、前処理の判断を復元できません。
+
+前処理ツールの具体的な操作は、各ツールの公式資料を基準にします。EEG/ERP では [MNE-Python tutorials](https://mne.tools/stable/auto_tutorials/index.html) と [EEGLAB tutorials](https://eeglab.org/tutorials/) を、視線データでは [eyetrackingR documentation](https://www.eyetracking-r.com/docs) と [gazeR package page](https://www.drjasongeller.com/Software/packages/gazer.html) を参照すると、R に渡す前のデータ整形を確認しやすくなります。
+
+::: {.callout-tip}
+#### 読む資料を役割で分ける
+
+| 目的 | まず読む資料 | R で確認する論点 |
+|---|---|---|
+| EEG/ERP の前処理 | MNE-Python / EEGLAB の公式チュートリアル | event, epoch, baseline, artifact rejection をどう記録したか |
+| ERP/EEG の時間窓分析 | cluster permutation や SSM の方法論論文[@maris2007cluster; @sassenhagen2019cluster] | window の選択、多重比較補正、電極・時間の依存構造 |
+| 音声・調音・F0 contour | GAMM のチュートリアル論文[@wieling2018gamm; @soskuthy2021gamm] | `s(time)`、条件別 smooth、話者・項目のランダム効果 |
+| 視線系列・反応系列の状態推定 | HMM の古典的チュートリアルと R 実装論文[@rabiner1989; @visser2010] | 状態数、状態ラベル、遷移確率の解釈 |
+| EEG の潜在状態モデル | EEG 向け SSM の応用例[@wang2023eeg] | 観測ノイズと潜在状態を分けて推定する意味 |
+
+ここでの目的は、前処理ツールを R で置き換えることではありません。Python / MATLAB / Praat 側で作った解析単位を明示し、R 側では「何を 1 行として、何を繰り返し構造として、どの尺度で報告するか」を決めます。
+:::
+
+### GLMM から GAMM へ進む判断
+
+第6章では、2値反応や正誤データを participant × item の交差分類 GLMM として扱いました。この考え方は、Visual World Paradigm、eye-tracking、pupillometry、F0 contour にもそのままつながります。ただし、時間点が `Pre` / `Post` のように少ない場合と、0–1000 ms のように連続的に変化する場合では、`time` の扱いを変える必要があります。
+
+| データの時間構造 | 例 | まず検討するモデル | `time` の扱い |
+|---|---|---|---|
+| 少数時点 | pre/post, T1/T2/T3 | GLMM / LMM | factor または少数水準の ordered predictor |
+| 多数の trial order | 語彙判断の試行順、疲労・練習効果 | GLMM + trial covariate / GAMM | 連続共変量、必要なら `s(trial)` |
+| 試行内の連続時間 | VWP の AOI 注視、pupil、mouse trajectory | GAMM / binomial GAMM | `s(time)`、条件別 smooth、必要ならランダム smooth |
+| 音声・調音軌跡 | F0, F1/F2, tongue trajectory | GAMM | `s(time)` と speaker/item のランダム効果 |
+| ERP/EEG の時間 × 電極 | N400/P600 window, whole waveform | time-window LMM / cluster permutation / GAMM | 研究質問に応じて window、cluster、smooth を選ぶ |
+
+迷いやすいのは、`time` という列名だけを見て、すべてを within-participant factor として扱ってしまうことです。`time` が 2 水準なら GLMM の固定効果とランダム傾きで十分なことがあります。一方、50 個の time bin を factor にすると、係数が増えすぎ、隣接時点が似ているという情報も捨ててしまいます。その場合は、時間を連続変数として扱い、滑らかな曲線を推定する GAMM が自然です[@wieling2018gamm; @soskuthy2021gamm]。
+
+#### `Time` を3種類に分けて考える
+
+実務上の混乱は、列名が同じ `time` でも、研究デザイン上の意味が違うところから生じます。モデル式を書く前に、少なくとも次の3種類を分けます。
+
+| 時間の種類 | 1行の意味 | 典型的な列名 | 主なモデル | 混同すると起きる問題 |
+|---|---|---|---|---|
+| 縦断の測定時点 | 同じ参加者を複数回測った1回分 | `session`, `month`, `Time` | LMM / GLMM / 成長曲線 / ARIMA系 | `time_norm` と混ぜると、発話内の形を学習期間の変化として読んでしまう |
+| 試行順・実験内時間 | 同じ参加者の反応が実験内で進む1試行 | `trial`, `trial_order` | GLMM + covariate / GAMM | 練習効果や疲労を条件効果と誤解する |
+| 試行内・トークン内時間 | 1つの反応・注視・発話区間の中の1時点 | `time_ms`, `bin`, `time_norm` | GAMM / cluster permutation / SSM | 同じ token から出た複数行を独立サンプルとして扱う |
+
+音声章で使う `time_norm` は3番目の意味です。これは「その母音・語・発話区間の内部で 0 から 1 のどこか」を表すため、縦断研究の `session` や `Time` とは別の列として保持します。Pre/Post の発音変化を調べる場合は、`session` を固定効果やランダム傾き候補として扱い、同時に `time_norm` を GAMM の smooth に入れる、という二層の設計になります。
+
+::: {.callout-note}
+#### GAMM でまず決めること
+
+| 判断 | 実務上の問い | 典型的な指定 |
+|---|---|---|
+| 全体曲線 | 時間とともに反応がどう変わるか | `s(time_ms)` |
+| 条件差 | 条件ごとに曲線形状が違うか | `s(time_ms, by = condition)` |
+| participant / item の一般化 | 特定参加者・特定項目に依存していないか | `s(participant, bs = "re")`, `s(item, bs = "re")` |
+| 個人ごとの曲線差 | 参加者ごとに時間コースが違うか | factor-smooth interaction（大規模データで検討） |
+| 自己相関 | 隣接 time bin の残差が似ていないか | 残差 ACF、AR(1) 構造、bin 幅の見直し |
+| 報告 | どの時点で条件差が出るか | 係数表より曲線・差分曲線・同時信頼区間 |
+
+`mgcv` だけでもモデル推定と予測図は作れます。より詳しい smooth の診断や差分曲線の作図には `gratia`、自己相関を含む音声・視線データの実務補助には `itsadug` も候補になります。ただし、まずは `mgcv::gam()` / `mgcv::bam()` で「時間を factor にせず、滑らかな関数として扱う」発想を押さえるのが先です。
+:::
+
+GAMM に進むときの作業順序は、次のように固定しておくと読み手にも説明しやすくなります。
+
+| 手順 | 目的 | 具体的に見るもの |
+|---|---|---|
+| 1. 解析単位を決める | 1 行の意味を固定する | participant, item, trial, time bin, electrode, AOI |
+| 2. 生データに近い要約図を描く | モデル前に形を確認する | 条件別の平均曲線、個人差、欠測・除外の偏り |
+| 3. 最小の GAMM を当てる | 時間を smooth として扱う | `s(time)`、条件別 smooth、participant/item の random effect |
+| 4. 差分曲線を描く | 条件差の時間帯を見る | link scale と response scale の両方 |
+| 5. 診断を行う | 曲線が過剰・過少でないかを見る | `gam.check()`, EDF, `k`, 残差 ACF |
+| 6. 報告範囲を決める | 図と推論の役割を分ける | 探索図、事前定義 window、cluster test、同時区間 |
+
+逆に、GAMM を常に使えばよいわけではありません。`Pre` / `Post` の 2 時点だけなら GLMM/LMM の方が直接的です。N400 の 300--500 ms のように理論的な window が事前に決まっているなら、window 平均を LMM で分析する方が説明しやすいこともあります。時点数が多くても、artifact や missingness が条件と強く結びついている場合は、smooth の形より先に前処理と除外の偏りを点検します。
+
+次は、VWP の AOI 注視を想定した最小例です。目的は、本格的な eye-tracking 前処理ではなく、**第6章の binomial GLMM が、時間コースを持つと binomial GAMM に拡張される**ことを確認することです。
+
+```{r}
+#| eval: true
+#| label: gamm-vwp-minimal-demo
+#| message: false
+#| warning: false
+#| fig-height: 5
+#| fig-width: 8
+
+set.seed(1302)
+
+n_participants <- 16
+n_items <- 12
+time_grid <- seq(0, 1000, by = 50)
+
+vwp_demo <- tidyr::crossing(
+  participant_id = factor(sprintf("P%02d", seq_len(n_participants))),
+  item_id = factor(sprintf("I%02d", seq_len(n_items))),
+  condition = factor(c("Control", "Cue"), levels = c("Control", "Cue")),
+  time_ms = time_grid
+) |>
+  dplyr::mutate(
+    participant_re = rnorm(n_participants)[participant_id] * 0.35,
+    item_re = rnorm(n_items)[item_id] * 0.25,
+    control_curve = -2.2 + 2.4 * exp(-((time_ms - 650) / 260)^2),
+    cue_boost = 0.9 * exp(-((time_ms - 520) / 180)^2),
+    eta = control_curve +
+      ifelse(condition == "Cue", cue_boost, 0) +
+      participant_re + item_re,
+    prob = plogis(eta),
+    look_target = rbinom(dplyr::n(), size = 1, prob = prob)
+  )
+
+vwp_gamm <- mgcv::bam(
+  look_target ~ condition +
+    s(time_ms, by = condition, k = 10) +
+    s(participant_id, bs = "re") +
+    s(item_id, bs = "re"),
+  family = binomial,
+  data = vwp_demo,
+  method = "fREML"
+)
+
+pred_grid <- tidyr::expand_grid(
+  time_ms = seq(0, 1000, by = 10),
+  condition = factor(c("Control", "Cue"), levels = c("Control", "Cue")),
+  participant_id = factor("P01", levels = levels(vwp_demo$participant_id)),
+  item_id = factor("I01", levels = levels(vwp_demo$item_id))
+)
+
+pred_link <- predict(
+  vwp_gamm,
+  newdata = pred_grid,
+  type = "link",
+  se.fit = TRUE,
+  exclude = c("s(participant_id)", "s(item_id)")
+)
+
+pred_vwp <- pred_grid |>
+  dplyr::mutate(
+    fit = plogis(pred_link$fit),
+    lo = plogis(pred_link$fit - 1.96 * pred_link$se.fit),
+    hi = plogis(pred_link$fit + 1.96 * pred_link$se.fit)
+  )
+
+ggplot(pred_vwp, aes(x = time_ms, y = fit, color = condition, fill = condition)) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, color = NA) +
+  geom_line(linewidth = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  labs(
+    title = "Binomial GAMM for Visual World eye-tracking",
+    subtitle = "Predicted target-looking probability over time",
+    x = "Time from stimulus onset (ms)",
+    y = "Predicted target-looking probability",
+    color = NULL,
+    fill = NULL
+  ) +
+  theme_book()
+```
+
+この図では、条件ごとの AOI 注視確率が時間に沿って滑らかに変化します。GLMM なら `look_target ~ condition + (1 | participant) + (1 | item)` のように平均差を見ますが、GAMM では `condition` の効果が**いつ・どの形で立ち上がるか**を曲線として読みます。論文では、係数表だけでなく、条件別 smooth、差分曲線、残差自己相関、ランダム効果構造を一緒に報告します。
+
+条件別 smooth を見た後は、差分曲線を作ります。ここでは `Cue - Control` の差を log-odds scale で描きます。`0` より上なら Cue 条件の target-looking probability が高い方向、下なら Control 条件が高い方向です。
+
+```{r}
+#| eval: true
+#| label: gamm-vwp-difference-curve
+#| message: false
+#| warning: false
+#| fig-height: 4.5
+#| fig-width: 8
+
+diff_time <- seq(0, 1000, by = 10)
+
+new_control <- tibble(
+  time_ms = diff_time,
+  condition = factor("Control", levels = c("Control", "Cue")),
+  participant_id = vwp_demo$participant_id[1],
+  item_id = vwp_demo$item_id[1]
+)
+
+new_cue <- tibble(
+  time_ms = diff_time,
+  condition = factor("Cue", levels = c("Control", "Cue")),
+  participant_id = vwp_demo$participant_id[1],
+  item_id = vwp_demo$item_id[1]
+)
+
+random_terms <- c("s(participant_id)", "s(item_id)")
+Xp_control <- predict(
+  vwp_gamm,
+  newdata = new_control,
+  type = "lpmatrix",
+  exclude = random_terms
+)
+Xp_cue <- predict(
+  vwp_gamm,
+  newdata = new_cue,
+  type = "lpmatrix",
+  exclude = random_terms
+)
+
+Xp_diff <- Xp_cue - Xp_control
+beta_hat <- coef(vwp_gamm)
+vcov_beta <- vcov(vwp_gamm)
+
+diff_link <- as.numeric(Xp_diff %*% beta_hat)
+diff_se <- sqrt(rowSums((Xp_diff %*% vcov_beta) * Xp_diff))
+
+diff_vwp <- tibble(
+  time_ms = diff_time,
+  diff_log_odds = diff_link,
+  lo = diff_link - 1.96 * diff_se,
+  hi = diff_link + 1.96 * diff_se
+)
+
+ggplot(diff_vwp, aes(x = time_ms, y = diff_log_odds)) +
+  geom_hline(yintercept = 0, color = "grey55") +
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "#9ecae1", alpha = 0.45) +
+  geom_line(color = "#08519c", linewidth = 1) +
+  labs(
+    title = "Difference curve from a binomial GAMM",
+    subtitle = "Cue - Control on the log-odds scale",
+    x = "Time from stimulus onset (ms)",
+    y = "Difference in log-odds"
+  ) +
+  theme_book()
+
+set.seed(1303)
+beta_sim <- MASS::mvrnorm(
+  n = 500,
+  mu = beta_hat,
+  Sigma = vcov_beta
+)
+
+control_prob_sim <- plogis(Xp_control %*% t(beta_sim))
+cue_prob_sim <- plogis(Xp_cue %*% t(beta_sim))
+diff_prob_sim <- cue_prob_sim - control_prob_sim
+
+diff_prob_vwp <- tibble(
+  time_ms = diff_time,
+  diff_probability = rowMeans(diff_prob_sim),
+  lo = apply(diff_prob_sim, 1, quantile, probs = 0.025),
+  hi = apply(diff_prob_sim, 1, quantile, probs = 0.975)
+)
+
+ggplot(diff_prob_vwp, aes(x = time_ms, y = diff_probability)) +
+  geom_hline(yintercept = 0, color = "grey55") +
+  geom_ribbon(aes(ymin = lo, ymax = hi), fill = "#c7e9c0", alpha = 0.55) +
+  geom_line(color = "#238b45", linewidth = 1) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(
+    title = "Difference curve on the response scale",
+    subtitle = "Cue - Control in predicted target-looking probability",
+    x = "Time from stimulus onset (ms)",
+    y = "Difference in probability"
+  ) +
+  theme_book()
+```
+
+上の 1 枚目はモデルの link scale、2 枚目は注視確率の差として読める response scale です。論文本文では response scale の方が読者に伝わりやすいことが多いですが、推論の細部は link scale の計算に依存します。この図で「信頼区間が 0 をまたがない区間」は、条件差が比較的安定して見える時間帯です。ただし、ここでの帯は点ごとの近似信頼区間であり、時間全体に対する同時推論ではありません。したがって、onset を主張したい研究では、差分曲線を探索図として使い、事前定義した window、cluster-based permutation test、または同時信頼区間を補助的に検討します。
+
+::: {.callout-tip}
+#### GAMM の診断で見るもの
+
+`mgcv` だけでも `summary()`、`gam.check()`、残差図、予測図は作れます。`gratia` は smooth の可視化と診断を整えやすく、`itsadug` は自己相関の点検や factor-smooth interaction の解釈で便利です。
+
+```{r}
+#| eval: false
+#| label: gamm-diagnostics-optional-packages
+
+summary(vwp_gamm)
+mgcv::gam.check(vwp_gamm)
+
+gratia::draw(vwp_gamm)
+gratia::appraise(vwp_gamm)
+
+itsadug::acf_resid(vwp_gamm)
+itsadug::inspect_random(vwp_gamm, select = 3)
+```
+
+診断では、`edf` が理論的に説明できないほど大きくないか、`k` が不足していないか、残差自己相関が強く残っていないかを確認します。自己相関が強い場合は、bin 幅を広げる、trial-level の集約を見直す、`bam()` の AR(1) 指定を検討する、という順で設計に戻ります。
+:::
+
+ERP/EEG の whole waveform では、GAMM だけでなく cluster-based permutation test も候補になります。`permuco::clusterlm()` は、参加者内要因を含む縦断・反復測定データに cluster-mass test を適用する入口になります。実データでは、行が参加者や条件、列が連続した時間点を表す反応行列になっているかを確認してから使います。
+
+```{r}
+#| eval: false
+#| label: erp-clusterlm-template
+
+erp_cluster <- permuco::clusterlm(
+  erp_amplitude_matrix ~ condition + Error(participant_id / condition),
+  data = erp_design,
+  np = 5000,
+  multcomp = "clustermass"
+)
+
+summary(erp_cluster)
+plot(erp_cluster, nbbaselinepts = 200, nbptsperunit = 1000)
+```
+
+cluster-based permutation test は「時間・電極にまたがって条件差があるか」を多重比較に配慮して検討する方法です。一方で、有意 cluster の最初の時点を、その効果が始まった正確な時点として読むのは避けます[@sassenhagen2019cluster]。SLA の ERP 研究で N400/P600 の解釈を行う場合も、cluster の有無、事前定義 window の平均振幅、波形図、理論的予測を組み合わせて報告します。
+
+::: {.callout-warning}
+#### 時間コース分析でつまずきやすい点
+
+| つまずき | なぜ問題か | 実務上の対応 |
+|---|---|---|
+| time bin ごとに t 検定を繰り返す | 多重比較と隣接時点の依存を無視する | cluster permutation、GAMM の差分曲線、事前定義 window を使う |
+| 多数の time bin を factor にする | パラメータが増え、時間の滑らかさを捨てる | `s(time)` で連続時間として扱う |
+| participant だけを入れて item を落とす | 項目への一般化が弱くなる | participant と item の両方をまず検討する |
+| 曲線が複雑すぎる | `k` が大きすぎる、またはノイズを追っている | `gam.check()`、EDF、理論的に妥当な `k` を確認する |
+| 自己相関を見ない | 隣接時点の残差依存で不確実性が楽観的になる | 残差 ACF、bin 幅、AR(1) 構造を検討する |
+| 曲線の見た目だけで onset を断定する | 不確実性と多重性が反映されない | 差分曲線や同時信頼区間で補助する |
+
+GAMM は「時間を滑らかにする道具」ではありますが、前処理、bin 幅、除外基準、ランダム効果構造、自己相関の扱いを自動で解決するわけではありません。特に eye-tracking や ERP では、統計モデルの前に解析単位を決める段階で結論が大きく変わります。
+:::
+
+::: {.callout-tip}
+#### 論文に書くときの最小チェックリスト
+
+- 前処理：使用ツール、baseline、artifact rejection、除外基準、time zero の定義。
+- データ構造：参加者数、項目数、trial 数、time bin 幅、欠測や除外後の観測数。
+- モデル式：family、link、`k`、smooth の指定、participant/item の扱い、自己相関への対応。
+- 図：観測データに近い要約曲線、モデル予測曲線、差分曲線。
+- 推論：点ごとの区間、同時区間、cluster-based permutation、事前定義 window のどれに基づく解釈か。
+- 限界：onset/offset の精密な時点推定として読めるか、探索的な時間帯の記述に留めるか。
+
+このチェックリストは、査読対応にも役立ちます。特に「どの時点から差があるか」を述べるときは、図の見た目、点ごとの信頼区間、cluster の境界を混同しないように、推論の単位を本文で明示します。
+:::
+
+以後の各節では、関数の役割や出力名は `mgcv`・`gratia`・`itsadug`・`permuco`・`vars`・`dtw`・`depmixS4`・`KFAS`・`brms`・`tsibble`・`feasts`・`fabletools` の**公式ドキュメント**に依拠し、分野でどのような問いが立てられてきたか、どのような解釈が妥当かは**先行研究**に依拠して説明します。本書独自の応用案は「本書での応用」や「想定する用途」と明示し、既存研究の事実とは混同しないようにします。
 
 最初に確認する要約を 1 枚の表にすると、各手法の違いは次のように整理できます。
 
 | 手法 | 分析の主目的 | この分析で明らかにしやすいこと | 典型的な出力 | 主な注意点 |
 |---|---|---|---|---|
+| `GAMM` | 試行内・発話内の非線形時間コースを見る | 条件差がいつ・どの形で立ち上がるか | smooth、差分曲線、残差 ACF、`gam.check()` | 自己相関、`k`、ランダム効果構造、onset 解釈に注意する |
 | `VAR` | 複数系列の先行・追随を見る | どの変数の過去が次の変数を予測しやすいか | 係数表、Granger 検定、IRF、FEVD | 予測的先行関係であって因果効果そのものではない |
 | `DTW` | 時間ずれを許した類似度評価 | どの区間が何週ぶんずれて対応しているか | `distance`, `normalizedDistance`, warping path, `lag` 要約 | 設定依存性が高く、将来予測や因果推論には向かない |
 | `HMM` | 潜在フェーズの推定 | 系列が何個の状態に分かれ、いつ切り替わるか | BIC, emission 分布, 状態確率, 遷移行列 | 状態ラベルは後から記述的に与える必要がある |
@@ -204,6 +568,35 @@ fluency_ts <- ts(fluency_wpm, frequency = 10)
 | `brms` ARMA / GP | 依存構造や非線形トレンドをベイズ的に表す | 係数や曲線形状の不確実性をどれくらい伴うか | 事後要約、信用区間、`pp_check()`, `conditional_effects()` | 収束診断と事前分布の明示が必須 |
 | ベイズ変化点 | 変化の時点そのものを確率で扱う | どの時点が変化点としてどれだけ有力か | 変化点事後分布、MAP 変化点 | 変化点の存在は分かっても、原因は別途理論化が必要 |
 | `RL` | trial-by-trial の潜在更新過程を推定する | 学習率、選択一貫性、予測誤差の推移 | `Q` 値、prediction error, 事後分布 | choice / reward が必要で、モデル仮定の影響が大きい |
+
+### 応用章で最初に作る分析契約
+
+発展手法では、関数を実行する前に「この分析では何を1行とし、何を時間とし、何を不確実性として報告するか」を明文化しておくと、結果の読み違いをかなり減らせます。本書では、これを**分析契約**と呼びます。
+
+| 決めること | 具体的に書く内容 | 関係する手法 |
+|---|---|---|
+| **1行の単位** | participant × item × time bin なのか、週次クラス平均なのか、trial なのか | GAMM, VAR, HMM, SSM, RL |
+| **時間の意味** | 縦断時間、試行順、試行内時間、正規化時間のどれか | GAMM, SSM, RL |
+| **整列の基準** | 刺激開始、発話開始、母音区間、介入月、週番号のどれに揃えるか | GAMM, DTW, ERP/EEG |
+| **依存構造** | participant / item / trial / lag / state のどれを明示的に扱うか | GAMM, VAR, HMM, SSM |
+| **推論の単位** | 係数、曲線、差分曲線、状態確率、予測分布のどれを主結果にするか | 全手法 |
+| **感度分析** | bin幅、ラグ次数、DTW窓幅、状態数、事前分布をどう動かすか | VAR, DTW, HMM, brms |
+
+この分析契約がないと、たとえば `time_ms` の効果を縦断的な学習効果のように読んだり、DTW の整列ラグを因果的な遅延として読んだり、HMM の状態番号を理論的段階そのものとして扱ったりしやすくなります。発展手法ほど、モデルの柔軟性が高いぶん、**何を主張しないか**も先に決める必要があります。
+
+### 研究質問から手法を選ぶ最短表
+
+迷った場合は、データの形ではなく、まず研究質問から選びます。同じ時系列データでも、「予測したい」のか「条件差の時間帯を見たい」のか「潜在状態を推定したい」のかで手法は変わります。
+
+| 研究質問 | まず使う候補 | 代替候補 | 避けたい読み方 |
+|---|---|---|---|
+| 条件差は時間のどこで立ち上がりますか | GAMM / cluster permutation | 事前定義 window LMM | 点ごとのp値を onset として断定する |
+| 語彙と読解はどちらが先行しますか | VAR / Granger / IRF | cross-lagged panel, DSEM | Granger を介入の因果効果として読む |
+| 2人の軌跡は時間ずれを許せば似ていますか | DTW | 相互相関、相関、軌跡クラスタリング | DTW距離を予測精度や因果効果として読む |
+| 学習過程は複数フェーズに分かれますか | HMM | 変化点検出, mixture model | 状態番号を理論ラベルとして自動解釈する |
+| 観測得点から真の学習曲線を抽出できますか | SSM / KFAS | ARIMA, GAMM, brms | smoothed curve を観測事実として読む |
+| 変化点はどこにありそうですか | Bayesian changepoint | ITS, `breakpoints()` | 変化点の原因までモデルだけで断定する |
+| 試行ごとにフィードバックから更新していますか | RL / Stan / hBayesDM | logistic mixed model | 学習率を文脈を超えた性格特性として読む |
 
 ## tidyverts系パッケージによる探索的可視化
 
@@ -359,7 +752,14 @@ $$
 
 今回の研究上の関心は第2式、つまり「**読解の式の中で、語彙のラグ項が効いているか**」です。`Vocabulary.l1` や `Vocabulary.l2` が正で有意なら、「語彙の変化が、あとから読解の変化に結びつく」ことを示唆します。
 
-実装の参照先としては、[`vars` の公式マニュアル](https://cran.r-project.org/web/packages/vars/vars.pdf) で `VARselect()` / `VAR()` / `roots()` / `causality()` / `irf()` / `fevd()` を順に確認すると追いやすいです。
+実装の参照先としては、[`vars` の公式マニュアル](https://cran.r-project.org/web/packages/vars/vars.pdf) と Pfaff [-@pfaff2008vars] の JSS 論文で `VARselect()` / `VAR()` / `roots()` / `causality()` / `irf()` / `fevd()` を順に確認すると追いやすいです。VAR の理論的基盤は @sims1980 と @lutkepohl2005、Granger 検定は @granger1969 が一次出典です。
+
+::: {.callout-warning}
+#### サンプルサイズと前提検定の最低条件
+**サンプルサイズの目安**: VAR は変数数 $K$、ラグ次数 $p$ に対して **$T > 5 K p$** が経験則です [@lutkepohl2005]。本デモは $K=2$, $p=2$ で $T = 50$ なので最低条件 ($T > 20$) はクリアしますが、**実研究では $T \geq 100$ を推奨**します。
+
+**前提検定**: VAR は全成分系列が **定常** であることを要求します。非定常なら差分または共和分 (cointegration) → VECM が必要です。後続コードでは差分処理を行いますが、研究報告では **各成分について ADF/KPSS 検定の結果を明示** してください (`tseries::adf.test()`, `urca::ur.kpss()` を使用)。
+:::
 
 ::: {.panel-tabset}
 
@@ -558,17 +958,46 @@ VAR 出力は、次の表で「どこを見るか」を確認してから読む�
 **この分析での注目点**：Reading方程式において `Vocabulary.l1`（語彙の1ラグ前）の係数が正で有意であれば、「語彙の過去の変化が、次の時点の読解変化の予測に寄与する」というクロスラグ構造を示唆します。
 
 VAR 結果は次の順序で読むと迷いにくいです。
-1. **Reading方程式**を見る：`Vocabulary.l1` / `Vocabulary.l2` が有意かどうかを確認する。今回の問いに最も直接的。
-2. **Vocabulary方程式**を見る：逆方向の効果、つまり「読解が後の語彙を予測するか」を確認する。
-3. **安定性**を確認する：`roots()` が 1 未満でなければ、係数解釈もIRFも不安定になる。
+1. **Reading方程式**を見る：`Vocabulary.l1` / `Vocabulary.l2` が有意かどうかを確認します。今回の問いに最も直接的。
+2. **Vocabulary方程式**を見る：逆方向の効果、つまり「読解が後の語彙を予測するか」を確認します。
+3. **安定性**を確認する：`roots()` が 1 未満でなければ、係数解釈もIRFも不安定になります。
 4. **IRFで時間軸上の波及**を見る：係数表は「効くかどうか」、IRFは「何期続くか」を示します。
 
 係数表・Granger・IRF は競合する出力ではなく、役割が少しずつ違います。
-- **係数表**：どのラグ項が正/負に効いているかを見る。最も細かい情報。
+- **係数表**：どのラグ項が正/負に効いているかを見ます。最も細かい情報。
 - **Granger因果性検定**：複数のラグ項を**まとめて**検定する。「語彙の過去が読解の予測に役立つか」を一括で判定。
-- **IRF**：1回のショックへの応答が**何期先まで残るか**を見る。時間軸の解釈に最も向く。
+- **IRF**：1回のショックへの応答が**何期先まで残るか**を見ます。時間軸の解釈に最も向く。
 
 この3つは競合するものではなく、**順番に読むと理解が深まる補完的な出力**です。
+
+#### ラグ次数の感度分析
+
+VAR では、ラグ次数を1つ変えるだけで係数や Granger 検定の結論が変わることがあります。したがって、主分析で使ったラグだけでなく、近いラグ次数でも安定性・残差白色性・Granger 検定の傾向を確認します。
+
+```{r}
+#| eval: true
+#| label: var-lag-sensitivity
+var_lag_sensitivity <- purrr::map_dfr(1:4, function(p_lag) {
+  fit_p <- vars::VAR(d_edu, p = p_lag, type = "const")
+  serial_p <- vars::serial.test(fit_p, lags.pt = 8, type = "PT.asymptotic")
+  granger_p <- vars::causality(fit_p, cause = "Vocabulary")$Granger
+
+  tibble(
+    Lag = p_lag,
+    AIC = AIC(fit_p),
+    BIC = BIC(fit_p),
+    Max_root_modulus = max(Mod(vars::roots(fit_p, modulus = FALSE))),
+    Residual_whiteness_p = unname(serial_p$serial$p.value),
+    Granger_vocab_to_reading_p = unname(granger_p$p.value)
+  )
+})
+
+var_lag_sensitivity |>
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "VAR lag-order sensitivity analysis")
+```
+
+この表では、`Max_root_modulus` が 1 未満であること、`Residual_whiteness_p` が極端に小さくないこと、Granger 検定の p 値がラグ次数を少し変えても大きく反転しないことを確認します。ラグ次数によって結論が大きく変わる場合は、主張を「語彙が読解に先行した」と強く書くのではなく、「このラグ設定では予測的先行関係が示唆された」と控えめに報告します。
 
 
 #### Granger因果性検定
@@ -665,7 +1094,7 @@ FEVD は次のように読むと整理しやすいです。
 
 **症状**：`roots(fit_var)` の値に1以上のものがあり、`all(roots < 1)` が `FALSE` を返す。
 
-**原因**：ラグ次数が大きすぎるか、非定常な系列をそのまま投入している。
+**原因**：ラグ次数が大きすぎるか、非定常な系列をそのまま投入しています。
 
 **修正手順**：
 
@@ -685,6 +1114,13 @@ FEVD は次のように読むと整理しやすいです。
 これらの研究が共通してやっているのは、平均スコアを比べることではなく、**時間軸の対応関係そのもの**を取り直すことです。SLA では shadowing や pronunciation training の追随遅れ、心理言語学に近い音声研究では韻律や発話タイミングのずれ、教育実践では 2 人の学習軌跡や 2 クラスの進度パターンが「どこでずれ、どこで追いつくか」を見る設計に読み替えやすいです。
 
 @giorgino2009 が強調するように、DTW は単に 1 つの距離を返すだけではありません。出力には、(1) **どのくらい似ているか**を表す `distance` と、(2) **どの時点をどの時点に対応づけたか**を表す warping path の両方が含まれます。教育データでは、`distance` を 2 つの学習軌跡の「全体としての近さ」、warping path を「どの時期が何週ぶん先行・遅延していたか」と分けて理解すると整理しやすくなります。つまり DTW は、「似ているか」だけでなく「**どうずれて似ているか**」まで出力する手法です。
+
+::: {.callout-note}
+#### DTW 距離は厳密な数学的計量ではない
+DTW 距離は **三角不等式 ($d(a,c) \leq d(a,b) + d(b,c)$) を満たさない** ため、厳密な意味での距離計量 (metric) ではなく擬距離 (pseudo-metric) です [@sakoechiba1978; @giorgino2009]。これは、距離行列を主成分分析や階層クラスタリング (Ward 法など、計量を仮定する手法) に直接渡したときに、低次元埋め込みやデンドログラム解釈が歪む可能性があることを意味します。実用上は **k-medoids (PAM) や DBSCAN** など計量を仮定しないクラスタリングを使うのが安全です。
+
+また、振幅スケールが異なる軌跡を比較する場合は、DTW 計算前に **Z 正規化** (`scale(x)` で平均 0・分散 1 に変換) を適用することが標準慣行です。本章後半の `scale()` 処理がこれに対応します。
+:::
 
 したがって DTW が最も得意なのは、「2 つの学習軌跡は時間ずれを許せばどの程度似ているか」という問いです。逆に、介入効果の因果推論、将来時点の予測、係数の統計的有意性の検定を直接与えるモデルではありません。実務上は、探索的な類似度評価、クラスタリング前処理、ケース比較に強いと整理しておくと誤用が減ります。
 
@@ -815,9 +1251,9 @@ ggplot(dtw_alignment, aes(x = A_week, y = B_week, color = lag)) +
 **読み方**：
 
 - `distance` は総コスト、`normalizedDistance` はパス長で正規化した距離（`step.pattern` が正規化可能な場合）
-- `window.type = "sakoechiba"` を入れると、非現実的な大きい時間飛びを抑制できる
+- `window.type = "sakoechiba"` を入れると、非現実的な大きい時間飛びを抑制できます
 - `distance.only = TRUE` は探索比較やグリッドサーチを速くしたいときに有効（対応経路は返らない）
-- 距離が小さいほど「時間ずれを許した形状類似性」が高いが、同時に設定依存性も高い
+- 距離が小さいほど「時間ずれを許した形状類似性」が高いですが、同時に設定依存性も高くなります
 
 ```{r}
 #| eval: true
@@ -855,6 +1291,47 @@ dtw_alignment |>
 ```
 
 ここでは、`Median lag` が正なら B の軌跡が全体として A より遅れて進んでいること、負なら逆に B の方が先行していることを示します。`Share on diagonal` が高ければ、ほぼ同じ時点同士が対応づいていて時間ずれは小さいと読めますし、`lag` の範囲が広ければ、系列全体が一様に遅れているのではなく、途中で「速く伸びる区間」と「遅れる区間」が混在していることを示唆します。DTW の良さは、「似ているかどうか」だけでなく、「**どの時期に何週ぶんずれていたか**」まで見える点ですが、この `lag` はあくまで**整列上の対応**であり、因果的な先行・遅延を意味するわけではありません。
+
+#### DTW設定の感度分析
+
+DTW は設定依存性が高いため、主解析で使う `step.pattern` と `window.size` を固定する前に、距離がどの程度変わるかを確認します。特に `window.size` を広げると、対応づけの自由度が増えるため距離は小さくなりやすいですが、教育的に非現実的な対応も許してしまう可能性があります。
+
+```{r}
+#| eval: true
+#| label: dtw-window-sensitivity
+dtw_window_sensitivity <- tibble(Window_size = c(1, 2, 4, 6, 8)) |>
+  mutate(
+    fit = purrr::map(
+      Window_size,
+      \(w) dtw::dtw(
+        x = dtw_curve_a,
+        y = dtw_curve_b,
+        step.pattern = dtw::symmetric2,
+        window.type = "sakoechiba",
+        window.size = w,
+        distance.only = TRUE
+      )
+    ),
+    Distance = purrr::map_dbl(fit, "distance"),
+    NormalizedDistance = purrr::map_dbl(fit, get_norm_dist)
+  ) |>
+  dplyr::select(Window_size, Distance, NormalizedDistance)
+
+dtw_window_sensitivity |>
+  mutate(across(c(Distance, NormalizedDistance), ~ round(.x, 3))) |>
+  knitr::kable(caption = "DTW sensitivity to the Sakoe-Chiba window size")
+
+ggplot(dtw_window_sensitivity, aes(x = Window_size, y = Distance)) +
+  geom_line(color = "#756bb1", linewidth = 0.9) +
+  geom_point(color = "#756bb1", size = 2) +
+  labs(
+    title = "DTW distance changes as the allowed warping window widens",
+    x = "Sakoe-Chiba window size",
+    y = "DTW distance"
+  )
+```
+
+**読み方**：窓幅を少し広げただけで距離が大きく下がるなら、2系列の類似性は「どのくらい時間ずれを許すか」に強く依存しています。その場合は、主解析の `window.size` を教育的に説明できる値に固定し、感度分析を補足資料に示すのが安全です。たとえば週次学習データで「±4週までの遅れは同じ学期内の進度差として妥当」と説明できるなら、`window.size = 4` は解釈しやすい設定になります。
 
 #### 部分一致（open-begin / open-end）
 
@@ -996,9 +1473,9 @@ DTW 節の読み方は、最初の重ね描きで**形は似ているがピー�
 
 ::: {.callout-tip}
 #### DTW の報告テンプレート（そのまま使える形）
-- 「`step.pattern = ...`, `window.type = ...`, `window.size = ...` を指定してDTW距離を算出した」
-- 「`distance = ...`, `normalizedDistance = ...`（利用可能な場合）であった」
-- 「`open.begin/open.end` を用いた部分一致では、参照系列の `...`〜`...` 区間が最適整列区間であった」
+- 「`step.pattern = ...`, `window.type = ...`, `window.size = ...` を指定してDTW距離を算出しました」
+- 「`distance = ...`, `normalizedDistance = ...`（利用可能な場合）でした」
+- 「`open.begin/open.end` を用いた部分一致では、参照系列の `...`〜`...` 区間が最適整列区間でした」
 :::
 
 ## 隠れマルコフモデル（HMM）：見えない学習状態の推定
@@ -1024,7 +1501,7 @@ HMM が答えるのは、「この系列には、平均や分散の違う**複�
 1. `nstates` を複数候補で試し、`BIC` で比較
 2. `em.control(random.start = TRUE)` で初期値依存を緩和
 3. 必要に応じて `multistart()` で多開始値推定
-4. `posterior(type = "smoothing")` を主に解釈（確率として解釈しやすい）
+4. `posterior(type = "smoothing")` を主に解釈します（確率として解釈しやすいためです）
 
 実装では [depmixS4 reference manual](https://cran.r-project.org/web/packages/depmixS4/refman/depmixS4.html) の `depmix()`, `fit()`, `em.control()`, `multistart()`, `posterior()` を順に確認すると流れを追いやすくなります。`posterior(type = ...)` は、次のように使い分けます。
 
@@ -1040,11 +1517,18 @@ HMM が答えるのは、「この系列には、平均や分散の違う**複�
 HMM の出力は情報量が多いので、次の順序で読むと迷いにくくなります。
 
 1. **状態数**：BICで 1状態, 2状態, 3状態を比べる
-2. **各状態の平均スコア**：どの状態が「低位」「中位」「高位」に相当するかを把握する
-3. **状態確率の時系列**：各月でどの状態が優勢だったかを見る
-4. **状態遷移**：一度入った状態にどの程度とどまりやすいかを確認する
+2. **各状態の平均スコア**：どの状態が「低位」「中位」「高位」に相当するかを把握します
+3. **状態確率の時系列**：各月でどの状態が優勢だったかを見ます
+4. **状態遷移**：一度入った状態にどの程度とどまりやすいかを確認します
 
 重要なのは、HMMの `State 1`, `State 2` という番号には意味がなく、**平均値やタイミングを見て後から名前を付ける**ことです。
+
+::: {.callout-warning}
+#### ラベル交換問題 (label switching) に注意
+HMM の状態番号は推定アルゴリズムが内部的に割り当てたインデックスであり、**同じデータに別の初期値で再推定すると、State 1 と State 2 のラベルが入れ替わる**ことがあります。これは label switching と呼ばれる古典的問題で、`multistart()` や `set.seed()` を変えた複数解の比較、あるいは複数研究間の状態比較を素朴に行うと、解釈が混乱する原因になります。
+
+**対処**: 結果を報告する前に、各状態の **emission パラメータ (例: 平均スコア)** で並べ替えて固定の名前 (例: 「Low / Mid / High」) に再ラベルしてください。`depmixS4::getpars()` で抽出した平均値の順位に基づいて、State 1 = Low、State 2 = Mid、… のように毎回固定のマッピングで報告すると、再現性と比較可能性が確保できます。Bayesian HMM では追加で post-hoc relabelling アルゴリズム (Stephens 2000) などが利用可能です。
+:::
 
 ここでの読み方は 2 種類あります。**hard assignment** は各時点を「State 1」か「State 2」かのどちらかに割り当てる読み方で、`global` や `local` がこれに近いです。**soft assignment** は各時点について「State 1 である確率 0.75, State 2 である確率 0.25」のように確率で読む方法で、`smoothing` が代表例です。教育研究では、介入前後の**切り替わりの不確実性**を見たいことが多いため、`smoothing` のような soft assignment の方が解釈しやすい場面が多くなります。逆に、「最終的な状態列を1本に決めたい」場合は `global` が有用です。
 
@@ -1159,7 +1643,8 @@ df_hmm_decoded <- df_hmm |>
     state_local_from_smooth = factor(state_local_from_smooth),
     decode_disagree = state_global != state_local
   ) |>
-  bind_cols(smooth_tbl)
+  # smooth_tbl は同じ fit_hmm から同じ時点順で返る事後状態確率。
+  dplyr::bind_cols(smooth_tbl)
 decode_disagree_n <- sum(df_hmm_decoded$decode_disagree)
 local_matches_smoothing <- all(as.integer(pst_local) == state_local_from_smooth)
 
@@ -1287,13 +1772,43 @@ df_hmm_decoded |>
 
 **読み方**：
 
-- BICが最小の状態数を第一候補にする（過剰状態数を避ける）
-- `posterior(type = "smoothing")` は各時点の状態確率として最も解釈しやすい
-- `filtering` は「その時点までの情報」に限定されるため、通常 `smoothing` より不安定になりやすい
-- `global` と `local` は一致しない場合があるため、報告時はどちらを使ったかを明記する
-- `viterbi` の付加確率（delta）は直感的な「事後確率」とは異なるため、主解析は smoothing を推奨
+- BICが最小の状態数を第一候補にします（過剰状態数を避けるためです）
+- `posterior(type = "smoothing")` は各時点の状態確率として最も解釈しやすい出力です
+- `filtering` は「その時点までの情報」に限定されるため、通常 `smoothing` より不安定になりやすいです
+- `global` と `local` は一致しない場合があるため、報告時はどちらを使ったかを明記します
+- `viterbi` の付加確率（delta）は直感的な「事後確率」とは異なるため、主解析は smoothing を推奨します
 
 :::
+
+#### 状態割当の信頼度を要約する
+
+HMM の結果では、「どの状態に分類されたか」だけでなく、「その分類がどれくらい明瞭か」も報告します。状態確率が1つの状態に集中していれば解釈しやすく、複数状態に分散していれば切替境界や状態ラベルが曖昧です。
+
+```{r}
+#| eval: true
+#| label: hmm-uncertainty-summary
+hmm_uncertainty_tbl |>
+  summarise(
+    mean_max_prob = mean(max_prob),
+    min_max_prob = min(max_prob),
+    low_confidence_months = sum(max_prob < 0.80),
+    mean_entropy = mean(entropy),
+    max_entropy = max(entropy),
+    month_max_entropy = month[which.max(entropy)]
+  ) |>
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "HMM state-assignment uncertainty summary")
+
+df_hmm_decoded |>
+  bind_cols(hmm_uncertainty_tbl |> dplyr::select(max_prob, entropy)) |>
+  dplyr::select(month, score, state_global, max_prob, entropy) |>
+  arrange(max_prob) |>
+  head(5) |>
+  mutate(across(c(score, max_prob, entropy), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Months with the most ambiguous HMM state assignments")
+```
+
+**読み方**：`low_confidence_months` が多い場合、状態列を1本に決めて語るより、状態確率の図を中心に報告します。`month_max_entropy` は状態割当が最も曖昧だった月で、切替境界や外れ値の可能性があります。HMM は「状態を見つける」だけでなく、**状態がどれくらいはっきり見えているか**も含めて解釈するモデルです。
 
 実務的には、`mean_score` が低い状態を「停滞期」「低位相」、高い状態を「伸長期」「高位相」のように**記述的に命名**できます。ただし状態名は理論的ラベルではなく、**観測パターンを要約する便宜的な名前**です。論文では「high-scoring state」のような記述的表現にとどめる方が安全です。状態確率の線が月 12 前後で急に切り替わるなら、介入やカリキュラム変更に対応する**レジーム転換**の可能性がありますし、遷移表で `state_global = 2 → next_state = 2` の確率が高ければ、その状態は**持続しやすい**と解釈できます。さらに `max posterior probability` が落ち、entropy が上がる月は、**状態が曖昧で切替が起きている可能性が高い区間**です。推定遷移行列のヒートマップは、**モデルが想定する遷移傾向**を示すので、経験的遷移表と大きく乖離する場合は状態数や分布仮定を見直す余地があります。
 
@@ -1303,9 +1818,9 @@ df_hmm_decoded |>
 
 ::: {.callout-tip}
 #### HMM の報告テンプレート（そのまま使える形）
-- 「`nstates = 1..K` を比較し、BIC最小の `k = ...` を採用した」
-- 「`posterior(type = "smoothing")` を用いて状態確率を解釈した（global/local との差も確認）」
-- 「状態 `s` の平均スコアは `...` 点で、`...` 月付近で当該状態確率が上昇した」
+- 「`nstates = 1..K` を比較し、BIC最小の `k = ...` を採用しました」
+- 「`posterior(type = "smoothing")` を用いて状態確率を解釈しました（global/local との差も確認しました）」
+- 「状態 `s` の平均スコアは `...` 点で、`...` 月付近で当該状態確率が上昇しました」
 :::
 
 ## 状態空間モデル（SSM）とカルマンフィルタ
@@ -1318,9 +1833,9 @@ ARIMA は「差分 + AR/MA」で観測値の自己相関を直接モデル化し
 
 カルマンフィルタは、毎時点で次の3ステップを繰り返すアルゴリズムです。
 
-1. **予測する**：前の時点の潜在状態から、「今の真の状態はこのあたりだろう」と予測する
-2. **ずれを測る**：その予測と、実際に観測されたスコアの差（予測誤差）を見る
-3. **ほどよく更新する**：観測をどれくらい信じるかに応じて、予測を少しだけ修正する
+1. **予測する**：前の時点の潜在状態から、「今の真の状態はこのあたりだろう」と予測します
+2. **ずれを測る**：その予測と、実際に観測されたスコアの差（予測誤差）を見ます
+3. **ほどよく更新する**：観測をどれくらい信じるかに応じて、予測を少しだけ修正します
 
 直感的には、「**前回までの流れ**」と「**今回の観測値**」を、信頼度に応じて重みづけ平均していると考えると分かりやすいです。
 
@@ -1438,7 +1953,7 @@ SSM が向いている場面は、次のように整理できます。
 数学的には2つの方程式で表現されます。
 
 - **観測方程式**：$\; y_t = Z_t\,\alpha_t + \varepsilon_t,\; \varepsilon_t \sim \mathcal{N}(0, H_t)$ — 観測値 = 真の状態 × 観測行列 + 測定誤差
-- **状態方程式**：$\; \alpha_{t+1} = T_t\,\alpha_t + R_t\,\eta_t,\; \eta_t \sim \mathcal{N}(0, Q_t)$ — 真の状態がどう時間発展するか
+- **状態方程式**：$\; \alpha_{t+1} = T_t\,\alpha_t + R_t\,\eta_t,\; \eta_t \sim \mathcal{N}(0, Q_t)$ — 真の状態がどう時間発展するかを表します
 
 ここで $H_t$ は測定誤差の分散、$Q_t$ は状態の変動（学習による英語力の変化）の分散です。**カルマンフィルタ**は時点 $t$ までの情報で状態を逐次推定し（リアルタイム予測）、**スムーザ**は系列全体を使って過去の状態を再推定します（事後的分析に適し、より滑らか）。`KFAS` の実装と推定手順は @helske2017 に基づきます。
 
@@ -1450,8 +1965,8 @@ SSM が向いている場面は、次のように整理できます。
 つまり SSM は、**観測値が noisy であること**と、**真の状態が時間とともに動くこと**を同時に認めるモデルです。ARIMA が「観測系列の自己相関そのもの」を主役にするのに対し、SSM は「その背後の見えない状態」を主役にします。
 
 SSM を読むときは、次の4つの視点を順に見ると整理しやすいです。
-1. **Observed と Smoothed の差**：どれだけノイズを取り除いているか
-2. **Filtered と Smoothed の差**：終端や急変点で、事後情報がどれだけ効いているか
+1. **Observed と Smoothed の差**：どれだけノイズを取り除いているかを確認します
+2. **Filtered と Smoothed の差**：終端や急変点で、事後情報がどれだけ効いているかを確認します
 3. **`H` と `Q` の大きさ**：測定誤差が大きい世界か、状態変化が大きい世界か
 4. **モデル比較**：ローカルレベルで十分か、傾きまで持たせるべきか
 
@@ -1468,7 +1983,14 @@ ARIMAが「系列の自己相関をうまく説明できたか」を重視する
 
 実務的には、「**最小限の成分から始めて、必要なら足す**」のが安全です。最初から複雑にしすぎると、`Q` や `H` の推定が不安定になり、図はきれいでも解釈が曖昧になります。
 
-実装の参照先は `KFAS` に絞って追うと分かりやすくなります。特に [`KFS()` を含む KFAS 公式マニュアル](https://cran.r-project.org/web/packages/KFAS/KFAS.pdf) を手元に置き、`fitSSM()` → `KFS()` → `fitted.KFS()` → `predict.SSModel()` → `rstandard.KFS()` の順で確認すると、本節のコードと対応づけやすくなります。
+実装の参照先は `KFAS` に絞って追うと分かりやすくなります。特に [`KFS()` を含む KFAS 公式マニュアル](https://cran.r-project.org/web/packages/KFAS/KFAS.pdf) を手元に置き、`fitSSM()` → `KFS()` → `fitted.KFS()` → `predict.SSModel()` → `rstandard.KFS()` の順で確認すると、本節のコードと対応づけやすくなります。Kalman filter の理論的基盤は @kalman1960、SSM の標準教科書は @durbinkoopman2012 です。
+
+::: {.callout-warning}
+#### 短い系列での H と Q の弱識別性
+ローカルレベルモデル `SSModel(y ~ SSMtrend(1, Q = NA), H = NA)` のように **観測誤差分散 H** と **状態誤差分散 Q** を同時に最尤推定すると、両者の比 (signal-to-noise ratio) を尤度面上で識別するのが本質です。データが短い場合 ($T < 50$ 程度) や本来真の Q がほぼ 0 のとき、尤度が平坦になりやすく **どちらか一方を固定する** か、**ベイズ推定で弱情報事前分布を入れる** のが安全です。`fitSSM()` の `inits` を変えて再推定し、推定値が大きく動かないことを確認してください (sensitivity analysis)。
+
+非定常成分 (レベル・トレンド) には **拡散初期化** (`P1inf` の対角要素を 1 とする) が `KFAS` の既定で適用されます。これは「初期状態について事前知識がない」という想定に対応する標準的処理です [@durbinkoopman2012]。
+:::
 
 ::: {.panel-tabset}
 
@@ -1626,6 +2148,63 @@ tibble(
 ```
 
 このプロットでは、灰色の点と線が観測された TOEFL スコア、色付きの線がカルマンスムーザの推定した「真のトレンド」です。観測値と平滑シグナルのギャップは推定された**測定誤差**に対応し、ギャップが大きいほどモデルは「このデータ点はノイズが大きい」と判断しています。赤破線の介入時点付近で平滑シグナルがジャンプしていれば、SSM もレベル変化を検出していると読めます。`Q`（状態分散）と `H`（観測分散）の関係も重要で、**Q >> H** なら平滑線がデータに密着しやすく、**H >> Q** なら観測ノイズを強く平滑化した滑らかな曲線になります。`Q / H ratio` が **1 よりかなり小さい**なら「真の状態は比較的滑らかで観測ノイズの方が大きい」、**1 よりかなり大きい**なら「状態そのものが毎月かなり動いている」と読めます。
+
+#### `Q / H` が平滑化に与える影響
+
+`Q / H` は、SSM の解釈を左右する重要な比率です。`Q` が小さく `H` が大きいほど、観測値はノイズとして扱われ、平滑線はなめらかになります。逆に `Q` が大きいほど、真の状態そのものが動きやすいとみなされ、平滑線は観測値に追随します。
+
+```{r}
+#| eval: true
+#| label: kfas-qh-sensitivity
+base_H <- as.numeric(fit_ssm$model$H)
+base_Q <- as.numeric(fit_ssm$model$Q)
+
+qh_scenarios <- tibble(
+  Scenario = c("Low Q/H: strong smoothing", "Estimated Q/H", "High Q/H: adaptive state"),
+  H = c(base_H, base_H, base_H),
+  Q = c(base_Q * 0.20, base_Q, base_Q * 5)
+)
+
+qh_smooth_tbl <- purrr::pmap_dfr(
+  qh_scenarios,
+  function(Scenario, H, Q) {
+    model_fixed <- SSModel(toefl_ts ~ SSMtrend(1, Q = Q), H = H)
+    kfs_fixed <- KFS(model_fixed, smoothing = c("state", "mean"))
+    tibble(
+      time = as.numeric(time(toefl_ts)),
+      smoothed = as.numeric(fitted(kfs_fixed)),
+      Scenario = Scenario,
+      Q_H_ratio = Q / H
+    )
+  }
+)
+
+qh_scenarios |>
+  mutate(`Q / H ratio` = Q / H) |>
+  mutate(across(c(H, Q, `Q / H ratio`), ~ round(.x, 3))) |>
+  knitr::kable(caption = "State-space smoothing scenarios based on Q/H")
+
+ggplot() +
+  geom_point(
+    data = tibble(time = as.numeric(time(toefl_ts)), observed = as.numeric(toefl_ts)),
+    aes(x = time, y = observed),
+    color = "grey35",
+    size = 1.8
+  ) +
+  geom_line(
+    data = qh_smooth_tbl,
+    aes(x = time, y = smoothed, color = Scenario),
+    linewidth = 0.95
+  ) +
+  labs(
+    title = "How Q/H changes the smoothness of the latent state",
+    x = "Year",
+    y = "Score",
+    color = ""
+  )
+```
+
+**読み方**：低い `Q / H` の線が最も滑らかで、高い `Q / H` の線は観測値に近づきます。教育データでは、テスト誤差が大きいと考えるなら低い `Q / H` が自然で、短期間に真の熟達度が大きく動くと考えるなら高い `Q / H` が自然です。ただし、`Q / H` を恣意的に選ぶのではなく、推定値、AIC、残差診断、研究上の妥当性を合わせて判断します。
 
 #### 予測区間と標準化予測誤差
 
@@ -2143,8 +2722,8 @@ model {
 
 このコードでやっていることは、実はかなり単純です。
 
-- `cp = 10` の世界を仮定して尤度を計算する
-- `cp = 11` の世界も計算する
+- `cp = 10` の世界を仮定して尤度を計算します
+- `cp = 11` の世界も計算します
 - それを全候補について繰り返し、最後に全部足し合わせる
 
 ただし、確率はそのまま足せないので、Stan では **対数空間で `log_sum_exp()` を使って周辺化**します。端的に述べると、**「変化点を1つ決め打ちせず、ありうる候補を全部抱えたまま推定する」**のがポイントです。
@@ -2423,9 +3002,9 @@ SLA の corrective feedback 課題へ引きつけると、`Q` は「この形式
 
 階層化したい場合は、被験者ごとに `alpha_i`, `beta_i` を持たせ、集団レベルの平均と分散をさらに推定します。ここまで行くと、
 
-- だれが更新が速いか
-- だれが探索的か
-- その個人差が proficiency, anxiety, aptitude とどう関係するか
+- だれが更新が速いかを検討できます
+- だれが探索的かを検討できます
+- その個人差が proficiency, anxiety, aptitude とどう関係するかを検討できます
 
 までを統合的に扱うことができます。ここが、SLA や教育データで RL をベイズ化する最大の利点です [@daw2011; @ahn2017]。
 
@@ -2449,12 +3028,49 @@ SLA の corrective feedback 課題へ引きつけると、`Q` は「この形式
 
 **対処**：
 
-1. `control = list(adapt_delta = 0.95, max_treedepth = 12)` で探索を丁寧にする
-2. 事前分布を明示的に指定し、パラメータ空間を制約する
+1. `control = list(adapt_delta = 0.95, max_treedepth = 12)` で探索を丁寧にします
+2. 事前分布を明示的に指定し、パラメータ空間を制約します
 3. `iter` を増やす（4000以上）
-4. データのスケーリング（標準化）を確認する
+4. データのスケーリング（標準化）を確認します
 5. モデルを簡素化する（例：ARMA(1,1) → AR(1) のみ）
 :::
+
+## 発展時系列の報告テンプレート集
+
+発展手法では、係数表だけでは結果の意味が伝わりません。最低限、**データ単位、時間軸、モデル仕様、診断、感度分析、主張の範囲**をセットで報告します。
+
+### GAMM / 時間コース分析
+
+> participant × item × condition × time bin の long table を作成し、応答変数 [AOI注視 / F0 / pupil / amplitude] を [family/link] の GAMM で分析しました。時間は `s(time, by = condition)` により条件別 smooth として扱い、participant と item のランダム効果を含めました。`gam.check()` と残差 ACF により `k` と自己相関を確認し、条件差はモデル予測曲線と差分曲線で可視化しました。差分が安定して見られた時間帯は [__–__ ms] でしたが、onset/offset は探索的記述として扱いました。
+
+### VAR / Granger / IRF
+
+> [変数A] と [変数B] の等間隔時系列を差分化し、VAR(p = __) を推定しました。ラグ次数は `VARselect()` と理論上の測定間隔をもとに決定し、`roots()` で安定性、`serial.test()` で残差白色性を確認しました。Granger 検定では [変数A] の過去値が [変数B] の予測に寄与しました / 寄与しませんでした。IRF では、[変数A] への1単位ショックに対する [変数B] の応答は __ 期後まで続きました。これは予測的先行関係であり、介入の因果効果とは区別して解釈しました。
+
+### DTW / 軌跡比較
+
+> 2つの軌跡を [標準化 / 元尺度] したうえで、`step.pattern = __`, `window.type = __`, `window.size = __` により DTW 整列を行いました。`distance = __`, `normalizedDistance = __` であり、warping path から median lag = __ と推定されました。窓幅の感度分析では、距離は [安定 / 設定依存] でした。DTW は軌跡の類似度と時間ずれを評価するために用い、予測や因果推論の根拠としては扱いませんでした。
+
+### HMM / 潜在状態
+
+> 1〜__状態の HMM を比較し、BIC に基づいて __ 状態モデルを採用しました。各状態の emission 平均は [__, __, __] であり、状態ラベルは平均値と時期に基づいて記述的に命名しました。状態確率は `posterior(type = "smoothing")` を主に報告し、max posterior probability と entropy により状態割当の不確実性を確認しました。遷移行列では、状態 __ から状態 __ への遷移確率が高く、[停滞 / 伸長] 状態の持続性が示唆されました。
+
+### SSM / KFAS
+
+> 観測得点を `SSMtrend(__)` による状態空間モデルで分析し、`fitSSM()` と `KFS()` により平滑化された潜在トレンドを推定しました。観測分散 `H = __`、状態分散 `Q = __`、`Q/H = __` であり、観測ノイズと真の状態変化の相対的大きさを解釈しました。欠測値は事前補間せず `NA` のままモデルに含めました。標準化予測誤差、QQ図、残差 ACF により診断を行い、ローカルレベル / ローカル線形トレンド / 季節成分の比較は AIC と解釈可能性をもとに判断しました。
+
+### brms / ベイズ時系列
+
+> `brms` により [ARMA / GP / 変化点 / trial-by-trial] モデルを推定しました。事前分布は [弱情報 / 先行研究に基づく情報] として設定し、`Rhat`, `ESS`, divergent transitions, `pp_check()` によりMCMC診断と事後予測チェックを行いました。結果は点推定だけでなく、事後平均、95%信用区間、必要に応じて「効果が0を超える事後確率」として報告しました。モデルの主張は、指定した事前分布・観測モデル・依存構造の下での確率的結論として限定しました。
+
+### 最小査読者チェックリスト
+
+- [ ] 1行の分析単位と時間軸の意味を明記しましたか
+- [ ] 研究質問に対して、その手法を選ぶ理由を説明しましたか
+- [ ] 主解析の設定だけでなく、主要な感度分析を示しましたか
+- [ ] 係数表だけでなく、曲線・状態確率・整列・残差診断を可視化しましたか
+- [ ] 予測的先行関係、潜在状態、整列ラグを因果効果として過剰解釈していませんか
+- [ ] 公式ドキュメントに基づく関数仕様と、先行研究に基づく解釈を分けて記述しましたか
 
 音声や Praat に進みたい場合は、次章 `音声時系列分析：Praat・rPraat・音響分析` に進むと、DTW や潜在状態推定の発想が音声波形・フォルマント・TextGrid にどう接続するかが見えます。ベイズ実装をさらに深めたい場合は、第7章 `ベイズ推定` を併読すると、ここで使った `brms` と Stan の位置づけが整理しやすくなります。
 

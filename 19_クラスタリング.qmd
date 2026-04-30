@@ -18,6 +18,7 @@ nocite: |
 #| eval: false
 
 required_packages <- c(
+  "cluster",
   "DT",
   "dbscan",
   "dplyr",
@@ -29,6 +30,7 @@ required_packages <- c(
   "igraph",
   "janitor",
   "knitr",
+  "MASS",
   "pacman",
   "patchwork",
   "psych",
@@ -57,21 +59,23 @@ if (length(missing_packages) > 0) {
 
 ある大学の英語プログラムで、360名の新入生に対して語彙力・文法力・発話流暢性・学習不安の4指標を測定したとします。全体の平均点は似通っていても、実際には「語彙は高いが流暢性が低い」学習者、「流暢性は高いが文法に課題がある」学習者、「不安が高く全指標が伸び悩んでいる」学習者など、異なる学習プロフィールが混在しているかもしれません。
 
-こうした**学習者内の異質性**を、正解ラベルなしにデータから発見する手法が**クラスタリング**です。目的変数（$y$）を使わずに「似た観測どうし」をまとめる探索的手法であり、SLA・心理言語学ではperson-centered（人中心）な分析として広く使われています[@steinley2006; @morissette2013; @jain2010]。回帰分析やt検定が「変数間の関係」や「群間の平均差」に注目するのに対し、クラスタリングは**「どのような学習者タイプが存在するか」**という問いに答えます。
+こうした**学習者間の異質性**を、正解ラベルなしにデータから探索的に記述する手法が**クラスタリング**です。目的変数（$y$）を使わずに「似た観測どうし」をまとめる探索的手法であり、SLA・心理言語学ではperson-centered（人中心）な分析として広く使われています[@steinley2006; @morissette2013; @jain2010]。回帰分析やt検定が「変数間の関係」や「群間の平均差」に注目するのに対し、クラスタリングは**「どのような学習者プロフィールとして整理できるか」**という問いに答えます。
 
 実際、SLAでは学習者作文の多面的プロフィール分析[@jarvis2003]や、動機づけの学習者タイプ分類[@csizer2005]のように、クラスタリング的発想で「学習者タイプ」を捉える研究が蓄積されてきました。本章では、この冒頭のシナリオ（360名の英語学習者プロフィール）を統一的な具体例として用い、設計から実装・解釈までを一貫して学びます。
 
 ### この章の到達目標
 
-1. クラスタリングの基本原理（距離・類似度・前処理）を説明できる
-2. 研究質問に応じて適切なアルゴリズムと距離尺度を選択できる
-3. 複数の基準（エルボー・シルエット・ギャップ統計量）を用いてクラスタ数を決定できる
-4. `k-means` と階層クラスタリングをRで実装し、結果を可視化・解釈できる
-5. クラスタ解の安定性と外的妥当性を評価できる
-6. SLA・心理言語学の研究デザインにクラスタリングを位置づけ、論文で報告できる
+1. クラスタリングの基本原理（距離・類似度・前処理）を説明できます
+2. 研究質問に応じて適切なアルゴリズムと距離尺度を選択できます
+3. 複数の基準（エルボー・シルエット・ギャップ統計量）を用いてクラスタ数を決定できます
+4. `k-means` と階層クラスタリングをRで実装し、結果を可視化・解釈できます
+5. クラスタ解の安定性と外的妥当性を評価できます
+6. SLA・心理言語学の研究デザインにクラスタリングを位置づけ、論文で報告できます
 
 ### 重要な立場
 クラスタリングは「発見的（exploratory）」な道具であり、因果推論の道具ではありません。出てきたクラスタをそのまま実体視せず、理論・再現性・外的妥当性で吟味することが前提です[@everitt2011; @clatworthy2005]。
+
+本章では、**手法選択・距離・クラスタ数・安定性の判断**はクラスタリングの方法論文献と応用研究に依拠します [@kaufman1990; @rousseeuw1987; @tibshirani2001; @jain2010; @murtagh2014; @hennig2007]。一方、**R 関数の引数、戻り値、計算上の制約**は R 本体および各パッケージの公式リファレンスに依拠します [@rstatsKmeans; @rstatsHclust; @clusterSilhouette; @clusterClusGap; @fpcClusterboot; @clusterDaisy; @clusterPam]。この分業を明示しておくことで、「理論上なぜその方法を使うか」と「コード上どの引数を指定したか」を混同しないようにします。
 
 ## この章の全体像
 
@@ -91,42 +95,42 @@ if (length(missing_packages) > 0) {
 
 | 段階 | 主な問い | 主要アウトプット | 失敗しやすい点 |
 |---|---|---|---|
-| 設計 | 何を似ていると定義するか | 距離尺度・分析単位・変数セット | 理論より先にアルゴリズムを決める |
-| 前処理 | 比較可能な特徴量に整えたか | 標準化・欠測処理・外れ値方針 | 尺度混在を放置する |
-| 探索 | いくつのクラスタが妥当か | k候補・可視化・安定性情報 | 単一指標だけでkを固定する |
-| 解釈 | 理論的含意と仮説生成は何か | クラスタ命名・外的妥当性・理論接続 | クラスタを実体視しすぎる |
+| 設計 | 何を似ていると定義しますか | 距離尺度・分析単位・変数セット | 理論より先にアルゴリズムを決めてしまいます |
+| 前処理 | 比較可能な特徴量に整えましたか | 標準化・欠測処理・外れ値方針 | 尺度混在を放置してしまいます |
+| 探索 | いくつのクラスタが妥当ですか | k候補・可視化・安定性情報 | 単一指標だけでkを固定してしまいます |
+| 解釈 | 理論的含意と仮説生成は何ですか | クラスタ命名・外的妥当性・理論接続 | クラスタを実体視しすぎてしまいます |
 
 ### クイックリファレンス：研究目的別の手法選択
 
 | 研究目的 | 典型的なSLA研究質問 | 推奨手法 | 本章の該当箇所 |
 |---|---|---|---|
-| 学習者タイプの発見 | 語彙・文法・流暢性・不安のプロフィールから潜在的な学習者群を探索したい | `k-means` + 階層法（Ward） | Part B |
+| 学習者プロフィールの探索 | 語彙・文法・流暢性・不安のプロフィールから潜在的な群構造を探索したい | `k-means` + 階層法（Ward） | Part B |
 | 連続・カテゴリ混在データの類型化 | テスト得点＋学習志向＋L1距離で学習者を分けたい | Gower距離 + PAM | Part C：混合データ |
 | 学習者作文のテキスト類型化 | 自由記述のテーマや語彙傾向でプロフィールを探りたい | tf-idf + `k-means` / LDA | Part C：NLP応用 |
-| 縦断的なクラスタ遷移 | 介入前後で学習者タイプがどう変化したかを追跡したい | Wave固定重心法 | Part C：発展例 |
+| 縦断的なクラスタ遷移 | 介入前後で学習者プロフィールがどう変化したかを追跡したい | Wave固定重心法 | Part C：発展例 |
 | テスト得点の潜在プロフィール | 同じ総得点でも下位領域パターンが異なる群を見つけたい | 領域得点 + RT + `k-means` | Part C：テスト理論 |
 
 ### 読者別の読み方
 
 | 読者タイプ | まず読む場所 | 次に読む場所 | 狙い |
 |---|---|---|---|
-| 入門段階 | Part A（考え方 + 距離の基礎） | Part B（実装チュートリアル） | 判断根拠を理解してから実装する |
-| 実証研究者 | Part A（前処理 + 手法比較） | Part C（SLA具体例） | 研究計画に転用できる分析手順を得る |
-| 測定研究者 | Part A（クラスタ数決定） | Part C（テスト理論接続） | 理論整合的な解釈フレームを作る |
+| 基礎確認 | Part A（考え方 + 距離の基礎） | Part B（実装チュートリアル） | 判断根拠を理解してから実装します |
+| 実証研究者 | Part A（前処理 + 手法比較） | Part C（SLA具体例） | 研究計画に転用できる分析手順を得ます |
+| 測定研究者 | Part A（クラスタ数決定） | Part C（テスト理論接続） | 理論整合的な解釈フレームを作ります |
 :::
 
 ## セットアップ
 
 ### 主なパッケージの役割
 
-- `cluster` / `fpc` / `factoextra` / `dbscan`: 階層クラスタリング、k-means、密度ベース手法、妥当性指標を扱う。
-- `topicmodels` / `quanteda` / `udpipe` / `tidytext` / `stopwords`: テキストデータの前処理、特徴量化、トピックモデリングを担当する。
-- `tidyverse` / `janitor` / `here`: データ整形、列名整理、ファイルパス管理の共通基盤。
-- `ggrepel` / `igraph` / `patchwork` / `gt` / `DT`: 可視化、ネットワーク補助図、図表整形を支える。
+- `cluster` / `fpc` / `factoextra` / `dbscan`: 階層クラスタリング、k-means、密度ベース手法、妥当性指標を扱います。
+- `topicmodels` / `quanteda` / `udpipe` / `tidytext` / `stopwords`: テキストデータの前処理、特徴量化、トピックモデリングを担当します。
+- `tidyverse` / `janitor` / `here`: データ整形、列名整理、ファイルパス管理の共通基盤です。
+- `ggrepel` / `igraph` / `patchwork` / `gt` / `DT`: 可視化、ネットワーク補助図、図表整形を支えます。
 
 ### 追加の前提
 
-- `udpipe` は初回実行時に言語モデルをローカルへダウンロードする場合がある。テキスト分析パートだけがこの追加取得を伴う。
+- `udpipe` の言語モデルは、必要な場合だけ手動で `models/` に取得します。章のレンダー時に外部ダウンロードへ依存しない設計にします。
 
 ```{r}
 #| eval: true
@@ -142,6 +146,7 @@ pacman::p_load(
   topicmodels, gt, DT, psych, janitor, tidytext,
   ggrepel, igraph, quanteda, udpipe, stopwords, here
 )
+udpipe_available <- FALSE
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(
     plot.title.position = "plot",
@@ -164,14 +169,16 @@ theme_update(legend.position = "bottom")
 
 ## Part A：設計と理論基盤 {.unnumbered}
 
+Part A では、クラスタリングを「人中心の探索的手法」として位置づけ、距離・スケーリング・前処理といった結果を大きく左右する設計判断を整理します。手法選択（Part B）に入る前に、ここで分析設計の地ならしを行います。
+
 ## 1. クラスタリングの考え方 {#sec-clustering-concept}
 
 ### 1.1 変数中心と人中心
 
-- **変数中心（variable-centered）**: 変数間の関係（例: 回帰係数、相関）を主対象にします。「語彙力が高いほど読解力も高いか？」のように、変数レベルの一般法則を問います。
-- **人中心（person-centered）**: 観測単位（学習者、被験者、試行）を似たパターンで群分けします。「どのような学習者プロフィールのタイプが存在するか？」のように、個人レベルの類型を問います。
+- **変数中心（variable-centered）**: 変数間の関係（例: 回帰係数、相関）を主対象にします。「語彙力が高いほど読解力も高いのでしょうか」のように、変数レベルの一般法則を問います。
+- **人中心（person-centered）**: 観測単位（学習者、被験者、試行）を似たパターンで群分けします。「どのような学習者プロフィールとして整理できるでしょうか」のように、個人レベルの類型を問います。
 
-冒頭のシナリオで考えます。回帰分析で「語彙力が高いほど流暢性も高い」と結論づけても、実際には「語彙は高いが流暢性が低い」学習者（たとえば読解中心に学んできた学習者）が一定数いるかもしれません。クラスタリングはこうした**集団内の異質性**を可視化し、変数中心の分析では見落としやすいなパターンを明示します。
+冒頭のシナリオで考えます。回帰分析で「語彙力が高いほど流暢性も高い」と結論づけても、実際には「語彙は高いが流暢性が低い」学習者（たとえば読解中心に学んできた学習者）が一定数いるかもしれません。クラスタリングはこうした**集団内の異質性**を可視化し、変数中心の分析では見落としやすいパターンを明示します。
 
 ### 1.2 何を「似ている」とみなすか
 
@@ -186,9 +193,9 @@ SLAデータでは**「1行を何にするか（学習者/課題/時点）」**�
 
 | 研究質問 | 分析単位（1行） | 特徴量の例 | 解釈上の注意 |
 |---|---|---|---|
-| 学習者タイプを分類したい | 学習者 | 語彙・文法・流暢性・不安 | 個人差の議論が可能だが課題差は吸収される |
+| 学習者プロフィールを分類したい | 学習者 | 語彙・文法・流暢性・不安 | 個人差の議論は可能ですが、課題差は吸収されます |
 | タスクタイプ差を見たい | 課題（タスク） | 正答率・反応時間・談話特徴 | 学習者内変動を直接は捉えにくい |
-| 発達過程を見たい | 学習者×時点 | 時点別得点・成長率・変動幅 | 縦断依存を無視すると過解釈になる |
+| 発達過程を見たい | 学習者×時点 | 時点別得点・成長率・変動幅 | 縦断依存を無視すると過解釈になります |
 
 ### 入力データ設計テンプレート
 
@@ -202,18 +209,18 @@ SLAデータでは**「1行を何にするか（学習者/課題/時点）」**�
 
 ### 1.4 教師あり学習と教師なし学習
 
-クラスタリングは「教師なし学習」に分類されます。教師あり学習と教師なし学習は、どちらが優れているかではなく、研究質問の種類が異なります。SLA・心理言語学では、探索（教師なし）と検証（教師あり）を分離して設計することで、分析目的の混同を避けやすくなります。
+クラスタリングは「教師なし学習」に分類されます。教師あり学習と教師なし学習は、どちらが優れているかではなく、研究質問の種類が異なります。SLA・心理言語学では、教師なしの探索、外的基準による妥当性確認、教師あり予測を分離して設計することで、分析目的の混同を避けやすくなります。
 
 ::: {.panel-tabset}
 ### 学習タイプの比較
 
 | 観点 | 教師あり学習 | 教師なし学習 |
 |---|---|---|
-| 目的 | 既知の目的変数 `y` を予測 | 潜在構造・類型を発見 |
+| 目的 | 既知の目的変数 `y` を予測 | 潜在構造・類型を探索的に記述 |
 | 必要なデータ | 説明変数 `X` と正解ラベル `y` | 説明変数 `X` のみ |
 | 代表手法 | 線形回帰, ロジスティック回帰, ランダムフォレスト | `k-means`, 階層クラスタリング, DBSCAN |
 | 評価 | 予測誤差・正解率・AUC | シルエット・安定性・理論妥当性 |
-| 典型的な研究質問 | 「テスト得点を予測できるか」 | 「学習者タイプがいくつあるか」 |
+| 典型的な研究質問 | 「テスト得点を予測できるか」 | 「学習者プロフィールをいくつの群として整理できるか」 |
 
 ### SLA研究質問との対応
 
@@ -221,11 +228,11 @@ SLAデータでは**「1行を何にするか（学習者/課題/時点）」**�
 |---|---|---|---|---|
 | 語彙・文法・流暢性から期末得点を予測 | `X + y`（得点あり） | 予測 | 教師あり | 回帰モデル |
 | 学習者をプロフィール別に類型化 | `X`のみ（ラベルなし） | 探索 | 教師なし | クラスタリング |
-| まず類型化し、その後に保持率を比較 | `X`のみ + 外的変数 | 探索 + 検証 | 両方を併用 | クラスタリング + 群間比較 |
+| まず類型化し、その後に保持率を比較 | `X`のみ + 外的変数 | 探索 + 外的基準による確認 | 教師なし + 後段の妥当性確認 | クラスタリング + 群間比較 |
 | 自由記述から自動的に作文レベル分類 | テキスト + 正解レベル | 分類 | 教師あり | テキスト分類モデル |
 :::
 
-研究デザイン上は、まず教師なし学習でパターンを探索し、次に教師あり学習で外的基準（得点・継続率など）との関係を検証する二段階設計が有効です。
+研究デザイン上は、まず教師なし学習でパターンを探索し、次にクラスタリングに使っていない外的基準（得点・継続率など）との整合を確認する二段階設計が有効です。外的基準を予測対象にしてモデルを組む場合は、教師あり学習として別分析に分けます。
 
 ### 3行で体験するクラスタリング
 
@@ -249,7 +256,7 @@ kmeans(X_teaser, centers = 2, nstart = 10)$cluster
 
 ## 2. 距離・類似度の基礎（具体例）
 
-### 2.1 手計算で理解する
+### 2.1 手計算による理解
 
 距離の概念を直感的に理解するために、3名の学習者の簡単なデータを使います。学習者Aは流暢性60 wpm・正確性92%、学習者Bは66 wpm・89%、学習者Cは108 wpm・58%です。AとBは「正確性重視タイプ」、Cは「流暢性重視タイプ」に見えますが、距離指標でもそれが確認できるでしょうか。
 
@@ -368,7 +375,7 @@ dist_compare_tbl |>
 
 距離尺度の選択は研究デザインに依存します。以下に、SLA研究で遭遇しやすい状況別の推奨をまとめます。
 
-- **ユークリッド距離**: テスト得点・流暢性指標など連続量中心のデータで最も一般的。`k-means`と整合的です。
+- **ユークリッド距離**: テスト得点・流暢性指標など連続量中心のデータで出発点になりやすい距離です。`k-means`と整合的です。
 - **マンハッタン距離**: 外れ値（極端に遅いRT、異常に高い不安得点など）の影響をやや抑えたいときに有効です。
 - **コサイン類似度**: 学習者作文の語彙分布など、高次元の頻度ベクトルで**方向の類似**（使う語の種類の傾向）を見たいときに有効です。
 - **Gower距離**: テスト得点（連続）＋学習志向（カテゴリ）＋留学経験（2値）のように、連続・カテゴリ・2値が混在するデータ向けです[@gower1971]。
@@ -404,9 +411,9 @@ dist_compare_tbl |>
 | テキスト由来特徴 | `tf-idf`/埋め込み + 正規化 | 高次元・疎行列を安定化 |
 :::
 
-### 実演で確認したこと: 標準化の有無で最近傍が逆転する
+### 実演で確認したこと: 標準化の有無による距離構造の変化
 
-セクション2.2で見たように、3名の玩具データ（`toy`）に対して生スケールとz標準化後の距離を比較すると、RT(ms)の値域（900–1400）がfluency(60–108)やaccuracy(58–92)より圧倒的に大きいため、**標準化しないとRTだけが距離を支配**し最近傍が入れ替わります。これが前処理がクラスタ構造を左右する最も典型的な例です[@everitt2011; @kaufman1990]。
+セクション2.2で見たように、3名の玩具データ（`toy`）に対して生スケールとz標準化後の距離を比較すると、RT(ms)の値域（900–1400）がfluency(60–108)やaccuracy(58–92)より圧倒的に大きいため、**標準化しないとRTだけが距離の大きさと比率を支配**します。これが前処理がクラスタ構造を左右する最も典型的な例です[@everitt2011; @kaufman1990]。
 
 ### 外れ値の検出と対処
 
@@ -477,7 +484,7 @@ ggplot(outlier_demo, aes(x1, x2, color = outlier, shape = outlier)) +
 | 状況 | 推奨対応 |
 |---|---|
 | 入力エラー（ありえない値） | 修正または除外 |
-| 真の極端値（実在する学習者） | ウィンソライズ（95パーセンタイルに置換）、または外れ値を含む/除外した両方の結果を報告 |
+| 測定上妥当な極端値 | ウィンソライズ（95パーセンタイルに置換）、または外れ値を含む/除外した両方の結果を報告 |
 | 外れ値が3名以上 | 独立した小クラスタとして解釈可能か検討 |
 
 **ステップ3: 報告**——除外・ウィンソライズの基準と対象件数を論文に明記し、感度分析（外れ値あり/なしの比較）を付記します。
@@ -489,7 +496,7 @@ ggplot(outlier_demo, aes(x1, x2, color = outlier, shape = outlier)) +
 
 ## 4. 代表的アルゴリズムの前提 {#sec-algorithms}
 
-クラスタリングのアルゴリズムにはさまざまな種類がありますが、それぞれ暗黙の前提（クラスタの形状、サイズの均等性など）が異なります。SLA研究では、`k-means` と階層クラスタリング（Ward法）が最も広く使われていますが、研究デザインによっては他の手法が適切な場合もあります。
+クラスタリングのアルゴリズムにはさまざまな種類がありますが、それぞれ暗黙の前提（クラスタの形状、サイズの均等性など）が異なります。本章では、標準化済みの連続量プロフィールを出発点にする場面で扱いやすい `k-means` と階層クラスタリング（Ward法）から始めます。ただし、研究デザイン、変数型、クラスタ形状によっては他の手法が適切な場合もあります。
 
 | 手法 | 基本アイデア | 強み | 注意点 |
 |---|---|---|---|
@@ -508,7 +515,7 @@ ggplot(outlier_demo, aes(x1, x2, color = outlier, shape = outlier)) +
 | ノイズ点が多く非球状クラスタ | DBSCAN | HDBSCAN | epsilon/minPtsの調整が鍵 |
 | 推定不確実性も評価したい | モデルベースクラスタリング | `k-means` | BICなどで比較 |
 
-### 実演: 同じデータに3手法を適用する
+### 実演: 同じデータへの3手法の適用
 
 上の表の違いを目で確認します。以下では三日月形（非球状）の2Dデータ200点を生成し、`k-means`・Ward法・DBSCANを同時に適用します。
 
@@ -636,41 +643,52 @@ ggplot(moon_dat, aes(x, y, color = dbscan, shape = true_group)) +
 
 :::
 
-- **k-means / Ward**: 球状クラスタを暗黙に仮定するため、三日月形のデータでは真のグループを正しく分離できず、直線的に空間を分割してしまいます。
+- **k-means / Ward**: 球状クラスタを暗黙に仮定するため、三日月形のシミュレーションデータでは生成時の群を正しく分離できず、直線的に空間を分割してしまいます。
 - **DBSCAN**: 密度に基づくため、非球状の形状でも高密度領域をたどってクラスタを検出できます[@ester1996]。ただし `eps`（近傍半径）と `minPts`（最小点数）の設定が結果を大きく左右します。
-- **SLA研究への示唆**: 学習者データは多くの場合おおむね球状のクラスタを想定できるため `k-means`[@hartigan1979] / Ward[@murtagh2014]が第一候補ですが、非典型的なパターン（例: L1距離が極端に異なるグループ）が疑われる場合は密度ベースの手法も検討します[@jain2010]。
+- **SLA研究への示唆**: 標準化済みの連続指標で平均プロフィール差を見たい場合、`k-means`[@hartigan1979] / Ward[@murtagh2014]は実装と報告の出発点になります。ただし、非球状の分布、少数派クラスタ、カテゴリ変数、外れ値が重要な研究では、PAM、Gower距離、DBSCAN、モデルベースクラスタリングなどとの比較が必要です[@jain2010]。
 
 ### アルゴリズムの仮定をチェックする方法
 手法を選ぶ前に、自分のデータがその手法の仮定と合っているかを確認します。
 
 1. **球状クラスタの仮定（k-means / Ward）**: PCA 2次元散布図で点群の形状を確認します。楕円や三日月形に見えたら、DBSCANやGMM（ガウス混合モデル）も候補に入れます。
-2. **等サイズの仮定（k-means）**: 理論的に特定のタイプが稀であると予想される場合（例: 極端に高達成の学習者は少数）、PAM（`pam()`）やWard法はサイズの偏りに比較的頑健です。
+2. **等サイズの仮定（k-means）**: 理論的に特定のタイプが稀であると予想される場合（例: 極端に高達成の学習者は少数）、k-means は小クラスタを大きなクラスタへ吸収しやすいことがあります。PAM（`pam()`）、Gower距離、モデルベース法、クラスタ数を変えた感度分析を併用して確認します。
 3. **変数の独立性（k-means のユークリッド距離）**: 相関が極端に高い変数対がある場合、そのペアが距離を二重に支配します。相関行列を事前に確認し、$r > 0.85$ の変数対があればPCA前処理を検討します。
 4. **外れ値の影響（k-means）**: k-means は外れ値に敏感です。箱ひげ図で極端な値を確認し、必要に応じて PAM（メドイドベース）へ切り替えます。
 
 ## 5. クラスタ数決定と妥当性評価 {#sec-k-decision-theory}
 
-「学習者タイプはいくつあるか？」──これはクラスタリングで最も重要かつ難しい判断です。$k$ を1つの指標だけで機械的に決めると過適合しやすく、理論的に意味のない群を作ってしまうことがあります。
+「学習者プロフィールをいくつの群として整理するのでしょうか」──これはクラスタリングで最も重要かつ難しい判断です。$k$ を1つの指標だけで機械的に決めると過適合しやすく、理論的に意味のない群を作ってしまうことがあります。
 
 ### 5.1 クラスタ数 $k$ は「複数基準」で決める
 
-- エルボー法: 群内平方和の減少が鈍る点を探す。
-- シルエット係数: 分離と凝集のバランスを見る[@rousseeuw1987]。
-- ギャップ統計量: 帰無参照分布との差で評価する[@tibshirani2001]。
+- エルボー法: 群内平方和の減少が鈍る点を探します。
+- シルエット係数: 分離と凝集のバランスを見ます[@rousseeuw1987]。
+- ギャップ統計量: 帰無参照分布との差で評価します[@tibshirani2001]。
 
-### 5.2 妥当性は3層で確認する
+### 5.2 妥当性の3層確認
 
 1. 内的妥当性: シルエットなど、クラスタ内部のまとまりと分離。
 2. 外的妥当性: 熟達度テスト、保持率、追跡成績など外部変数との整合。
 3. 理論的妥当性: SLA理論・心理言語学理論と矛盾しないか。
 
-### 5.3 安定性（stability）を必ず確認する
+外的妥当性を確認するときは、クラスタリングに使った変数と、後から比較する外的変数を分けます。たとえば `final_exam` をクラスタリングに入れてから「クラスタ間で `final_exam` が違う」と報告しても、それは同じ情報を別の形で見ているだけです。外的変数は、クラスタ作成には使わず、クラスタ解が別の教育的指標と整合するかを見るために残しておきます。
+
+| 確認の種類 | 使う情報 | 何がわかるか | 注意点 |
+|---|---|---|---|
+| 内的指標 | クラスタリングに使った特徴量 | まとまり・分離・クラスタ数候補 | 教育的意味までは保証しない |
+| 同一標本での外的比較 | クラスタリングに使っていない外的変数 | クラスタ解が別指標と整合するか | クラスタ作成後の比較なので、p値を確認的検定のように読まない |
+| ホールドアウト確認 | 開発標本で重心を作り、検証標本に割当 | 新しい学習者にも同様の傾向が出るか | 標本が小さいと不安定になりやすい |
+| 独立標本での再現 | 別年度・別大学・別タスクのデータ | 一般化可能性のより強い根拠 | 測定条件が違う場合は完全一致を期待しない |
+
+: クラスタ解の妥当性確認の段階 {#tbl-cluster-validation-layers}
+
+### 5.3 安定性（stability）の確認
 
 クラスタ解は「正解」が存在しない教師なし学習であるため、**再現性（安定性）の確認が不可欠**です[@hennig2007]。具体的には以下の3つの方法で安定性を検証します。
 
-1. **シード変更テスト**: `set.seed()` の値を変えて `kmeans()` を複数回実行し、クラスタ割り当てが大幅に変わらないかを確認する。
-2. **ブートストラップ再標本化**: `fpc::clusterboot()` でデータを復元抽出し、Jaccard係数を算出する。Jaccard ≥ 0.75 で「概ね安定」、≥ 0.85 で「高安定」が目安（@sec-stability で本格実装）。
-3. **手法間照合**: `k-means` と階層法（Ward法）など異なるアルゴリズムで同一データを分析し、クロス集計で一致度を確認する。
+1. **シード変更テスト**: `set.seed()` の値を変えて `kmeans()` を複数回実行し、クラスタ割り当てが大幅に変わらないかを確認します。
+2. **ブートストラップ再標本化**: `fpc::clusterboot()` でデータを復元抽出し、Jaccard係数を算出します。Jaccard ≥ 0.75 で「概ね安定」、≥ 0.85 で「高安定」が経験的な目安です（@sec-stability で本格実装）。
+3. **手法間照合**: `k-means` と階層法（Ward法）など異なるアルゴリズムで同一データを分析し、クロス集計で一致度を確認します。
 
 再現しないクラスタ解は解釈を弱めます。安定性が低い場合は、変数選択・前処理・$k$ の設定を見直してください。
 
@@ -782,25 +800,7 @@ cluster_vars <- c("vocabulary", "grammar", "fluency", "anxiety")
 
 ## 主要関数一覧
 
-以下は本章で頻出する関数と、研究報告で明記しておきたい引数の一覧です。詳細な引数仕様・戻り値・計算仕様は公式ドキュメントを参照してください[^doc-kmeans][^doc-hclust][^doc-silhouette][^doc-clusgap][^doc-clusterboot][^doc-daisy][^doc-pam][^doc-prcomp][^doc-topicmodels][^doc-svd][^doc-describe][^doc-tidytext][^doc-igraph][^doc-quanteda][^doc-udpipe][^doc-gt][^doc-dt]。
-
-[^doc-kmeans]: [stats::kmeans](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/kmeans.html)
-[^doc-hclust]: [stats::hclust](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/hclust.html)
-[^doc-silhouette]: [cluster::silhouette](https://stat.ethz.ch/R-manual/R-devel/library/cluster/html/silhouette.html)
-[^doc-clusgap]: [cluster::clusGap](https://stat.ethz.ch/R-manual/R-devel/library/cluster/html/clusGap.html)
-[^doc-clusterboot]: [fpc::clusterboot](https://search.r-project.org/CRAN/refmans/fpc/html/clusterboot.html)
-[^doc-daisy]: [cluster::daisy](https://stat.ethz.ch/R-manual/R-devel/library/cluster/html/daisy.html)
-[^doc-pam]: [cluster::pam](https://stat.ethz.ch/R-manual/R-devel/library/cluster/html/pam.html)
-[^doc-prcomp]: [stats::prcomp](https://stat.ethz.ch/R-manual/R-devel/library/stats/html/prcomp.html)
-[^doc-topicmodels]: [topicmodels::LDA](https://search.r-project.org/CRAN/refmans/topicmodels/html/LDA.html)
-[^doc-svd]: [base::svd](https://stat.ethz.ch/R-manual/R-devel/library/base/html/svd.html)
-[^doc-describe]: [psych::describe](https://search.r-project.org/CRAN/refmans/psych/html/describe.html)
-[^doc-tidytext]: [tidytext reference](https://juliasilge.github.io/tidytext/reference/index.html)
-[^doc-igraph]: [igraph reference](https://r.igraph.org/reference/)
-[^doc-quanteda]: [quanteda reference](https://quanteda.io/reference/)
-[^doc-udpipe]: [udpipe docs](https://bnosac.github.io/udpipe/docs/doc2.html)
-[^doc-gt]: [gt reference](https://gt.rstudio.com/reference/gt.html)
-[^doc-dt]: [DT docs](https://rstudio.github.io/DT/)
+以下は本章で頻出する関数と、研究報告で明記しておきたい引数の一覧です。詳細な引数仕様・戻り値・計算仕様は公式ドキュメントを参照してください [@rstatsKmeans; @rstatsHclust; @clusterSilhouette; @clusterClusGap; @fpcClusterboot; @clusterDaisy; @clusterPam; @rstatsPrcomp; @topicmodelsLDA; @rbaseSvd; @psychDescribe; @psychAlpha; @tidytextReference; @igraphReference; @quantedaReference; @udpipeDocs; @gtReference; @dtDocs]。
 
 ::: {.panel-tabset}
 ### 関数一覧
@@ -809,16 +809,16 @@ cluster_vars <- c("vocabulary", "grammar", "fluency", "anxiety")
 |---|---|---|---|---|---|
 | クラスタ推定 | `stats` | `kmeans()` | クラスタ中心推定 | `centers`, `nstart`, `iter.max` | seedと`nstart`を明記 |
 | クラスタ推定 | `stats` | `hclust()` | 階層的クラスタ推定 | `method` | 距離関数と結合法を併記 |
-| クラスタ評価 | `fpc` | `clusterboot()` | 安定性評価 | `B`, `clustermethod`, `krange` | Jaccard安定性を報告 |
+| クラスタ評価 | `fpc` | `clusterboot()` | 安定性評価 | `B`, `clustermethod`, `bootmethod`, `...` | Jaccard安定性とmethod固有引数を報告 |
 | 混合データ | `cluster` | `daisy()` | Gower距離計算 | `metric`, `type` | 変数型と重みづけを記録 |
 | 混合データ | `cluster` | `pam()` | 距離行列クラスタ推定 | `k`, `diss` | medoidと平均シルエットを報告 |
 | クラスタ評価 | `cluster` | `silhouette()` | 分離度評価 | `x`, `dist` | 距離定義と平均値を報告 |
-| クラスタ評価 | `cluster` | `clusGap()` | k候補比較 | `FUN`, `K.max`, `B` | B回数と乱数設定を記録 |
+| クラスタ評価 | `cluster` | `clusGap()` | k候補比較 | `FUNcluster`, `K.max`, `B`, `d.power` | B回数と乱数設定を記録 |
 | 次元圧縮 | `stats` | `prcomp()` | 主成分抽出 | `center`, `scale.` | 寄与率と累積寄与率を提示 |
 | 記述統計 | `psych` | `describe()` | 要約統計 | `x`, `na.rm` | 対象変数と欠測処理を明記 |
 | 表出力 | `kable` | `knitr::kable()` | 静的表 | `caption` | 列名は前処理で整える |
-| 表出力 | `DT` | `datatable()` | 探索的閲覧表 | `pageLength`, `scrollX` | 表示設定を再現可能に保持 |
-| トピックモデル | `topicmodels` | `LDA()` | 潜在トピック推定 | `k`, `control(seed, iter)` | k・反復回数・seedを報告 |
+| 表出力 | `DT` | `datatable()` | 探索的閲覧表 | `options`, `caption`, `rownames` | `options = list(pageLength = ..., scrollX = TRUE)`を保持 |
+| トピックモデル | `topicmodels` | `LDA()` | 潜在トピック推定 | `k`, `control = list(...)` | k・反復回数・seedを報告 |
 | トピックモデル | `base` | `svd()` | LSA軸抽出 | `x` | 行列定義（`tf-idf`/頻度）と次元数を報告 |
 | テキスト処理 | `tidytext` | `unnest_tokens()` | トークン化 | `token`, `to_lower` | 前処理規則を報告 |
 | テキスト処理 | `tidytext` | `bind_tf_idf()` | tf-idf変換 | `term`, `document`, `n` | 文書単位と語単位を明示 |
@@ -906,7 +906,7 @@ kmeans_nstart_summary <- kmeans_nstart_comp |>
 |---|---|
 | 研究課題 | `kmeans()` で `nstart` を増やすと推定の安定性はどの程度改善するか |
 | 操作化 | 3クラスタ2次元データで `nstart = 1` vs `50` を100回比較（`tot.withinss`, `betweenss/totss`） |
-| 識別戦略 | 乱数シードだけを変え、`centers = 3` は固定 → 初期値依存の差分のみ観察 |
+| 分析戦略 | 乱数シードだけを変え、`centers = 3` は固定 → 初期値依存の差分のみ観察 |
 | 妥当性検証 | 表で要約、`DT` で全試行ログ、図で分布比較 |
 
 ### 試行ログ（DT）
@@ -970,10 +970,10 @@ ggplot(kmeans_nstart_comp, aes(x = nstart, y = tot_withinss, fill = nstart)) +
 一般に `nstart` を増やすと `tot.withinss` が小さくなり、初期値依存のばらつきも縮小しやすくなります。報告時は `set.seed()` と `nstart` をセットで明記します[@morissette2013]。
 
 ### `nstart` の選び方
-- **探索段階（EDA）**: `nstart = 25` 程度で十分。クラスタ構造の大まかな把握が目的。
-- **最終分析（報告用）**: `nstart = 50` 以上を推奨。@steinley2006 は、$k \times 変数数$ が大きいほど初期値依存が強まるため、保守的に大きい値を使うべきと指摘しています。
-- **判断基準**: 上の箱ひげ図で `nstart = 25` と `nstart = 50` の中央値がほぼ一致し、箱の幅も十分狭ければ、`nstart = 50` で安定していると判断できます。
-- **計算コスト**: $n = 360$, $p = 4$ 程度のデータなら `nstart = 100` でも数秒で完了します。大規模データ（$n > 10{,}000$）では `nstart = 30` 程度に抑え、代わりに `iter.max` を大きくする戦略もあります。
+- **探索段階（EDA）**: `nstart = 25` 程度を出発点にし、初期値依存の大きさを確認します。これは本章の運用上の目安です。
+- **最終分析（報告用）**: `nstart = 50` 以上を候補にします。@steinley2006 は、$k \times 変数数$ が大きいほど初期値依存が強まるため、保守的に大きい値を使うべきと指摘しています。
+- **判断基準**: 上の箱ひげ図では `nstart = 1` と `nstart = 50` を比較しています。`nstart = 50` 側の `tot.withinss` のばらつきが十分小さければ、この例では初期値依存が緩和されていると判断できます。
+- **計算コスト**: $n = 360$, $p = 4$ 程度のデータなら `nstart = 100` でも数秒で完了します。大規模データ（$n > 10{,}000$）では小さめの `nstart` から始め、目的関数の安定性を見ながら増やす戦略もあります。
 
 ## 例題データの作成
 
@@ -987,7 +987,7 @@ ggplot(kmeans_nstart_comp, aes(x = nstart, y = tot_withinss, fill = nstart)) +
 データには3つの潜在タイプ（基礎層・中間層・上位層）を仮定します。実際の研究では、こうした「真のタイプ」は未知であり、クラスタリングで探索的に推定する点がポイントです。
 
 ### シミュレーション設計の意図
-本章ではシミュレーションデータを使う理由は2つあります。第一に、**「正解」が既知**（3群×120名ずつ）なので、クラスタリングの回復精度を評価できます。第二に、群間の平均差を控えめに設定し（隣接群の差 ≈ 12–15点, SD ≈ 8–10）、群の分布が重なるようにしているため、**「完璧に分かれないのが普通」**という現実的な期待を読者に持たせます。SLAデータでは学習者タイプが明確に分離していることは稀であり[@clatworthy2005]、そうした状況でクラスタリングがどの程度有用かを体験することがこの演習の目的です。
+本章ではシミュレーションデータを使う理由は2つあります。第一に、**生成時の群が既知**（3群×120名ずつ）なので、必要に応じて回復状況を点検できます。ただし、本章の主眼は真の群との完全一致ではなく、クラスタ数選択、安定性、外的基準との整合をどう報告するかにあります。第二に、群間の平均差を控えめに設定し（隣接群の差 ≈ 12–15点, SD ≈ 8–10）、群の分布が重なるようにしているため、**「完璧に分かれないのが普通」**という現実的な期待を読者に持たせます。SLAデータでは学習者タイプが明確に分離していることは稀であり[@clatworthy2005]、そうした状況でクラスタリングがどの程度有用かを体験することがこの演習の目的です。
 
 ```{r}
 #| eval: true
@@ -1264,7 +1264,7 @@ scale_check_tbl |>
   )
 ```
 
-### 標準化の効果を可視化する
+### 標準化の効果の可視化
 
 Part A セクション3で「標準化を忘れるとスケールの大きい変数が距離を支配する」と学びました。ここで実データの分布がどう変わるかを確認します。
 
@@ -1412,9 +1412,7 @@ pca_var_tbl <- tibble::tibble(
 set.seed(2041)
 km_full_space <- kmeans(X, centers = 3, nstart = 50)
 
-X_pca2 <- pca_obj$x[, 1:2, drop = FALSE] |>
-  scale() |>
-  as.matrix()
+X_pca2 <- pca_obj$x[, 1:2, drop = FALSE]
 
 set.seed(2041)
 km_pca_space <- kmeans(X_pca2, centers = 3, nstart = 50)
@@ -1438,7 +1436,7 @@ pca_space_plot <- pca_obj$x[, 1:2, drop = FALSE] |>
 
 | 手法カテゴリ | 目的 | 出力 | SLAでの使いどころ |
 |---|---|---|---|
-| クラスタリング | 学習者タイプを分ける | クラスタラベル（例: 1,2,3） | 学習者プロフィールの類型化 |
+| クラスタリング | 学習者プロフィールを分ける | クラスタラベル（例: 1,2,3） | 学習者プロフィールの類型化 |
 | 次元圧縮（PCA） | 多変量情報を少数軸に要約 | 主成分得点（PC1, PC2, ...） | 指標間の共通構造を可視化 |
 | 次元圧縮（t-SNE/UMAP） | 局所近傍を保った可視化 | 2次元・3次元埋め込み | 高次元テキスト特徴の可視化 |
 
@@ -1604,7 +1602,7 @@ pca_score_comp_tbl <- dplyr::bind_rows(
 |---|---|
 | 研究課題 | 尺度混在時に `prcomp()` の `scale.` 設定は主成分解釈をどの程度変えるか |
 | 操作化 | `fluency` をms相当に拡大した4変数で `scale.=FALSE` vs `TRUE` を比較（寄与率・負荷量・PC分離） |
-| 識別戦略 | 同一データ・同一 `center=TRUE` で `scale.` のみ変更 → 寄与率と負荷量の差分を観察 |
+| 分析戦略 | 同一データ・同一 `center=TRUE` で `scale.` のみ変更 → 寄与率と負荷量の差分を観察 |
 | 妥当性検証 | 表で寄与率、静的表で負荷量ログ、図で寄与率曲線とPC散布図 |
 
 ### 負荷量ログ（表）
@@ -1719,7 +1717,14 @@ sil_tbl <- purrr::map_dfr(2:8, function(k) {
 })
 
 set.seed(2034)
-gap_res <- cluster::clusGap(X, FUN = kmeans, K.max = 8, B = 30, nstart = 30)
+gap_res <- cluster::clusGap(
+  X,
+  FUNcluster = stats::kmeans,
+  K.max = 8,
+  B = 30,
+  nstart = 30,
+  d.power = 2
+)
 gap_tbl <- as.data.frame(gap_res$Tab) |>
   tibble::rownames_to_column("k") |>
   mutate(
@@ -1727,10 +1732,29 @@ gap_tbl <- as.data.frame(gap_res$Tab) |>
     gap = round(gap, 3),
     SE.sim = round(SE.sim, 3)
   )
+
+sil_selected_k <- sil_tbl |>
+  dplyr::slice_max(avg_silhouette, n = 1, with_ties = FALSE) |>
+  dplyr::pull(k)
+
+gap_selected_k <- cluster::maxSE(
+  f = gap_res$Tab[, "gap"],
+  SE.f = gap_res$Tab[, "SE.sim"],
+  method = "Tibs2001SEmax"
+)
+
+k_selection_summary_tbl <- tibble::tibble(
+  criterion = c("Silhouette maximum", "Gap statistic (Tibs2001SEmax)"),
+  selected_k = c(sil_selected_k, gap_selected_k),
+  note = c(
+    "Average silhouette is largest at this k.",
+    "Tibshirani et al. 1-SE rule with d.power = 2."
+  )
+)
 ```
 
 ### 関数ノート: `kmeans()` / `silhouette()` / `clusGap()`
-`kmeans()` は `nstart` を増やすと初期値依存を緩和できます。`silhouette()` は距離定義に依存するため、`dist()` の仕様を報告します。`clusGap()` は `B` が小さいと不安定になりやすいので、計算資源が許せば大きめの反復回数を使います。
+`kmeans()` は `nstart` を増やすと初期値依存を緩和できます。`silhouette()` は距離定義に依存するため、`dist()` の仕様を報告します。`clusGap()` は公式引数 `FUNcluster` にクラスタリング関数を渡し、元論文の設定に合わせる場合は `d.power = 2` と1-SEルールの種類を明記します[@clusterClusGap; @tibshirani2001]。`B` が小さいと不安定になりやすいので、計算資源が許せば大きめの反復回数を使います。
 
 ::: {.panel-tabset}
 ### エルボー法（図）
@@ -1817,7 +1841,7 @@ sil_tbl |>
   )
 ```
 
-**シルエットの見方:** 平均シルエット係数は、各観測が「自分のクラスタにどれだけ合っているか」を −1〜+1 で測った指標の平均です[@rousseeuw1987]。値が最大となる $k$ が最適候補です。@kaufman1990 の基準では、0.51–0.70 で "reasonable structure"、0.71–1.00 で "strong structure" とされます。
+**シルエットの見方:** 平均シルエット係数は、各観測が「自分のクラスタにどれだけ合っているか」を −1〜+1 で測った指標の平均です[@rousseeuw1987]。値が最大となる $k$ が最適候補です。@kaufman1990 の基準では、0.51–0.70 で "reasonable structure"、0.71–1.00 で "strong structure" とされますが、これはデータ構造に依存する経験的な目安として扱います。
 
 ### ギャップ統計量（表 + 図）
 
@@ -1862,10 +1886,21 @@ gap_tbl |>
   )
 ```
 
-**ギャップ統計量の見方:** ギャップ統計量は「実データの WSS が、ランダムデータ（帰無参照分布）と比べてどれだけ良いか」を測ります[@tibshirani2001]。@tibshirani2001 のルールでは、$\text{Gap}(k) \geq \text{Gap}(k+1) - \text{SE}_{k+1}$ を満たす最小の $k$ が推奨値です。エラーバーが重なっている $k$ 間では差が有意でないため、パーシモニー（節約原則）から小さい方を選びます[@hastie2009]。
+**ギャップ統計量の見方:** ギャップ統計量は「実データの WSS が、ランダムデータ（帰無参照分布）と比べてどれだけ良いか」を測ります[@tibshirani2001]。@tibshirani2001 のルールでは、$\text{Gap}(k) \geq \text{Gap}(k+1) - \text{SE}_{k+1}$ を満たす最小の $k$ が推奨値です。ここでの SE は参照分布シミュレーションに由来する不確実性であり、通常の群間差の有意性検定ではありません。1-SEルールは、差が小さい範囲ではパーシモニー（節約原則）を優先して小さい $k$ を選ぶための実務的な規則です[@hastie2009]。
+
+```{r}
+#| eval: true
+#| label: cluster-k-selection-summary-gt
+
+k_selection_summary_tbl |>
+  knitr::kable(
+    row.names = FALSE,
+    caption = "主要基準による推奨クラスタ数"
+  )
+```
 :::
 
-**3基準の統合:** エルボー・シルエット・ギャップの3つが同じ $k$ を指し示していれば、強い根拠として報告できます。基準間で不一致がある場合は、理論的な期待値（SLA理論で学習者プロフィールは何タイプ想定されるか）と安定性（@sec-stability の `clusterboot()` で Jaccard > 0.75）を加味して総合判断します。
+**3基準の統合:** エルボー・シルエット・ギャップの3つが同じ $k$ を指し示していれば、クラスタ数選択の比較的強い記述根拠として報告できます。基準間で不一致がある場合は、理論的な期待値（SLA理論で学習者プロフィールを何タイプとして整理できるか）と安定性（@sec-stability の `clusterboot()` で Jaccard > 0.75 など）を加味して総合判断します。
 
 ### 関数ノート実演: `silhouette()` と `clusGap()` の感度分析
 
@@ -1875,16 +1910,24 @@ gap_tbl |>
 
 distance_methods <- c("euclidean", "manhattan")
 
+set.seed(2036)
 sil_metric_tbl <- purrr::map_dfr(distance_methods, function(dm) {
   dmat <- stats::dist(X, method = dm)
 
   purrr::map_dfr(2:8, function(k) {
-    km <- stats::kmeans(X, centers = k, nstart = 30)
-    sil <- cluster::silhouette(km$cluster, dmat)
+    if (dm == "euclidean") {
+      set.seed(2036 + k)
+      cluster_id <- stats::kmeans(X, centers = k, nstart = 30)$cluster
+      estimator <- "k-means"
+    } else {
+      cluster_id <- cluster::pam(dmat, k = k, diss = TRUE)$clustering
+      estimator <- "PAM"
+    }
+    sil <- cluster::silhouette(cluster_id, dmat)
 
     tibble::tibble(
       metric = "silhouette",
-      setting = dm,
+      setting = paste(dm, estimator, sep = " + "),
       k = k,
       value = mean(sil[, "sil_width"])
     )
@@ -1902,10 +1945,19 @@ sil_best_tbl <- sil_metric_tbl |>
     score = round(value, 3)
   )
 
+set.seed(2037)
 B_levels <- c(20, 40, 80)
 
 gap_curve_tbl <- purrr::map_dfr(B_levels, function(b) {
-  gap_obj <- cluster::clusGap(X, FUN = stats::kmeans, K.max = 8, B = b, nstart = 30)
+  set.seed(2037 + b)
+  gap_obj <- cluster::clusGap(
+    X,
+    FUNcluster = stats::kmeans,
+    K.max = 8,
+    B = b,
+    nstart = 30,
+    d.power = 2
+  )
   gap_tab <- as.data.frame(gap_obj$Tab) |>
     tibble::rownames_to_column("k") |>
     dplyr::mutate(
@@ -1919,7 +1971,7 @@ gap_curve_tbl <- purrr::map_dfr(B_levels, function(b) {
 gap_best_tbl <- gap_curve_tbl |>
   dplyr::group_by(B) |>
   dplyr::summarise(
-    selected_k = cluster::maxSE(f = gap, SE.f = SE.sim, method = "firstSEmax"),
+    selected_k = cluster::maxSE(f = gap, SE.f = SE.sim, method = "Tibs2001SEmax"),
     max_gap = round(max(gap), 3),
     se_at_max_gap = round(SE.sim[which.max(gap)], 3),
     .groups = "drop"
@@ -1952,8 +2004,8 @@ diagnostic_log_tbl <- dplyr::bind_rows(
 | 項目 | 内容 |
 |---|---|
 | 研究課題 | 推奨 `k` は距離定義やブートストラップ反復数でどの程度変動するか |
-| 操作化 | `silhouette()` を `euclidean` / `manhattan` で、`clusGap()` を `B = 20, 40, 80` で比較 |
-| 識別戦略 | データと `kmeans(nstart=30)` を固定し、距離定義または `B` だけを変更 |
+| 操作化 | `silhouette()` を `euclidean + k-means` / `manhattan + PAM` で、`clusGap()` を `B = 20, 40, 80` で比較 |
+| 分析戦略 | 同一データを使い、距離・推定法の整合性または `B` だけを変更 |
 | 妥当性検証 | 表で推奨 `k` 比較、`DT` で全ログ、図で指標曲線 |
 
 ### 推奨k比較（表）
@@ -2047,25 +2099,25 @@ DT::datatable(
 ```
 :::
 
-SLA研究では、推奨 `k` が基準によって揺れること自体が重要な情報です。最終的な `k` は、指標一致、理論整合性、外的妥当性を統合して決定します。
+SLA研究では、推奨 `k` が基準によって揺れること自体が重要な情報です。最終的な `k` は、内的指標、理論整合性、解釈可能性、安定性を中心に決めます。外的変数は、原則として決定後の妥当性確認に使います。
 
 ### 感度分析で基準が不一致のとき
 基準間で推奨 $k$ が異なる場合の判断フローを示します。
 
-1. **3基準中2つ以上が一致** → その $k$ を第一候補にする
-2. **全基準が不一致** → 理論的に妥当な $k$（SLA理論で想定されるプロフィール数）を出発点に、前後の $k$ を `clusterboot()` で安定性検証する
-3. **どの $k$ でも Jaccard < 0.50** → クラスタ構造自体が弱い可能性。変数選択や前処理を見直す
-4. **複数の $k$ が同程度に妥当** → 両方を報告し、外的変数（テスト得点、継続率など）との関連が強い方を主要結果として提示する
+1. **3基準中2つ以上が一致** → その $k$ を第一候補にします
+2. **全基準が不一致** → 理論的に妥当な $k$（SLA理論で想定されるプロフィール数）を出発点に、前後の $k$ を `clusterboot()` で安定性検証します
+3. **どの $k$ でも Jaccard < 0.50** → クラスタ構造自体が弱い可能性があります。変数選択や前処理を見直します
+4. **複数の $k$ が同程度に妥当** → 主要結果は理論・安定性・解釈可能性で選び、もう一方を感度分析として報告します。外的変数との関連を使って選ぶ場合は、探索的モデル選択として明記し、別標本やホールドアウトで再確認します
 
 本例では、エルボー・シルエット・ギャップ統計量を併用し、$k=3$ を有力候補とみなします。
 
 ## k-means クラスタリング {#sec-kmeans}
 
-上のクラスタ数選択で $k=3$ が有力候補となりました。ここでは `k-means` を $k=3$ で実行し、360名の学習者がどのようなプロフィールの群に分かれるかを確認します。
+上のクラスタ数選択では、指標によって推奨 $k$ が揺れる可能性を確認しました。ここでは、シミュレーション設計、ギャップ統計量、解釈可能性を踏まえて `k-means` を $k=3$ で実行し、360名の学習者がどのようなプロフィールの群として整理されるかを確認します。
 
 ### これから行うこと
 - **何を**: 標準化済み行列 `X`（360名 × 4変数）に `kmeans()` を $k=3$, `nstart=50` で適用
-- **なぜ**: エルボー・シルエット・ギャップの3基準が $k=3$ で一致したため、この値を採用
+- **なぜ**: 複数基準を比較したうえで、理論的な想定と解釈可能性に合う主要候補として実演に用います
 - **期待する出力**: 各学習者のクラスタ番号（1〜3）、群別プロフィール（平均・SD）、PCA可視化
 
 ```{r}
@@ -2078,11 +2130,31 @@ km3 <- kmeans(X, centers = 3, nstart = 50)
 dat_cluster <- dat_cluster |>
   mutate(cluster_km = factor(km3$cluster))
 
+cluster_label_tbl <- dat_cluster |>
+  dplyr::group_by(cluster_km) |>
+  dplyr::summarise(
+    profile_score = mean(vocabulary + grammar + fluency - anxiety),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(profile_score) |>
+  dplyr::mutate(
+    cluster_label = factor(
+      c("基礎層", "中間層", "上位層"),
+      levels = c("基礎層", "中間層", "上位層")
+    )
+  )
+
+dat_cluster <- dat_cluster |>
+  dplyr::left_join(
+    cluster_label_tbl |> dplyr::select(cluster_km, cluster_label),
+    by = "cluster_km"
+  )
+
 cluster_size_tbl <- dat_cluster |>
-  count(cluster_km, name = "n")
+  count(cluster_label, cluster_km, name = "n")
 
 profile_tbl <- dat_cluster |>
-  group_by(cluster_km) |>
+  group_by(cluster_label, cluster_km) |>
   summarise(
     n = n(),
     vocabulary_mean = mean(vocabulary),
@@ -2101,12 +2173,12 @@ profile_tbl <- dat_cluster |>
     Fluency = sprintf("%.1f (%.1f)", fluency_mean, fluency_sd),
     Anxiety = sprintf("%.1f (%.1f)", anxiety_mean, anxiety_sd)
   ) |>
-  dplyr::select(cluster_km, n, Vocabulary, Grammar, Fluency, Anxiety)
+  dplyr::select(cluster_label, cluster_km, n, Vocabulary, Grammar, Fluency, Anxiety)
 
 cluster_profile_z <- dat_cluster |>
   mutate(across(all_of(cluster_vars), ~ as.numeric(scale(.x)))) |>
   pivot_longer(cols = all_of(cluster_vars), names_to = "variable", values_to = "z") |>
-  group_by(cluster_km, variable) |>
+  group_by(cluster_label, variable) |>
   summarise(mean_z = mean(z), .groups = "drop")
 ```
 
@@ -2198,7 +2270,7 @@ ggplot(pca_scores, aes(PC1, PC2)) +
   )
 ```
 
-**Biplotの読み方:** 点は個々の学習者、矢印は変数の負荷量ベクトルを表します。矢印が同じ方向を指す変数は正の相関があり、直交する変数は独立的です。矢印の方向と各クラスタの位置を照合することで、「Cluster 1はvocabulary/grammar方向に高い」のような解釈が可能になります。
+**Biplotの読み方:** 点は個々の学習者、矢印は変数の負荷量ベクトルを表します。矢印が同じ方向を指す変数は、この2次元表示上で同じ方向に変化しているように見えます。矢印が直交して見える場合は、この主成分平面では関連が弱く表現されているという意味であり、元の多次元空間で統計的に独立であることを示すものではありません。矢印の方向と各クラスタの位置を照合することで、「Cluster 1はvocabulary/grammar方向に高い」のような解釈が可能になります。
 
 ### 標準化プロフィール図
 
@@ -2207,12 +2279,12 @@ ggplot(pca_scores, aes(PC1, PC2)) +
 #| label: cluster-profile-z-plot
 #| fig-cap: "クラスタ別標準化プロフィール（平均z）"
 
-ggplot(cluster_profile_z, aes(x = variable, y = mean_z, group = cluster_km, color = cluster_km)) +
+ggplot(cluster_profile_z, aes(x = variable, y = mean_z, group = cluster_label, color = cluster_label)) +
   geom_hline(yintercept = 0, linetype = 2, color = "grey40") +
   geom_line(linewidth = 1) +
   geom_point(size = 2) +
   scale_color_brewer(palette = "Dark2") +
-  labs(x = NULL, y = "Mean z-score", color = "Cluster") +
+  labs(x = NULL, y = "Mean z-score", color = "Profile") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(
     plot.title.position = "plot",
@@ -2274,11 +2346,11 @@ factoextra::fviz_silhouette(sil_km3, print.summary = FALSE) +
 #| label: cluster-size-barplot
 #| fig-cap: "k-meansクラスタサイズの分布"
 
-ggplot(cluster_size_tbl, aes(x = cluster_km, y = n, fill = cluster_km)) +
+ggplot(cluster_size_tbl, aes(x = cluster_label, y = n, fill = cluster_label)) +
   geom_col(alpha = 0.85, width = 0.6) +
   geom_text(aes(label = n), vjust = -0.5, size = 4) +
   scale_fill_brewer(palette = "Dark2") +
-  labs(x = "Cluster", y = "Number of learners") +
+  labs(x = "Profile", y = "Number of learners") +
   guides(fill = "none") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(
@@ -2298,15 +2370,17 @@ ggplot(cluster_size_tbl, aes(x = cluster_km, y = n, fill = cluster_km)) +
   )
 ```
 
-クラスタサイズに極端な偏りがないか確認します。1つのクラスタが全体の5%未満の場合は、外れ値集団の可能性があるため慎重な解釈が必要です。
+クラスタサイズに極端な偏りがないか確認します。本章では、1つのクラスタが全体の5%未満であれば注意喚起の目安とし、外れ値集団や過細分化の可能性を慎重に検討します。
 :::
 
 ### 外的妥当性の検証
 
-クラスタリングの内的指標（シルエット係数、WSS）は「クラスタ内のまとまり」を評価しますが、**外的妥当性**（external validity）はクラスタリングに**使用していない変数**がクラスタ間で有意に異なるかを検証するものです[@everitt2011]。シミュレーションデータには、クラスタリングに含めなかった `final_exam`（学期末テスト得点）が含まれています。この変数がクラスタごとに異なれば、クラスタリングが単なるデータの偶然パターンではなく、実質的に異なる学習者群を捉えていることの証拠になります。
+クラスタリングの内的指標（シルエット係数、WSS）は「クラスタ内のまとまり」を評価しますが、**外的妥当性**（external validity）はクラスタリングに**使用していない変数**がクラスタ間でどの程度異なるかを確認するものです[@everitt2011]。シミュレーションデータには、クラスタリングに含めなかった `final_exam`（学期末テスト得点）が含まれています。この変数がクラスタごとに異なれば、シミュレーション上の外的基準とクラスタ解が整合している可能性を示す初期的な証拠として読めます。
 
 ### なぜ外的妥当性が重要か
-クラスタリングは教師なし学習であり、「正解」がありません。内的指標だけでは「データに合っている」ことしか保証されず、**過学習**の可能性を排除できません。外的変数（テスト得点、学習継続率、自己評価など）がクラスタ間で有意差を示すことで、クラスタ解が「教育的に意味のある違い」を反映しているかを客観的に判断できます。
+クラスタリングは教師なし学習であり、実データでは通常「正解」がありません。内的指標だけでは「データに合っている」ことしか保証されず、**過学習**の可能性を排除できません。外的変数（テスト得点、学習継続率、自己評価など）がクラスタ間で差を示すことで、クラスタ解が「教育的に意味のある違い」と整合するかを判断しやすくなります。ただし、同一標本内では基準関連妥当性の初期的確認にとどまり、独立コホートや別年度での再現確認が重要です。
+
+ただし、クラスタを作った後に同じ標本で群間比較を行うため、ANOVA の p 値を通常の確認的仮説検定と同じ強さで読むのは避けます。外的妥当性の節では、p 値だけでなく、効果量、分布図、事前に外的変数をクラスタリングから除外したこと、可能であればホールドアウト標本や別標本での再現を合わせて報告します。以下のホールドアウト確認は、独立した検証研究ではなく、開発標本で得た重心を未使用の観測に適用したときに、プロフィールと外的変数の傾向が大きく崩れないかを見る簡易的な再現確認です。
 
 ```{r}
 #| eval: true
@@ -2337,6 +2411,112 @@ tukey_tbl <- as.data.frame(tukey_res$cluster_km) |>
   tibble::rownames_to_column("comparison") |>
   tibble::as_tibble() |>
   mutate(across(where(is.numeric), ~ round(.x, 3)))
+
+# ホールドアウト確認: 開発標本でクラスタ重心を推定し、検証標本に最近重心で割り当てる
+set.seed(2034)
+validation_ids <- sample(dat_cluster$id, size = floor(0.30 * nrow(dat_cluster)))
+
+dev_dat <- dat_cluster |>
+  dplyr::filter(!id %in% validation_ids)
+
+val_dat <- dat_cluster |>
+  dplyr::filter(id %in% validation_ids)
+
+dev_center <- colMeans(dev_dat |> dplyr::select(all_of(cluster_vars)))
+dev_scale <- apply(dev_dat |> dplyr::select(all_of(cluster_vars)), 2, sd)
+
+X_dev <- scale(
+  dev_dat |> dplyr::select(all_of(cluster_vars)),
+  center = dev_center,
+  scale = dev_scale
+) |>
+  as.matrix()
+
+X_val <- scale(
+  val_dat |> dplyr::select(all_of(cluster_vars)),
+  center = dev_center,
+  scale = dev_scale
+) |>
+  as.matrix()
+
+set.seed(2035)
+km_dev <- kmeans(X_dev, centers = 3, nstart = 50)
+
+assign_nearest_center <- function(x, centers) {
+  distance_sq <- sapply(seq_len(nrow(centers)), function(j) {
+    center_mat <- matrix(
+      centers[j, ],
+      nrow = nrow(x),
+      ncol = ncol(x),
+      byrow = TRUE
+    )
+    rowSums((x - center_mat)^2)
+  })
+
+  max.col(-distance_sq)
+}
+
+validation_cluster <- assign_nearest_center(X_val, km_dev$centers)
+
+external_holdout_dat <- val_dat |>
+  mutate(cluster_holdout = factor(validation_cluster))
+
+development_profile_tbl <- dev_dat |>
+  mutate(cluster_holdout = factor(km_dev$cluster)) |>
+  group_by(cluster_holdout) |>
+  summarise(
+    sample = "Development",
+    n = n(),
+    vocabulary = mean(vocabulary),
+    grammar = mean(grammar),
+    fluency = mean(fluency),
+    anxiety = mean(anxiety),
+    .groups = "drop"
+  )
+
+holdout_profile_tbl <- external_holdout_dat |>
+  group_by(cluster_holdout) |>
+  summarise(
+    sample = "Holdout",
+    n = n(),
+    vocabulary = mean(vocabulary),
+    grammar = mean(grammar),
+    fluency = mean(fluency),
+    anxiety = mean(anxiety),
+    .groups = "drop"
+  )
+
+external_holdout_profile_tbl <- bind_rows(
+  development_profile_tbl,
+  holdout_profile_tbl
+) |>
+  arrange(cluster_holdout, sample) |>
+  mutate(across(c(vocabulary, grammar, fluency, anxiety), ~ round(.x, 1)))
+
+external_holdout_desc <- external_holdout_dat |>
+  group_by(cluster_holdout) |>
+  summarise(
+    n = n(),
+    mean_exam = round(mean(final_exam), 1),
+    sd_exam = round(sd(final_exam), 1),
+    .groups = "drop"
+  )
+
+holdout_aov <- aov(final_exam ~ cluster_holdout, data = external_holdout_dat)
+holdout_aov_summary <- summary(holdout_aov)
+holdout_ss_between <- holdout_aov_summary[[1]]["cluster_holdout", "Sum Sq"]
+holdout_ss_total <- sum(holdout_aov_summary[[1]][, "Sum Sq"])
+holdout_eta_sq <- round(holdout_ss_between / holdout_ss_total, 3)
+
+external_holdout_test_tbl <- tibble::tibble(
+  validation = "Holdout assignment",
+  n_validation = nrow(external_holdout_dat),
+  df_between = holdout_aov_summary[[1]]["cluster_holdout", "Df"],
+  df_within = holdout_aov_summary[[1]]["Residuals", "Df"],
+  F = round(holdout_aov_summary[[1]]["cluster_holdout", "F value"], 2),
+  p = format.pval(holdout_aov_summary[[1]]["cluster_holdout", "Pr(>F)"], digits = 3, eps = 0.001),
+  eta_sq = holdout_eta_sq
+)
 ```
 
 ::: {.panel-tabset}
@@ -2419,13 +2599,84 @@ tukey_tbl |>
     caption = "Tukey HSD 多重比較"
   )
 ```
+
+### ホールドアウト確認（表）
+
+```{r}
+#| eval: true
+#| label: cluster-external-holdout-gt
+
+external_holdout_profile_tbl |>
+  knitr::kable(
+    row.names = FALSE,
+    caption = "開発標本と検証標本のクラスタプロフィール照合"
+  )
+```
+
+```{r}
+#| eval: true
+#| label: cluster-external-holdout-exam-gt
+
+external_holdout_desc |>
+  knitr::kable(
+    row.names = FALSE,
+    caption = "検証標本に最近重心で割り当てたクラスタ別 final_exam"
+  )
+```
+
+```{r}
+#| eval: true
+#| label: cluster-external-holdout-test-gt
+
+external_holdout_test_tbl |>
+  knitr::kable(
+    row.names = FALSE,
+    caption = "ホールドアウト標本での外的変数比較"
+  )
+```
+
+### ホールドアウト確認（図）
+
+```{r}
+#| eval: true
+#| label: cluster-external-holdout-boxplot
+#| fig-cap: "Holdout learners assigned to development-set cluster centers"
+
+ggplot(external_holdout_dat, aes(x = cluster_holdout, y = final_exam, fill = cluster_holdout)) +
+  geom_boxplot(alpha = 0.8, outlier.alpha = 0.4) +
+  geom_jitter(width = 0.15, alpha = 0.35, size = 1.2) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(x = "Assigned cluster in holdout set", y = "Final exam score") +
+  guides(fill = "none") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
+```
 :::
 
-**結果の読み方:** クラスタリングに使用していない `final_exam` がクラスタ間で有意に異なり（$\eta^2$ が中〜大程度）、Tukey HSDの多重比較でペア間差が確認できれば、クラスタ解の外的妥当性が支持されます。$\eta^2$ の目安は、0.01（小）、0.06（中）、0.14（大）です[@cohen1988]。逆に外的変数に差が見られない場合は、クラスタリングが教育的に意味のある区分を捉えていない可能性を検討する必要があります。
+**結果の読み方:** クラスタリングに使用していない `final_exam` がクラスタ間で異なり（$\eta^2$ が中〜大程度）、Tukey HSDの多重比較でペア間差が確認できれば、クラスタ解は外的変数とも整合している可能性があります。$\eta^2$ の目安は、0.01（小）、0.06（中）、0.14（大）です[@cohen1988]。ただし、これはクラスタが実在するタイプであることや、クラスタ所属が成績差の原因であることを示すものではありません。ホールドアウト確認では、まず開発標本と検証標本で各クラスタのプロフィールが大きく変わっていないかを見ます。そのうえで、外的変数の傾向も同じ方向に出ていれば、簡易的な再現確認として報告できます。確認的に主張したい場合は、別年度・別大学の独立データで同様の手順を再実行します。逆に外的変数に差が見られない場合は、クラスタリングが教育的に意味のある区分を捉えていない可能性を検討する必要があります。
 
 ## 階層クラスタリング（Ward法） {#sec-hclust}
 
-`k-means` は初期値（ランダムに選ばれる最初のクラスタ中心）に依存するため、異なるアプローチである階層クラスタリングでも同様の構造が見えるかを確認します。Ward法は、クラスタを結合するたびに群内分散の増加を最小化する結合法であり、`k-means` と同じく球状・等サイズのクラスタを想定します[@murtagh2014]。2つの手法で大筋が一致すれば、結果の頑健性に対する信頼が高まります。
+`k-means` は初期値（ランダムに選ばれる最初のクラスタ中心）に依存するため、異なるアプローチである階層クラスタリングでも同様の構造が見えるかを確認します。Ward法は、クラスタを結合するたびに群内分散の増加を最小化する結合法であり [@ward1963]、`k-means` と同じく球状・等サイズのクラスタを想定します [@murtagh2014]。2つの手法で大筋が一致すれば、結果の頑健性に対する信頼が高まります。
+
+::: {.callout-warning}
+#### `hclust()` の `method = "ward.D"` と `method = "ward.D2"` は別物
+R の `stats::hclust()` には Ward 系の引数として `"ward.D"` と `"ward.D2"` の 2 種類があります。@murtagh2014 が示したように、**`ward.D` は Ward (1963) の本来の目的関数 (群内分散増加最小化) を実装しておらず、`ward.D2` だけが正しい実装です**。具体的には、`ward.D2` は距離行列を **二乗してから** Ward 結合を適用するため、入力 `dist()` を二乗距離として解釈し直す挙動が必要です。本書では一貫して `ward.D2` を使用しますが、過去の論文・ブログで `ward.D` を見かけても、それが「Ward 法」と書かれているなら正しい実装ではない可能性が高いことを覚えておいてください。
+:::
 
 **デンドログラムの読み方:**
 
@@ -2507,7 +2758,7 @@ ggplot(km_hc_long, aes(x = cluster_hc, y = cluster_km, fill = n)) +
   theme(panel.grid = element_blank())
 ```
 
-クロス集計の対角線に大きな値が集中していれば、2つの手法がほぼ同じクラスタ構造を見出していることを意味します。ヒートマップで色が濃いセルが対角線上に並んでいるかを視覚的に確認してください。異なるアルゴリズム（分割型 vs. 凝集型）で一致する結果は、クラスタ解の**頑健性**を裏付ける重要な証拠です。
+クロス集計の対角線に大きな値が集中していれば、2つの手法がほぼ同じクラスタ構造を示している可能性があります。ヒートマップで色が濃いセルが対角線上に並んでいるかを視覚的に確認してください。異なるアルゴリズム（分割型 vs. 凝集型）で一致する結果は、クラスタ解の**頑健性**に関する根拠を補強します。
 
 ### 関数ノート実演: `hclust()` の距離・結合法感度分析
 
@@ -2557,7 +2808,7 @@ hc_best_setting <- hc_summary_tbl |>
 |---|---|
 | 研究課題 | 階層クラスタリングの結果は距離定義と結合法でどの程度変わるか |
 | 操作化 | `euclidean`/`manhattan` × `ward.D2`/`complete`/`average` で `k=3` を比較（シルエット・コフェネティック相関） |
-| 識別戦略 | 同一標準化行列 `X` を使い、距離と結合法以外は固定。`ward.D2` は `euclidean` のみ |
+| 分析戦略 | 同一標準化行列 `X` を使い、距離と結合法以外は固定。`ward.D2` は `euclidean` のみ |
 | 妥当性検証 | 表で設定比較、静的表で診断ログ、図でシルエット係数 |
 
 ### 診断ログ（表）
@@ -2624,7 +2875,7 @@ hc_summary_tbl |>
 
 - **シルエット係数が最大の設定**を第一候補にします。シルエットはクラスタの分離と凝集の両面を反映するため、距離×結合法の総合的な良さを測る指標として適切です[@rousseeuw1987]。
 - **コフェネティック相関**（cophenetic correlation）は、もとの距離行列とデンドログラムから再構成した距離行列の相関を示します。値が高いほど、デンドログラムがもとの距離構造を忠実に再現しています。0.70以上が目安です[@legendre2012]。
-- **Ward法（`ward.D2`）はユークリッド距離と組み合わせるのが理論的に正しい**ため[@murtagh2014]、Manhattan距離との組み合わせは推奨されません（トラブルシューティング参照）。
+- **Ward法（`ward.D2`）はユークリッド距離と組み合わせるのが理論的に整合的**であるため[@murtagh2014]、Manhattan距離との組み合わせは推奨されません（トラブルシューティング参照）。
 - **同程度のシルエットを示す設定が複数ある場合**は、（1）k-meansの結果との一致度、（2）SLA理論から期待されるクラスタ構造との整合性、を判断基準に加えます。
 
 この感度分析を併記すると、`hclust()` の設定選択を慣例ではなくデータ根拠で説明しやすくなります。
@@ -2637,11 +2888,11 @@ Part Bでは基本的な `k-means` と階層法を実装しました。Part Cで
 
 | 拡張テーマ | 解決する問題 | 使用場面の例 |
 |---|---|---|
-| クラスタ安定性 | 「この3群構造はサンプル偶然の産物か？」 | 査読で再現性を問われたとき |
+| クラスタ安定性 | 「この3群構造はサンプル偶然の産物でしょうか」 | 査読で再現性を問われたとき |
 | 混合データ型 | 「テスト得点とカテゴリ変数を同時に使いたい」 | 学習志向（3水準）＋テスト得点の類型化 |
 | テキストクラスタリング | 「学習者作文から書き方タイプを探索したい」 | 自由記述・作文コーパスの分析 |
 | 縦断クラスタ遷移 | 「介入前後でクラスタが移動したか追跡したい」 | プログラム評価、縦断研究 |
-| テスト理論との接続 | 「測定の質を担保したうえで類型化したい」 | IRT能力推定値にもとづくプロフィール分析 |
+| テスト理論との接続 | 「測定の質を確認したうえで類型化したい」 | 領域得点・反応時間・IRT/Rasch推定値にもとづくプロフィール分析 |
 
 読者の研究テーマに応じて、必要なセクションだけを選択的に参照してください。
 
@@ -2655,9 +2906,9 @@ Part Bでは基本的な `k-means` と階層法を実装しました。Part Cで
 
 `fpc::clusterboot()` を用いて `k-means (k=3)` 解のブートストラップ安定性を推定し、クラスタごとの平均Jaccard係数を算出します[@hennig2007]。
 
-### 識別戦略
+### 分析戦略
 
-クラスタ数と推定法は固定し、再標本化（`B` 回）で一致度を評価します。Jaccard係数は、ブートストラップ標本で推定されたクラスタと元のクラスタがどれだけ重なるか（共通メンバー数 ÷ 和集合メンバー数）を測る指標です。@hennig2007 は系統的なシミュレーション実験に基づき、Jaccard ≥ 0.75 で「概ね安定」、≥ 0.85 で「高安定」という基準を提案しています。0.50未満のクラスタは「dissolved（溶解）」と判定され、再標本化で構造が消失していることを意味します。
+クラスタ数と推定法は固定し、再標本化（`B` 回）で一致度を評価します。Jaccard係数は、ブートストラップ標本で推定されたクラスタと元のクラスタがどれだけ重なるか（共通メンバー数 ÷ 和集合メンバー数）を測る指標です。@hennig2007 は系統的なシミュレーション実験に基づき、Jaccard ≥ 0.75 で「概ね安定」、≥ 0.85 で「高安定」という基準を提案しています。ただし、これらの値は標本サイズ・クラスタ形状・特徴量設計に依存するため、機械的な合否判定ではなく経験的な目安として扱います。0.50未満のクラスタは「dissolved（溶解）」と判定され、再標本化で構造が消失していることを意味します。報告用分析では `B` を100回以上、可能であれば数百回に増やして感度を確認します。
 
 ### 妥当性検証
 
@@ -2670,9 +2921,10 @@ Part Bでは基本的な `k-means` と階層法を実装しました。Part Cで
 set.seed(2070)
 cb_kmeans <- fpc::clusterboot(
   X,
-  B = 50,
+  B = 100,
   clustermethod = fpc::kmeansCBI,
   krange = 3,
+  runs = 50,
   seed = 2070,
   count = FALSE,
   showplots = FALSE
@@ -2728,9 +2980,9 @@ stability_summary_tbl |>
 
 | Jaccard係数 | 解釈 | 推奨アクション |
 |---|---|---|
-| `>= 0.85` | 高安定 | クラスタ命名と理論解釈を進める |
-| `0.75 - 0.84` | 概ね安定 | 補助指標と外的妥当性で補強する |
-| `< 0.75` | 不安定 | 変数選択・k設定・前処理を再検討する |
+| `>= 0.85` | 高安定 | クラスタ命名と理論解釈を慎重に進めます |
+| `0.75 - 0.84` | 概ね安定 | 補助指標と外的妥当性で補強します |
+| `< 0.75` | 不安定 | 変数選択・k設定・前処理を再検討します |
 
 ### 再標本化ログ（DT）
 
@@ -2789,13 +3041,13 @@ SLA研究では、テスト得点（連続量）だけでなく、学習志向�
 
 連続指標（語彙・文法・流暢性・不安）に、カテゴリ指標（学習志向、L1距離、留学経験）を加え、Gower距離[@gower1971]で観測間類似度を定義します。
 
-### 識別戦略
+### 分析戦略
 
-`cluster::daisy(metric = "gower")` で距離行列を作成し、`cluster::pam()` で `k=3` のメドイドクラスタを推定します。比較のため、連続変数のみの `k-means` も併記します。
+`cluster::daisy(metric = "gower")` で距離行列を作成し、`cluster::pam()` で `k=3` のメドイドクラスタを推定します。カテゴリ変数の影響を見るため、同じ Gower + PAM の枠内で「混合特徴量」と「連続特徴量のみ」を比較します。連続変数のみの `k-means` は、目的関数と距離空間が異なるため、主比較ではなく参考照合として扱います。
 
 ### 妥当性検証
 
-表でクラスタ別プロフィール、`DT` でカテゴリ分布ログ、図でPCoA空間を可視化し、混合型手法の識別利得を確認します。
+表でクラスタ別プロフィール、`DT` でカテゴリ分布ログ、図でPCoA空間を可視化し、カテゴリ変数を含めたときにクラスタのプロフィール・サイズ・解釈がどう変わるかを確認します。
 
 ```{r}
 #| eval: true
@@ -2809,12 +3061,24 @@ mixed_tbl <- dat_cluster |>
     grammar,
     fluency,
     anxiety,
-    learning_focus = factor(sample(c("Accuracy", "Fluency", "Balanced"), dplyr::n(), replace = TRUE, prob = c(0.35, 0.30, 0.35))),
-    l1_distance = factor(sample(c("Near", "Medium", "Far"), dplyr::n(), replace = TRUE, prob = c(0.40, 0.35, 0.25))),
+    learning_focus = factor(
+      sample(c("Accuracy", "Fluency", "Balanced"), dplyr::n(), replace = TRUE, prob = c(0.35, 0.30, 0.35)),
+      levels = c("Accuracy", "Fluency", "Balanced")
+    ),
+    l1_distance = factor(
+      sample(c("Near", "Medium", "Far"), dplyr::n(), replace = TRUE, prob = c(0.40, 0.35, 0.25)),
+      levels = c("Near", "Medium", "Far"),
+      ordered = TRUE
+    ),
     # ノイズを加えて確率的にする（能力と相関はあるが決定論的でない）
-    study_abroad = factor(dplyr::if_else(
-      vocabulary + fluency + stats::rnorm(dplyr::n(), 0, 15) > stats::median(vocabulary + fluency),
-      "Yes", "No"))
+    study_abroad = factor(
+      dplyr::if_else(
+        vocabulary + fluency + stats::rnorm(dplyr::n(), 0, 15) > stats::median(vocabulary + fluency),
+        "Yes",
+        "No"
+      ),
+      levels = c("No", "Yes")
+    )
   )
 
 gower_dist <- cluster::daisy(
@@ -2825,8 +3089,19 @@ gower_dist <- cluster::daisy(
 
 pam_gower <- cluster::pam(gower_dist, k = 3, diss = TRUE)
 
+gower_numeric_dist <- cluster::daisy(
+  mixed_tbl |>
+    dplyr::select(vocabulary, grammar, fluency, anxiety),
+  metric = "gower"
+)
+
+pam_gower_numeric <- cluster::pam(gower_numeric_dist, k = 3, diss = TRUE)
+
 mixed_tbl <- mixed_tbl |>
-  dplyr::mutate(cluster_gower = factor(pam_gower$clustering))
+  dplyr::mutate(
+    cluster_gower = factor(pam_gower$clustering),
+    cluster_gower_numeric = factor(pam_gower_numeric$clustering)
+  )
 
 gower_cluster_size_tbl <- mixed_tbl |>
   dplyr::count(cluster_gower, name = "n")
@@ -2842,6 +3117,9 @@ gower_numeric_profile_tbl <- mixed_tbl |>
   )
 
 gower_category_tbl <- mixed_tbl |>
+  dplyr::mutate(
+    dplyr::across(c(learning_focus, l1_distance, study_abroad), as.character)
+  ) |>
   tidyr::pivot_longer(
     cols = c(learning_focus, l1_distance, study_abroad),
     names_to = "feature",
@@ -2862,16 +3140,29 @@ km_numeric_only <- stats::kmeans(X_numeric_only, centers = 3, nstart = 50)
 sil_numeric <- cluster::silhouette(km_numeric_only$cluster, stats::dist(X_numeric_only))
 
 method_compare_tbl <- tibble::tibble(
-  method = c("Gower + PAM", "Numeric + kmeans"),
-  avg_silhouette = c(pam_gower$silinfo$avg.width, mean(sil_numeric[, "sil_width"]))
+  method = c(
+    "Gower + PAM (mixed features)",
+    "Gower + PAM (numeric features only)",
+    "z-scored numeric k-means (reference)"
+  ),
+  comparison_scope = c(
+    "main solution",
+    "same method; categorical-feature ablation",
+    "different objective and distance space"
+  ),
+  avg_silhouette = c(
+    pam_gower$silinfo$avg.width,
+    pam_gower_numeric$silinfo$avg.width,
+    mean(sil_numeric[, "sil_width"])
+  )
 ) |>
   dplyr::mutate(avg_silhouette = round(avg_silhouette, 3))
 
 method_cross_tbl <- tibble::tibble(
-  numeric_kmeans = factor(km_numeric_only$cluster),
-  gower_pam = factor(pam_gower$clustering)
+  numeric_gower_pam = factor(pam_gower_numeric$clustering),
+  mixed_gower_pam = factor(pam_gower$clustering)
 ) |>
-  janitor::tabyl(numeric_kmeans, gower_pam)
+  janitor::tabyl(numeric_gower_pam, mixed_gower_pam)
 
 pcoa_gower <- stats::cmdscale(gower_dist, k = 2)
 pcoa_gower_tbl <- tibble::tibble(
@@ -2891,7 +3182,11 @@ pcoa_gower_tbl <- tibble::tibble(
 
 DT::datatable(
   mixed_tbl |>
-    dplyr::select(learner_id, vocabulary, grammar, fluency, anxiety, learning_focus, l1_distance, study_abroad, cluster_gower),
+    dplyr::select(
+      learner_id, vocabulary, grammar, fluency, anxiety,
+      learning_focus, l1_distance, study_abroad,
+      cluster_gower, cluster_gower_numeric
+    ),
   rownames = FALSE,
   options = list(pageLength = 8, scrollX = TRUE),
   caption = "混合データ型クラスタリングの入力と推定結果"
@@ -2942,7 +3237,7 @@ gower_category_tbl |>
 method_compare_tbl |>
   knitr::kable(
     row.names = FALSE,
-    caption = "混合型手法と連続型手法の分離度比較"
+    caption = "Gower + PAM の特徴量セット比較と参考照合"
   )
 ```
 
@@ -2953,11 +3248,11 @@ method_compare_tbl |>
 method_cross_tbl |>
   knitr::kable(
     row.names = FALSE,
-    caption = "Numeric k-means と Gower PAM の対応"
+    caption = "数値のみ Gower PAM と混合 Gower PAM の対応"
   )
 ```
 
-シルエット幅の比較では、Gower + PAM が数値のみの k-means よりも高い値を示していれば、カテゴリ変数（学習焦点、L1距離、留学経験）がクラスタの分離に寄与していることを意味します。クロス集計では、2手法の対応が弱い場合（対角線に値が集中しない場合）、カテゴリ変数の有無でクラスタ構造が実質的に変わっていることを示しています。
+平均シルエット幅は、同じ距離定義と同じアルゴリズムの中で読むのが基本です。ここでは、混合特徴量の Gower + PAM と、連続特徴量のみの Gower + PAM を比べることで、カテゴリ変数を追加したときに分離がどう変わるかを確認します。`k-means` はユークリッド距離上で重心を最適化する別の手法なので、数値だけを横並びにして優劣を決める根拠にはしません。クロス集計では、対角線に値が集中しない場合、カテゴリ変数の有無によって割当が変わることを示します。ただし、それが「改善」かどうかは、クラスタプロフィール、外的基準、安定性分析と合わせて判断します。
 
 ```{r}
 #| eval: true
@@ -2986,25 +3281,25 @@ ggplot(pcoa_gower_tbl, aes(PCoA1, PCoA2, color = cluster_gower, shape = learning
   )
 ```
 
-PCoA（主座標分析）は Gower 距離行列を2次元に可視化する手法です[@legendre2012]（PCA のユークリッド距離版と考えてください）。同じ色のクラスタが空間的にまとまっており、形状（learning_focus）との対応も見てとれれば、カテゴリ変数を含む混合データクラスタリングが有効に機能していることが確認できます。
+PCoA（主座標分析）は Gower 距離行列を2次元に可視化する手法です[@legendre2012]（PCA のユークリッド距離版と考えてください）。同じ色のクラスタが空間的にまとまっており、形状（learning_focus）との対応も見てとれれば、カテゴリ変数を含む混合データクラスタリングが解釈可能な情報を加えている可能性があります。対応が弱い場合は、カテゴリ特徴がこの標本のクラスタ解に十分な情報を足していないと読みます。
 :::
 
 ## 自然言語処理への応用
 
 ### 研究課題
 
-SLA研究では、テスト得点だけでなく**学習者が実際に産出したテキスト**（作文・自由記述・発話転写）を分析対象にすることが増えています。こうしたテキストデータから、語彙的・談話的プロフィールの潜在類型を同定できるかを検討します。たとえば、「語彙学習に注力する学習者」「正確性を意識する学習者」「流暢性を優先する学習者」「不安が高い学習者」のような書き方の傾向が、テキスト特徴量からクラスタとして浮かび上がるかを見ます。
+SLA研究では、テスト得点だけでなく**学習者が実際に産出したテキスト**（作文・自由記述・発話転写）を分析対象にすることが増えています。こうしたテキストデータから、語彙的・談話的プロフィールを探索的に記述できるかを検討します。たとえば、「語彙学習に注力する文書」「正確性を意識する文書」「流暢性を優先する文書」「不安に言及する文書」のような書き方の傾向が、テキスト特徴量からクラスタとして表れるかを見ます。
 
 ### 操作化
 
 テキストをトークン化し、不要語除去後に `tf-idf` に変換します。文書を行、語特徴を列とする特徴量行列を構築します。
 
-### 識別戦略
+### 分析戦略
 
-`k-means` により文書クラスタを推定し、PCA平面上で分離を確認します。クラスタごとの代表語（平均tf-idf）を抽出して命名の根拠を明示します。
+`k-means` により文書クラスタを推定し、PCA平面上で配置を視覚点検します。クラスタごとの代表語（平均tf-idf）を抽出して命名の根拠を明示します。
 
 ### 概念実演用の小コーパス
-この例は12文書のミニコーパスで、ワークフローの概念実演を目的としています。実際のSLA研究では最低でも50〜100文書以上を用意し、@sec-stability の手順で安定性を検証してください。小コーパスではクラスタ解がデータの偶然に強く依存します。
+この例は12文書のミニコーパスで、ワークフローの概念実演を目的としています。実際のSLA研究では研究目的に応じてできるだけ多くの文書を用意し、@sec-stability の手順で安定性を検証してください。小コーパスではクラスタ解がデータの偶然に強く依存します。
 
 ### 妥当性検証
 
@@ -3128,7 +3423,7 @@ doc_cluster_tbl |>
   )
 ```
 
-`cluster` 列と `topic_hint` 列を見比べてください。もし同じ `topic_hint`（語彙拡張型、正確性重視型など）が同じクラスタに集まっていれば、テキストの表層的な語彙パターンだけでも学習者のタイプを区別できていることを意味します。
+`cluster` 列と `topic_hint` 列を見比べてください。もし同じ `topic_hint`（語彙拡張型、正確性重視型など）が同じクラスタに集まっていれば、この小コーパス内では表層的な語彙パターンが文書テーマをある程度反映している可能性があります。まとまらない場合は、小標本・短文・語彙の重なりにより、クラスタ解が安定していないと読みます。
 
 ```{r}
 #| eval: true
@@ -3158,7 +3453,7 @@ ggplot(text_pca, aes(PC1, PC2, color = cluster, label = doc_id)) +
   )
 ```
 
-PCA散布図では、同じ色の点（同じクラスタ）がまとまって配置されていれば、クラスタ間の分離が良好です。点が重なり合っている場合は、そのクラスタ間の語彙的な差異が小さいことを示唆します。
+PCA散布図では、同じ色の点（同じクラスタ）がまとまって配置されていれば、この2次元表示上ではクラスタ間の分離が比較的明瞭です。点が重なり合っている場合は、そのクラスタ間の語彙的な差異が小さい、または2次元表示では十分に表現されていないことを示唆します。
 
 ### クラスタ代表キーワード（表）
 
@@ -3173,10 +3468,10 @@ cluster_keyword_tbl |>
   )
 ```
 
-**代表キーワードの読み方:** 各クラスタの上位6語を見て、共通するテーマを読み取ります。たとえば "vocabulary", "words", "expressions" が並んでいれば「語彙拡張型」、"grammar", "errors", "accuracy" が並んでいれば「正確性重視型」と命名できます。平均 tf-idf が 0.10 以上の語はそのクラスタの強い特徴語と判断できます。
+**代表キーワードの読み方:** 各クラスタの上位6語を見て、共通するテーマを読み取ります。たとえば "vocabulary", "words", "expressions" が並んでいれば「語彙拡張型」、"grammar", "errors", "accuracy" が並んでいれば「正確性重視型」という暫定ラベルを付けられます。平均 tf-idf の絶対値ではなく、同じクラスタ内・クラスタ間での相対順位として読みます。
 :::
 
-このように、クラスタリングを使うと「語彙拡張型」「正確性重視型」「流暢性重視型」「不安高型」のようなテキストプロフィールを探索的に抽出できます。ただし、ここでの命名はあくまで探索的なラベルであり、次段階では外的変数（テスト得点、WTC、発話速度など）との関連を検証して解釈の妥当性を確認する必要があります。
+このように、クラスタリングを使うと「語彙拡張型」「正確性重視型」「流暢性重視型」「不安高型」のようなテキストプロフィールを仮説化できます。ただし、ここでの命名はあくまで文書特徴にもとづく探索的なラベルであり、学習者タイプと呼ぶには複数作文、外的不安尺度、WTC、テスト得点、発話速度などとの関連を検証する必要があります。
 
 ## quanteda・udpipeの活用（補足）
 
@@ -3188,7 +3483,7 @@ cluster_keyword_tbl |>
 
 `quanteda` で `dfm`/n-gram 特徴量を構築し、`udpipe` で品詞・レンマ・依存関係情報を付与します。
 
-### 識別戦略
+### 分析戦略
 
 語彙特徴（`quanteda`）と言語学的特徴（`udpipe`）を別々に、または統合してクラスタリングし、分離パターンを比較します。
 
@@ -3202,8 +3497,8 @@ cluster_keyword_tbl |>
 | quanteda | 大規模コーパス処理が高速 | dfm構築、n-gram特徴量、文書類似度にもとづくクラスタリング | corpus / tokens / dfm |
 | udpipe | 言語学的情報（品詞・レンマ・係り受け）を付与 | 誤用タイプや構文的特徴に基づく学習者プロファイル分析 | annotated token table |
 
-### パッケージの自動インストール
-`quanteda` と `udpipe` はセットアップの `pacman::p_load()` で自動インストール・読込されます。`udpipe` は初回実行時に英語モデル（約16MB）を `models/` ディレクトリにダウンロードします。`.gitignore` に `models/` を追加しておくと、大きなバイナリをリポジトリに含めずに済みます。モデル取得に失敗した場合は、この節では黙ってスキップせず、どこで止まったかが分かるように明示的にエラーを出します。
+### パッケージとモデルの準備
+`quanteda` と `udpipe` はセットアップの `pacman::p_load()` で自動インストール・読込されます。ただし、`udpipe` の英語モデル（約16MB）はレンダー中に自動取得しません。オフライン環境やCIで章全体が止まらないように、必要なときだけ下のチャンクを手動実行して `models/` ディレクトリに保存します。`.gitignore` に `models/` を追加しておくと、大きなバイナリをリポジトリに含めずに済みます。
 
 ::: {.panel-tabset}
 ### quantedaの最小ワークフロー
@@ -3232,64 +3527,80 @@ factoextra::fviz_dend(hc_q, k = 4, show_labels = TRUE,
                       rect = TRUE, main = "quanteda tf-idf dendrogram")
 ```
 
-デンドログラムの結果は、先に `tidytext` で行った k-means クラスタリングの結果と概ね対応しているはずです。`quanteda` の dfm ベースの距離行列は、特に n-gram を含めた場合により多くの文脈情報を捉えることができます。
+デンドログラムの結果が、先に `tidytext` で行った k-means クラスタリングの結果と概ね対応しているかを確認します。`quanteda` の dfm ベースの距離行列は、特に n-gram を含めた場合に追加的な文脈情報を特徴量として扱えます。
 
 ### udpipeの最小ワークフロー
 
 `udpipe` [@straka2017] は形態素解析・品詞タグ付け・係り受け解析を行うパッケージです。テキストに言語学的アノテーション（品詞、レンマ、依存関係）を付与することで、より理論に根差した特徴量を構築できます。
 
 ```{r}
+#| label: cluster-nlp-udpipe-download
+#| eval: false
+
+udpipe_model_dir <- here::here("models")
+if (!dir.exists(udpipe_model_dir)) dir.create(udpipe_model_dir, recursive = TRUE)
+udpipe::udpipe_download_model(language = "english-ewt", model_dir = udpipe_model_dir)
+```
+
+```{r}
 #| eval: true
 #| label: cluster-nlp-udpipe-workflow
 #| cache: false
 
-# udpipe モデルのダウンロード・ロード・アノテーションを安全に実行する
+# udpipe モデルがローカルにある場合だけアノテーションを実行する
 # モデルファイル（~16MB）は models/ に保存。外部ポインタはキャッシュ不可のため cache: false
 udpipe_model_dir <- here::here("models")
 if (!dir.exists(udpipe_model_dir)) dir.create(udpipe_model_dir, recursive = TRUE)
 
-# モデルファイルの有無と完全性チェック（16MB未満は不完全ダウンロード）
 model_files <- list.files(udpipe_model_dir, pattern = "english.*\\.udpipe$",
                           full.names = TRUE)
-model_files <- model_files[file.size(model_files) > 10e6]  # 10MB以上のみ有効
+model_files <- model_files[file.size(model_files) > 10e6]
 
 udpipe_available <- FALSE
+udpipe_status_tbl <- tibble::tibble(
+  status = "model not found",
+  detail = "Run the eval:false download chunk, then re-render this section."
+)
+anno_df <- tibble::tibble()
+lemma_pos_tbl <- tibble::tibble()
 
-if (length(model_files) == 0) {
-  udpipe::udpipe_download_model(language = "english-ewt", model_dir = udpipe_model_dir)
-  model_files <- list.files(udpipe_model_dir, pattern = "english.*\\.udpipe$",
-                            full.names = TRUE)
-  model_files <- model_files[file.size(model_files) > 10e6]
+if (length(model_files) > 0) {
+  ud_model <- udpipe::udpipe_load_model(model_files[1])
+  anno <- udpipe::udpipe_annotate(ud_model, x = nlp_docs$text, doc_id = nlp_docs$doc_id)
+  anno_df <- as.data.frame(anno)
+  lemma_pos_tbl <- anno_df |>
+    dplyr::count(doc_id, upos, lemma, sort = TRUE) |>
+    dplyr::filter(upos %in% c("NOUN", "VERB", "ADJ"))
+  udpipe_available <- TRUE
+  udpipe_status_tbl <- tibble::tibble(
+    status = "model loaded",
+    detail = basename(model_files[1])
+  )
 }
-
-if (length(model_files) == 0) {
-  stop("udpipe model could not be downloaded or located in models/.")
-}
-
-ud_model <- udpipe::udpipe_load_model(model_files[1])
-anno <- udpipe::udpipe_annotate(ud_model, x = nlp_docs$text, doc_id = nlp_docs$doc_id)
-anno_df <- as.data.frame(anno)
-lemma_pos_tbl <- anno_df |>
-  dplyr::count(doc_id, upos, lemma, sort = TRUE) |>
-  dplyr::filter(upos %in% c("NOUN", "VERB", "ADJ"))
-udpipe_available <- TRUE
 ```
 
 ```{r}
 #| label: cluster-nlp-udpipe-output
-#| eval: !expr udpipe_available
+#| eval: true
 
-# 品詞分布の概要
-anno_df |>
-  dplyr::count(upos, sort = TRUE) |>
-  head(8) |>
-  knitr::kable(
-    row.names = FALSE,
-    caption = "Top POS Tags Across Documents"
-  )
+if (isTRUE(udpipe_available)) {
+  anno_df |>
+    dplyr::count(upos, sort = TRUE) |>
+    head(8) |>
+    knitr::kable(
+      row.names = FALSE,
+      caption = "Top POS Tags Across Documents"
+    )
+} else {
+  udpipe_status_tbl |>
+    knitr::kable(
+      row.names = FALSE,
+      caption = "udpipe model status"
+    )
+}
 ```
 
-`udpipe` のアノテーション結果から、名詞（NOUN）、動詞（VERB）、形容詞（ADJ）の頻度分布を確認できます。これらの品詞別レンマ頻度をクラスタリングの特徴量として使えば、表層的なキーワード一致ではなく**言語学的に意味のあるグルーピング**が可能になります。
+`udpipe` モデルが利用できる場合は、アノテーション結果から名詞（NOUN）、動詞（VERB）、形容詞（ADJ）の頻度分布を確認できます。これらの品詞別レンマ頻度をクラスタリングの特徴量として使えば、表層的なキーワード一致だけでなく、言語学的特徴にもとづくグルーピングを検討できます。モデルが未取得の場合でも、章のレンダーは止まらず、どの準備が必要かを表で確認できます。
 
 ### 研究設計への接続
 
@@ -3299,7 +3610,7 @@ anno_df |>
 | 特徴量を増やしてクラスタ化 | quanteda | n-gramやtf-idfでクラスタ安定性が改善するか |
 | 言語学的特徴で解釈 | udpipe | 品詞・レンマ・構文情報が理論解釈を強めるか |
 
-**tidytext vs. quanteda: どちらを使うべきか？**
+**tidytext vs. quanteda: どちらを使うとよいでしょうか**
 
 - **tidytext が適する場面**: （1）コーパスが小〜中規模（数千文書以下）、（2）tidyverse のワークフロー（`dplyr` / `ggplot2`）に慣れている、（3）unigram単位の tf-idf で十分な分離が得られる場合。本章の冒頭の例（12文書）がこのケースです[@manning2008]。
 - **quanteda が適する場面**: （1）コーパスが大規模（数万文書以上）で高速処理が必要、（2）n-gram や辞書ベースの特徴量を体系的に構築したい、（3）`dfm` オブジェクトを `textstat_*()` 系関数で直接分析したい場合[@benoit2018]。
@@ -3309,7 +3620,7 @@ anno_df |>
 :::
 
 ### 関数ノート: `quanteda` / `udpipe`
-`quanteda::dfm()` 系は高次元特徴量を高速に構築できるが、`dfm_trim()` の閾値が結果に影響します。`udpipe_annotate()` はモデル言語・バージョン依存なので、使用モデル情報（言語、バージョン、取得日）を報告します。
+`quanteda::dfm()` 系は高次元特徴量を高速に構築できますが、`dfm_trim()` の閾値が結果に影響します。`udpipe_annotate()` はモデル言語・バージョン依存なので、使用モデル情報（言語、バージョン、取得日）を報告します。
 
 ## 自然言語処理の発展学習: トピックモデル（LDA / LSA）
 
@@ -3321,7 +3632,7 @@ anno_df |>
 
 LDAでは語頻度の文書-語行列（DTM）を用い、LSAでは `tf-idf` 行列に特異値分解（SVD）を適用します。各文書の主トピックと潜在軸得点を算出します。
 
-### 識別戦略
+### 分析戦略
 
 LDAは `k = 4` で推定し、トピック語確率（`beta`）と文書トピック確率（`gamma`）を抽出します。LSAは上位2軸（LSA1, LSA2）を解釈対象にし、既存クラスタとの対応を比較します。
 
@@ -3451,7 +3762,7 @@ doc_main_topic_tbl |>
   )
 ```
 
-各文書には gamma（文書-トピック確率）が割り当てられ、最も確率の高いトピックが「主トピック」となります。`topic_hint` と LDA が推定した `lda_topic` が一致していれば、教師なし学習が研究者の直感と整合することを意味します。
+各文書には gamma（文書-トピック確率）が割り当てられ、最も確率の高いトピックが「主トピック」となります。`topic_hint` と LDA が推定した `lda_topic` が一致していれば、教師なし学習が研究者の事前分類と整合する可能性があります。小標本では gamma が拮抗しやすいため、一致しない場合はLDAの不安定性も結果として報告します。
 
 ```{r}
 #| eval: true
@@ -3475,7 +3786,7 @@ topic_hint_cross_tbl |>
   )
 ```
 
-2つのクロス集計表は、それぞれ「k-means クラスタ vs. LDA トピック」「意図したカテゴリ vs. LDA トピック」の一致度を示しています。対角線に値が集中していれば、異なる手法（語彙距離ベースの k-means vs. 確率モデルの LDA）が同じ構造を捉えていることになります。
+2つのクロス集計表は、それぞれ「k-means クラスタ vs. LDA トピック」「意図したカテゴリ vs. LDA トピック」の一致度を示しています。対角線に値が集中していれば、異なる手法（語彙距離ベースの k-means vs. 確率モデルの LDA）が似た構造を示している可能性があります。集中しない場合は、この標本では明確な対応が出ていないと読みます。
 
 ### LSAの結果（表）
 
@@ -3493,7 +3804,7 @@ lsa_var_tbl |>
   )
 ```
 
-**寄与率の読み方:** 各 LSA 軸は tf-idf 行列の分散のうちどれだけを説明するかを示します。上位2–3軸で累積寄与率が 50% を超えていれば、低次元空間でテキスト構造の大部分を把握できていることを意味します。
+**寄与率の読み方:** 各 LSA 軸は、特異値二乗にもとづく行列エネルギー（低ランク近似で再構成される量）の割合を示します。未中心化の tf-idf 行列では通常の分散説明率とは異なるため、上位軸の累積値は低次元表示の便宜的な要約として扱います。
 
 ```{r}
 #| eval: true
@@ -3506,7 +3817,7 @@ lsa_top_loading_tbl |>
   )
 ```
 
-**負荷量の読み方:** 各軸に対する負荷量（loading）が高い語は、その軸が捉える意味的次元を特徴づけます。たとえば LSA1 に "vocabulary", "words" が高負荷、LSA2 に "grammar", "errors" が高負荷であれば、LSA1 は語彙次元、LSA2 は正確性次元と解釈できます。
+**負荷量の読み方:** 各軸に対する負荷量（loading）の絶対値が大きい語は、その軸が捉える対比を特徴づけます。SVDの符号は任意に反転し得るため、正負そのものではなく、同じ軸上で反対側に置かれる語の対比として解釈します。
 
 ### 可視化（図）
 
@@ -3569,7 +3880,7 @@ ggplot(lsa_doc_tbl, aes(LSA1, LSA2, color = lda_topic, shape = cluster, label = 
   )
 ```
 
-LSA 散布図では、色（LDA トピック）と形状（k-means クラスタ）の両方を重ねて表示しています。色と形状が対応していれば、確率モデル（LDA）と距離ベース（k-means）が同じ文書グルーピングを見出していることが確認できます。
+LSA 散布図では、色（LDA トピック）と形状（k-means クラスタ）の両方を重ねて表示しています。色と形状が対応していれば、確率モデル（LDA）と距離ベース（k-means）が似た文書グルーピングを示している可能性があります。対応しない場合は、短文・小標本・特徴量設計の影響を疑います。
 :::
 
 ### 関数ノート: `LDA()` / `svd()`
@@ -3583,35 +3894,59 @@ LSA 散布図では、色（LDA トピック）と形状（k-means クラスタ�
 
 #### 研究課題
 
-たとえば、1学期間の集中英語プログラムを経て、入学時に「基礎層」に分類された学習者のうち何割が「中間層」に移動するでしょうか。介入や学習進行に伴って、学習者はどのクラスタへ移動しますか。
+たとえば、1学期間の集中英語プログラムを経て、入学時に「基礎層」と記述された学習者のうち何割が「中間層」に近いプロフィールへ移動するでしょうか。同一の分類基準で見たとき、学習者プロフィールはどのように変化しますか。
 
 #### 操作化
 
 Wave1（ベースライン）とWave2（追跡）の4指標（語彙・文法・流暢性・不安）を用い、同一学習者のクラスタ遷移を記録します。
 
-#### 識別戦略
+#### 分析戦略
 
-Wave1で `k-means (k=3)` を推定し、Wave1中心を固定した最近接重心割当てでWave2クラスタを識別します。これにより縦断比較でのラベルスイッチ問題を抑えます。
+Wave1で `k-means (k=3)` を推定し、Wave1中心を固定した最近接重心割当てでWave2クラスタを割り当てます。これにより縦断比較でのラベルスイッチ問題を抑えます。
 
 ### なぜ Wave2 を再クラスタリングしないのか
-Wave2 で新たに k-means を実行すると、クラスタ番号が Wave1 と対応しなくなる「ラベルスイッチ問題」が生じます（例: Wave1 のクラスタ1 が Wave2 ではクラスタ3 に再番号されるなど）。固定重心法では、Wave1 で得た3つのクラスタ中心（重心）を基準として、Wave2 の各学習者を「最も近い Wave1 重心」に割り当てます。この方法により、**クラスタの意味（プロフィール）が時点間で一貫**するため、「基礎層から中間層へ移動した」という解釈が可能になります。ただし、Wave2 で全く新しいタイプの学習者群が出現した場合には検出できないという制約もあります。その場合は、Wave2 を独立にクラスタリングしたうえでハンガリアン法などでラベルを対応づける手法も検討してください。
+Wave2 で新たに k-means を実行すると、クラスタ番号が Wave1 と対応しなくなる「ラベルスイッチ問題」が生じます（例: Wave1 のクラスタ1 が Wave2 ではクラスタ3 に再番号されるなど）。固定重心法では、Wave1 で得た3つのクラスタ中心（重心）を基準として、Wave2 の各学習者を「最も近い Wave1 重心」に割り当てます。この方法により、**クラスタ番号ではなくプロフィールラベル**を時点間でそろえて読めます。ただし、Wave2 で全く新しいタイプの学習者群が出現した場合には検出できないという制約もあります。その場合は、Wave2 を独立にクラスタリングしたうえでハンガリアン法などでラベルを対応づける手法も検討してください。
 
 #### 妥当性検証
 
 表で遷移表と滞留率、`DT` で個票ログ、図で遷移ヒートマップとプロフィール変化を示し、教育介入の実質的変化を評価します。
 
 ### シミュレーション設計の前提
-Wave2データは、`cluster_km`（k-meansの推定クラスタ）に応じた差分的な学習効果を仮定して生成しています。これは、クラスタ診断に基づいて介入内容を調整した状況（例: 基礎層には基礎練習を重点配分、上位層には発展課題を配分）を想定しています。
+Wave2データは、Wave1のプロフィールラベルに応じた記述的な変化量を仮定して生成しています。これは、クラスタ診断に基づいて支援内容を調整した状況（例: 基礎層には基礎練習を重点配分、上位層には発展課題を配分）を想定した概念実演です。対照群や測定不変性を扱っていないため、介入効果の因果推定ではありません。
 
 ```{r}
 #| eval: true
 #| label: cluster-sla-transition-prepare
 
 set.seed(2075)
+if (!"cluster_label" %in% names(dat_cluster)) {
+  cluster_label_tbl <- dat_cluster |>
+    dplyr::group_by(cluster_km) |>
+    dplyr::summarise(
+      profile_score = mean(vocabulary + grammar + fluency - anxiety),
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(profile_score) |>
+    dplyr::mutate(
+      cluster_label = factor(
+        c("基礎層", "中間層", "上位層"),
+        levels = c("基礎層", "中間層", "上位層")
+      )
+    )
+
+  dat_cluster <- dat_cluster |>
+    dplyr::left_join(
+      cluster_label_tbl |> dplyr::select(cluster_km, cluster_label),
+      by = "cluster_km"
+    )
+}
+
 wave1_tbl <- dat_cluster |>
   dplyr::transmute(
     learner_id = id,
     wave = "Wave1",
+    cluster_km,
+    cluster_label,
     vocabulary,
     grammar,
     fluency,
@@ -3621,13 +3956,13 @@ wave1_tbl <- dat_cluster |>
 wave2_tbl <- dat_cluster |>
   dplyr::mutate(
     gain_level = dplyr::case_when(
-      cluster_km == "1" ~ 7,
-      cluster_km == "2" ~ 5,
+      cluster_label == "基礎層" ~ 7,
+      cluster_label == "中間層" ~ 5,
       TRUE ~ 3
     ),
     anxiety_drop = dplyr::case_when(
-      cluster_km == "1" ~ -6,
-      cluster_km == "2" ~ -4,
+      cluster_label == "基礎層" ~ -6,
+      cluster_label == "中間層" ~ -4,
       TRUE ~ -2
     ),
     vocabulary = vocabulary + rnorm(dplyr::n(), mean = gain_level, sd = 3),
@@ -3652,9 +3987,7 @@ wave1_center <- colMeans(X_wave1)
 wave1_sd <- apply(X_wave1, 2, sd)
 X_wave1_z <- sweep(sweep(X_wave1, 2, wave1_center, "-"), 2, wave1_sd, "/")
 
-set.seed(2075)
-km_wave1 <- stats::kmeans(X_wave1_z, centers = 3, nstart = 50)
-center_wave1 <- km_wave1$centers
+center_wave1 <- km3$centers
 
 X_wave2 <- wave2_tbl |>
   dplyr::select(vocabulary, grammar, fluency, anxiety) |>
@@ -3666,22 +3999,32 @@ wave2_cluster <- max.col(-dist_sq_wave2, ties.method = "first")
 
 transition_tbl <- tibble::tibble(
   learner_id = wave1_tbl$learner_id,
-  cluster_wave1 = factor(km_wave1$cluster),
+  cluster_wave1 = dat_cluster$cluster_km,
   cluster_wave2 = factor(wave2_cluster)
-)
+) |>
+  dplyr::left_join(
+    cluster_label_tbl |> dplyr::select(cluster_km, cluster_label),
+    by = c("cluster_wave1" = "cluster_km")
+  ) |>
+  dplyr::rename(label_wave1 = cluster_label) |>
+  dplyr::left_join(
+    cluster_label_tbl |> dplyr::select(cluster_km, cluster_label),
+    by = c("cluster_wave2" = "cluster_km")
+  ) |>
+  dplyr::rename(label_wave2 = cluster_label)
 
 transition_matrix_tbl <- transition_tbl |>
-  janitor::tabyl(cluster_wave1, cluster_wave2)
+  janitor::tabyl(label_wave1, label_wave2)
 
 transition_rate_tbl <- transition_tbl |>
-  dplyr::count(cluster_wave1, cluster_wave2, name = "n") |>
-  dplyr::group_by(cluster_wave1) |>
+  dplyr::count(label_wave1, label_wave2, name = "n") |>
+  dplyr::group_by(label_wave1) |>
   dplyr::mutate(prop = round(n / sum(n), 3)) |>
   dplyr::ungroup()
 
 stay_rate_tbl <- transition_tbl |>
-  dplyr::mutate(stay = cluster_wave1 == cluster_wave2) |>
-  dplyr::group_by(cluster_wave1) |>
+  dplyr::mutate(stay = label_wave1 == label_wave2) |>
+  dplyr::group_by(label_wave1) |>
   dplyr::summarise(
     n = dplyr::n(),
     stay_rate = round(mean(stay), 3),
@@ -3690,9 +4033,13 @@ stay_rate_tbl <- transition_tbl |>
 
 wave_profile_tbl <- dplyr::bind_rows(
   wave1_tbl |>
-    dplyr::mutate(assigned_cluster = factor(km_wave1$cluster)),
+    dplyr::mutate(assigned_cluster = cluster_label),
   wave2_tbl |>
-    dplyr::mutate(assigned_cluster = factor(wave2_cluster))
+    dplyr::mutate(
+      assigned_cluster = cluster_label_tbl$cluster_label[
+        match(as.character(wave2_cluster), as.character(cluster_label_tbl$cluster_km))
+      ]
+    )
 ) |>
   tidyr::pivot_longer(
     cols = c(vocabulary, grammar, fluency, anxiety),
@@ -3730,7 +4077,7 @@ stay_rate_tbl |>
   )
 ```
 
-**滞留率の解釈基準:** 滞留率（stay rate）は Wave1 と同じクラスタに Wave2 でも属する割合です。目安として、0.60 以上であればそのクラスタは比較的安定、0.40 未満であれば大きな変動が生じていると判断できます。基礎層の滞留率が低い場合は、介入によって中間層へ移行した可能性が示唆されます。
+**滞留率の解釈基準:** 滞留率（stay rate）は Wave1 と同じクラスタに Wave2 でも属する割合です。この例では、0.60 以上であればそのクラスタは比較的安定、0.40 未満であれば大きな変動が生じている可能性がある、という目安として読みます。基礎層の滞留率が低い場合は、測定誤差、自然な発達、介入時期の違いを区別したうえで、中間層への移行が起きているかを補助的に検討します。
 
 ```{r}
 #| eval: true
@@ -3751,11 +4098,11 @@ DT::datatable(
 #| label: cluster-sla-transition-heatmap
 #| fig-cap: "Wave1→Wave2 クラスタ遷移ヒートマップ"
 
-ggplot(transition_rate_tbl, aes(x = cluster_wave2, y = cluster_wave1, fill = prop)) +
+ggplot(transition_rate_tbl, aes(x = label_wave2, y = label_wave1, fill = prop)) +
   geom_tile(color = "white") +
   geom_text(aes(label = sprintf("%.2f", prop)), size = 3.2) +
   scale_fill_gradient(low = "white", high = "#1B9E77") +
-  labs(x = "Wave2 cluster", y = "Wave1 cluster", fill = "Proportion") +
+  labs(x = "Wave2 profile", y = "Wave1 profile", fill = "Proportion") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(
     plot.title.position = "plot",
@@ -3774,7 +4121,7 @@ ggplot(transition_rate_tbl, aes(x = cluster_wave2, y = cluster_wave1, fill = pro
   )
 ```
 
-ヒートマップでは、対角線のセルが濃い緑色（高い割合）であれば安定、対角線外のセルが濃い場合はクラスタ間の移動が活発であることを視覚的に確認できます。
+ヒートマップでは、対角線のセルが濃い緑色（高い割合）であれば同じプロフィールへの滞留が多く、対角線外のセルが濃い場合はプロフィール間の移動が多いことを視覚的に確認できます。
 
 ### プロフィール変化（図）
 
@@ -3814,15 +4161,15 @@ ggplot(wave_profile_tbl, aes(x = wave, y = mean_value, group = assigned_cluster,
 
 #### 研究課題
 
-同じ熟達度帯に属する学習者でも、語彙多様性プロフィールに異質な群が存在するかを検討します。
+同じ熟達度帯に属する学習者でも、語彙多様性プロフィールに異質なパターンが見られるかを検討します。
 
 #### 操作化
 
-作文テキストから `TTR`・`Guiraud`・`repetition_rate` を算出し、学習者単位の特徴量行列を作成します。
+作文テキストから `TTR`・`Guiraud`・`repetition_rate` を算出します。`repetition_rate` は `1 - TTR` でありTTRと完全に冗長なため、クラスタリング入力には `TTR` と `Guiraud` を使い、`repetition_rate` は解釈補助として表に残します。
 
-#### 識別戦略
+#### 分析戦略
 
-標準化後にクラスタリングを行い、語彙指標プロフィールの形状差で群を識別します。ここでは $n = 9$ の小標本のため、$k = 2$ を上限とします（1クラスタあたり4〜5名を確保するため）。実際の研究では @sec-k-selection の手順で $k$ を選択してください。
+標準化後にクラスタリングを行い、語彙指標プロフィールの形状差として群構造を記述します。ここでは $n = 9$ の小標本のため、$k = 2$ を上限とします（1クラスタあたり4〜5名を確保するため）。実際の研究では @sec-k-selection の手順で $k$ を選択してください。
 
 #### 妥当性検証
 
@@ -3868,7 +4215,7 @@ essay_lex_tbl <- essay_tokens |>
   )
 
 X_lex <- essay_lex_tbl |>
-  dplyr::select(ttr, guiraud, repetition_rate) |>
+  dplyr::select(ttr, guiraud) |>
   scale() |>
   as.matrix()
 
@@ -3925,7 +4272,7 @@ essay_lex_tbl |>
   )
 ```
 
-`lex_cluster` 列は、3つの語彙多様性指標（TTR, Guiraud, repetition_rate）をもとにクラスタリングした結果です。同じ熟達度帯（proficiency_band）でもクラスタが異なる学習者がいれば、熟達度だけでは捉えきれない語彙使用の多様性が存在することを意味します。
+`lex_cluster` 列は、TTR と Guiraud をもとにクラスタリングした結果です。同じ熟達度帯（proficiency_band）でもクラスタが異なる学習者がいれば、この小例では熟達度だけでは説明しきれない語彙多様性パターンがある可能性を示唆します。実研究では作文長統制、複数課題での再現、外部語彙テストとの照合が必要です。
 
 ### 指標の可視化（図）
 
@@ -3958,7 +4305,7 @@ ggplot(essay_lex_long, aes(x = metric, y = value, group = learner_id, color = le
   )
 ```
 
-パネルごとに熟達度帯（初級・中級・上級）が分かれています。各線は1人の学習者の3指標プロフィールです。同じ色の線が似たパターンを描いていれば、クラスタリングが語彙使用スタイルの類型を適切に捉えていることを意味します。異なる熟達度帯で同じ色のクラスタが出現する場合は、語彙多様性が熟達度とは独立した次元であることを示唆しています。
+パネルごとに熟達度帯（初級・中級・上級）が分かれています。各線は1人の学習者の3指標プロフィールです。同じ色の線が似たパターンを描いていれば、この小例ではクラスタリングが語彙使用スタイルの差を捉えている可能性があります。異なる熟達度帯で同じ色のクラスタが出現する場合は、語彙多様性が熟達度だけでは説明しきれない別の軸を含む可能性を示唆しています。
 :::
 
 この分析は、語彙多様性の潜在類型を仮説化し、後続研究で介入効果の差異を検証するための基盤となります。
@@ -3973,7 +4320,7 @@ ggplot(essay_lex_long, aes(x = metric, y = value, group = learner_id, color = le
 
 語長・文長・語彙多様性（TTR）を抽出し、合成難易度指標を構成します。
 
-#### 識別戦略
+#### 分析戦略
 
 特徴量空間でクラスタリングし、初級・中級・上級に対応する難易度群をデータ駆動で推定します。
 
@@ -4020,7 +4367,7 @@ reading_features_tbl <- reading_word_tbl |>
   dplyr::mutate(
     avg_sentence_length = words / sentences,
     difficulty_index = as.numeric(scale(avg_sentence_length)) +
-      as.numeric(scale(mean_word_length)) -
+      as.numeric(scale(mean_word_length)) +
       as.numeric(scale(ttr)),
     mean_word_length = round(mean_word_length, 2),
     ttr = round(ttr, 3),
@@ -4082,7 +4429,7 @@ reading_features_tbl |>
   )
 ```
 
-`difficulty_cluster` 列を `intended_level` と比較してください。クラスタリングによる自動分類が教師の意図したレベルと一致していれば、言語的特徴量だけでも難易度の大まかな推定が可能であることを示しています。
+`difficulty_cluster` 列を `intended_level` と比較してください。クラスタリングによる自動分類が教師の意図したレベルとおおむね対応していれば、この小例では言語的特徴量が難易度の大まかな推定に役立つ可能性を示唆します。
 
 ### 難易度の可視化（図）
 
@@ -4125,10 +4472,10 @@ ggplot(reading_features_tbl, aes(
   )
 ```
 
-散布図では、横軸（平均文長）と縦軸（平均語長）の空間にテキストを配置しています。右上に位置するテキストほど、文も語も長い＝難しいと推定されます。点の大きさは総語数を反映しています。同じ色のテキストが近くにまとまっていれば、クラスタリングが難易度を適切に区別していることを意味します。
+散布図では、横軸（平均文長）と縦軸（平均語長）の空間にテキストを配置しています。右上に位置するテキストほど、文も語も長い＝難しい可能性があると推定されます。点の大きさは総語数を反映しています。同じ色のテキストが近くにまとまっていれば、この表層特徴にもとづく難易度仮説がクラスタとして表れている可能性があります。
 :::
 
-この推定は、難易度仮説を明示化する初期モデルであり、最終的には学習者の理解度テスト得点と照合して識別妥当性を検証する必要があります。クラスタリングは「教材作成者の直感を定量化する道具」として有用です。
+この推定は、語長・文長・語彙多様性だけにもとづく簡易的な難易度仮説であり、最終的には学習者の理解度テスト得点、読解時間、語彙頻度、構文複雑性と照合して妥当性を検証する必要があります。クラスタリングは「教材作成者の直感を定量化する道具」として補助的に有用です。
 
 ### ネットワーク分析との関わり
 
@@ -4140,9 +4487,9 @@ ggplot(reading_features_tbl, aes(
 
 作文から共起エッジを構築し、コミュニティ・中心性（degree, betweenness）を算出します。
 
-#### 識別戦略
+#### 分析戦略
 
-ネットワーク指標を用いて語彙トピック群を同定し、学習者単位で集約した構造指標をクラスタリングに投入します。
+ネットワーク指標を用いて語彙トピック群を抽出します。本節のコードは語共起ネットワークのコミュニティ検出までを示す概念実演であり、学習者単位で集約した構造指標を通常のクラスタリングへ投入する手順は設計案として説明します。
 
 #### 妥当性検証
 
@@ -4168,6 +4515,7 @@ edge_tbl <- essay_bigrams |>
 
 network_graph <- igraph::graph_from_data_frame(edge_tbl, directed = FALSE)
 
+set.seed(2063)
 community_obj <- igraph::cluster_louvain(network_graph, weights = igraph::E(network_graph)$weight)
 community_tbl <- tibble::tibble(
   term = igraph::V(network_graph)$name,
@@ -4217,7 +4565,7 @@ node_plot_tbl <- node_stat_tbl |>
 ```
 
 ### 関数ノート: `cluster_louvain()` と `layout_with_fr()`
-`cluster_louvain()` は Louvain 法[@blondel2008]を実装しており、モジュラリティ[@newman2004]を最大化するコミュニティ分割を求めます。エッジ重みの定義に依存するため、重み生成ルール（共起頻度・正規化方法）を記録します。`layout_with_fr()` は可視化用配置であり、クラスタ解そのものの推定結果ではない点を区別して報告します。
+`cluster_louvain()` は Louvain 法[@blondel2008]を実装しており、モジュラリティ[@newman2004]を高めるコミュニティ分割を探索します。大規模ネットワークでも高速ですが、グローバル最適解を保証する手続きではなく、エッジ重み、閾値、頂点処理順序に依存し得ます。そのため、重み生成ルール（共起頻度・正規化方法）、閾値、seedを記録します。`layout_with_fr()` は可視化用配置であり、クラスタ解そのものの推定結果ではない点を区別して報告します。
 
 ### 関数ノート実演: `cluster_louvain()` の重み・閾値感度分析
 
@@ -4234,6 +4582,18 @@ louvain_diag_tbl <- purrr::pmap_dfr(louvain_setting_tbl, function(threshold, wei
   edge_sub <- edge_tbl |>
     dplyr::filter(weight >= threshold)
 
+  if (nrow(edge_sub) == 0L) {
+    return(tibble::tibble(
+      threshold = threshold,
+      weight_scheme = weight_scheme,
+      n_nodes = 0L,
+      n_edges = 0L,
+      n_communities = NA_integer_,
+      modularity = NA_real_,
+      largest_comm_ratio = NA_real_
+    ))
+  }
+
   edge_sub <- edge_sub |>
     dplyr::mutate(
       w_use = dplyr::case_when(
@@ -4244,6 +4604,7 @@ louvain_diag_tbl <- purrr::pmap_dfr(louvain_setting_tbl, function(threshold, wei
     )
 
   g <- igraph::graph_from_data_frame(edge_sub, directed = FALSE)
+  set.seed(2064 + threshold + match(weight_scheme, c("raw", "log1p", "unweighted")))
   comm <- igraph::cluster_louvain(g, weights = igraph::E(g)$w_use)
   size_vec <- igraph::sizes(comm)
 
@@ -4274,7 +4635,7 @@ louvain_summary_tbl <- louvain_diag_tbl |>
 |---|---|
 | 研究課題 | 語彙共起ネットワークのコミュニティ解はエッジ閾値と重み定義でどの程度変動するか |
 | 操作化 | 閾値 `weight >= 1/2` × 重み `raw`/`log1p`/`unweighted` でコミュニティ数・モジュラリティ・最大比率を比較 |
-| 識別戦略 | `edge_tbl` を固定し、閾値と重み変換だけを変更して `cluster_louvain()` を反復 |
+| 分析戦略 | `edge_tbl` を固定し、閾値と重み変換だけを変更して `cluster_louvain()` を反復 |
 | 妥当性検証 | 表で設定比較、静的表で全設定ログ、図でモジュラリティ比較 |
 
 ### 全設定ログ（表）
@@ -4316,11 +4677,11 @@ louvain_summary_tbl |>
 
 | 指標 | 意味 | 望ましい値 |
 |---|---|---|
-| `modularity` | ネットワーク分割の質（0〜1） | 0.30 以上で明確なコミュニティ構造 |
-| `n_communities` | 検出されたコミュニティ数 | 多すぎると解釈困難（2–6が目安） |
-| `largest_comm_ratio` | 最大コミュニティの占有率 | 0.50 以下が望ましい（1つに偏っていない） |
+| `modularity` | ネットワーク分割の相対的なまとまり | 同一グラフ内で値が高いほど候補。ただし密度・重み定義に依存 |
+| `n_communities` | 検出されたコミュニティ数 | 多すぎると解釈困難。本例では少数にまとまるかを見る |
+| `largest_comm_ratio` | 最大コミュニティの占有率 | 1つのコミュニティに過度に偏らないかを見る |
 
-**設定の選び方:** modularity が最大かつ largest_comm_ratio が極端に高くない設定を第一候補にします。閾値を上げるとノイズエッジが除去されて modularity が改善しやすい一方、有意義な弱いつながりも失われます。
+**設定の選び方:** 同一グラフ内では modularity が高く、largest_comm_ratio が極端に高くない設定を候補にします。閾値を変えると比較対象のグラフ自体が変わるため、異なる閾値間の modularity 比較は補助的に扱います。閾値を上げるとノイズエッジが除去されやすい一方、有意義な弱いつながりも失われます。
 
 ### 可視化（図）
 
@@ -4353,7 +4714,7 @@ louvain_summary_tbl |>
 ```
 :::
 
-コミュニティ数だけでなくモジュラリティとサイズ偏りを併記することで、`cluster_louvain()` の設定選択を再現可能な識別戦略として提示できます。
+コミュニティ数だけでなくモジュラリティとサイズ偏りを併記することで、`cluster_louvain()` の設定選択を再現可能な分析戦略として提示できます。
 
 ::: {.panel-tabset}
 ### 共起エッジ（DT）
@@ -4391,7 +4752,7 @@ node_stat_tbl |>
   )
 ```
 
-degree が高い語はその語彙領域の中核、betweenness が高い語は複数のトピックにまたがって使われる語です。教育的には、betweenness が高い語は「学習者が複数の場面で活用する汎用的な語彙」と解釈できます。
+degree が高い語はこのコーパス内で多くの語と共起する語、betweenness が高い語は複数の共起領域を橋渡ししている語です。教育的に「汎用的な語彙」と解釈するには、別コーパス、語彙レベル、学習者単位の使用率でも確認します。
 
 ```{r}
 #| eval: true
@@ -4405,7 +4766,7 @@ community_top_tbl |>
   )
 ```
 
-各コミュニティの代表語を眺めて、共通するテーマを読み取ります。たとえば "vocabulary", "words", "learning" が1つのコミュニティに集まっていれば、語彙学習トピックのクラスタとして命名できます。
+各コミュニティの代表語を眺めて、共通するテーマを読み取ります。たとえば "vocabulary", "words", "learning" が1つのコミュニティに集まっていれば、このコーパス内の「語彙学習」共起テーマとして暫定的に命名できます。
 
 ### ネットワーク可視化（図）
 
@@ -4453,21 +4814,21 @@ ggplot() +
 ```
 :::
 
-ネットワーク図では、同じ色のノードが同じコミュニティに属しています。ノードの大きさは degree（接続数）を反映しているので、大きい点が各コミュニティの中核語です。エッジの太さは共起頻度を表し、太い線ほどその2語がよく一緒に使われていることを示します。コミュニティが色分けされて視覚的にまとまっていれば、語彙使用に明確なトピック構造が存在することを意味します。
+ネットワーク図では、同じ色のノードが同じコミュニティに属しています。ノードの大きさは degree（接続数）を反映しているので、大きい点が各コミュニティの中核語です。エッジの太さは共起頻度を表し、太い線ほどその2語がよく一緒に使われていることを示します。コミュニティが色分けされて視覚的にまとまっていれば、語彙使用にトピック構造がある可能性を示唆します。
 
-ネットワークコミュニティを「語彙トピック群」とみなし、その比率を学習者特徴量に変換する設計は、語彙使用の構造的差異を検証可能な形で記述するのに有効です。たとえば「学習者Aの作文ではコミュニティ1（語彙学習関連語）の使用率が60%」といった特徴量を構築し、これを通常のクラスタリング入力に追加できます。
+ネットワークコミュニティを「語彙トピック群」とみなし、その比率を学習者特徴量に変換する設計は、語彙使用の構造的差異を検証可能な形で記述するのに有効です。たとえば「学習者Aの作文ではコミュニティ1（語彙学習関連語）の使用率が60%」といった特徴量を構築し、これを通常のクラスタリング入力に追加できます。本節の実装はその前段階として、共起ネットワーク側のコミュニティ抽出だけを示しています。
 
 ## テスト理論との関わり
 
 ### 研究課題
 
-SLA研究では、学習者の能力をテストで測定することが一般的です。クラスタリングとテスト理論を組み合わせると、「同じ総得点でも下位領域の得点パターンが異なる学習者群が存在する」といった、より精緻な学習者プロフィールの分析が可能になります。ここでは、測定理論にもとづいて推定された能力・誤差情報を用いたとき、学習者類型の識別がどの程度理論整合的になるかを検討します。
+SLA研究では、学習者の能力をテストで測定することが一般的です。クラスタリングとテスト理論を組み合わせると、「同じ総得点でも下位領域の得点パターンが異なる学習者プロフィールが観察される」といった、より精緻な分析が可能になります。ここでは、領域得点・反応時間・測定モデル由来指標をクラスタリングへ接続する考え方を整理します。下のコードは IRT/Rasch モデルを実際に推定する例ではなく、シミュレーションで生成した theta を使って「推定済み能力値を使う場合の読み方」を示す概念実演です。
 
 ### 操作化
 
-CTT（下位尺度得点・項目統計）、IRT（θ推定値・人物適合度）、G理論（facet別指標）をクラスタ入力候補として定義します。
+CTT（下位尺度得点・項目統計）、IRT/Rasch（実データでは別途推定する θ・標準誤差・人物適合度）、G理論（facet別指標）をクラスタ入力候補として定義します。
 
-### 識別戦略
+### 分析戦略
 
 測定モデル由来の指標セットごとにクラスタ解を推定し、群の解釈可能性と分離性を比較します。
 
@@ -4481,25 +4842,27 @@ CTT（下位尺度得点・項目統計）、IRT（θ推定値・人物適合度
 | 項目応答理論 (IRT/Rasch; @bond2015) | 項目特性と能力の分離推定 | θ推定値, 下位能力推定値, 人物適合度 | 潜在能力にもとづく学習者クラスタ化 |
 | 一般化可能性理論 (G理論) | 測定誤差源の分解（課題・評定者など） | facet別スコア, 分散成分要約, D-study指標 | 条件依存性を考慮したクラスタ解釈 |
 
-**どの枠組みを使うべきか？** 多くのSLA研究ではCTT（観測得点ベース）で十分です。IRT/Raschを使う利点は、（1）項目の困難度と学習者の能力を同じ尺度上に配置でき、クラスタの「どの項目が得意/不得意か」まで解釈できること、（2）異なる長さ・困難度のテストフォームを使っていても能力推定値が比較可能であること（テスト等化）、の2点です[@bond2015]。G理論は、評定者間差や課題間差が大きい場合（例: スピーキング評価、ライティング採点）に、測定誤差の構造を明示したうえでクラスタリングできるため有用です。本セクションでは、CTTとIRTを組み合わせた例を示します。
+**どの枠組みを使うとよいでしょうか。** 多くのSLA研究では、まずCTT（観測得点ベース）を出発点にできます。IRT/Raschを使う利点は、（1）項目の困難度と学習者の能力を同じ尺度上に配置でき、クラスタの「どの項目が得意/不得意か」まで解釈できること、（2）異なる長さ・困難度のテストフォームを使っていても能力推定値が比較可能であること（テスト等化）、の2点です[@bond2015]。G理論は、評定者間差や課題間差が大きい場合（例: スピーキング評価、ライティング採点）に、測定誤差の構造を明示したうえでクラスタリングできるため有用です。本セクションでは、CTT指標と、IRT/Rasch推定値に置き換えられる theta 指標を組み合わせる流れを示します。
+
+実データで IRT/Rasch を使う場合は、項目反応データから `mirt`、`TAM`、`eRm` などで能力値を推定し、推定標準誤差や人物適合度も併せて確認します。その後、学習者単位の表に θ 推定値を結合し、総得点・下位領域得点・反応時間指標と一緒にクラスタリングへ入れるか、θ を外的妥当性確認に残すかを研究目的に応じて決めます。推定誤差が大きい θ をそのままクラスタ入力にすると、測定の不確実性を無視した分類になりやすいため、標準誤差や信頼性も報告します。
 
 ### 項目反応データの具体例（SLAテスト想定）
 
 #### 研究課題
 
-総得点が近い学習者の中に、下位領域得点や反応時間変動の異なる潜在群が存在するかを検討します。
+総得点が近い学習者の中に、下位領域得点や反応時間変動の異なるプロフィールが見られるかを検討します。
 
 #### 操作化
 
-語彙・文法・読解の項目反応を生成し、領域得点・RT変動・潜在能力（theta）を学習者特徴量として構成します。
+語彙・文法・読解の項目反応を生成し、領域得点・RT変動・シミュレーション上の theta を学習者特徴量として構成します。実研究では、この theta を IRT/Rasch モデルから推定した能力値に置き換えます。
 
-#### 識別戦略
+#### 分析戦略
 
-特徴量を標準化してクラスタリングし、得点帯クロス集計およびプロフィール図で群構造を識別します。
+特徴量を標準化してクラスタリングし、得点帯クロス集計およびプロフィール図で群構造を記述します。
 
 #### 妥当性検証
 
-信頼性指標（alpha）、項目統計、thetaとの整合を併用して、クラスタ解が測定理論と矛盾しないかを検証します。
+信頼性指標（alpha）、項目統計、シミュレーション上の theta との整合を併用して、クラスタ解が測定理論と矛盾しないかを検証します。実データでは、モデル適合、人物適合度、θ推定標準誤差も同時に確認します。
 
 ```{r}
 #| eval: true
@@ -4623,7 +4986,7 @@ cluster_profile_tbl <- score_tbl |>
     score_grammar = mean(domain_score_grammar),
     score_reading = mean(domain_score_reading),
     rt_cv = mean(rt_cv),
-    theta_general = mean(theta_general),
+    theta_sim = mean(theta_general),
     .groups = "drop"
   ) |>
   dplyr::mutate(
@@ -4632,7 +4995,7 @@ cluster_profile_tbl <- score_tbl |>
     score_grammar = round(score_grammar, 2),
     score_reading = round(score_reading, 2),
     rt_cv = round(rt_cv, 3),
-    theta_general = round(theta_general, 3)
+    theta_sim = round(theta_sim, 3)
   )
 
 band_cluster_tbl <- score_tbl |>
@@ -4640,20 +5003,18 @@ band_cluster_tbl <- score_tbl |>
 
 test_profile_long <- score_tbl |>
   dplyr::select(test_cluster, domain_score_vocab, domain_score_grammar, domain_score_reading, rt_cv) |>
+  dplyr::mutate(dplyr::across(-test_cluster, ~ as.numeric(scale(.x)))) |>
   tidyr::pivot_longer(
     cols = c(domain_score_vocab, domain_score_grammar, domain_score_reading, rt_cv),
     names_to = "metric",
-    values_to = "value"
+    values_to = "z_value"
   ) |>
   dplyr::group_by(test_cluster, metric) |>
-  dplyr::summarise(mean_value = mean(value), .groups = "drop") |>
-  dplyr::group_by(metric) |>
-  dplyr::mutate(z_mean = (mean_value - mean(mean_value)) / sd(mean_value)) |>
-  dplyr::ungroup()
+  dplyr::summarise(z_mean = mean(z_value), .groups = "drop")
 ```
 
 ### 関数ノート: `psych::alpha()` と測定指標の結合
-`psych::alpha()` は項目列の定義に敏感であるため、どの項目を含めたかを固定して報告します。クラスタリングへ結合する際は、測定モデル由来指標（alpha、項目困難度、theta）が同一単位（学習者単位）で整列しているかを確認します。
+`psych::alpha()` は項目列の定義に敏感であるため、どの項目を含めたかを固定して報告します。クラスタリングへ結合する際は、測定モデル由来指標（alpha、項目困難度、IRT/Raschで推定したthetaなど）が同一単位（学習者単位）で整列しているかを確認します。この例の `theta_sim` はシミュレーションで生成した値であり、IRT推定値ではありません。
 
 ::: {.panel-tabset}
 ### 信頼性・項目統計（表）
@@ -4669,7 +5030,7 @@ reliability_tbl |>
   )
 ```
 
-Cronbach's α はテストの内的整合性を表します。一般に α ≥ 0.70 で使用可能、α ≥ 0.80 で良好とされます[@nunnally1994]。クラスタリングに使う得点が信頼性の低い尺度に基づいている場合、クラスタ構造は測定誤差に左右される可能性があるため、この確認は重要です。
+Cronbach's α はテストの内的整合性を表します。α ≥ 0.70 や α ≥ 0.80 という閾値は実務上の目安としてよく用いられますが、用途・項目数・構成概念に依存します[@nunnally1994]。クラスタリングに使う得点が信頼性の低い尺度に基づいている場合、クラスタ構造は測定誤差に左右される可能性があるため、この確認は重要です。
 
 ```{r}
 #| eval: true
@@ -4697,7 +5058,7 @@ cluster_profile_tbl |>
   )
 ```
 
-各クラスタの下位領域得点（vocabulary, grammar, reading）と反応時間変動係数（rt_cv）の平均を比較します。たとえば「語彙・文法は高いが読解が低い」クラスタは「読解困難型」、「全体的に高得点だが rt_cv が大きい」クラスタは「戦略的解答型（時間配分が不均等）」と命名できます。
+各クラスタの下位領域得点（vocabulary, grammar, reading）と反応時間変動係数（rt_cv）の平均を比較します。たとえば「語彙・文法が高く読解が低い」クラスタは「読解得点低め」、「全体的に高得点で rt_cv が大きい」クラスタは「高得点・RT変動大」のように、まず観測された特徴で記述します。読解困難や解答方略まで解釈するには、項目分析、人物適合度、発話プロトコルなどの追加証拠が必要です。
 
 ```{r}
 #| eval: true
@@ -4710,7 +5071,7 @@ band_cluster_tbl |>
   )
 ```
 
-得点帯（低・中・高）とクラスタの対応を見ると、**同じ得点帯に複数のクラスタが含まれているかどうか**がわかります。含まれていれば、総得点だけでは見えない下位領域の異質性をクラスタリングが検出していることを意味します。
+得点帯（低・中・高）とクラスタの対応を見ると、**同じ得点帯に複数のクラスタが含まれているかどうか**がわかります。含まれていれば、総得点だけでは見えにくい下位領域の異質性が、この特徴量設計のもとで記述されている可能性があります。
 
 ### 可視化（図）
 
@@ -4743,18 +5104,18 @@ ggplot(test_profile_long, aes(x = metric, y = z_mean, group = test_cluster, colo
   )
 ```
 
-z平均プロフィール図では、破線（z = 0）が全体平均です。各クラスタの線がどの指標で平均を上回り/下回るかを見ることで、クラスタの特徴を直感的に把握できます。線の形状が異なるクラスタは、質的に異なる学習者タイプを表しています。
+z平均プロフィール図では、破線（z = 0）が学習者全体平均です。各クラスタの線がどの指標で平均を上回り/下回るかを見ることで、クラスタの特徴を直感的に把握できます。線の形状が異なるクラスタは、下位領域得点やRT変動のプロフィールが異なることを示します。
 
 ```{r}
 #| eval: true
 #| label: cluster-test-theory-theta-plot
-#| fig-cap: "総得点と潜在能力（theta）の関係"
+#| fig-cap: "総得点とシミュレーション上のthetaの関係"
 
 ggplot(score_tbl, aes(x = theta_general, y = total_score, color = test_cluster)) +
   geom_point(alpha = 0.7, size = 2) +
   geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
   scale_color_brewer(palette = "Dark2") +
-  labs(x = "Latent ability (theta)", y = "Total score", color = "Test cluster") +
+  labs(x = "Simulated theta (not IRT-estimated)", y = "Total score", color = "Test cluster") +
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
   theme(
     plot.title.position = "plot",
@@ -4773,10 +5134,10 @@ ggplot(score_tbl, aes(x = theta_general, y = total_score, color = test_cluster))
   )
 ```
 
-theta（潜在能力）と総得点の散布図では、各クラスタの回帰直線の傾き・切片の違いに注目します。同じ theta でも総得点が異なるクラスタがあれば、下位領域のバランス（語彙に強い vs. 読解に強い）や反応時間パターンが得点に反映されていることを示唆します。
+シミュレーション上の theta と総得点の散布図では、各クラスタの回帰直線の傾き・切片の違いに注目します。同じ theta 水準でも総得点が異なるクラスタがあれば、下位領域のバランス（語彙に強い vs. 読解に強い）や反応時間パターンが得点と関連している可能性があります。実データで同じ図を作る場合は、`mirt`、`TAM`、`eRm` などで推定した θ とその標準誤差に置き換えます。
 :::
 
-この例が示すように、同じ総得点帯でも下位領域プロフィールや反応時間特性が異なる学習者群が生じ得ます。テスト理論で測定の質を担保しつつ、クラスタリングで学習者差を記述する設計が、SLAの実践的解釈に有効です。クラスタリングは「テスト得点のその先にある学習者の多様性」を可視化する道具です。
+この例が示すように、同じ総得点帯でも下位領域プロフィールや反応時間特性が異なる学習者群が生じ得ます。テスト理論で測定の質を確認しつつ、クラスタリングで学習者差を記述する設計は、SLAの実践的解釈に有用です。クラスタリングは「テスト得点のその先にある学習者の多様性」を可視化する道具です。
 
 ## Part D：クラスタ解釈の実務ポイント {.unnumbered}
 
@@ -4784,8 +5145,8 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 1. **クラスタ数は単一指標で決めない**: エルボー、シルエット[@rousseeuw1987]、ギャップ統計量[@tibshirani2001]、理論妥当性を併用し、決定の根拠を明記します。@clatworthy2005 は健康心理学のレビューで、クラスタ数決定の根拠が不十分な研究が多いことを指摘しており、SLA研究でも同様の懸念が当てはまります。
 2. **クラスタの命名は平均値パターンに基づいて行う**: たとえば「高達成・低不安群」「中達成・高不安群」のように、特徴量の組み合わせから名前をつけます。SLAの理論概念（動機づけ類型[@csizer2005]、学習ストラテジー類型など）と対応づけると解釈が深まります。命名は**データ駆動**であり、クラスタの平均z-scoreプロフィール図を根拠にします。
-3. **外的妥当性を検証する**: 推定されたクラスタが、クラスタリングに使っていない別の変数（期末試験得点、学習継続率、介入への反応など）で有意な群差を示すかを確認します。外的変数で群差が見られなければ、そのクラスタ解は実質的な意味を持たない可能性があります。具体的には、一元配置分散分析（ANOVA）やクラスカル・ウォリス検定でクラスタ間の外的変数の差を検定し、効果量（$\eta^2$ や $d$）を報告します。
-4. **安定性を確認する**: 同じデータで `k-means` と階層法の両方を試し、大筋が一致するかを確認します[@steinley2006]。さらに `clusterboot()` でブートストラップ安定性（Jaccard ≥ 0.75）を報告することで、結果の信頼性を担保します[@hennig2007]。安定しないクラスタは「この標本では検出されたが一般化できない」と明記します。
+3. **外的妥当性を検証する**: 推定されたクラスタが、クラスタリングに使っていない別の変数（期末試験得点、学習継続率、介入への反応など）と整合するかを確認します。外的変数で差が見られなければ、そのクラスタ解は実質的な意味を持たない可能性があります。具体的には、一元配置分散分析（ANOVA）やクラスカル・ウォリス検定でクラスタ間の外的変数の差を確認し、効果量（$\eta^2$ や $d$）を報告します。ただし、クラスタ作成後の同一標本内比較なので、p値だけで確認的結論を出さず、ホールドアウト標本または独立標本での再現を優先します。
+4. **安定性を確認する**: 同じデータで `k-means` と階層法の両方を試し、大筋が一致するかを確認します[@steinley2006]。さらに `clusterboot()` でブートストラップ安定性（Jaccard ≥ 0.75 など）を報告することで、結果解釈の根拠を補強します[@hennig2007]。安定しないクラスタは「この標本では検出されたが一般化できない」と明記します。
 
 ## 報告テンプレート（実践向け）
 
@@ -4793,7 +5154,7 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 **どのケースを使うか？**
 
-- **Case 1（k-means）**: 変数がすべて連続量で、学習者プロフィールの類型を探索する場合。最も一般的なケースです。
+- **Case 1（k-means）**: 変数がすべて連続量で、学習者プロフィールの類型を探索する場合。本章の基本例です。
 - **Case 2（Gower + PAM）**: テスト得点（連続量）と学習志向やL1（カテゴリ）を同時に使う場合。混合データ型が特徴です。
 - **Case 3（テキスト + k-means）**: 学習者作文や自由記述を分析する場合。tf-idf特徴量が必要です。
 
@@ -4803,7 +5164,7 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 **Method:**
 
-> Learner profiles were explored using *k*-means cluster analysis. Four indicators (vocabulary, grammar, fluency, anxiety) were standardized (*z*-transformed) prior to analysis. The optimal number of clusters was determined by jointly evaluating the elbow method, average silhouette width [@rousseeuw1987], and the gap statistic [@tibshirani2001]. The analysis was conducted using `stats::kmeans()` with `nstart = 50` and `set.seed([your seed])` in R 4.x. Cluster stability was assessed via bootstrap resampling (*B* = 50) using `fpc::clusterboot()`, with mean Jaccard coefficients reported per cluster.
+> Learner profiles were explored using *k*-means cluster analysis. Four indicators (vocabulary, grammar, fluency, anxiety) were standardized (*z*-transformed) prior to analysis. The number of clusters was selected by jointly evaluating the elbow method, average silhouette width [@rousseeuw1987], the gap statistic [@tibshirani2001], interpretability, and stability. The analysis was conducted using `stats::kmeans()` with `nstart = 50` and `set.seed([your seed])` in R 4.x. Cluster stability was assessed via bootstrap resampling (*B* = 100) using `fpc::clusterboot()`, with mean Jaccard coefficients reported per cluster.
 
 **Results:**
 
@@ -4822,11 +5183,11 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 **Method:**
 
-> Learner typology was explored using *k*-medoids clustering (PAM) with Gower distance to accommodate mixed data types. Continuous indicators (vocabulary, grammar, fluency, anxiety) and categorical indicators (learning focus, L1 distance, study abroad experience) were included. Gower distance was computed via `cluster::daisy(metric = "gower")`, and PAM was applied with *k* = 3 using `cluster::pam(diss = TRUE)`. For comparison, *k*-means was also applied to the continuous subset only.
+> Learner typology was explored using *k*-medoids clustering (PAM) with Gower distance to accommodate mixed data types. Continuous indicators (vocabulary, grammar, fluency, anxiety) and categorical indicators (learning focus, L1 distance, study abroad experience) were included. Gower distance was computed via `cluster::daisy(metric = "gower")`, and PAM was applied with *k* = 3 using `cluster::pam(diss = TRUE)`. A numeric-feature-only Gower + PAM solution was estimated as an ablation check. A continuous-only *k*-means solution was also reported as a reference analysis, not as a direct silhouette comparison.
 
 **Results:**
 
-> The three-cluster PAM solution yielded an average silhouette width of 0.XX. Cluster 1 (*n* = XX) comprised predominantly accuracy-focused learners with higher grammar scores. Cluster 2 (*n* = XX) included fluency-oriented learners with study abroad experience. Cluster 3 (*n* = XX) showed balanced profiles with elevated anxiety. The Gower-based solution captured category-driven distinctions (e.g., study abroad) that the continuous-only *k*-means solution missed, as evidenced by low cross-tabulation agreement (XX%) and differential silhouette widths (Gower PAM: 0.XX vs. numeric *k*-means: 0.XX).
+> The three-cluster mixed-feature PAM solution yielded an average silhouette width of 0.XX. Cluster 1 (*n* = XX) comprised predominantly accuracy-focused learners with higher grammar scores. Cluster 2 (*n* = XX) included fluency-oriented learners with study abroad experience. Cluster 3 (*n* = XX) showed balanced profiles with elevated anxiety. Differences between the mixed-feature and numeric-feature-only Gower + PAM solutions suggested that categorical indicators contributed additional descriptive information. The numeric *k*-means solution was treated as a reference because it optimizes a different objective in a different distance space.
 
 **査読者チェックリスト:**
 
@@ -4840,7 +5201,7 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 **Method:**
 
-> Learner essays were tokenized and stopwords removed using `tidytext::unnest_tokens()`. A document-term matrix weighted by tf-idf was constructed via `tidytext::bind_tf_idf()`. Documents were clustered using *k*-means (*k* = 4, `nstart = 50`) in the tf-idf feature space. Cluster interpretation was supported by extracting the top-ranked tf-idf terms per cluster and by PCA visualization of the document space.
+> Learner essays were tokenized and stopwords removed using `tidytext::unnest_tokens()`. A document-term matrix weighted by tf-idf was constructed via `tidytext::bind_tf_idf()`. Documents were clustered using *k*-means (*k* = 4, `nstart = 50`) in the tf-idf feature space. Cluster interpretation was supported by extracting the top-ranked tf-idf terms per cluster and by visually inspecting the document space with PCA.
 
 **Results:**
 
@@ -4860,15 +5221,15 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 ### 標準化を忘れてクラスタが歪む
 
-**症状**: 特定の変数（例: 反応時間）の値域が大きく、他の変数（例: 正答率）の影響がほとんどクラスタに反映されない。
+**症状**: 特定の変数（例: 反応時間）の値域が大きく、他の変数（例: 正答率）の影響がほとんどクラスタに反映されません。
 
 **原因**: `scale()` による標準化を行わずに `kmeans()` や `dist()` を適用しているため、分散の大きい変数がユークリッド距離を支配しています。
 
 **修正**: `X <- scale(X_raw)` で z標準化してからクラスタリングを実行します。「どの変数を同程度に重視するか」は実質的なモデリング判断であることを認識し、報告に明記します。
 
-### `set.seed()` を記録せず再現できない
+### `set.seed()` を記録せず再現できない場合
 
-**症状**: 同じコードを再実行するとクラスタ割当てが変わり、前回と異なる結果になる。
+**症状**: 同じコードを再実行するとクラスタ割当てが変わり、前回と異なる結果になります。
 
 **原因**: `kmeans()` は初期値をランダムに選ぶため、`set.seed()` を固定しないと毎回異なる解が得られます。
 
@@ -4876,7 +5237,7 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 ### クラスタ数を単一指標だけで決めてしまう
 
-**症状**: エルボー法だけで $k$ を決定し、シルエットやギャップ統計量を確認しなかったため、査読で「根拠不十分」と指摘される。
+**症状**: エルボー法だけで $k$ を決定し、シルエットやギャップ統計量を確認しなかったため、査読で「根拠不十分」と指摘されます。
 
 **原因**: エルボー法は主観的な判断に依存し、明確な「肘」が見えないこともあります。単一指標では過適合や過少適合のリスクがあります。
 
@@ -4884,23 +5245,23 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 ### 小標本でクラスタを多く設定しすぎる
 
-**症状**: $n = 50$ のデータで $k = 5$ を設定し、1クラスタあたり10名以下になる。結果が不安定で、`clusterboot()` のJaccardが0.5未満。
+**症状**: $n = 50$ のデータで $k = 5$ を設定し、1クラスタあたり10名以下になります。結果が不安定で、`clusterboot()` のJaccardが0.5未満です。
 
 **原因**: 標本サイズに対してクラスタ数が多すぎると、各クラスタの推定が不安定になり、再標本化に対する頑健性が低下します[@clatworthy2005]。
 
 **修正**: 目安として1クラスタあたり最低20〜30名を確保できる $k$ にとどめます。`clusterboot()` でJaccard > 0.75 を確認してから解釈に進みます。
 
-### クラスタを「実在するタイプ」として過解釈する
+### クラスタを「実在するタイプ」として過解釈する場合
 
-**症状**: 「クラスタ1は『語彙特化型学習者』という実在する類型である」と結論づけてしまい、査読で「探索的分析の結果を実体視している」と指摘される。
+**症状**: 「クラスタ1は『語彙特化型学習者』という実在する類型である」と結論づけてしまい、査読で「探索的分析の結果を実体視している」と指摘されます。
 
 **原因**: クラスタリングは連続的なデータ空間を離散的に分割する手法であり、得られた群が自然界に実在するカテゴリとは限りません。
 
 **修正**: 報告では「本分析で *k*-means により3群が識別された」のように記述し、「3つの学習者タイプが存在する」とは書きません。外的妥当性（別データ・別変数での再現）を確認し、理論的な先行研究との対応を議論したうえで、あくまで仮説生成として位置づけます。
 
-### `hclust()` で Ward法に Manhattan 距離を使う
+### `hclust()` で Ward法に Manhattan 距離を使う場合
 
-**症状**: `hclust(dist(X, method = "manhattan"), method = "ward.D2")` と書いたが、得られる解が理論的に不整合。
+**症状**: `hclust(dist(X, method = "manhattan"), method = "ward.D2")` と書きましたが、得られる解が理論的に不整合です。
 
 **原因**: Ward法（`ward.D2`）はクラスタ内二乗和の増加を最小化する手法であり、理論上はユークリッド距離との組み合わせを前提としています。Manhattan距離を使うと、最適化対象と距離の定義が一致しません。
 
@@ -4912,11 +5273,11 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 
 - **設計が分析を決める**: アルゴリズムの選択より先に、「何を似ていると定義するか」（距離尺度）、「何を対象にするか」（分析単位）、「どう前処理するか」（標準化・欠測処理）を明示することが、信頼できるクラスタ解の前提です。
 - **複数基準で判断する**: クラスタ数はエルボー・シルエット・ギャップ統計量を併用して決定し、さらにクラスタの安定性（`clusterboot()`）で再現性を確認します。単一指標への依存は過適合の原因になります。
-- **手法を照合する**: `k-means` と階層法（Ward法）のように異なるアルゴリズムで解を比較し、大筋が一致するかを確認することで、結果の頑健性を担保します。
-- **外的妥当性で裏づける**: 推定されたクラスタが、期末試験得点・学習継続率・介入効果など外部変数と整合するかを検証して初めて、クラスタに実質的な意味を付与できます。
+- **手法を照合する**: `k-means` と階層法（Ward法）のように異なるアルゴリズムで解を比較し、大筋が一致するかを確認することで、結果解釈の根拠を補強します。
+- **外的妥当性で裏づける**: 推定されたクラスタが、期末試験得点・学習継続率・介入反応など外部変数と整合するかを検証することで、クラスタに実質的な解釈を与えられるかを判断します。
 - **再現可能に報告する**: 前処理の方法、距離尺度、`set.seed()`・`nstart`、評価指標の値を論文に明記し、他の研究者が同じ手順で同じ結果を得られるようにします。
 
-クラスタリングは「学習者タイプの発見」という魅力的な問いに答える手法ですが、あくまで探索的な道具です。出てきたクラスタをそのまま実体視せず、理論・再現性・外的妥当性の3層で吟味するという原則を常に意識してください[@jain2010]。
+クラスタリングは「学習者プロフィールをどう整理できるか」という魅力的な問いに答える手法ですが、あくまで探索的な道具です。出てきたクラスタをそのまま実体視せず、理論・再現性・外的妥当性の3層で吟味するという原則を常に意識してください[@jain2010]。
 
 ### 次のステップ: 各自の研究に合わせて
 本章で学んだ手法を自分の研究に適用する際は、以下の判断フローを参考にしてください。
@@ -4929,3 +5290,8 @@ theta（潜在能力）と総得点の散布図では、各クラスタの回帰
 6. **査読で安定性を問われた** → `clusterboot()` + Jaccard報告（@sec-stability）
 
 どの場面でも、**Part D の4つの実務ポイント**と**報告テンプレート**を照合してから投稿してください。
+
+## 参考文献
+
+::: {#refs}
+:::

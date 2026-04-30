@@ -107,6 +107,27 @@ R は CRAN (Comprehensive R Archive Network) から無料でダウンロード�
 2. お使いのOS（Windows / Mac / Linux）を選択
 3. 最新版をダウンロードしてインストール
 
+::: {.callout-warning}
+#### OS 別のインストール注意点
+インストール時のつまずきは OS 固有のものが多いので、以下を事前にチェックしておくとトラブルが激減します。
+
+**Windows**
+- インストールには **管理者権限**が必要(共用 PC では IT 部門に相談)
+- インストールパスに**日本語・スペース・全角文字を含めない**(例:`C:\Users\田中\Documents\R` は避ける、`C:\R` 推奨)。後の `read_csv()` 等でファイルパスの解釈に失敗します
+- パッケージのソースコンパイルが必要な場合は **[Rtools](https://cran.r-project.org/bin/windows/Rtools/)** を別途インストール(R のバージョンに合わせる)
+
+**macOS**
+- 初回起動時に **Gatekeeper(「開発元未確認」警告)** が出ることがある:システム設定 → プライバシーとセキュリティ → 「このまま開く」
+- **Apple Silicon(M1/M2/M3)** マシンは `arm64` 版を、Intel Mac は `x86_64` 版を選ぶ。間違えるとパッケージインストール時に compile エラー
+- 一部の作図系パッケージ(古い `Cairo` 等)は **[XQuartz](https://www.xquartz.org/)** を要求することがある
+
+**Linux (Ubuntu/Debian 系)**
+- `apt install r-base` だけだと**バージョンが古い**ことが多い。CRAN 公式の APT リポジトリを追加するのが推奨([CRAN の Linux 案内](https://cran.r-project.org/bin/linux/))
+- パッケージのコンパイルに `r-base-dev` と `build-essential` が必要
+
+**インストールに行き詰まったら、まず [Posit Cloud](https://posit.cloud/) を試すのが最速の解決策です** — ブラウザだけで RStudio 同等の環境が動き、OS 依存のトラブルを完全に回避できます。
+:::
+
 ### RStudioのインストール
 
 RStudio は、R を効率的に使用するための統合開発環境（IDE）です。コードの編集、実行、データの確認、図の表示を一つの画面で行うことができます。
@@ -294,12 +315,15 @@ pre_scores / c(2, 2, 3, 3)           # 要素ごとの割り算
 ### 自動変換で起こりやすいミス
 - `c(1, 2, "3")` のように異なる型を混ぜると、Rは共通の型にそろえます。この場合は **文字列ベクトル** になります。
 - `as.numeric(c("85", "90", "欠測"))` のように数値に変換できない文字列が含まれると、`NA` が生じます。
-- ベクトルの長さが合わない計算では、Rが値を繰り返して再利用（recycling）することがあります。便利ですが、長さの不一致に気づきにくいため注意が必要です。
+- ベクトルの長さが合わない計算では、Rが値を繰り返して再利用（recycling、リサイクリング）することがあります。便利ですが、長さの不一致に気づきにくいため注意が必要です。
 
 ```r
 # 要注意: 長さが合わないベクトル同士の計算
 c(1, 2, 3, 4) + c(10, 20)
+# → c(11, 22, 13, 24) になる(短い方が頭に戻って繰り返される)
 ```
+
+**recycling とは:** 短い方のベクトルを「先頭に戻ってもう一度使う」ことで長さを揃える R の動作です。長い方が短い方の **整数倍**でない場合は警告が出ますが、整数倍だと**警告なしに進む**ので、意図しないバグの温床になります。
 :::
 
 ### 論理演算子と比較演算子
@@ -423,6 +447,24 @@ for (s in scores) {
   cat("Score:", s, "\n")
 }
 ```
+:::
+
+::: {.callout-note}
+#### ここまでのチェックポイント:Rの基本操作
+**確認できれば次へ進めます:**
+
+- [ ] 変数代入は `<-` を使う(`=` でも動くが慣習として `<-`)
+- [ ] `c()` で複数の値を 1 つのベクトルにまとめられる
+- [ ] `numeric` / `character` / `logical` / `factor` の違いがイメージできる
+- [ ] `as.numeric()` `as.character()` などで型変換できる
+- [ ] `print()` は対話的、`cat()` はループ・関数内で使うと覚えた
+
+**30 秒の自己確認:** 次のコードは何を出力しますか?
+```r
+x <- c("3", "5", "7")
+sum(as.numeric(x))
+```
+答えは `15`(文字列を数値に変換してから合計)。`sum(x)` だけでは型エラーになります。
 :::
 
 ## プログラミングの基礎
@@ -673,7 +715,7 @@ run_ttest <- function(formula, data, label = "Comparison") {
 
 #### 無名関数（ラムダ式）
 
-名前をつけずに関数を定義する方法です。`purrr::map()` やパイプの中で一時的に使います。
+**ラムダ式(lambda expression)** とは、**名前を付けずにその場で定義する関数**のことです。「使い捨ての一時関数」と理解しておけば十分で、由来は数学のラムダ計算ですが、実用上は「`function(x) { ... }` の短縮記法」と覚えれば問題ありません。`purrr::map()` やパイプの中で「あと一歩だけ処理を加えたい」ときに便利です。
 
 ```{r}
 #| eval: true
@@ -735,10 +777,12 @@ purrr::map(scores_list, mean)
 # map_dbl(): 数値ベクトルを返す（結果が数値1つの場合に便利）
 purrr::map_dbl(scores_list, mean)
 
-# map_dfr(): 各結果をデータフレームとして行方向に結合
-purrr::map_dfr(scores_list, \(x) {
+# map() + list_rbind(): 各結果をデータフレームとして行方向に結合
+# (旧 map_dfr() は purrr 1.0 で superseded → 下記のパイプに分けるのが現代的)
+purrr::map(scores_list, \(x) {
   data.frame(M = mean(x), SD = sd(x), n = length(x))
-}, .id = "test")
+}) |>
+  purrr::list_rbind(names_to = "test")
 ```
 
 ::: {.callout-note}
@@ -751,30 +795,95 @@ purrr::map_dfr(scores_list, \(x) {
 | `sapply(x, f)` | `map_chr(x, f)` | 文字列ベクトル |
 | `sapply(x, f)` | `map_lgl(x, f)` | 論理ベクトル |
 | `lapply(x, f)` | `map(x, f)` | リスト |
-| — | `map_dfr(x, f)` | データフレーム（行方向結合） |
+| — | `map(x, f) \|> list_rbind()` | データフレーム(行方向結合)※旧 `map_dfr()` |
+| — | `map(x, f) \|> list_cbind()` | データフレーム(列方向結合)※旧 `map_dfc()` |
 | — | `map2(x, y, f)` | 2つのリストを並列に処理 |
 | — | `walk(x, f)` | 副作用のみ（ファイル保存等） |
 
 `purrr::map()` 系は戻り値の型が明示的で、パイプと親和性が高いため、`tidyverse` を使用する本書では `map()` 系を推奨します。
+
+::: {.callout-tip}
+#### `map_dfr()` / `map_dfc()` は purrr 1.0 で superseded
+purrr 1.0(2022年)以降、`map_dfr()` と `map_dfc()` は **superseded(置き換え推奨)** になりました。動作はしますが、新規コードでは **`map()` の結果を `list_rbind()` / `list_cbind()` でまとめる**書き方が推奨されています。利点は以下の通りです:
+
+- **責務が分離される:** `map()` は「適用」、`list_rbind()` は「結合」と役割が明確
+- **エラーが分かりやすい:** どのステップで失敗したか特定しやすい
+- **エラー処理を挟みやすい:** 結合前に `purrr::compact()` で `NULL` を除外できる、など
+:::
+:::
+
+::: {.callout-note}
+#### ここまでのチェックポイント:プログラミングの基礎
+**確認できれば次へ進めます:**
+
+- [ ] `if / else if / else` で条件分岐を書ける
+- [ ] ベクトル単位の処理(`ifelse()` `case_when()`)とスカラの `if` を区別できる
+- [ ] `for` ループの基本構文を読める
+- [ ] **「ベクトル演算 > `purrr::map()` > `for` ループ」** の優先順位を覚えた
+- [ ] 自作関数の構造(`function(args) { 本体 }`)が書ける
+- [ ] 無名関数(ラムダ式)`\(x) x^2` を読める
+
+**30 秒の自己確認:** 次のコードはなぜ警告ではなく**意図通りの結果**を返すか?
+```r
+scores <- c(85, 90, 78, 92, 88)
+ifelse(scores >= 80, "Pass", "Fail")
+```
+答え:`ifelse()` は **ベクトル化された条件分岐**で、`scores` の各要素ごとに判定を行うため。スカラ用の `if` を使うと「条件の長さが 1 ではない」と警告が出ます。
 :::
 
 ## シミュレーションによるデータ生成
 
-統計学の学習や研究計画の立案において、**シミュレーション（模擬データ生成）** は非常に強力なツールです。Rは豊富な確率分布関数を備えており、研究仮説に基づいたデータを自由に生成できます。
+統計学の学習や研究計画の立案において、**シミュレーション(模擬データ生成)** は非常に強力なツールです。Rは豊富な確率分布関数を備えており、研究仮説に基づいたデータを自由に生成できます。
 
-この章では、乱数生成の基礎から始め、英語教育研究で実際に使えるシミュレーション技法を段階的に解説します。ここで学ぶ技法は、次のセクション「データ構造」でサンプルデータセット `ele_data` を作成する際にも直接活用されています。
+### なぜ「データ構造」の前にシミュレーションを扱うか
+
+本書は **リファレンス的構成**(冒頭の「この章の到達目標」callout を参照)を採用しています。この節をここに置く理由は次の通りです。
+
+1. **統計的思考の土台**として、`set.seed()` と乱数生成は「**真の値が分かっているデータで方法を試す**」という発想を与えてくれる。これは t 検定や回帰の前提条件、効果量、信頼区間といった概念の理解に直結します
+2. **後続の `ele_data` 自体がシミュレーションで生成されている** — 第3章「データ構造」で使う 120 名の EFL 学習者データは、`MASS::mvrnorm()` と相関行列から作られた合成データです。「中身がわかった上で読む」ことで、サンプルデータセットの限界も理解できます
+3. **第7章(ベイズ推定)、第6章(混合効果モデル)、第17章(メタ分析)、第20章(ロバスト統計) は、すべて本節の技法を前提**にします。早い段階で触れておくと、後続章の理解が滑らかになります
 
 ::: {.callout-tip}
-### シミュレーションを学ぶ理由
-- **統計手法の理解が深まる:** 「真の値」がわかっているデータで検定を行うことで、手法の挙動を直観的に理解できる
-- **研究計画の質が上がる:** 必要なサンプルサイズや検出力を事前に見積もれる（検定力分析）
-- **前提条件の影響を検証できる:** 正規性やサンプルサイズの違反がどの程度結果に影響するかを確認できる
-- **分析コードのテストに使える:** 実データ取得前にパイプラインを構築・検証できる
+#### この節の読み方(初学者向けガイド)
+**初回はざっと眺める程度で構いません。** 統計手法を実際に走らせる時に戻ってきて、必要な部分だけ深く読むのが効率的です。
+
+| 初回に **必読** | 後で戻れば OK |
+|---|---|
+| `set.seed()` (再現性の基礎) | モンテカルロ検定力分析 |
+| `rnorm()` `rbinom()` `runif()` の基本 | 前提条件違反のシミュレーション |
+| 1変量の分布の可視化 | ブートストラップ法 |
+| | 相関行列からの多変量生成 |
+| | ELE 研究のための実践例(住み着き効果・反復測定など) |
+
+つまずいたら、**「データ構造」(L1550)に飛んでサンプルデータの感触を掴んでから戻ってくる**のも一つの読み方です。
+:::
+
+### なぜシミュレーションが言語教育研究で重要か
+
+シミュレーションは「観測データだけでは答えられない問い」に答える方法です。SLA・英語教育研究では、特に次の場面で必要になります。
+
+| 課題 | シミュレーションでわかること | 関連章 |
+|---|---|---|
+| **介入研究の設計** | 検出したい効果量を確実に検出するための必要サンプル数(検定力分析) | 第1章, 第6章 |
+| **小サンプル推論** | n=20 程度のクラス研究で、t 検定や回帰の信頼区間がどこまで信頼できるか | 第1章, 第20章 |
+| **前提違反の影響** | テスト得点はしばしば天井効果・床効果を持つ。正規性が崩れた時、検定の Type I/II エラーはどう変化するか | 第1章, 第5章, 第20章 |
+| **多変量データ生成** | TOEFL・語彙・読解テストのような相関のある複数尺度を、研究仮説に沿って模擬生成 | 第3章, 第9章 |
+| **ベイズ事前分布の感度** | 弱い事前と無情報事前で事後分布がどう変わるか | 第7章 |
+| **項目応答パラメータの回復** | IRT・Rasch モデルが、想定したパラメータを正しく推定できるか | 第11章, 第12章 |
+| **メタ分析の頑健性** | 出版バイアスがあった場合、効果量推定はどれくらい歪むか | 第17章 |
+| **匿名化された合成データ** | 学習者個人情報を共有できない時、統計的性質を保った代替データを作る | 全章 |
+
+::: {.callout-tip}
+#### 一般的な「シミュレーションを学ぶ理由」
+- **統計手法の理解が深まる:** 「真の値」がわかっているデータで検定を行うことで、手法の挙動を直観的に理解できる(例:正規分布から生成したデータに t 検定をかけて、p 値の分布が一様になることを確認 → α=0.05 の意味が体感できる)
+- **研究計画の質が上がる:** 必要なサンプルサイズや検出力を事前に見積もれる(例:Cohen's d=0.5 を 80% の検出力で検出するには 1 群何名必要か)
+- **前提条件の影響を検証できる:** 正規性や等分散の違反がどの程度結果に影響するかを確認できる
+- **分析コードのテストに使える:** 実データ取得前にパイプラインを構築・検証できる(再現可能性研究の基本)
 :::
 
 ### 再現可能な乱数：set.seed()
 
-Rの乱数生成は**擬似乱数**に基づいています。`set.seed()` で**シード**（種）を指定すると、毎回まったく同じ「ランダムな」数列が生成されます。
+Rの乱数生成は **擬似乱数(pseudo-random number)** に基づいています。「擬似」とは、コンピュータが完全な真の乱数を作れないため、**シード値から決定論的に乱数列を生成している**という意味です。逆に言えば、**同じシードからは常に同じ「ランダム」な数列が再現できる**ので、研究の再現性を保証する強力な仕組みです。`set.seed()` で **シード**(種)を指定すると、毎回まったく同じ「ランダムな」数列が生成されます。
 
 ```{r}
 #| eval: true
@@ -1973,6 +2082,21 @@ write_excel_csv(data, "output.csv")  # BOM付きUTF-8（Excel対応）
 ```
 :::
 
+::: {.callout-important}
+### Excel 由来 CSV の落とし穴
+Excel で開いて再保存された CSV は、**気付かないうちにデータが書き換えられている**ことが頻繁にあります。SLA 研究では学習者 ID やテスト得点で実害が出やすいので、必ず以下を確認してください。
+
+| 罠 | 何が起こるか | 対処 |
+|---|---|---|
+| **BOM(Byte Order Mark)** | UTF-8 BOM 付きの CSV を `read_csv()` で読むと、最初の列名の頭に不可視の `﻿` が入る | 列名をプリントして見えない文字を確認、または `read_csv(..., locale = locale(encoding = "UTF-8-BOM"))` |
+| **日付の自動変換** | `1/2`(participant 1 の 2 番目という意図)が `Jan-2` や `2024/1/2` に化ける | Excel 側でセル書式を「文字列」にしてから入力、または最初から **CSV を開かない**(`read_csv` で R に直接読み込む) |
+| **先頭ゼロの脱落** | 学習者 ID `P001` `P002` が `1` `2` に化ける | `read_csv(..., col_types = cols(participant_id = col_character()))` で型を明示 |
+| **指数表記化** | 大きな ID(例 `1.23E+12`)が浮動小数点で丸められる | 同上、`col_character()` で文字列として読む |
+| **改行コード** | 日本語 Windows の Excel が CR+LF と LF を混在させる | `readr` は通常自動判定するが、エラー時は `read_csv(..., locale = locale(...))` を確認 |
+
+**ベストプラクティス:** 共同研究者から CSV を受け取ったら、まず `read_csv(..., col_types = ...)` で**全列の型を明示**して読み込み、`spec(data)` で読み込まれた型をチェック。Excel での編集は最小限にとどめ、可能なら CSV → tibble → R 内で編集 → `write_excel_csv()` で書き出し、というワークフローに移行するのが安全です。
+:::
+
 #### read.csv() / write.csv() の主要引数
 
 | 系統 | 関数 | 引数 | デフォルト値 | 説明 |
@@ -2073,23 +2197,27 @@ write.xlsx(data, "output/results.xlsx")
 csv_files <- list.files("data/sessions/", pattern = "\\.csv$", full.names = TRUE)
 csv_files  # ファイルパスの一覧を確認
 
-# map_dfr() で全ファイルを読み込み、行方向に結合
+# map() + list_rbind() で全ファイルを読み込み、行方向に結合
+# (purrr 1.0 以降は map_dfr() より list_rbind() が推奨)
 all_data <- csv_files |>
-  purrr::map_dfr(read_csv, .id = "file_id")
+  purrr::set_names(basename) |>          # ファイル名をリスト名に
+  purrr::map(read_csv) |>
+  purrr::list_rbind(names_to = "file_id")
 
 # ファイル名から条件情報を抽出する例
 # 例: "data/sessions/participant_001_pretest.csv" → participant_id と timepoint
 all_data <- csv_files |>
-  purrr::map_dfr(~ {
-    df <- read_csv(.x)
-    df$source_file <- basename(.x)  # ファイル名を列として追加
+  purrr::map(\(path) {
+    df <- read_csv(path)
+    df$source_file <- basename(path)
     df
-  })
+  }) |>
+  purrr::list_rbind()
 ```
 
 ::: {.callout-tip}
 ### 大量のファイルを読み込む際の注意
-ファイル数が多い場合は、読み込み前に `csv_files` の中身を `print()` で確認し、意図しないファイルが混入していないかチェックしてください。また、各ファイルの列名・列数が統一されていることを事前に確認してください。列構造が異なる場合は `map_dfr()` の代わりに `map()` でリストとして読み込み、個別に確認してから `bind_rows()` で結合します。
+ファイル数が多い場合は、読み込み前に `csv_files` の中身を `print()` で確認し、意図しないファイルが混入していないかチェックしてください。また、各ファイルの列名・列数が統一されていることを事前に確認してください。列構造が異なる場合は、まず `map()` でリストとして読み込み、各要素を個別に確認してから `list_rbind()` で結合すると安全です(`list_rbind()` は列構造が揃っていなくても警告付きで結合します)。
 :::
 
 ### RDS形式（Rのネイティブ形式）
@@ -2206,7 +2334,7 @@ ele_data$toefl_score %>% mean() %>% round(2)
 
 #### プレースホルダ：第1引数以外に渡す場合
 
-パイプは通常、左辺の結果を右辺の **第1引数** に渡します。しかし、第2引数以降に渡したい場合はプレースホルダを使います。
+**プレースホルダ(placeholder)** とは、「ここに左辺の値が入る」と明示するための **目印**です。パイプは通常、左辺の結果を右辺の **第1引数** に渡します。しかし、第2引数以降に渡したい場合は、プレースホルダ(ネイティブパイプは `_`、magrittr `%>%` は `.`)を使って「ここに入れて」と指示します。
 
 ```{r}
 #| eval: true
@@ -2920,6 +3048,27 @@ ele_data |>
   ungroup()
 ```
 
+::: {.callout-note}
+#### ここまでのチェックポイント:tidyverse によるデータ操作
+**確認できれば次へ進めます:**
+
+- [ ] パイプ `|>` で「左から右へ」処理を読める
+- [ ] `select()`(列)・`filter()`(行)・`mutate()`(新列)・`arrange()`(並び替え)・`summarize()`(集計)の役割を区別できる
+- [ ] `group_by() |> summarize()` で群別集計ができる
+- [ ] `pivot_longer()` / `pivot_wider()` で wide ⇄ long を変換できる
+- [ ] `*_join()` で 2 つのデータフレームを結合できる
+- [ ] join 後に **「キーが一意か / 不一致 ID はないか / 行数が増減していないか」** を必ず確認する習慣がついた
+
+**30 秒の自己確認:** `ele_data` から **CEFR B2 の学習者だけ** を取り出し、**指導法ごとに事後テストの平均点を計算**するパイプラインは?
+```r
+ele_data |>
+  filter(proficiency_level == "B2") |>
+  group_by(instruction_type) |>
+  summarize(mean_post = mean(posttest), .groups = "drop")
+```
+4 行で書ければ、tidyverse の中核は身についています。
+:::
+
 ## gt()によるテーブル作成
 
 `gt` パッケージは、出版品質のテーブルを作成するためのパッケージです。本書では主に**計算結果表の整形**に使っていますが、この章では `gt()` 自体の基本操作も教材として紹介します。
@@ -2939,6 +3088,8 @@ ele_data |>
 
 ### タイトル・サブタイトルの追加
 
+`tab_header()` で表に**見出し**を付けます。論文・レポートに貼るときは、表番号と簡潔な内容説明を付ける慣習があります。
+
 ```{r}
 #| eval: true
 #| label: gt-header
@@ -2952,6 +3103,8 @@ ele_data |>
 ```
 
 ### 列名の変更（cols_label）
+
+データフレームのプログラム上の変数名(`mean_toefl` など)はそのまま表示すると読みにくいので、`cols_label()` で**人間が読みやすい名前**(M, SD など)に置き換えます。APA 形式の表に必須の操作です。
 
 ```{r}
 #| eval: true
@@ -2975,6 +3128,8 @@ ele_data |>
 ```
 
 ### 数値の書式設定（fmt_number, fmt_percent）
+
+`fmt_number()` は**小数点以下の桁数**を、`fmt_percent()` は **0–1 の値を「%」表示**に変換します。複数列を `c(...)` でまとめて指定できます。これらが無いと `0.4287594` のように冗長な小数点表示になり、論文用の表として使えません。
 
 ```{r}
 #| eval: true
@@ -3312,8 +3467,7 @@ ggplot(iris, aes(x = Petal.Length, y = Petal.Width, color = Species)) +
       margin = margin(b = 8)
     ),
     plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ) + theme(legend.position = "bottom") +
-  theme(legend.position = "bottom")
+  ) + theme(legend.position = "bottom")
 ```
 
 #### facet_wrap：パネル分割
@@ -3393,9 +3547,8 @@ ggplot(iris_long, aes(x = Species, y = value, fill = Species)) +
       margin = margin(b = 8)
     ),
     plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ) + theme(legend.position = "bottom") +
-  theme(legend.position = "none",
-        axis.text.x = element_text(angle = 30, hjust = 1))
+  ) + theme(legend.position = "none",
+            axis.text.x = element_text(angle = 30, hjust = 1))
 ```
 
 #### 密度プロットとバイオリンプロット
@@ -3433,8 +3586,7 @@ iris_long2 |>
       margin = margin(b = 8)
     ),
     plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ) + theme(legend.position = "bottom") +
-  theme(legend.position = "none")
+  ) + theme(legend.position = "none")
 ```
 
 #### ヒートマップ：相関行列の可視化
@@ -3789,6 +3941,28 @@ ggplot(timepoint_long, aes(x = timepoint, y = score, fill = timepoint)) +
 本文では「半バイオリン + 箱ひげ図 + ジッター」の組み合わせを基本形として把握しておくと実務で応用しやすくなります。
 :::
 
+::: {.callout-tip}
+#### gghalves で本格的な raincloud plot
+上記は `geom_violin()`(フルバイオリン)を用いた簡易版です。**真の raincloud plot**(片側だけバイオリン、もう片側に点)を描くには `gghalves` パッケージを使います。データの分布(バイオリン側)と個別観測値(点側)を視覚的に分離できるため、論文向けの図として推奨されます[@allen2021raincloud]。
+
+```r
+library(gghalves)
+
+ggplot(timepoint_long, aes(x = timepoint, y = score, fill = timepoint)) +
+  gghalves::geom_half_violin(side = "l", alpha = 0.6, color = NA) +     # 左側にバイオリン
+  gghalves::geom_half_boxplot(side = "r", width = 0.15, outlier.shape = NA, alpha = 0.75) +  # 右側に箱ひげ
+  gghalves::geom_half_point(side = "r", alpha = 0.3, size = 0.9,        # 右側に点
+                            transformation = position_jitter(width = 0.05)) +
+  facet_wrap(vars(instruction_type)) +
+  labs(title = "Raincloud Plot with gghalves",
+       x = "Timepoint", y = "Score") +
+  scale_fill_brewer(palette = "Pastel2") +
+  theme(legend.position = "none")
+```
+
+`side = "l"` / `"r"` で左右どちらに描くかを指定します。`gghalves` は 2018 年以降に普及した比較的新しいパッケージで、心理学・SLA 研究の図でよく採用されるようになっています。
+:::
+
 ### 座標系と複数図の配置
 
 `ggplot2` の軸範囲を調整する時、`scale_x_continuous(limits = ...)` でデータ自体を切る方法と、`coord_cartesian()` で**見た目だけズーム**する方法は意味が異なります。外れ値や回帰線の形を保ったまま拡大したい場合は `coord_cartesian()` が適しています。
@@ -3823,11 +3997,31 @@ patchwork::wrap_plots(
 ```
 
 ::: {.callout-tip}
+#### patchwork の演算子記法
+`patchwork` は `wrap_plots()` 関数の他に、**`+` `|` `/` 演算子**で複数の ggplot を組み合わせられます。短いコードで直感的にレイアウトできるのが利点です。
+
+```r
+library(patchwork)
+
+p1 + p2              # 横並び(同列)
+p1 | p2 | p3         # 横並び(明示)
+p1 / p2              # 縦並び
+(p1 | p2) / p3       # 上に2つ、下に1つ(2行3列)
+p1 + p2 + plot_layout(guides = "collect")  # 凡例を統合
+p1 + p2 + plot_annotation(tag_levels = "A")  # A, B のラベル付与
+```
+
+複数モデルの結果や Pre/Post の比較図を 1 枚にまとめる場面で頻出します。第4章以降の図で多用されます。
+:::
+
+::: {.callout-tip}
 ### `coord_flip()` について
 `ggplot2` の公式ドキュメントでは `coord_flip()` は **superseded** です。単純な横向き箱ひげ図や棒グラフなら、`coord_flip()` を使うより **x と y の aesthetic を入れ替える** 方が今は基本です。
 :::
 
 ### ヒストグラムと密度プロット
+
+**いつ使うか:** 1 つの**連続変数の分布のかたち**を見たいとき(山が 1 つか 2 つか、左右非対称か、外れ値の有無)。**何を見るか:** ピークの位置(中心)、裾の伸び(分散)、左右の偏り(歪度)。
 
 ```{r}
 #| eval: true
@@ -3845,6 +4039,8 @@ ggplot(ele_data, aes(x = toefl_score, fill = proficiency_level)) +
 ```
 
 ### 箱ひげ図とバイオリンプロット
+
+**いつ使うか:** **群間で連続変数の分布を比較**したいとき。**何を見るか:** 箱ひげ図では中央値(箱の中央線)・四分位範囲(箱の高さ)・外れ値(ひげの外側の点)。バイオリンプロットを重ねると分布の形(双峰性など)も同時に確認できます。
 
 ```{r}
 #| eval: true
@@ -3866,6 +4062,8 @@ ggplot(ele_data, aes(x = instruction_type, y = posttest,
 
 ### 散布図と回帰直線
 
+**いつ使うか:** **2 つの連続変数の関係**を可視化するとき。**何を見るか:** 関連の方向(右上がり=正、右下がり=負)、強さ(直線の周りに密集 or 散らばり)、線形か曲線か、外れ値、群差の有無(色分けで)。
+
 ```{r}
 #| eval: true
 #| label: ggplot-scatter
@@ -3883,6 +4081,8 @@ ggplot(ele_data, aes(x = vocabulary_test, y = reading_score,
 ```
 
 ### 棒グラフ（平均値とエラーバー）
+
+**いつ使うか:** **群別の平均値を比較**するとき(時点 × 群、条件 × 水準など)。**何を見るか:** 棒の高さ(群平均)、エラーバーの長さ(SE = 平均値の不確実性)、エラーバーが大きく重なっていれば群差は小さい可能性が高い。**注意:** 平均と SE だけでは分布のかたちは分からないので、可能なら箱ひげ図や散布図と併用するのが現代的なベストプラクティスです。
 
 ```{r}
 #| eval: true
@@ -3911,12 +4111,29 @@ ele_data |>
 
 ### テーマと体裁の調整
 
+ggplot2 で「グラフの見た目」を制御するのは **theme システム**です。データに依存しない要素(タイトル位置・凡例・軸ラベルの書体・余白・背景・グリッド線など)はすべて `theme()` 関数で操作します。
+
+#### theme システムの3層構造
+
+ggplot2 の見た目調整は以下の 3 階層で考えると整理しやすいです:
+
+| 層 | 関数 | 役割 |
+|---|---|---|
+| **完成テーマ(土台)** | `theme_bw()` `theme_minimal()` `theme_classic()` | 全要素の初期値をまとめて切り替える |
+| **個別要素の上書き** | `theme(...)` | 凡例位置・タイトル書体など、要素単位で調整 |
+| **要素の中身** | `element_text()` `element_rect()` `element_line()` `element_blank()` | テキスト・矩形・線・非表示の指定 |
+
+例えば `theme_bw() + theme(legend.position = "bottom")` は、「白背景の完成テーマを土台にして、凡例だけ下に移動する」という意味です。`theme()` は **後勝ち**(後ろに書いたものが優先)なので、複数の `theme()` を `+` で連鎖できます。
+
+#### 実用例:出版品質に近づける
+
+以下は本書全体で使うスタイルの例です。各 `theme()` 引数が何を制御しているかをコメントで示しています。
+
 ```{r}
 #| eval: true
 #| label: ggplot-theme
 #| fig-width: 8
 #| fig-height: 5
-# 本書で使用するスタイルの例
 ggplot(ele_data, aes(x = toefl_score, y = vocabulary_test)) +
   geom_point(aes(color = proficiency_level), alpha = 0.6, size = 2) +
   geom_smooth(method = "lm", color = "black", linewidth = 0.8) +
@@ -3928,28 +4145,43 @@ ggplot(ele_data, aes(x = toefl_score, y = vocabulary_test)) +
     color = "CEFR Level",
     caption = "Note. Shaded area = 95% CI."
   ) +
+  # ── 完成テーマ：白背景・最小限のグリッド線
   theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  # ── 個別要素の上書き
   theme(
-    plot.title.position = "plot",
-    plot.title = element_text(
+    plot.title.position = "plot",          # タイトルをプロット領域基準に
+    plot.title = element_text(             # タイトル書式
       face = "bold",
-      size = rel(1.0),
+      size = rel(1.0),                     # base_size に対する相対倍率
       lineheight = 1.04,
-      margin = margin(b = 6)
+      margin = margin(b = 6)               # 下マージン (px)
     ),
-    plot.subtitle = element_text(
+    plot.subtitle = element_text(          # サブタイトル書式
       size = rel(0.92),
       lineheight = 1.04,
       margin = margin(b = 8)
     ),
-    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ) + theme(legend.position = "bottom") +
-  theme(
-    plot.title = element_text(face = "bold"),
-    legend.position = "bottom"
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10),  # 図全体の余白
+    legend.position = "bottom"             # 凡例を下部に配置
   ) +
-  scale_color_brewer(palette = "Dark2")
+  scale_color_brewer(palette = "Dark2")    # 色覚多様性に配慮したパレット
 ```
+
+#### よく使う theme() 引数の早見表
+
+| 引数 | 役割 | 例 |
+|---|---|---|
+| `legend.position` | 凡例の位置 | `"top"` / `"bottom"` / `"none"` / `c(0.8, 0.2)` |
+| `plot.title` | タイトル書式 | `element_text(face = "bold", size = 14)` |
+| `axis.text.x` | x 軸の目盛りラベル | `element_text(angle = 45, hjust = 1)` |
+| `panel.grid.minor` | 補助グリッド線 | `element_blank()` で消去 |
+| `strip.background` | facet ラベルの背景 | `element_rect(fill = "gray90")` |
+| `aspect.ratio` | プロット領域の縦横比 | `1` で正方形 |
+
+::: {.callout-tip}
+#### theme をまとめて使い回したいとき
+同じ theme を毎回書くのが面倒な場合、`my_theme <- theme(...)` のように **オブジェクトに保存しておけば** `p + my_theme` で再利用できます。ただし、最初は `theme()` の中身を毎回書いて感覚を掴むことを推奨します(どの引数が何を制御しているかが体に入ります)。
+:::
 
 ### plotlyによるインタラクティブ可視化
 
@@ -4166,6 +4398,30 @@ ggsave("figures/toefl_vocab_scatter.png", width = 8, height = 6, dpi = 300)
 
 Base Rの `plot()`, `hist()`, `boxplot()` 等も使用できますが、本書では柔軟性と一貫性の観点から `ggplot2` を主に使用します。
 
+::: {.callout-note}
+#### ここまでのチェックポイント:データの可視化
+**確認できれば次へ進めます:**
+
+- [ ] ggplot2 の構造 = **データ + aes() + geom_*() + theme()** という layered grammar
+- [ ] `aes(x, y, color, fill, shape)` の中に変数を入れると「変数の値で見た目を変える」(マッピング)
+- [ ] `aes()` の外に直接値(`color = "red"`)を書くと「全点を赤にする」(設定)
+- [ ] `facet_wrap()` で 1 変数によるパネル分割、`facet_grid()` で 2 変数によるグリッド分割
+- [ ] 4 種の基本図(ヒストグラム / 箱ひげ図 / 散布図 / 棒グラフ)それぞれ「いつ使うか」が言える
+- [ ] `theme_bw()` + `theme(...)` で見た目を細かく調整できる
+- [ ] `ggsave()` で図を保存できる
+
+**30 秒の自己確認:** 次の指示を ggplot2 で書くと?
+> 「`ele_data` で `vocabulary_test` を x 軸、`reading_score` を y 軸に取り、`proficiency_level` ごとに色分けして散布図と回帰直線を描く」
+
+```r
+ggplot(ele_data, aes(x = vocabulary_test, y = reading_score,
+                     color = proficiency_level)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+これがスラスラ書ければ可視化の基礎は十分です。
+:::
+
 ## 基礎的な統計解析
 
 本節では、英語教育研究で頻出する基礎的な統計手法のRでの実行方法を概説します。各手法の理論的背景や詳細な解釈については、該当する章を参照してください。
@@ -4257,6 +4513,8 @@ psych::pairs.panels(
 
 **研究課題:** 明示的指導（Explicit）と暗示的指導（Implicit）で、事後テスト得点に統計的に有意な差があるか？
 
+`t.test()` は **「式（formula）= データ」** という形で書きます。`posttest ~ instruction_type` は「`instruction_type` の水準ごとに `posttest` を比較する」という意味です。デフォルトは Welch の t 検定（等分散を仮定しない）で、現代の研究では Student の t 検定よりこちらを既定とするのが一般的です。
+
 ```{r}
 #| eval: true
 #| label: ttest-ele
@@ -4265,8 +4523,20 @@ t_result <- t.test(posttest ~ instruction_type, data = ele_data)
 t_result
 ```
 
+**出力の読み方:**
+
+| 出力項目 | 意味 | この例での読み方 |
+|---|---|---|
+| `t = ...` | t 統計量 | 群間差の大きさを SE 単位で表したもの。絶対値が大きいほど差は明確 |
+| `df = ...` | 自由度 | Welch では小数になる（Satterthwaite 近似） |
+| `p-value` | 有意確率 | 慣習的に < .05 で「有意」と判断するが、効果量と CI も併せて報告する |
+| `95 percent confidence interval` | 群平均差の 95%信頼区間 | 0 を含まなければ有意差ありと整合 |
+| `mean in group ...` | 各群の平均値 | 差の方向（どちらが高いか）を確認 |
+
 ::: {.panel-tabset}
 ### 結果
+
+`broom::tidy()` を通すと、t 検定の出力が **1 行のデータフレーム**になり、`kable()` や `gt()` で表として整形しやすくなります。複数のモデルを並べて比較したい時に特に便利です。
 
 ```{r}
 #| eval: true
@@ -4279,7 +4549,11 @@ broom::tidy(t_result) |>
   )
 ```
 
+`tidy()` 出力の列対応は `estimate`(群平均差)、`statistic`(t 値)、`p.value`、`conf.low / conf.high`(信頼区間)、`parameter`(自由度)です。
+
 ### 可視化
+
+統計的検定の結果は、必ず**分布のかたち**と一緒に確認します。箱ひげ図(中央値・四分位)と散布点(個々の観測値)を重ねると、平均差だけでは見えない外れ値や分布の偏りも把握できます。
 
 ```{r}
 #| eval: true
@@ -4295,11 +4569,15 @@ ggplot(ele_data, aes(x = instruction_type, y = posttest,
   theme(legend.position = "none") +
   scale_fill_brewer(palette = "Set2")
 ```
+
+**図の読み方:** 箱の中央線が中央値、箱の上下端が第1・第3四分位、ひげが約 1.5×IQR の範囲です。点(jitter)は個々の学習者。両群の箱が大きく重なっていれば差は小さく、ほぼ重ならなければ差は大きいと視覚的に判断できます。
 :::
 
 ### 相関分析
 
 **研究課題:** TOEFL得点と語彙テスト得点の間に有意な相関があるか？
+
+`cor.test()` は2変数間の **Pearson 相関係数**(線形関係の強さと向き)とその有意性検定を同時に返します。`cor()` は係数のみ、`cor.test()` は信頼区間と p 値も含む点が違いです。
 
 ```{r}
 #| eval: true
@@ -4308,6 +4586,20 @@ ggplot(ele_data, aes(x = instruction_type, y = posttest,
 cor_result <- cor.test(ele_data$toefl_score, ele_data$vocabulary_test)
 cor_result
 ```
+
+**出力の読み方:**
+
+| 出力項目 | 意味 | 解釈の目安 |
+|---|---|---|
+| `cor` | 相関係数 *r* | $-1 \le r \le 1$。0=無相関、±1=完全な線形関係 |
+| `t = ...` | 検定統計量 | $r$ が 0 と異なるかを検定する t 値 |
+| `df = N - 2` | 自由度 | サンプルサイズ N から 2 を引いた値 |
+| `p-value` | 有意確率 | $r$ が偶然 0 から離れた確率 |
+| `95 percent confidence interval` | $r$ の 95%信頼区間 | 0 を含まなければ「有意な相関あり」と整合 |
+
+**$r$ の大きさの目安(Cohen, 1988 の慣例)** :小= 0.10、中= 0.30、大= 0.50。ただし応用言語学では Plonsky & Oswald (2014) が分野別に「小= 0.25、中= 0.40、大= 0.60」を提案しており、文脈に応じて使い分けます。
+
+複数変数間の関係を一気に見たいときは、`GGally::ggpairs()` で **散布図行列**を描くと、対角線に密度プロット、上三角に相関係数、下三角に散布図と回帰線が同時に得られます。
 
 ```{r}
 #| eval: true
@@ -4324,9 +4616,13 @@ ele_data |>
   )
 ```
 
+**散布図行列の読み方:** 対角線(密度)で各変数の分布のかたちを、下三角(散布図+回帰線)で2変数の関連の方向を、上三角(係数)で関連の強さを同時に確認できます。点が直線の周りに密集していれば線形関係が強く、円形状に散らばっていれば関連は弱い、という直感的判断ができます。
+
 ### 回帰分析
 
 **研究課題:** TOEFL得点は、語彙テスト得点と読解テスト得点で予測できるか？
+
+`lm()`(linear model)は **目的変数 ~ 説明変数1 + 説明変数2 + ...** の式で重回帰モデルを推定します。`+` で足し合わせるのは「主効果のみ」を含めるという意味です。交互作用を入れる場合は `*`(主効果+交互作用)や `:`(交互作用のみ)を使い分けます。詳しい formula 構文は本章末尾の「補遺:formula 構文」を参照してください(後続の第4-7章で詳述)。
 
 ```{r}
 #| eval: true
@@ -4334,6 +4630,8 @@ ele_data |>
 # 重回帰モデル
 model <- lm(toefl_score ~ vocabulary_test + reading_score, data = ele_data)
 ```
+
+`lm()` 単体では結果が出力されません。**モデルオブジェクトに保存して、後から `summary()` や `broom::tidy()` で取り出す**のが慣習です。`broom::tidy(model, conf.int = TRUE)` は係数の表を **きれいなデータフレーム**として返してくれます。
 
 ```{r}
 #| eval: true
@@ -4345,6 +4643,25 @@ broom::tidy(model, conf.int = TRUE) |>
     digits = 3
   )
 ```
+
+**出力の読み方:**
+
+| 列 | 意味 | この例での読み方 |
+|---|---|---|
+| `term` | 説明変数の名前 | `(Intercept)` は切片(全説明変数=0 のときの予測値) |
+| `estimate` | 回帰係数 *B* | 「他の変数を一定にしたとき」その変数が 1 単位増えたときの目的変数の変化量 |
+| `std.error` | 標準誤差 SE | 係数推定の不確実性 |
+| `statistic` | t 値 | $B / SE$、係数が 0 から離れているかの検定統計量 |
+| `p.value` | 有意確率 | 慣習的に < .05 で「有意」 |
+| `conf.low / conf.high` | 95%信頼区間 | 0 を含まなければ係数は有意と整合 |
+
+**モデル全体の指標(`summary(model)` で確認できる)** :
+
+- **Multiple R-squared** :モデルが目的変数の分散の何%を説明できているか(0〜1)
+- **Adjusted R-squared** :説明変数の数で罰則化した R²。変数を増やすほど不利になるので、モデル比較に適する
+- **F-statistic / p-value** :「すべての係数が同時に 0」という帰無仮説の検定
+
+**重回帰の解釈の鉄則** :各係数は「他の説明変数を統制した上での」効果です。単純な相関係数とは値も意味も異なります。詳細は第4章で扱います。
 
 ### 効果量
 
@@ -4381,6 +4698,132 @@ cat("Adjusted R² =", summary(model)$adj.r.squared |> round(3))
 
 統計手法の選択は、まず研究仮説を明確化し、次にデータ構造で分岐すると整理できます。2群比較なら第1章の t 検定、3群以上の比較なら第2章の ANOVA、相関や予測が主目的なら第4章の回帰分析を参照してください。アウトカムが 2 値なら第5章の GLM、階層構造を持つデータなら第6章の混合効果モデルが基本ルートです。
 
+### モデル式（formula）の読み方
+
+R では統計モデルを **`y ~ x` 形式の式（formula）** で書きます。これは「`x` を使って `y` を説明する」という意味で、`lm()`、`glm()`、`lmer()`、`aov()`、`brm()` など、ほぼすべてのモデリング関数に共通する書き方です。後続の第4-7章を読むためには、以下の演算子を覚えておく必要があります。
+
+| 記号 | 意味 | 例 | 解釈 |
+|---|---|---|---|
+| `~` | 「〜で説明する」 | `y ~ x` | y を x で説明 |
+| `+` | 主効果を追加 | `y ~ x1 + x2` | x1 と x2 の主効果 |
+| `:` | 交互作用のみ | `y ~ x1:x2` | x1×x2 の交互作用のみ(主効果なし、通常は使わない) |
+| `*` | 主効果 + 交互作用 | `y ~ x1 * x2` | `x1 + x2 + x1:x2` と等価 |
+| `-1` または `+0` | 切片を除く | `y ~ x - 1` | 切片を推定しない |
+| `I()` | 算術演算をそのまま | `y ~ I(x^2)` | x の 2 乗を説明変数に(I なしだと R は誤解釈する) |
+| `(1\|group)` | ランダム切片 | `y ~ x + (1\|subject)` | 混合効果モデル(第6章) |
+| `(1+x\|group)` | ランダム切片+傾き | `y ~ x + (1+x\|subject)` | 個体ごとに x の効果が変動 |
+| `s(x)` | 平滑化項 | `y ~ s(x)` | GAM(第5章後半) |
+| `offset()` | オフセット項 | `y ~ x + offset(log(n))` | ポアソン回帰の曝露量補正(第5章) |
+
+```{r}
+#| eval: true
+#| label: formula-demo
+# 主効果のみ
+m1 <- lm(toefl_score ~ vocabulary_test + reading_score, data = ele_data)
+
+# 交互作用込み(* で「主効果 + 交互作用」)
+m2 <- lm(posttest ~ instruction_type * proficiency_level, data = ele_data)
+
+# 平方項を入れる(I() で囲まないと R は + を formula 演算子と誤解釈する)
+m3 <- lm(toefl_score ~ vocabulary_test + I(vocabulary_test^2), data = ele_data)
+
+# 係数の名前で違いを確認
+list(主効果のみ = names(coef(m1)),
+     交互作用込み = names(coef(m2)),
+     平方項込み   = names(coef(m3)))
+```
+
+**読み方:** `m1` は 3 つの係数(切片 + 2 説明変数)、`m2` は 4 つ(切片 + 2 主効果 + 1 交互作用)、`m3` は 3 つ(切片 + 線形 + 二次)になります。`*` を `+` に書き換えるだけで「交互作用を含めるかどうか」が制御できる、これが formula 構文の威力です。
+
+::: {.callout-warning}
+#### よくあるミス：算術演算と formula 演算子の混同
+`y ~ x1 + x2` の `+` は **「2 つの変数を足す」のではなく「主効果として追加する」** という意味です。本当に算術的に足したいときは `y ~ I(x1 + x2)` のように `I()` で囲みます。同様に `y ~ x^2` は「x との交互作用」と解釈されてしまうので、二次項は `I(x^2)` と書きます。
+:::
+
+### モデルオブジェクトの中身を取り出す
+
+`lm()`、`glm()`、`lmer()`、`brm()` などが返す**モデルオブジェクト**は、係数・残差・予測値・適合度指標などをすべて内部に保持しています。後続の章では、これらの中身を取り出す共通関数を頻繁に使います。1 つの `lm` モデルで全パターンを示します。
+
+```{r}
+#| eval: true
+#| label: model-accessors
+# 共通モデル
+fit <- lm(toefl_score ~ vocabulary_test + reading_score, data = ele_data)
+
+# (1) 係数だけ取り出す
+coef(fit)
+
+# (2) 信頼区間
+confint(fit, level = 0.95)
+
+# (3) 残差・予測値
+head(residuals(fit), 5)
+head(fitted(fit), 5)
+
+# (4) 新しいデータでの予測
+new_data <- data.frame(vocabulary_test = c(20, 25), reading_score = c(15, 18))
+predict(fit, newdata = new_data, interval = "confidence")
+```
+
+**broom パッケージで「きれいな表」として取り出す** :`broom` は `summary()` の出力を **3 種類のデータフレーム**に整形してくれます。後続のモデリング章で多用されます。
+
+```{r}
+#| eval: true
+#| label: broom-demo
+# (a) tidy(): 係数表 → 1 行 1 係数
+broom::tidy(fit, conf.int = TRUE)
+
+# (b) glance(): モデル全体の指標 → 1 行 1 モデル
+broom::glance(fit)
+
+# (c) augment(): 元データ + 残差 + 予測値 + 標準誤差
+broom::augment(fit) |> head(3)
+```
+
+**使い分けの目安:**
+
+| 関数 | 返すもの | 何に使う |
+|---|---|---|
+| `coef()` / `confint()` | ベクトル / 行列 | パラメータを 1 つだけ取り出して数値計算 |
+| `summary()` | リスト + 印字 | コンソールで眺めるとき |
+| `broom::tidy()` | データフレーム(係数表) | 表として論文・レポートに貼る |
+| `broom::glance()` | データフレーム(1 行) | 複数モデルの R²・AIC・BIC を比較 |
+| `broom::augment()` | データフレーム(元データ + 残差・予測値) | 残差プロット、外れ値検出 |
+| `predict(newdata=)` | ベクトル / 行列 | 未観測データの予測値・信頼区間 |
+
+これらは `lm` だけでなく `glm`(第5章)、`lmer`/`glmer`(第6章)、`brm`(第7章)、`metafor::rma`(第17章)など、ほぼすべてのモデリング関数に共通します(`broom.mixed` パッケージが `lmer` 等をサポート)。**「とりあえず `tidy()` と `glance()` を呼ぶ」** という習慣を身につけておくと、第4章以降の学習が劇的に楽になります。
+
+### 推定周辺平均と事後比較:emmeans の入り口
+
+回帰や ANOVA で「**他の変数を平均化したときの群別平均**(estimated marginal means、推定周辺平均)」を取り出したい場面が頻繁にあります。`emmeans` パッケージはそのための標準ツールで、第2章(ANOVA)、第4章(重回帰の交互作用解釈)、第5章(GLM の単純傾斜)、第6章(混合効果モデルの事後比較)で多用されます。本章では「呼び出し方」と「結果の読み方」を最小限示します。
+
+```{r}
+#| eval: true
+#| label: emmeans-demo
+# 例:指導法 × 熟達度の交互作用モデル
+emm_model <- lm(posttest ~ instruction_type * proficiency_level, data = ele_data)
+
+# (1) 各群の推定周辺平均(EMM)
+em <- emmeans::emmeans(emm_model, ~ instruction_type | proficiency_level)
+em
+
+# (2) ペアワイズ比較(自動で多重比較補正:Tukey 法)
+pairs(em)
+```
+
+**出力の読み方:**
+
+| 列 | 意味 |
+|---|---|
+| `emmean` | 推定周辺平均(他の変数を平均化したときの群平均) |
+| `SE` | 推定の標準誤差 |
+| `df` | 自由度 |
+| `lower.CL / upper.CL` | 95%信頼区間 |
+| `estimate`(pairs) | 2 群の差 |
+| `t.ratio / p.value` | 差の検定 |
+
+`~ A | B` の **「`|` の右側」は層別変数**(各 B 水準ごとに A の比較を行う)、**左側は比較したい変数**です。詳細は第2-6章を参照してください。本書のモデリング章で `emmeans()` が出てきたら「群別平均と事後比較を取っているんだな」と読めれば十分です。
+
 ## パッケージ管理
 
 ### pacmanによるパッケージ管理
@@ -4407,7 +4850,39 @@ pacman::p_load(tidyverse, gt, psych, effectsize)
 `library()` は対象パッケージが未インストールの場合エラーになりますが、`p_load()` は自動的にインストールしてから読み込みます。本書のコードをそのまま実行する際に、パッケージの有無を気にする必要がなくなります。
 :::
 
-### CRANとGitHubパッケージ
+#### `library()` / `require()` / `pacman::p_load()` の比較
+
+R にはパッケージを読み込む関数が複数あり、**未インストール時の挙動と返り値**が異なります。混用すると思わぬバグの原因になるので、本書のコードを読む・書く前に違いを把握しておきましょう。
+
+| 関数 | 未インストール時の挙動 | 返り値 | 主な用途 |
+|---|---|---|---|
+| `library(pkg)` | **エラーで停止** | 不可視で `NULL` | 通常の対話的使用。確実に止まるので安全 |
+| `require(pkg)` | **`FALSE` を返して続行**(警告のみ) | `TRUE`/`FALSE` | `if (require(...))` の中で条件付き読込みする時のみ |
+| `pacman::p_load(...)` | **自動的にインストールしてから読込み** | 不可視で `TRUE`/`FALSE` のリスト | スクリプト・教材・他人に渡すコード |
+
+**典型的なバグ:** `require()` を `library()` の代わりに使うと、パッケージが未インストールでもスクリプトが**警告だけで進んでしまう**ため、後の `dplyr::filter()` などで「関数が見つからない」エラーが出てから初めて気付くことになります。**個人の対話的分析では `library()`、配布用スクリプトでは `pacman::p_load()`、条件付き読込みのみ `require()`** という使い分けが安全です。
+
+```r
+# 推奨パターン1: 自分用の分析(必ず止めたい)
+library(tidyverse)
+
+# 推奨パターン2: 教材・配布用(自動インストール)
+if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
+pacman::p_load(tidyverse, lme4, brms)
+
+# 注意: require() を library() 代わりに使わない
+require(tidyverse)  # ← 未インストールでも警告のみ → 後で謎のエラー
+```
+
+### CRAN・GitHub・Bioconductor
+
+R のパッケージには **3 つの主要な配布元**があります。配布元によってインストール関数が異なるので、エラーが出たらまず「どこからインストールすべきパッケージか」を確認してください。
+
+| 配布元 | 何が置かれているか | インストール関数 | 例 |
+|---|---|---|---|
+| **CRAN** | 一般的なパッケージの安定版(査読済み) | `install.packages("pkg")` | `dplyr` `lme4` `brms` |
+| **GitHub** | 開発版・未公開パッケージ | `remotes::install_github("user/repo")` | 著者の開発中パッケージ |
+| **Bioconductor** | バイオインフォ系・テキスト分析の一部 | `BiocManager::install("pkg")` | `Biostrings`(配列処理)等 |
 
 ```{r}
 #| label: package-sources
@@ -4426,9 +4901,22 @@ remotes::install_github("author/package")
 # pacmanでGitHubパッケージを読み込む
 pacman::p_load_gh("author/package")
 
+# Bioconductor のパッケージ(SLA研究では使用頻度は低いが、
+# コーパス・配列・遺伝子関連の解析で必要になる場合がある)
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install("Biostrings")
+
 # パッケージバージョンの確認
 packageVersion("tidyverse")
 ```
+
+::: {.callout-tip}
+#### どの配布元か迷ったら
+- **まず CRAN を試す**(`install.packages("pkg")`) — 9 割のパッケージはここにある
+- 「`package 'X' is not available for ...`」エラーが出たら **GitHub の README を確認**(著者が CRAN に出していない可能性)
+- **生物配列・ゲノム・特定のテキスト分析ツール**は Bioconductor を確認
+- いずれも見つからない場合は CRAN の検索([CRAN package search](https://cran.r-project.org/web/packages/))や [METACRAN](https://www.r-pkg.org/) で検索
+:::
 
 ### 本書で使用する主なパッケージ
 
@@ -4481,7 +4969,7 @@ tibble::tribble(
 ```
 
 ::: {.callout-important}
-### MASS::select() との競合 — 本書で最も頻出する問題
+### MASS::select() との競合(本書で最も頻出する問題)
 
 本書の第6章（混合効果モデル）などで `lme4` や `lmerTest` を使用すると、これらが内部で `MASS` パッケージに依存しているため、`MASS::select()` が `dplyr::select()` を上書きしてしまうことがあります。この場合、以下のようなエラーが発生します。
 
@@ -4574,21 +5062,53 @@ data <- read_csv(here("data", "raw", "ele_vocabulary_study.csv"))
 ggsave(here("figures", "toefl_distribution.png"), width = 8, height = 6)
 ```
 
-3. **パッケージバージョンを記録する:**
-   `renv` パッケージを使用すると、プロジェクトで使用したパッケージのバージョンを固定できます。
+3. **パッケージバージョンを記録する(renv):**
+   `renv` パッケージは、プロジェクトごとに**独立したパッケージライブラリ**を作り、使用バージョンを `renv.lock`(ロックファイル)に記録します。共同研究者・査読者・将来の自分が同じ環境を再現できるようになります。
+
+**基本ワークフロー(個人):**
 
 ```{r}
 #| label: renv-demo
 #| eval: false
-# renvの初期化（プロジェクトごとに1回）
+# プロジェクトごとに1回:初期化
 renv::init()
+# → プロジェクト直下に renv/ フォルダと renv.lock が作られる
+# → .Rprofile に「source('renv/activate.R')」が追加され、
+#    次回プロジェクトを開くたびに自動的に専用ライブラリに切り替わる
 
-# パッケージの変更を記録
+# パッケージを追加・更新したら:現在の状態を記録
 renv::snapshot()
+# → renv.lock が更新される(Git でコミット対象に)
 
-# 記録された状態を復元（共同研究者のPC等で）
+# 別マシンに移動した時/共同研究者がプロジェクトを開いた時:復元
 renv::restore()
+# → renv.lock の通りにパッケージをインストール
 ```
+
+**チームワークフロー:**
+
+| 役割 | やること |
+|---|---|
+| プロジェクト立ち上げ | `renv::init()` → `renv.lock` を Git にコミット |
+| パッケージを足したメンバ | `pacman::p_load()` または `install.packages()` でインストール → `renv::snapshot()` → `renv.lock` をコミット |
+| 新しく参加するメンバ | リポジトリを clone → プロジェクトを開く(自動 activate)→ `renv::restore()` |
+| 査読・再現性確認時 | `renv::restore()` で当時の環境を復元 → スクリプトを再実行 |
+
+::: {.callout-warning}
+#### renv のよくあるトラブル
+- **`renv::restore()` が失敗する** → コンパイラ(Rtools/Xcode CLT)が必要なパッケージで起こりやすい。エラーメッセージのパッケージ名でググるのが最速
+- **プロジェクトを開いても自動 activate されない** → `.Rprofile` の `source('renv/activate.R')` が消えていないか確認、または `renv::activate()` を手動実行
+- **`renv.lock` の競合** → Git のマージ競合は機械的解決が難しい。最新の `lock` を採用し、必要なパッケージを `renv::snapshot()` で追加し直すのが安全
+- **`renv` 自体のバージョン不整合** → `renv.lock` 冒頭に renv のバージョンが記録されているので、`install.packages("renv")` で同じバージョンを入れる
+:::
+
+::: {.callout-tip}
+#### renv を使うべきタイミング
+- **論文投稿前**:再現性を保証する Material & Methods に貢献
+- **共同研究の開始時**:全員の環境を揃えてから分析を始める
+- **長期プロジェクト**:1 年後に同じ結果が再現できる保証になる
+- **学習目的なら不要**:本章を読んで個人で試す段階では `pacman::p_load()` で十分。プロジェクト規模が大きくなってから検討してください
+:::
 
 4. **セッション情報を記録する:**
    分析スクリプトの末尾に `sessionInfo()` を置き、使用したRのバージョンとパッケージを記録します。

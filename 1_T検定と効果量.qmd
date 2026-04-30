@@ -1,13 +1,19 @@
 ---
-title: "T検定と効果量"
+title: "t 検定と効果量"
 prefer-html: true
 always_allow_html: true
 bibliography: references_ttest.bib
+execute:
+  cache: false
 nocite: |
   @cohen1988, @mcgraw1992, @delacre2017, @effectsize, @lakens2013,
   @hoenig2001, @cumming2009, @cumming2014, @rstatsformula,
   @rstatsttest, @rstatslm, @rstatsshapiro, @rstatswilcox,
-  @rstatspowerttest, @lakens2018equiv
+  @rstatspowerttest, @lakens2018equiv,
+  @welch1947, @satterthwaite1946, @hedges1981, @glass1976,
+  @plonsky2014, @norris2000, @norris2015, @larsonhall2016,
+  @lakens2022sample, @kruschke2013, @rouder2009, @norouzian2018,
+  @algina2005, @vargha2000, @wrs2pkg, @bayesfactorpkg
 ---
 
 ```{r}
@@ -38,20 +44,20 @@ if (length(missing_packages) > 0) {
 
 ## はじめに
 
-本章では、2群比較のための基本的な統計手法である t 検定 (t-test) と、その実質的な差の大きさを示す効果量 (effect size) を扱います。
+本章へようこそ。ここからは、英語教育研究で最も頻繁に登場する **2 群比較**の手法、すなわち **t 検定 (t-test)** とその効果の実質的な大きさを示す **効果量 (effect size)** を扱います。
 
-t 検定は、2つのグループの平均値を比べ、その差が偶然のばらつきだけでは説明しにくいかどうかを調べる方法です。たとえば、「Writing 群の平均点は Glossing 群より本当に高いのか、それとも今回たまたま高く見えただけなのか」を判断したいときに使います。
+t 検定は、2 つのグループの平均値を比べ、その差が **偶然のばらつきだけでは説明しにくいかどうか**を調べる方法です。たとえば「Writing 群の平均点は Glossing 群より本当に高いのか、それとも今回たまたま高く見えただけなのか」を判断したいときに使います。
 
-この章では、まず「連続量の平均差」をどう読むかに集中します。正解・不正解のような 2 値データや回数データ、より一般的な線型モデルについては、後続章で改めて扱います。
+本章では、まず「**連続量、または連続量に近い合計得点の平均差**」をどう読むかに集中します。正解・不正解のような 2 値データや回数データ、より一般的な線形モデルについては、後続章で改めて取り上げます。
 
 ### この章の到達目標
 
-- t 検定の前提条件を確認し、Welch の t 検定を中心に適切な手法を選べるようになる。
-- 効果量（Cohen's d, Hedges g, Glass's Δ, 対応あり d）を計算し、p 値と分けて解釈できるようになる。
-- サンプルサイズと検定力の関係を理解し、研究計画に必要な人数を見積もれるようになる。
-- t 検定の結果を APA 第 7 版に沿って報告できるようになる。
+- t 検定の前提条件を確認し、Welch の t 検定を中心に適切な手法を選べるようになる
+- 効果量(Cohen's *d*, Hedges' *g*, Glass's Δ, 対応あり *d*)を計算し、p 値と分けて解釈できるようになる
+- サンプルサイズと検定力の関係を理解し、研究計画に必要な人数を見積もれるようになる
+- t 検定の結果を APA 第 7 版に沿って報告できるようになる
 
-本章は本書の出発点であり、最も基本的な 2 群比較を扱います。まずは t 検定そのものを理解し、そのあとで回帰分析とのつながりも確認します。
+本章は本書の出発点であり、最も基本的な 2 群比較を扱います。まずは t 検定そのものを理解し、そのあとで回帰分析とのつながりも確認していきます。
 
 ## データの作成
 
@@ -68,6 +74,8 @@ t 検定は、2つのグループの平均値を比べ、その差が偶然の�
 | 1 | Writing | Recognition | Delayed | 1 | 1 |
 | 26 | Glossing | Recall | Immediate | 1 | 0 |
 
+: 最終データの構造例 {#tbl-data-structure}
+
 以下の setup では、必要なパッケージを読み込み、図のテーマと乱数種を設定します。なお、本書全体の HTML テーマは `_quarto.yml` の `format: html: theme: journal` で定義されています。ここでの `theme_set()` は ggplot の図だけに作用する設定で、Quarto のページテーマとは役割が異なります。
 
 ```{r}
@@ -78,7 +86,15 @@ t 検定は、2つのグループの平均値を比べ、その差が偶然の�
 if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
 
 suppressPackageStartupMessages(
-  pacman::p_load(tidyverse, effectsize)
+  pacman::p_load(
+    tidyverse,
+    effectsize,
+    car,
+    brunnermunzel,
+    compute.es,
+    knitr,
+    scales
+  )
 )
 
 theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
@@ -105,7 +121,7 @@ set.seed(2024)
 
 - `tidyverse`: データ生成、整形、可視化、本章全体のパイプラインの共通基盤。
 - `effectsize`: Cohen's *d*、Hedges' *g* などの効果量を一貫して算出する。
-- `gt`: 計算結果と要約統計の表を整形する。
+- `knitr`: 計算結果と要約統計の表を整形する。
 - `car` / `brunnermunzel`: 前提確認やロバストな 2 群比較で補助的に使う。
 - `compute.es` / `forcats` / `purrr` / `scales`: 効果量の補助計算、因子処理、反復処理、図表整形に使う。
 
@@ -123,7 +139,8 @@ x |> mean() |> round(2)
 
 ```{r}
 #| eval: true
-#| label: assign-groups
+#| label: tbl-participant-count
+#| tbl-cap: "各群の参加者数"
 
 n_participants <- 50
 n_items <- 15
@@ -134,7 +151,10 @@ times <- c("Immediate", "Delayed")
 participant_tbl <- tibble(
   Participant = factor(1:n_participants),
   Treatment = factor(
-    sample(rep(treatments, each = n_participants / 2)),
+    {
+      set.seed(202401)
+      sample(rep(treatments, each = n_participants / 2))
+    },
     levels = treatments
   )
 )
@@ -142,15 +162,9 @@ participant_tbl <- tibble(
 participant_count_tbl <- participant_tbl |>
   count(Treatment)
 
-invisible(NULL)
+participant_count_tbl |>
+  knitr::kable()
 ```
-
-| Treatment | n |
-|:--|--:|
-| Glossing | 25 |
-| Writing | 25 |
-
-: 各群の参加者数
 
 この時点では、各参加者に Treatment が 1 つだけ割り当てられています。次に、その割り当てに基づいて各項目の得点を作ります。
 
@@ -172,15 +186,21 @@ dat <- tidyr::expand_grid(
       Treatment == "Writing" & Test == "Recognition" ~ 0.90,
       TRUE ~ 0.50
     ),
-    immediate_bonus = if_else(
-      Time == "Immediate",
-      sample(0:1, size = n(), replace = TRUE),
-      0L
-    ),
-    Score = pmin(
-      rbinom(n(), size = 1, prob = base_prob) + immediate_bonus,
-      1L
-    )
+    immediate_bonus = {
+      set.seed(202402)
+      if_else(
+        Time == "Immediate",
+        sample(0:1, size = n(), replace = TRUE),
+        0L
+      )
+    },
+    Score = {
+      set.seed(202403)
+      pmin(
+        rbinom(n(), size = 1, prob = base_prob) + immediate_bonus,
+        1L
+      )
+    }
   ) |>
   dplyr::select(-base_prob, -immediate_bonus)
 ```
@@ -189,35 +209,21 @@ dat <- tidyr::expand_grid(
 
 ```{r}
 #| eval: true
-#| label: show-data
+#| label: tbl-data-head
+#| tbl-cap: "生データの先頭 12 行"
 data_head_tbl <- dat |>
   slice_head(n = 12)
 
-invisible(NULL)
+data_head_tbl |>
+  knitr::kable()
 ```
 
-| Participant | Item | Test | Time | Treatment | Score |
-|:--|--:|:--|:--|:--|--:|
-| 1 | 1 | Recall | Immediate | Glossing | 1 |
-| 1 | 1 | Recall | Delayed | Glossing | 1 |
-| 1 | 1 | Recognition | Immediate | Glossing | 1 |
-| 1 | 1 | Recognition | Delayed | Glossing | 1 |
-| 1 | 2 | Recall | Immediate | Glossing | 1 |
-| 1 | 2 | Recall | Delayed | Glossing | 0 |
-| 1 | 2 | Recognition | Immediate | Glossing | 0 |
-| 1 | 2 | Recognition | Delayed | Glossing | 0 |
-| 1 | 3 | Recall | Immediate | Glossing | 1 |
-| 1 | 3 | Recall | Delayed | Glossing | 0 |
-| 1 | 3 | Recognition | Immediate | Glossing | 0 |
-| 1 | 3 | Recognition | Delayed | Glossing | 0 |
-
-: 生データの先頭 12 行
-
-t 検定や ANOVA では、目的変数は連続値として扱える形になっている必要があります。そこで、参加者ごと・条件ごとにスコアを合計し、15 点満点の得点に変換します。
+t 検定や ANOVA では、目的変数は平均値と分散を意味のある形で扱える必要があります。そこで、参加者ごと・条件ごとにスコアを合計し、15 点満点の合計得点として、近似的に連続量のように扱える形へ変換します。
 
 ```{r}
 #| eval: true
-#| label: summarize-data
+#| label: tbl-desc-stats
+#| tbl-cap: "Treatment × Test × Time の記述統計"
 
 dat_summarized <- dat |>
   mutate(
@@ -244,16 +250,18 @@ desc_stats <- dat_summarized |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
 
 desc_stats |>
-  knitr::kable(caption = "Treatment × Test × Time の記述統計")
+  knitr::kable()
 ```
 
 記述統計を見ると、Writing の平均値が Glossing より高く、Immediate の方が Delayed より高い傾向が確認できます。
 
 ```{r}
 #| eval: true
-#| label: plot-descriptive
+#| label: fig-plot-descriptive
 #| fig-width: 8
 #| fig-height: 6
+#| fig-cap: "Treatment、Test、Time 別の得点分布"
+#| fig-alt: "Treatment を横軸、15点満点の得点を縦軸にした箱ひげ図。Recall と Recognition の2パネルで、Immediate と Delayed が色分けされている。"
 
 ggplot(dat_summarized, aes(x = Treatment, y = Score, fill = Time)) +
   geom_boxplot() +
@@ -261,43 +269,54 @@ ggplot(dat_summarized, aes(x = Treatment, y = Score, fill = Time)) +
   labs(x = "Treatment", y = "Score")
 ```
 
-## T検定
+## t 検定
 
-R の統計関数では、`Score ~ Treatment` のようなフォーミュラ構文をよく使います。公式ドキュメントでは、左辺が目的変数、右辺が説明項を表すと整理されています [@rstatsformula]。本章ではこれを「得点を学習条件で説明する」と読みます。
+R の統計関数では、`Score ~ Treatment` のようなフォーミュラ構文をよく使います。公式ドキュメントでは、左辺が目的変数、右辺が説明項を表すと整理されています [@rstatsformula]。本章ではこれを「**得点を学習条件で説明する**」と読みます。
 
 ### 分析フロー
 
-以下のフローチャートは、2 群比較における判断の流れを示したものです。まず確認すべきなのは、目的変数の型と研究デザインです。
+本章のメインルートは単純です。参加者ごとの合計得点を作り、`Score ~ Treatment` の形で Welch の t 検定を行い、平均値差の 95% 信頼区間と効果量を添えて報告します。
+
+以下のフローチャートは、2 群比較における判断の流れを広めに示したものです。まず確認すべきなのは、目的変数の型と研究デザインです。Shapiro-Wilk 検定は便利な診断ですが、機械的な合否判定ではありません。分布の形、外れ値、サンプルサイズ、研究デザインを合わせて判断します。
 
 ```{mermaid}
 %%| label: fig-analysis-flow
 %%| fig-cap: "2群比較の分析フローチャート"
+%%| fig-alt: "2群比較では、目的変数の型を確認したうえで、連続量なら分布と外れ値を確認して Welch の t 検定へ進み、2値、頻度、順序データなら一般化線形モデルなどへ進むことを示すフローチャート。"
 flowchart TD
-    A["<b>Two-group comparison</b><br>Predictor: 2 levels"] --> Z{"<b>Outcome type</b>"}
-    Z -->|"Continuous<br>(e.g., test scores)"| B{"<b>Check normality</b><br>Shapiro-Wilk test<br>QQ plot"}
-    Z -->|"Binary<br>(correct / incorrect)"| GLM1["<b>Logistic regression</b><br>→ Chapter 5"]
-    Z -->|"Count<br>(frequency)"| GLM2["<b>Poisson regression</b><br>→ Chapter 5"]
-    Z -->|"Ordinal<br>(Likert-type)"| GLM3["<b>Ordinal regression / CLM</b><br>→ Chapter 7"]
-    B -->|"Approximately normal<br>or n ≥ 30"| C{"<b>Check variance and outliers</b><br>Levene's test"}
-    B -->|"Strong skewness<br>and n < 30"| D["<b>Nonparametric tests</b>"]
+    A["Two-group comparison<br>Predictor: 2 levels"] --> Z{"Outcome type"}
+    Z -->|"Continuous or scale-like total score"| B{"Check distribution and outliers<br>Shapiro-Wilk test / QQ plot"}
+    Z -->|"Binary<br>correct / incorrect"| GLM1["Logistic regression<br>Chapter 5"]
+    Z -->|"Count<br>frequency"| GLM2["Poisson / negative binomial regression<br>Chapter 5"]
+    Z -->|"Ordinal<br>Likert-type"| GLM3["Ordinal regression / CLM<br>Chapter 5 or 6"]
+    B -->|"Approximately normal,<br>or no severe skew/outliers"| C{"Check variance pattern<br>Levene's test"}
+    B -->|"Strong skewness, outliers,<br>or small n"| D["Nonparametric or robust tests"]
     C --> E["Welch's t-test<br>var.equal = FALSE"]
     D --> G["Wilcoxon test<br>Brunner-Munzel test"]
-    E --> H["Effect size<br>Cohen's d / Hedges g"]
+    E --> H["Effect size<br>Cohen's d / Hedges' g"]
     G --> I["Effect size<br>Probabilistic superiority, etc."]
     H --> J["Power analysis"]
     I --> J
     J --> K["Report results"]
 ```
 
-### t検定を適用できるデータ
+### t 検定を適用できるデータ
 
-t 検定の目的変数は、平均値と分散を意味のある形で扱える連続量である必要があります。したがって、次のようなデータには t 検定をそのまま適用しません。
+t 検定の目的変数は、平均値と分散を意味のある形で扱える連続量、または十分な段階数をもつ合計得点である必要があります。したがって、次のようなデータについては、t 検定をそのまま適用するのは控え、後続章で扱う適切な手法を選んでいただくのがよいでしょう。
 
 - 2 値データ（正答/誤答、合格/不合格）: ロジスティック回帰
 - 頻度データ（エラー回数、発話回数）: ポアソン回帰や負の二項回帰
 - 順序データ（5 段階尺度など）: 順序ロジスティック回帰
 
-本章では、アイテムごとの 0/1 を参加者単位で合計し、15 点満点のスコアに変換したうえで t 検定を使います。集約前のアイテムレベルデータを分析したい場合は、一般化線型混合モデルの方が自然です。
+本章では、アイテムごとの 0/1 を参加者単位で合計し、15 点満点のスコアに変換したうえで、入門的な参加者レベル分析として t 検定を使います。15 点満点の得点は厳密には離散的で上限・下限もありますが、ここでは分布を確認しながら近似的にスケール得点として扱います。
+
+::: {.callout-note}
+## 分析単位の選択
+
+同じデータでも、分析単位によって自然なモデルは変わります。参加者ごとの合計得点を比べるなら本章のような t 検定が使えます。正誤のまま参加者ごとの正答数/試行数を扱うなら二項モデル、項目レベルの正誤反応まで扱うならロジスティック混合効果モデルや項目応答理論が候補になります。
+:::
+
+集約前のアイテムレベルデータを分析したい場合は、一般化線形混合モデルの方が自然です。
 
 このデータ全体は、Treatment が参加者間要因、Time と Test が参加者内要因の混合デザインです。厳密には混合分散分析や混合効果モデルで一度に扱う方が自然ですが、本章では t 検定の考え方を学ぶことを優先し、Immediate の Recall だけを取り出して 2 群比較を行います。
 
@@ -312,9 +331,102 @@ dat_imm <- dat_summarized |>
 dat_del <- dat_summarized |>
   dplyr::filter(Time == "Delayed", Test == "Recall") |>
   mutate(Treatment = forcats::fct_relevel(Treatment, "Writing", "Glossing"))
+
+analysis_estimates <- dat_imm |>
+  summarise(
+    mean_writing = mean(Score[Treatment == "Writing"]),
+    mean_glossing = mean(Score[Treatment == "Glossing"]),
+    observed_diff = mean_writing - mean_glossing
+  )
+
+observed_diff <- analysis_estimates |>
+  pull(observed_diff)
 ```
 
 以降の検定では、`Writing - Glossing` が正になるように水準順を `Writing`, `Glossing` に揃えています。こうしておくと、t 値、平均差、効果量の符号が一貫して解釈しやすくなります。
+
+### まず図で平均差を見る
+
+検定を実行する前に、まず図で「何が起きているのか」を確認します。初心者のうちは、p 値より先に次の 3 点を見ると整理しやすくなります。
+
+| 見る場所 | 読み取ること |
+|---|---|
+| 点の集まり | 個々の参加者の得点がどれくらい散らばっているか |
+| 黒い菱形 | 各群の平均値がどこにあるか |
+| 上の矢印 | 平均値差がどちら向きに、何点くらいあるか |
+
+: 2 群比較の図を見る順番 {#tbl-visual-reading-guide}
+
+```{r}
+#| eval: true
+#| label: fig-mean-difference-intuition
+#| fig-width: 7
+#| fig-height: 4.8
+#| fig-cap: "個々の得点、群平均、平均値差を同時に見る図"
+#| fig-alt: "Glossing 群と Writing 群の Immediate recall 得点を点で示し、各群の平均を黒い菱形で示している。上部の両矢印が Writing と Glossing の平均値差を表している。"
+
+visual_summary <- dat_imm |>
+  group_by(Treatment) |>
+  summarise(
+    Mean = mean(Score),
+    SD = sd(Score),
+    N = n(),
+    SE = SD / sqrt(N),
+    CI = qt(0.975, df = N - 1) * SE,
+    .groups = "drop"
+  )
+
+diff_label_y <- max(dat_imm$Score) + 1
+
+ggplot(dat_imm, aes(x = Treatment, y = Score, color = Treatment)) +
+  geom_jitter(width = 0.08, alpha = 0.45, size = 2) +
+  geom_errorbar(
+    data = visual_summary,
+    aes(x = Treatment, ymin = Mean - CI, ymax = Mean + CI),
+    inherit.aes = FALSE,
+    width = 0.12,
+    linewidth = 0.8,
+    color = "grey25"
+  ) +
+  geom_point(
+    data = visual_summary,
+    aes(x = Treatment, y = Mean),
+    inherit.aes = FALSE,
+    shape = 18,
+    size = 4.5,
+    color = "black"
+  ) +
+  annotate(
+    "segment",
+    x = 1,
+    xend = 2,
+    y = diff_label_y,
+    yend = diff_label_y,
+    arrow = grid::arrow(ends = "both", length = grid::unit(0.10, "inches")),
+    linewidth = 0.7,
+    color = "firebrick"
+  ) +
+  annotate(
+    "label",
+    x = 1.5,
+    y = diff_label_y + 0.35,
+    label = paste0("Mean difference = ", round(observed_diff, 2), " points"),
+    size = 3.4,
+    label.size = 0.2,
+    fill = "white"
+  ) +
+  coord_cartesian(ylim = c(min(dat_imm$Score) - 0.5, diff_label_y + 0.9)) +
+  scale_x_discrete(limits = c("Glossing", "Writing")) +
+  labs(
+    x = "Treatment",
+    y = "Immediate recall score",
+    title = "Start with the data, then run the test",
+    subtitle = "Dots are participants; black diamonds are group means; the arrow shows the mean difference"
+  ) +
+  theme(legend.position = "none")
+```
+
+この図では、Writing 群の黒い菱形が Glossing 群より上にあります。つまり、平均値は Writing 群の方が高いということです。ただし、点の集まりを見ると、2 群の得点は完全に分かれているわけではありません。この「平均は違うように見えるが、個人差もある」という状況で、平均差が偶然のばらつきだけでも起こりそうかを調べるのが t 検定です。
 
 ### 統計的検定とは何か
 
@@ -333,35 +445,41 @@ dat_del <- dat_summarized |>
 | 帰無仮説 $H_0$ | Glossing 群と Writing 群の母平均に差はない |
 | 対立仮説 $H_1$ | 2群の母平均に差がある |
 | 検定統計量 | 今回の差が標準誤差の何倍かを表す値 |
-| p 値 | $H_0$ のもとで今回以上に極端な結果が出る割合 |
+| p 値 | $H_0$ のもとで今回の検定統計量と同じか、それ以上に極端な値が得られる確率 |
 | 効果量 | 差の大きさそのもの |
 
-以下では、Immediate の Recall データを使って、「もし群の違いが本当はなかったら」という世界を置換（ラベルの入れ替え）で再現します。赤い部分が「今回以上に極端な差」に相当します。
+: 統計的検定の基本用語 {#tbl-hypothesis-terms}
+
+以下では、Immediate の Recall データを使って、「もし群の違いが本当はなかったら」という世界を置換（ラベルの入れ替え）で再現します。置換による説明は、群ラベルを入れ替えてよいという交換可能性を仮定した概念的なデモです。赤い部分が「今回以上に極端な差」に相当します。
 
 ```{r}
 #| eval: true
-#| label: permutation-null
+#| label: fig-permutation-null
 #| fig-width: 7
 #| fig-height: 4.5
+#| fig-cap: "帰無仮説のもとでの平均値差の置換分布"
+#| fig-alt: "群ラベルを3000回置換して得た平均値差のヒストグラム。観測された平均値差以上に極端な両端部分が赤く塗られている。"
 
-observed_diff <- dat_imm |>
-  summarise(
-    diff = mean(Score[Treatment == "Writing"]) -
-      mean(Score[Treatment == "Glossing"])
-  ) |>
-  pull(diff)
+n_perm <- 3000
+set.seed(202404)
 
-perm_diffs <- replicate(3000, {
+perm_diffs <- replicate(n_perm, {
   permuted_treatment <- sample(dat_imm$Treatment)
   mean(dat_imm$Score[permuted_treatment == "Writing"]) -
     mean(dat_imm$Score[permuted_treatment == "Glossing"])
 })
 
-perm_p <- mean(abs(perm_diffs) >= abs(observed_diff))
+perm_extreme <- abs(perm_diffs) >= abs(observed_diff)
+perm_p <- (sum(perm_extreme) + 1) / (n_perm + 1)
+perm_p_label <- if (sum(perm_extreme) == 0) {
+  paste0("< ", format.pval(1 / (n_perm + 1), digits = 3))
+} else {
+  format.pval(perm_p, digits = 3)
+}
 
 perm_tbl <- tibble(
   Difference = perm_diffs,
-  Extreme = abs(perm_diffs) >= abs(observed_diff)
+  Extreme = perm_extreme
 )
 
 ggplot(perm_tbl, aes(x = Difference, fill = Extreme)) +
@@ -384,12 +502,12 @@ ggplot(perm_tbl, aes(x = Difference, fill = Extreme)) +
       "Observed difference = ",
       round(observed_diff, 2),
       ", permutation p = ",
-      format.pval(perm_p, digits = 3)
+      perm_p_label
     )
   )
 ```
 
-この図では、中央付近にある差は「偶然でもよく起こる差」、両端の赤い部分は「かなり珍しい差」です。今回のデータでは、観測された平均値差は帰無仮説のもとではあまり起こりにくく、その割合が p 値に対応します。t 検定は、こうした発想を理論的な t 分布を使って効率よく計算する方法だと考えると理解しやすくなります。
+この図では、中央付近にある差は「偶然でもよく起こる差」、両端の赤い部分は「かなり珍しい差」です。今回のデータでは、観測された平均値差は帰無仮説のもとではあまり起こりにくく、その確率が p 値に対応します。ここでは有限回のランダム置換を使っているため、極端な置換が 0 回でも p 値を 0 とは報告せず、シミュレーション回数を踏まえて下限を示します。t 検定は、こうした発想を理論的な t 分布を使って効率よく計算する方法だと考えると理解しやすくなります。
 
 ここで大事なのは、**p 値は「帰無仮説が正しい確率」ではない**という点です。p 値はあくまで、「差がないと仮定したときに今回以上の結果がどれくらい出るか」を表しています。
 
@@ -405,6 +523,8 @@ ggplot(perm_tbl, aes(x = Difference, fill = Extreme)) +
 | 等分散性 | 群ごとの散らばり, `leveneTest()` | 主報告は Welch を使う |
 | 独立性 | 研究デザイン | 統計関数だけでは補えない |
 
+: t 検定で確認する主な前提 {#tbl-ttest-assumptions}
+
 このうち **独立性** は特に重要です。独立性とは、「ある参加者の得点が、別の参加者の得点に引きずられていない」という前提です。たとえば同じペアで学習した、同じクラス内で強い相互作用がある、同じ教員のクラスが複数まとまっている、という状況では、観測値どうしが似やすくなります。
 
 ここで重要なのは、独立性は Shapiro-Wilk 検定のように後から 1 つの関数で簡単に確認するものではなく、**研究計画の段階で確保するもの**だという点です。独立性が怪しい場合は、t 検定よりもクラスや教員を考慮できる混合効果モデルの方が適切です。
@@ -417,7 +537,8 @@ ggplot(perm_tbl, aes(x = Difference, fill = Extreme)) +
 
 ```{r}
 #| eval: true
-#| label: normality-test
+#| label: tbl-shapiro
+#| tbl-cap: "Immediate recall に対する Shapiro-Wilk 検定"
 
 shapiro_tbl <- tibble(
   Treatment = c("Writing", "Glossing"),
@@ -440,7 +561,7 @@ shapiro_tbl <- tibble(
   )
 
 shapiro_tbl |>
-  knitr::kable(caption = "Immediate recall に対する Shapiro-Wilk 検定")
+  knitr::kable()
 ```
 
 Shapiro-Wilk 検定は便利ですが、p 値だけで正規性を機械的に判定しない方が安全です。サンプルサイズが大きいと小さな逸脱でも有意になりやすく、逆に小さいと明らかな歪みを見逃すことがあります。だからこそ、QQ プロットとヒストグラムを併記します。
@@ -449,9 +570,11 @@ Shapiro-Wilk 検定は便利ですが、p 値だけで正規性を機械的に�
 
 ```{r}
 #| eval: true
-#| label: qq-plot
+#| label: fig-qq-plot
 #| fig-width: 8
 #| fig-height: 4
+#| fig-cap: "Treatment 別の Normal Q-Q プロット"
+#| fig-alt: "Writing 群と Glossing 群それぞれについて、標本分位点と正規分布の理論分位点を比較した Q-Q プロット。"
 
 ggplot(dat_imm, aes(sample = Score)) +
   stat_qq() +
@@ -466,9 +589,11 @@ ggplot(dat_imm, aes(sample = Score)) +
 
 ```{r}
 #| eval: true
-#| label: histogram-density
+#| label: fig-histogram-density
 #| fig-width: 8
 #| fig-height: 4
+#| fig-cap: "Treatment 別の得点分布"
+#| fig-alt: "Immediate recall の得点分布を Treatment 別に示したヒストグラムと密度曲線。"
 
 ggplot(dat_imm, aes(x = Score)) +
   geom_histogram(
@@ -493,7 +618,8 @@ ggplot(dat_imm, aes(x = Score)) +
 
 ```{r}
 #| eval: true
-#| label: levene-test
+#| label: tbl-levene
+#| tbl-cap: "Immediate recall に対する Levene 検定"
 
 levene_tbl <- car::leveneTest(Score ~ Treatment, data = dat_imm) |>
   as.data.frame() |>
@@ -507,7 +633,7 @@ levene_tbl <- car::leveneTest(Score ~ Treatment, data = dat_imm) |>
   )
 
 levene_tbl |>
-  knitr::kable(caption = "Immediate recall に対する Levene 検定")
+  knitr::kable()
 ```
 
 R の `t.test()` はデフォルトで `var.equal = FALSE`、つまり Welch の t 検定を実行します [@rstatsttest]。そのため、Levene 検定は「Student と Welch のどちらに分岐するか」を決める関門というより、データの散らばりを理解するための補助情報と考える方が実務的です。Welch を標準とする考え方は、近年の推奨とも整合的です [@delacre2017]。
@@ -541,7 +667,8 @@ welch_result
 
 ```{r}
 #| eval: true
-#| label: mean-difference-summary
+#| label: tbl-mean-difference
+#| tbl-cap: "平均値差と95%信頼区間の要約"
 
 mean_diff_tbl <- tibble(
   Quantity = c("Writing 群平均", "Glossing 群平均", "平均値差", "差の95%信頼区間"),
@@ -560,16 +687,18 @@ mean_diff_tbl <- tibble(
 )
 
 mean_diff_tbl |>
-  knitr::kable(caption = "平均値差と95%信頼区間の要約")
+  knitr::kable()
 ```
 
-Welch 検定では自由度が小数になることがあります。これは Welch-Satterthwaite 近似によって自由度を調整しているためで、等分散を仮定しない代わりにその不確実性を自由度側へ反映していると考えると理解しやすくなります。
+Welch 検定では自由度が小数になることがあります。これは Welch-Satterthwaite 近似によって自由度を調整しているためで、等分散を仮定しない代わりにその不確実性を自由度側へ反映していると考えると理解しやすくなります。R の `t.test()` は Welch [@welch1947] が提案した検定統計量に対し、Satterthwaite [@satterthwaite1946] による自由度近似を組み合わせた実装です (両者は通称「Welch-Satterthwaite」とまとめて呼ばれます)。
 
 ```{r}
 #| eval: true
-#| label: t-distribution-visual
+#| label: fig-t-distribution-visual
 #| fig-width: 7
 #| fig-height: 4.5
+#| fig-cap: "t 分布と両側検定の p 値"
+#| fig-alt: "Welch の t 検定で得られた自由度に基づく t 分布。観測された t 値以上に極端な両端の面積が赤く塗られている。"
 
 t_obs <- unname(welch_result$statistic)
 df_obs <- unname(welch_result$parameter)
@@ -618,7 +747,7 @@ ggplot(t_curve, aes(x = t_value, y = density)) +
 
 ### 95%信頼区間をどう読むか
 
-95%信頼区間は、「もっともらしい差の範囲」を表す区間です。今回の例では、平均値差の95%信頼区間はおよそ 1.21 点から 3.11 点です。つまり、Writing 群の優位性は 0 点差付近ではなく、少なくとも 1 点程度はありそうだ、と読みます。
+95%信頼区間は、「もっともらしい差の範囲」を表す区間です。今回の例では、平均値差の95%信頼区間はおよそ `r round(welch_result$conf.int[1], 2)` 点から `r round(welch_result$conf.int[2], 2)` 点です。つまり、Writing 群の優位性は 0 点差付近ではなく、少なくとも 1 点程度はありそうだ、と読みます。
 
 ただし、95%信頼区間を「真の値が95%の確率でこの中にある」とそのまま言い換えるのは、頻度主義統計の厳密な言い方ではありません。正確には、「同じ手続きを何度も繰り返したとき、そのたびに作られる区間の 95% が真の値を含む」という意味です。それでも実務上は、「どれくらいの差がもっともらしいかを見る幅」と理解しておけば十分役に立ちます。
 
@@ -633,20 +762,23 @@ ggplot(t_curve, aes(x = t_value, y = density)) +
 
 ```{r}
 #| eval: true
-#| label: ci-coverage-visual
+#| label: fig-ci-coverage-visual
 #| fig-width: 7
 #| fig-height: 7
+#| fig-cap: "95%信頼区間の長期的な被覆率"
+#| fig-alt: "同じ条件で80回研究を繰り返したときの平均値差と95%信頼区間。真の差を含む区間は青、含まない区間は赤で示されている。"
 
 true_p_glossing <- 0.54
 true_p_writing <- 0.68
 true_diff_ci <- 15 * (true_p_writing - true_p_glossing)
 n_ci_demo <- 25
 n_rep_ci <- 80
+set.seed(202405)
 
 ci_demo <- purrr::map_dfr(1:n_rep_ci, \(i) {
   writing_scores <- rbinom(n_ci_demo, size = 15, prob = true_p_writing)
   glossing_scores <- rbinom(n_ci_demo, size = 15, prob = true_p_glossing)
-  ci_result <- t.test(writing_scores, glossing_scores, var.equal = TRUE)
+  ci_result <- t.test(writing_scores, glossing_scores)
 
   tibble(
     Study = i,
@@ -691,9 +823,11 @@ ggplot(ci_demo, aes(x = Estimate, y = Study, color = Covers)) +
 
 ```{r}
 #| eval: true
-#| label: ci-width-by-n
+#| label: fig-ci-width-by-n
 #| fig-width: 7
 #| fig-height: 4.6
+#| fig-cap: "サンプルサイズと平均値差の信頼区間幅"
+#| fig-alt: "各群のサンプルサイズが増えるほど、平均値差の95%信頼区間の幅が狭くなることを示す折れ線グラフ。現在の例である各群25名が赤点で示されている。"
 
 pooled_sd_demo <- dat_imm |>
   group_by(Treatment) |>
@@ -757,7 +891,7 @@ student_result
 
 ### ノンパラメトリック検定
 
-`wilcox.test()` は順位に基づく比較であり、正規性を仮定しません [@rstatswilcox]。ただし、これを「中央値差」として解釈したいなら、2 群の分布の形が大きく違わないことを確認した方がよいです。分散や形状の違いが気になるときは、Brunner-Munzel 検定も併記すると判断材料が増えます。
+`wilcox.test()` は順位に基づく比較であり、正規性を仮定しません [@rstatswilcox]。ただし、これを「中央値差」として解釈したいなら、2 群の分布の形が大きく違わないことを確認した方がよいです。分布形状が異なる場合は、中央値差ではなく、順位や確率的優越性に関する検定として読む方が安全です。分散や形状の違いが気になるときは、Brunner-Munzel 検定も併記すると判断材料が増えます。
 
 ```{r}
 #| eval: true
@@ -773,6 +907,33 @@ wilcox_result
 
 bm_result <- brunnermunzel::brunnermunzel.test(Score ~ Treatment, data = dat_imm)
 bm_result
+```
+
+`brunnermunzel.test()` の推定量は、フォーミュラ右辺の第 1 水準と第 2 水準の順序に依存します。この章では t 値や平均値差を `Writing - Glossing` として読んでいますが、Brunner-Munzel 検定の出力は確率的優越性の向きが異なって見えることがあります。報告時には、どちらの群がどちらを上回る確率を示しているのかを明記します。
+
+```{r}
+#| eval: true
+#| label: tbl-bm-direction
+#| tbl-cap: "Brunner-Munzel 検定の確率的優越性の向き"
+
+bm_direction_tbl <- tibble(
+  Quantity = c(
+    "出力上の推定量",
+    "Writing が Glossing を上回る確率"
+  ),
+  Interpretation = c(
+    "P(Writing < Glossing) + 0.5 P(tie)",
+    "P(Writing > Glossing) + 0.5 P(tie)"
+  ),
+  Estimate = c(
+    unname(bm_result$estimate),
+    1 - unname(bm_result$estimate)
+  )
+) |>
+  mutate(Estimate = round(Estimate, 3))
+
+bm_direction_tbl |>
+  knitr::kable()
 ```
 
 参考として、遅延テスト (Delayed) の結果も確認しておきます。
@@ -791,9 +952,11 @@ delayed_result
 
 ```{r}
 #| eval: true
-#| label: plot-result
+#| label: fig-plot-result
 #| fig-width: 6
 #| fig-height: 5
+#| fig-cap: "Immediate recall における Treatment 別の分布と平均"
+#| fig-alt: "Glossing 群と Writing 群の Immediate recall 得点を示す箱ひげ図。個々の参加者の点、群平均、平均の95%信頼区間が重ねられている。"
 
 dat_summary <- dat_imm |>
   group_by(Treatment) |>
@@ -831,7 +994,7 @@ ggplot(dat_imm, aes(x = Treatment, y = Score, fill = Treatment)) +
 
 ここで見るべきなのは、Writing の分布全体が Glossing より上にずれているか、外れ値が結果を支配していないか、そして平均差の方向が t 検定の符号と一致しているか、の 3 点です。群平均の信頼区間の重なりだけで有意性を判定するのではなく、平均値差の信頼区間と t 検定の結果を主に読みます。95% 信頼区間どうしの重なりと有意差判定の関係は直感的に見えても、単純な「重なれば有意差なし、重ならなければ有意差あり」という規則にはなりません [@cumming2009]。
 
-## t検定と回帰分析のつながり
+## t 検定と回帰分析のつながり
 
 ここまで t 検定を 2 群比較として見てきました。ここで一度、t 検定が単回帰分析とどうつながるかを確認しておきます。
 
@@ -850,10 +1013,13 @@ $$
 
 ```{r}
 #| eval: true
-#| label: regression-connection-plot
+#| label: fig-regression-connection
 #| fig-width: 8
 #| fig-height: 4.8
+#| fig-cap: "単回帰と2群比較としての t 検定"
+#| fig-alt: "左パネルは連続的なXに対する単回帰、右パネルはGlossingを0、Writingを1とした2値説明変数に対する回帰直線を示している。"
 
+set.seed(202406)
 regression_demo <- bind_rows(
   tibble(
     Demo = "Simple regression with continuous X",
@@ -879,7 +1045,8 @@ ggplot(regression_demo, aes(x = x, y = y)) +
 
 ```{r}
 #| eval: true
-#| label: regression-connection-table
+#| label: tbl-regression-connection
+#| tbl-cap: "Student の t 検定と単回帰分析の一致"
 
 lm_df <- dat_imm |>
   mutate(Treatment01 = if_else(Treatment == "Writing", 1, 0))
@@ -907,39 +1074,70 @@ comparison_tbl <- tibble(
 )
 
 comparison_tbl |>
-  knitr::kable(caption = "Student の t 検定と単回帰分析の一致")
+  knitr::kable()
 ```
 
 この表から、**Student の t 検定と、0/1 に符号化した説明変数をもつ `lm()` は同じ平均値差・同じ t 値・同じ p 値を返す**ことがわかります。厳密に一致するのは等分散を仮定する Student の t 検定です。Welch の t 検定は、その考え方を保ったまま等分散を仮定しないように拡張したものです。
+
+2 水準の要因に対する ANOVA の $F$ 検定は、この Student の t 検定を二乗したものとして理解できます。つまり、2 群比較で見ている平均値差の考え方は、第2章で扱う ANOVA やカテゴリカル変数のコーディングへそのままつながります。
 
 この見方をもっておくと、t 検定、ANOVA、回帰分析が別々の道具に見えにくくなります。チュートリアル論文が強調する「推定量と不確実性を一貫して考える」という発想にもつながります [@cumming2014]。
 
 ## 効果量
 
-p 値は「差があるか」を問う指標であり、「差がどれくらい大きいか」を直接は教えてくれません。t 検定の結果を報告するときは、効果量を合わせて示すことで、実質的な意味を読み取りやすくなります [@lakens2013]。
+p 値は「差があるか」を問う指標であり、「**差がどれくらい大きいか**」を直接は教えてくれません。t 検定の結果を報告するときは、効果量を合わせて示すことで、実質的な意味を読み取りやすくなります [@lakens2013]。近年の応用言語学では、p 値と効果量をセットで報告することが標準的な作法となりつつあります。
 
 ### 標準化効果量の種類
 
-- Cohen's d: 平均値差をプールした標準偏差で割った値。最も基本的な標準化平均差です。
-- Hedges g: Cohen's d に小標本補正を加えたもの。サンプルサイズが小さい研究やメタ分析でよく使われます。
-- Glass's Δ: 対照群の標準偏差だけで標準化する指標。介入によって分散が変わる可能性があるときに有用です。
+- Cohen's *d*: 平均値差をプールした標準偏差で割った値。最も基本的な標準化平均差です [@cohen1988]。
+- Hedges' *g*: Cohen's *d* に小標本補正係数 $J(\nu) = \Gamma(\nu/2) / [\sqrt{\nu/2}\,\Gamma((\nu-1)/2)]$ (近似式 $J(\nu) \approx 1 - 3/(4\nu - 1)$) を掛けて、自由度 $\nu$ が小さいときの過大推定を抑えたもの [@hedges1981]。サンプルサイズが小さい研究やメタ分析でよく使われます。
+- Glass's Δ: 対照群の標準偏差だけで標準化する指標 [@glass1976]。介入によって実験群の分散が変わる可能性があるときに、対照群の散らばりを基準として固定したい場合に有用です。
 
-代表的な目安として、Cohen は $d = 0.2, 0.5, 0.8$ を small, medium, large と整理しました [@cohen1988]。ただし、これはあくまで便宜的な基準であり、文脈依存の解釈を置き換えるものではありません [@lakens2013]。
+代表的な目安として、Cohen は $d = 0.2, 0.5, 0.8$ を small, medium, large と整理しました [@cohen1988]。ただし、Cohen 自身が「分野固有の根拠が得られないときに限って参照すべき**便宜的な定義** (operational definitions)」と注意していた点は強調しておく必要があります。文脈に即した解釈を置き換えるものではありません [@cohen1988; @lakens2013]。本章の検定力図では参考値として $d = 1.2$ も示しますが、Cohen の基本的な目安は次の 3 段階です。
 
-| Cohen's d | 効果の大きさ |
+| Cohen's *d* | 効果の大きさ |
 |---|---|
 | 0.2 | 小 |
 | 0.5 | 中 |
 | 0.8 | 大 |
-| 1.2 以上 | 非常に大 |
+
+: Cohen's *d* の便宜的な解釈目安 {#tbl-cohen-benchmarks}
+
+#### 第二言語習得研究に固有の目安
+
+応用言語学・SLA の文脈では、Cohen の目安は実態より厳しすぎるという指摘があります。Plonsky と Oswald は 346 本の L2 研究を集計し、**研究デザイン別の経験的な参照値**を提案しました [@plonsky2014]。
+
+| 指標 | 小 | 中 | 大 |
+|---|---|---|---|
+| 群間 Cohen's *d* (between-groups) | 0.40 | 0.70 | 1.00 |
+| 群内 Cohen's *d* (within-group) | 0.60 | 1.00 | 1.40 |
+| 相関係数 *r* | 0.25 | 0.40 | 0.60 |
+
+: Plonsky & Oswald (2014) による L2 研究の効果量参照値 {#tbl-plonsky-benchmarks}
+
+群内 *d* (前後比較などの対応あり設計) が群間 *d* より大きく見積もられているのは、参加者内のばらつきが分母に入らない分、同じ介入でも値が大きく出やすいからです [@plonsky2014]。**SLA 系の論文では、Cohen の伝統的な目安より Plonsky & Oswald の参照値の方が研究実態に即している**と理解しておくと、報告時の解釈ぶれが減ります。
+
+ただし、これらも分野平均を整理した「典型値」であって、固定的な合否基準ではありません。たとえば教育介入のコストや測定の精度を勘案すれば、$d = 0.30$ でも実務的に重要な差として扱う場面はあります。次節で見るように、近年は「**研究計画段階で『どの程度の差なら実務的に意味があるか』を事前に決める**」という発想 (smallest effect size of interest, SESOI) が推奨されています [@lakens2022sample]。
+
+どの効果量を主に報告するかは、研究目的と分散の扱いによって変わります。
+
+| 場面 | 主に使う指標 | 注意点 |
+|---|---|---|
+| 通常の独立 2 群比較 | Cohen's *d* または Hedges' *g* | どの標準偏差で割ったかを明記する |
+| 小標本やメタ分析への再利用を重視 | Hedges' *g* | 小標本補正が入る |
+| 対照群のばらつきを基準にしたい | Glass's Δ | 介入群の分散変化を標準化に含めない |
+| 同一参加者の前後比較 | 対応あり *d* | 独立 2 群の *d* とは直接比較しない |
+
+: 効果量選択の目安 {#tbl-effect-size-decision}
 
 ### 効果量の計算
 
-`effectsize` パッケージは、Cohen's d, Hedges g, Glass's Δ を同じ記法で計算でき、95% 信頼区間も併せて出力します [@effectsize]。ここでは `reference = "Glossing"` を明示し、正の値が「Writing 有利」を意味するように符号を固定します。
+`effectsize` パッケージは、Cohen's *d*, Hedges' *g*, Glass's Δ を同じ記法で計算でき、95% 信頼区間も併せて出力します [@effectsize]。ここでは `reference = "Glossing"` を明示し、正の値が「Writing 有利」を意味するように符号を固定します。Cohen's *d* はプールした標準偏差を分母にする記述的な標準化平均差なので、Welch の t 検定を主報告にする場合でも、平均値差とその CI を主に読み、標準化効果量は分母を明記して補助的に解釈します。
 
 ```{r}
 #| eval: true
-#| label: effect-size
+#| label: tbl-effect-size
+#| tbl-cap: "Immediate recall の効果量比較"
 
 cohens_result <- cohens_d(
   Score ~ Treatment,
@@ -958,7 +1156,7 @@ glass_result <- glass_delta(
 )
 
 tab_es_plot <- tibble(
-  Measure = c("Cohen's d", "Hedges g", "Glass's Δ"),
+  Measure = c("Cohen's d", "Hedges' g", "Glass's Δ"),
   Estimate = c(
     cohens_result$Cohens_d,
     hedges_result$Hedges_g,
@@ -980,20 +1178,21 @@ tab_es <- tab_es_plot |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
 
 tab_es |>
-  knitr::kable(caption = "Immediate recall の効果量比較")
+  knitr::kable()
 ```
 
-Hedges g が Cohen's d よりわずかに小さくなるのは、小標本補正が入るためです。サンプルサイズが十分大きければ、両者はほぼ同じ値になります。
+Hedges' *g* が Cohen's *d* よりわずかに小さくなるのは、小標本補正が入るためです。サンプルサイズが十分大きければ、両者はほぼ同じ値になります。
 
-この例を一文で言うと、**この差は統計的に有意なだけでなく、Cohen's d = `r round(cohens_result$Cohens_d, 2)` と、実質的にも無視しにくい大きさ**です。
+この例を一文で言うと、**この差は統計的に有意なだけでなく、Cohen's *d* = `r round(cohens_result$Cohens_d, 2)` と、実質的にも無視しにくい大きさ**です。
 
 ### 平均値差の CI と効果量の CI をどう使い分けるか
 
-ここまでで、平均値差にも Cohen's d にも信頼区間が付くことを見てきました。両者はどちらも大切ですが、答えている問いが少し違います。
+ここまでで、平均値差にも Cohen's *d* にも信頼区間が付くことを見てきました。両者はどちらも大切ですが、答えている問いが少し違います。
 
 ```{r}
 #| eval: true
-#| label: estimate-comparison-summary
+#| label: tbl-estimate-comparison
+#| tbl-cap: "平均値差と効果量の信頼区間の役割分担"
 
 estimate_comparison_tbl <- tibble(
   指標 = c("平均値差", "Cohen's d"),
@@ -1025,16 +1224,16 @@ estimate_comparison_tbl <- tibble(
 )
 
 estimate_comparison_tbl |>
-  knitr::kable(caption = "平均値差と効果量の信頼区間の役割分担")
+  knitr::kable()
 ```
 
-平均値差の 95% 信頼区間は、「教育的に見て何点くらいの差がありそうか」を直接示します。一方、Cohen's d の 95% 信頼区間は、「その差が標準偏差何個分くらいか」を表し、別のテストや別研究との比較に向いています [@lakens2013]。
+平均値差の 95% 信頼区間は、「教育的に見て何点くらいの差がありそうか」を直接示します。一方、Cohen's *d* の 95% 信頼区間は、「その差が標準偏差何個分くらいか」を表し、別のテストや別研究との比較に向いています [@lakens2013]。
 
 したがって、教育研究では **平均値差の CI を主に読み、効果量の CI でその差の相対的な大きさを補う**、という順番で解釈するとわかりやすくなります。
 
 ### 対応ありデザインの効果量
 
-ここまでは独立 2 群の効果量でした。もし同じ参加者を前後比較するなら、独立 2 群の d ではなく対応あり d を使います。
+ここまでは独立 2 群の効果量でした。もし同じ参加者を前後比較するなら、独立 2 群の *d* ではなく対応あり *d* を使います。`effectsize::cohens_d(..., paired = TRUE)` は、差得点の標準偏差で平均差を割る対応あり標準化平均差（しばしば $d_z$ と呼ばれる量）を返します。これは参加者内相関の影響を受けるため、独立 2 群のプール標準偏差による *d* とは直接比較しません。
 
 ```{r}
 #| eval: true
@@ -1050,26 +1249,44 @@ cohens_d(paired_df$Immediate, paired_df$Delayed, paired = TRUE)
 
 対応ありか対応なしかは、統計手法の選択でも効果量の選択でも最重要です。同じ参加者 ID が複数条件に現れるなら対応あり、各条件に別の参加者が割り当てられているなら対応なしと判断します。
 
-記述統計しか手元にない先行研究から効果量を復元したいときは、`compute.es::mes()` が便利です。
+記述統計しか手元にない先行研究から効果量を復元したいときは、`compute.es::mes()` が便利です。以下では出力を整理し、主要な指標だけを表示します。
 
 ```{r}
 #| eval: true
-#| label: compute-es
+#| label: tbl-compute-es
+#| tbl-cap: "記述統計から復元した主な効果量"
 
-compute.es::mes(
-  m.1 = 10, m.2 = 12,
+mes_result <- compute.es::mes(
+  m.1 = 12, m.2 = 10,
   sd.1 = 1, sd.2 = 1.3,
-  n.1 = 30, n.2 = 30
+  n.1 = 30, n.2 = 30,
+  verbose = FALSE
 )
+
+mes_result |>
+  as_tibble() |>
+  dplyr::transmute(
+    d = d,
+    g = g,
+    r = r,
+    CLES = cl.d / 100
+  ) |>
+  mutate(
+    across(c(d, g, r), \(x) round(x, 2)),
+    CLES = scales::percent(CLES, accuracy = 0.1)
+  ) |>
+  knitr::kable()
 ```
 
-`compute.es::mes()` は d や g に加えて、相関係数 $r$、オッズ比、CLES (common language effect size) なども返します。CLES は、ランダムに取り出した 2 人を比べたときに、一方が他方を上回る確率として解釈できるため、実務家に説明しやすい指標です [@mcgraw1992]。
+`compute.es::mes()` は *d* や *g* に加えて、相関係数 $r$、オッズ比、CLES (common language effect size) なども返します。CLES は、ランダムに取り出した 2 人を比べたときに、一方が他方を上回る確率として解釈できるため、実務家に説明しやすい指標です [@mcgraw1992]。
 
 ```{r}
 #| eval: true
-#| label: forest-plot-es
+#| label: fig-forest-plot-es
 #| fig-width: 7
 #| fig-height: 4
+#| fig-cap: "標準化効果量と95%信頼区間の比較"
+#| fig-alt: "Cohen's d、Hedges' g、Glass's Δ の推定値と95%信頼区間を横方向の点区間で比較した図。"
 
 ggplot(tab_es_plot, aes(x = Estimate, y = reorder(Measure, Estimate))) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
@@ -1088,17 +1305,40 @@ ggplot(tab_es_plot, aes(x = Estimate, y = reorder(Measure, Estimate))) +
 
 ### 効果量の変換
 
-Cohen's d から相関係数 $r$ への変換は、次の式で表せます。
+Cohen's *d* から相関係数 $r$ への変換は、次の式で表せます。
 
 $$
 r = \frac{d}{\sqrt{d^2 + a}}
 $$
 
-ここで $a = \frac{(n_1 + n_2)^2}{n_1 n_2}$ です。メタ分析のように研究間で指標をそろえたいときには、こうした変換式が役立ちます。研究統合では Hedges g を報告しておくと再利用しやすくなります。
+ここで $a = \frac{(n_1 + n_2)^2}{n_1 n_2}$ です。メタ分析のように研究間で指標をそろえたいときには、こうした変換式が役立ちます。研究統合では Hedges' *g* を報告しておくと再利用しやすくなります。
+
+### 発展: ロバスト・ノンパラメトリックな効果量と Bayes 推定
+
+通常の Cohen's *d* / Hedges' *g* は平均値と標準偏差に基づくため、外れ値や強い歪みがあると不安定になります。次の 4 系統が、近年のレビューでもよく言及される代替指標です。
+
+::: {.callout-tip}
+## 用途別の代替効果量
+
+| 場面 | 推奨指標 | 主なR実装 |
+|---|---|---|
+| 外れ値や強い歪みがある | ロバスト標準化平均差 (トリム平均と Winsorized 分散を使う) | `WRS2::akp.effect()` [@algina2005; @wrs2pkg] |
+| 順序データや中央値差として読みたい | 確率的優越性 (Probability of Superiority, $P(X > Y)$) ・Vargha-Delaney $\hat{A}$ | `effectsize::p_superiority()` [@vargha2000] |
+| 効果量推定の信頼区間をブートストラップで | BCa CI を `boot::boot.ci()` 経由で算出 | `boot` + `effectsize::cohens_d()` の組み合わせ |
+| 「差がない」という結論まで含めて主張したい | Bayes ファクターまたは事後分布による *d* 推定 | `BayesFactor::ttestBF()` [@rouder2009; @bayesfactorpkg], Kruschke の BEST 法 [@kruschke2013] |
+:::
+
+たとえば外れ値が結果を支配していそうな場合は、`WRS2::akp.effect(Score ~ Treatment, data = dat_imm, EQVAR = TRUE, tr = 0.2)` のようにトリム比 (`tr`) を指定したロバストな標準化差を併記すると、結果の頑健性が確認できます [@algina2005]。
+
+確率的優越性 ($P(X > Y) + 0.5 P(X = Y)$) は、Common Language Effect Size と本質的に同じ量で、CLES が McGraw-Wong によって直感的解釈として提案された後 [@mcgraw1992]、Vargha と Delaney によって計算上の改良が加えられた指標です [@vargha2000]。順序データや非パラメトリック設計でも自然に解釈できる点が利点です。`effectsize::p_superiority(x, y, parametric = FALSE)` でノンパラメトリック版が直接得られます。
+
+Bayes 系の代替手法 (Bayes ファクター、BEST 法など) は本書第 7 章で詳しく扱います。L2 研究での Bayes 法の応用例は @norouzian2018 が包括的です。
 
 ## 「有意差がない」と「等価である」は違う
 
-通常の有意差検定では、帰無仮説は「差が 0」です。したがって、`p > .05` だったときに言えるのは、**帰無仮説を棄却できなかった**ということだけです。ここで「帰無仮説を採択した」「差がないことが証明された」とまでは言えません。
+「`p > .05` だったので差はなかった」という記述は、研究者が無意識に書いてしまいがちですが、統計的には正確ではありません。
+
+通常の有意差検定では、帰無仮説は「差が 0」です。したがって、`p > .05` だったときに言えるのは、**「帰無仮説を棄却できなかった」** ということだけです。ここで「帰無仮説を採択した」「差がないことが証明された」とまでは言えません。
 
 もし本当に主張したいことが「条件間に意味のある差はない」であれば、通常の t 検定ではなく **等価性検定**（equivalence testing）を使う必要があります [@lakens2018equiv]。
 
@@ -1107,20 +1347,22 @@ $$
 - 通常の有意差検定: 「差は 0」を出発点にして、それを棄却できるかを調べる。
 - 等価性検定: 「差は無視できるほど小さくはない」を出発点にして、それを棄却できるかを調べる。
 
-実務では、まず「どの程度までの差なら実質的に同じとみなすか」を **等価性境界**（equivalence bounds, SESOI: smallest effect size of interest）として事前に決めます。たとえば 15 点満点の再生テストなら、「平均差が 1 点未満なら実務上は同じとみなす」という境界を置くことが考えられます。
+実務では、まず「どの程度までの差なら実質的に同じとみなすか」を **等価性境界**（equivalence bounds, SESOI: smallest effect size of interest）として事前に決めます。たとえば 15 点満点の再生テストなら、「平均差の絶対値が 1 点未満なら実務上は同じとみなす」という境界を置くことが考えられます。
 
-TOST（two one-sided tests）では、90% 信頼区間がこの等価性境界の内側に完全に収まれば、「実質的に等価」と判断できます。次の図は、その考え方を概念的に示したものです。
+TOST（two one-sided tests）では、$\alpha = .05$ の等価性検定において、90% 信頼区間がこの等価性境界の内側に完全に収まれば、「実質的に等価」と判断できます。通常の両側 5% 有意差検定では 95% 信頼区間が 0 を含むかどうかを見るため、ここで使う 90% 信頼区間とは役割が異なります。次の図は、その考え方を概念的に示したものです。
 
 ```{r}
 #| eval: true
-#| label: equivalence-visual
+#| label: fig-equivalence-visual
 #| fig-width: 8
 #| fig-height: 4.6
+#| fig-cap: "等価性検定における90%信頼区間と等価性境界"
+#| fig-alt: "3つのシナリオについて、平均値差の90%信頼区間と等価性境界マイナスデルタからプラスデルタの関係を示した図。信頼区間が境界内に完全に収まる場合だけ実質的に等価と判断する。"
 
 equiv_cases <- tibble(
   Scenario = factor(
-    c("Statistically significant", "Inconclusive", "Practically equivalent"),
-    levels = rev(c("Statistically significant", "Inconclusive", "Practically equivalent"))
+    c("Clear positive difference", "Inconclusive", "Practically equivalent"),
+    levels = rev(c("Clear positive difference", "Inconclusive", "Practically equivalent"))
   ),
   Estimate = c(1.6, 0.2, 0.1),
   CI_low = c(0.9, -0.7, -0.45),
@@ -1144,7 +1386,7 @@ ggplot(equiv_cases, aes(x = Estimate, y = Scenario)) +
 
 この図の読み方は次のとおりです。
 
-- **有意差あり**: 信頼区間が 0 から十分離れており、境界の外側にある。
+- **差が明確に正方向**: この概念図では信頼区間が 0 から離れており、等価性境界の外側にあります。通常の両側 5% 有意差検定では、別途 95% 信頼区間または p 値で判断します。
 - **結論保留**: 0 をまたいでいて、なおかつ等価性境界にも収まっていない。差があるとも、十分小さいとも言えない。
 - **実質的に等価**: 90% 信頼区間が等価性境界の内側に完全に収まっている。差があっても、事前に決めた基準より小さいといえる。
 
@@ -1163,7 +1405,9 @@ ggplot(equiv_cases, aes(x = Estimate, y = Scenario)) +
 
 ## サンプルサイズと検定力分析
 
-研究計画の段階では、期待する効果量に対して何人必要かを見積もる必要があります。R の公式ドキュメントにある `power.t.test()` は、平均値差 `delta` と標準偏差 `sd` を使って検定力計算を行います [@rstatspowerttest]。ここでは標準化効果量 $d$ を使いたいので、`sd = 1` と置き、`delta = d` として扱います。
+研究計画の段階では、期待する効果量に対して **何人必要か**を見積もっておくことが、再現可能な研究のための第一歩になります。Lakens のサンプルサイズ正当化論文 [@lakens2022sample] は、伝統的な検定力分析にとどまらず、**実質的に意味のある最小効果量** (smallest effect size of interest, SESOI) を事前に決めて、その値に対して計画する発想を体系的に整理しています。L2 研究では、Plonsky & Oswald の参照値 [@plonsky2014] や先行メタ分析 (例: @norris2000) の効果量分布を起点に SESOI を設定する方法が現実的です。
+
+R の公式ドキュメントにある `power.t.test()` は、平均値差 `delta` と標準偏差 `sd` を使って検定力計算を行います [@rstatspowerttest]。ここでは標準化効果量 $d$ を使いたいので、`sd = 1` と置き、`delta = d` として扱います。`type = "two.sample"` のとき、`n` は総サンプルサイズではなく **各群の人数**である点にご注意ください。
 
 先ほど見たように、サンプルサイズが大きいほど信頼区間は狭くなります。検定力分析は、その同じ事実を「差を検出できる確率」という観点から見直したものです。
 
@@ -1194,7 +1438,7 @@ power_from_d <- function(d, n = NULL, power = NULL, sig.level = 0.05,
 ::: panel-tabset
 #### 必要サンプルサイズの計算
 
-中程度の効果量 ($d = 0.5$) を 80% の検出力で検出するには、各群に何名必要かを計算します。
+中程度の効果量 ($d = 0.5$) を 80% の検定力で検出するには、各群に何名必要かを計算します。
 
 ```{r}
 #| eval: true
@@ -1212,44 +1456,50 @@ power_from_d(
 
 ```{r}
 #| eval: true
-#| label: power-scenarios
+#| label: tbl-power-scenarios
+#| tbl-cap: "効果量別の必要サンプルサイズと現在例の検定力"
 
 power_tbl <- tibble(
-  Effect_Size = c("Small", "Medium", "Large"),
+  `効果量の目安` = c("Small", "Medium", "Large"),
   d = c(0.2, 0.5, 0.8),
-  n_for_80 = c(
+  `80%検定力に必要な各群 n` = c(
     ceiling(power_from_d(d = 0.2, power = 0.80)$n),
     ceiling(power_from_d(d = 0.5, power = 0.80)$n),
     ceiling(power_from_d(d = 0.8, power = 0.80)$n)
   ),
-  n_for_90 = c(
+  `90%検定力に必要な各群 n` = c(
     ceiling(power_from_d(d = 0.2, power = 0.90)$n),
     ceiling(power_from_d(d = 0.5, power = 0.90)$n),
     ceiling(power_from_d(d = 0.8, power = 0.90)$n)
   ),
-  power_n50 = c(
-    power_from_d(n = 50, d = 0.2)$power,
-    power_from_d(n = 50, d = 0.5)$power,
-    power_from_d(n = 50, d = 0.8)$power
+  `現在例（各群 n = 25）の検定力` = c(
+    power_from_d(n = 25, d = 0.2)$power,
+    power_from_d(n = 25, d = 0.5)$power,
+    power_from_d(n = 25, d = 0.8)$power
   )
 ) |>
   mutate(
-    power_n50 = scales::percent(power_n50, accuracy = 0.1)
+    `現在例（各群 n = 25）の検定力` = scales::percent(
+      `現在例（各群 n = 25）の検定力`,
+      accuracy = 0.1
+    )
   )
 
 power_tbl |>
-  knitr::kable(caption = "効果量別の必要サンプルサイズと n = 50 の検定力")
+  knitr::kable()
 ```
 
-中程度の効果量 ($d = 0.5$) を 80% の検出力で捉えたいなら、各群におよそ `r ceiling(power_from_d(d = 0.5, power = 0.80)$n)` 名必要です。
+中程度の効果量 ($d = 0.5$) を 80% の検定力で捉えたいなら、各群におよそ `r ceiling(power_from_d(d = 0.5, power = 0.80)$n)` 名必要です。現在の例は各群 25 名なので、これは練習用データとしては十分でも、計画段階の目標人数としては不足する可能性があります。
 
 #### 検定力カーブ
 
 ```{r}
 #| eval: true
-#| label: power-curve
+#| label: fig-power-curve
 #| fig-width: 8
 #| fig-height: 5
+#| fig-cap: "効果量ごとの検定力カーブ"
+#| fig-alt: "各群のサンプルサイズを横軸、検定力を縦軸にした折れ線グラフ。効果量dが大きいほど少ないサンプルサイズで検定力が高くなる。現在の例である各群25名が縦線で示されている。"
 
 n_range <- seq(10, 200, by = 5)
 d_values <- c(0.2, 0.5, 0.8, 1.2)
@@ -1264,7 +1514,7 @@ power_data <- tidyr::expand_grid(n = n_range, d = d_values) |>
         "d = 0.2 (Small)",
         "d = 0.5 (Medium)",
         "d = 0.8 (Large)",
-        "d = 1.2 (Very large)"
+        "d = 1.2 (Reference)"
       )
     )
   )
@@ -1272,9 +1522,9 @@ power_data <- tidyr::expand_grid(n = n_range, d = d_values) |>
 ggplot(power_data, aes(x = n, y = power, color = d_label)) +
   geom_line(linewidth = 1) +
   geom_hline(yintercept = 0.8, linetype = "dashed", color = "grey50") +
-  geom_vline(xintercept = 50, linetype = "dotted", color = "grey50") +
+  geom_vline(xintercept = 25, linetype = "dotted", color = "grey50") +
   annotate("text", x = 195, y = 0.82, label = "Power = 0.80", size = 3, vjust = -0.5) +
-  annotate("text", x = 52, y = 0.05, label = "n = 50", size = 3, hjust = -0.1) +
+  annotate("text", x = 27, y = 0.05, label = "n = 25 per group", size = 3, hjust = -0.1) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   labs(
     x = "Sample size (per group)",
@@ -1286,23 +1536,171 @@ ggplot(power_data, aes(x = n, y = power, color = d_label)) +
 ```
 :::
 
+### 発展: シミュレーションで検定力を見積もる
+
+`power.t.test()` は、標準化効果量を指定して素早く必要人数を見積もれる便利な関数です。一方、実際のテスト得点は 15 点満点のように上限と下限があり、必ずしも完全な正規分布にはなりません。そこで経験者向けには、**データを発生させる → t 検定を行う → 有意になった割合を数える** というシミュレーションも有用です。
+
+考え方は単純です。たとえば「Glossing 群の正答確率が .62、Writing 群の正答確率が .72 なら、15 点満点では平均差が約 1.5 点になる」と仮定します。その仮定のもとで研究を何度も仮想的に繰り返し、どれくらいの割合で `p < .05` になるかを見ます。
+
+```{r}
+#| eval: true
+#| label: simulation-helper
+
+simulate_ttest_once <- function(n_per_group, p_glossing, p_writing,
+                                n_items = 15, alpha = 0.05) {
+  glossing_scores <- rbinom(n_per_group, size = n_items, prob = p_glossing)
+  writing_scores <- rbinom(n_per_group, size = n_items, prob = p_writing)
+  test_result <- t.test(writing_scores, glossing_scores)
+
+  tibble(
+    p_value = test_result$p.value,
+    significant = test_result$p.value < alpha,
+    mean_diff = mean(writing_scores) - mean(glossing_scores),
+    ci_width = diff(test_result$conf.int)
+  )
+}
+
+simulate_ttest_behavior <- function(n_per_group, p_glossing, p_writing,
+                                    n_items = 15, nsim = 600,
+                                    alpha = 0.05) {
+  purrr::map_dfr(
+    seq_len(nsim),
+    \(i) simulate_ttest_once(
+      n_per_group = n_per_group,
+      p_glossing = p_glossing,
+      p_writing = p_writing,
+      n_items = n_items,
+      alpha = alpha
+    )
+  ) |>
+    summarise(
+      rejection_rate = mean(significant),
+      average_mean_diff = mean(mean_diff),
+      average_ci_width = mean(ci_width),
+      .groups = "drop"
+    )
+}
+```
+
+まず、差がない場合と差がある場合を比べます。差がない場合の棄却率は、第1種過誤率、つまり本当は差がないのに有意差ありと判断する割合に対応します。差がある場合の棄却率は、検定力に対応します。
+
+```{r}
+#| eval: true
+#| label: tbl-sim-test-behavior
+#| tbl-cap: "シミュレーションによる第1種過誤率と検定力の確認"
+
+set.seed(202407)
+
+sim_behavior_tbl <- tibble(
+  Scenario = c(
+    "差なし",
+    "小さめの差",
+    "平均差約1.5点"
+  ),
+  p_glossing = c(0.62, 0.62, 0.62),
+  p_writing = c(0.62, 0.68, 0.72)
+) |>
+  mutate(
+    result = purrr::map2(
+      p_glossing,
+      p_writing,
+      \(pg, pw) simulate_ttest_behavior(
+        n_per_group = 25,
+        p_glossing = pg,
+        p_writing = pw,
+        nsim = 600
+      )
+    )
+  ) |>
+  tidyr::unnest(result) |>
+  transmute(
+    シナリオ = Scenario,
+    `Glossing の正答確率` = p_glossing,
+    `Writing の正答確率` = p_writing,
+    `棄却率または検定力` = scales::percent(rejection_rate, accuracy = 0.1),
+    `平均差の平均` = round(average_mean_diff, 2),
+    `平均CI幅` = round(average_ci_width, 2)
+  )
+
+sim_behavior_tbl |>
+  knitr::kable()
+```
+
+この表では、「差なし」の棄却率がだいたい 5% 付近になっていれば、検定が名目上の有意水準に近いふるまいをしていることが確認できます。一方、差があるシナリオでは、棄却率が高いほど、その研究計画で差を検出しやすいことを意味します。
+
+次に、各群の人数を変えながら、平均差約 1.5 点のシナリオで検定力がどう変わるかを見ます。
+
+```{r}
+#| eval: true
+#| label: fig-simulated-power-curve
+#| fig-width: 8
+#| fig-height: 5
+#| fig-cap: "15点満点得点を仮定したシミュレーション検定力曲線"
+#| fig-alt: "各群のサンプルサイズを横軸、シミュレーションで推定した検定力を縦軸にした折れ線グラフ。検定力80%の水平線と、80%を初めて超えるサンプルサイズが示されている。"
+
+set.seed(202408)
+
+sim_power_grid <- tibble(n_per_group = seq(15, 90, by = 5)) |>
+  mutate(
+    result = purrr::map(
+      n_per_group,
+      \(n) simulate_ttest_behavior(
+        n_per_group = n,
+        p_glossing = 0.62,
+        p_writing = 0.72,
+        nsim = 600
+      )
+    )
+  ) |>
+  tidyr::unnest(result)
+
+sim_required_n <- sim_power_grid |>
+  dplyr::filter(rejection_rate >= 0.80) |>
+  summarise(n_per_group = min(n_per_group), .groups = "drop") |>
+  pull(n_per_group)
+
+ggplot(sim_power_grid, aes(x = n_per_group, y = rejection_rate)) +
+  geom_line(linewidth = 1, color = "steelblue4") +
+  geom_point(size = 2, color = "steelblue4") +
+  geom_hline(yintercept = 0.80, linetype = "dashed", color = "grey45") +
+  geom_vline(xintercept = sim_required_n, linetype = "dotted", color = "firebrick") +
+  annotate(
+    "label",
+    x = sim_required_n + 6,
+    y = 0.16,
+    label = paste0("First n with power >= 80%: ", sim_required_n, " per group"),
+    size = 3.2,
+    label.size = 0.2,
+    fill = "white"
+  ) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  labs(
+    x = "Sample size per group",
+    y = "Simulated power",
+    title = "Simulation-based sample size planning",
+    subtitle = "15-item total scores, p(Glossing) = .62, p(Writing) = .72, 600 simulations per n"
+  )
+```
+
+このシミュレーションでは、各群 `r sim_required_n` 名程度で 80% 前後の検定力に到達します。もちろん、この値は「正答確率が本当に .62 と .72 くらいである」という仮定に依存します。実務では、先行研究、予備調査、教育的に意味のある最小差をもとに複数のシナリオを置き、シミュレーション回数も 5,000 回以上に増やして確認すると安定します。
+
 ## 報告テンプレート（英語教育研究向け）
 
-t 検定の結果を論文に報告する際のテンプレートを以下に示します。
+t 検定の結果を論文に報告する際のテンプレートを以下に示します。英語教育・SLA 系のジャーナル(*Language Learning*, *Studies in Second Language Acquisition*, *TESOL Quarterly* 等)で広く受け入れられている書式に沿っています。具体的には *Language Learning* の Open Methods 報告ガイドライン [@norris2015] と APA 第 7 版を主な参照枠としています。同ガイドラインは記述統計、効果量、CI、検定力、再現に必要な分析手続きの開示を必須項目に挙げています。
 
 ### 方法セクション
 
-> Prior to analysis, normality was assessed using Shapiro-Wilk tests and QQ plots for each group. Homogeneity of variance was examined using Levene's test, but the main analysis used Welch's two-sample t-test because it does not require equal variances. Effect sizes were reported as Cohen's d with 95% confidence intervals. Sample size planning was based on an a priori power analysis conducted in R.
+> Prior to analysis, normality was assessed using Shapiro-Wilk tests and QQ plots for each group. Homogeneity of variance was examined using Levene's test, but the main analysis used Welch's two-sample t-test because it does not require equal variances. Effect sizes were reported as Cohen's *d*, calculated using the pooled standard deviation, with 95% confidence intervals. Sample size planning was based on an a priori power analysis conducted in R.
 
 ### 結果セクション
 
-> The Writing group (*M* = X.XX, *SD* = X.XX) scored significantly higher than the Glossing group (*M* = X.XX, *SD* = X.XX) on the immediate recall test, Welch's *t*(XX.XX) = X.XX, *p* < .001, 95% CI [X.XX, X.XX]. The standardized mean difference was large, Cohen's *d* = X.XX, 95% CI [X.XX, X.XX].
+> The Writing group (*M* = X.XX, *SD* = X.XX) scored higher than the Glossing group (*M* = X.XX, *SD* = X.XX) on the immediate recall test, mean difference = X.XX, 95% CI [X.XX, X.XX], Welch's *t*(XX.XX) = X.XX, *p* < .001. The standardized mean difference, calculated using the pooled standard deviation, was Cohen's *d* = X.XX, 95% CI [X.XX, X.XX].
 
 ### 3 文テンプレート
 
-1. 統計量の報告: "A Welch two-sample t-test revealed a significant difference between the Writing and Glossing conditions, *t*(df) = X.XX, *p* < .001, 95% CI [X.XX, X.XX]."
-2. 効果量の報告: "The effect size was large, Cohen's *d* = X.XX, 95% CI [X.XX, X.XX]."
-3. 実質的解釈: "This finding suggests that sentence-writing tasks promote deeper vocabulary processing than glossed reading."
+1. 統計量の報告: "A Welch two-sample t-test indicated higher immediate recall scores in the Writing condition than in the Glossing condition, mean difference = X.XX, 95% CI [X.XX, X.XX], *t*(df) = X.XX, *p* < .001."
+2. 効果量の報告: "The standardized mean difference was Cohen's *d* = X.XX, 95% CI [X.XX, X.XX], using the pooled standard deviation."
+3. 実質的解釈: "These results suggest higher immediate recall scores after sentence-writing than after glossed reading in this sample."
 
 ### 報告チェックリスト
 
@@ -1312,37 +1710,72 @@ t 検定の結果を論文に報告する際のテンプレートを以下に示
 | Recommended | + 平均値差の 95% CI, 効果量の 95% CI, 前提確認の要約 | 通常の論文 |
 | Detailed | + 検定力分析, ノンパラメトリック比較, 分布図, 代替指標 | 事前登録研究, 再現研究 |
 
+: t 検定結果の報告チェックリスト {#tbl-reporting-checklist}
+
 ## トラブルシューティング
 
-### p 値は有意だが効果量が小さい
+t 検定を実際に使い始めると遭遇しやすい 5 つの状況について、原因と対処法を整理します。該当する項目だけ参照する形でも構いません。
 
-サンプルサイズが大きいと、実質的に小さな差でも p 値は小さくなります。p 値だけで結論を書かず、効果量とその信頼区間を併記してください。
+### p 値は有意でも効果量が小さいときは?
 
-### p 値が有意でないので「差がない」と言ってしまう
+「`p < .001` で有意な結果が出たのに、Cohen's *d* を計算したら 0.1 程度しかなく、解釈に困ってしまった」 — このような状況は、特にサンプルサイズが大きい研究で起こりやすいパターンです。
 
-`p > .05` は「差がないことの証明」ではなく、「差があるとは言い切れなかった」という意味です。もし「条件間に意味のある差はない」と主張したいなら、通常の t 検定ではなく、等価性境界を事前に定めた等価性検定を使ってください。
+**原因:** サンプルサイズが大きいほど、ごくわずかな差でも p 値は小さくなります。これは検定の数学的性質であり、必ずしも実質的に意味のある差を反映しているわけではありません。
 
-### 対応ありと対応なしを混同した
+**対処:** p 値だけで結論を書かず、**効果量とその信頼区間を必ず併記する**のが安全です。「統計的に有意である」と「実質的に意味のある差である」は別物として扱う習慣をつけてください。
 
-同一参加者の前後比較に独立 2 群の t 検定を使うと、標準誤差の扱いが崩れます。`t.test(..., paired = TRUE)` や `cohens_d(..., paired = TRUE)` を使うべき場面かどうかを、参加者 ID の構造で確認してください。
+### 「`p > .05` だから差がない」と書きたくなったときは?
 
-### 効果量や t 値の符号が逆に見える
+論文の Discussion で「群間に有意差は見られなかった (`p > .05`) ため、両条件は同等の効果を持つ」と書きたくなる場面があるかもしれません。しかしここは慎重に扱う必要があります。
 
-群の並び順が曖昧だと、符号の解釈がぶれます。本章では `Writing - Glossing` が正になるように水準順と `reference` を明示しました。報告時にも、どちらを基準に差をとったかを書き添えると安全です。
+**原因:** `p > .05` は「**差がないことの証明**」ではなく、「**差があるとは言い切れなかった**」という意味でしかありません。検定力不足で差が見えなかった可能性も含まれます。
 
-### 同じデータに複数の t 検定をかけてしまった
+**対処:** 本当に「条件間に意味のある差はない」と主張したいのであれば、通常の t 検定ではなく、本章の「[「有意差がない」と「等価である」は違う]」節で扱った **等価性検定**(等価性境界を事前に決めて行う検定)を採用するのがよいでしょう。
 
-比較が複数あるなら、ANOVA や混合モデルで一度に扱う方が自然です。やむを得ず複数の t 検定を行う場合は、Holm 法や Bonferroni 補正を検討してください。
+### 対応ありと対応なしを取り違えてしまったら?
 
-## 参考文献
+同一参加者の Pre/Post を比較しているのに `paired = TRUE` を付け忘れる、あるいは逆に独立 2 群なのに対応ありで処理してしまう — これも初期にやりがちなミスです。
 
-::: {#refs}
-:::
+**原因:** 対応の有無を間違えると、標準誤差の計算が崩れ、p 値も信頼区間も信用できなくなります。
 
-## セッション情報
+**対処:** データを目の前にして、まず **「同じ参加者 ID が両群に登場するか?」** を確認してみてください。登場するなら対応あり (`t.test(..., paired = TRUE)` および `cohens_d(..., paired = TRUE)`)、登場しないなら対応なしが原則です。
+
+### 効果量や t 値の符号が逆になってしまうときは?
+
+`cohens_d()` の出力符号が、自分の予想と逆になっていて戸惑った、という経験はありませんか? これは群の並び順が暗黙のうちに決まってしまうために起こります。
+
+**原因:** R は要因の水準順序(アルファベット順がデフォルト)で「どちらを基準にするか」を勝手に決めます。そのため、どちらが正でどちらが負か、コードを見ただけでは分からなくなりがちです。
+
+**対処:** 本章では `Writing - Glossing` が正になるように `forcats::fct_relevel()` で水準順を明示し、`cohens_d()` でも `reference = "Glossing"` を指定しました。**「どちらを基準に差を取ったか」を必ずコードと報告文の両方に明記してください。**
+
+### 同じデータに何度も t 検定をかけたくなったら?
+
+「3 群を 2 群ずつ全ペアで比較すれば 3 回の t 検定で済む」と考えてしまうのは自然な発想ですが、ここには **多重比較の罠**が潜んでいます。
+
+**原因:** 複数回の検定を同じ有意水準 (α = .05) で行うと、**少なくとも 1 つで偽陽性が出る確率**は急速に上がります(α = .05 で 3 回なら約 14%)。
+
+**対処:** 比較が複数あるなら、**ANOVA や混合効果モデル**で一度に扱う方が原理的に自然です(第 2・6 章を参照ください)。やむを得ず複数の t 検定を行う場合は、**Holm 法や Bonferroni 補正**などの多重比較調整を検討してください。`p.adjust()` 関数で簡単に補正できます。
+
+## 次に読む章
+
+ここまでお疲れさまでした。本章では、2 群比較の最も基本となる t 検定と効果量を、データ作成から報告テンプレートまで一通り辿ってきました。ここで身につけた **「p 値・信頼区間・効果量を一緒に読む」** という発想は、後続のすべての章で繰り返し登場します。
+
+次のステップとしては、以下のような選択肢が考えられます。
+
+- **第2章 ANOVA とカテゴリカル変数のコーディング** :2 群比較を **3 群以上**に拡張したい方はこちらへどうぞ。本章と同じラベル(Glossing, Writing)を使いますが、説明用に別のデータ生成を行っていますので、効果の向きは本章から引き継がれるものではありません。
+- **第5章 一般化線形モデル** :2 値データ、頻度データ、順序データをそのまま扱いたい場合の入り口になります。
+- **第6章 混合効果モデル** :参加者や項目の **ランダム効果**を入れたい場合(同一参加者の複数回測定など)はこちらへ。
+- **第20章 欠測データとロバスト統計** :**外れ値や前提違反**に強い代替手法を詳しく学びたい方は、第20章で取り扱います。
+
+## セッション情報 {.unnumbered}
 
 ```{r}
 #| eval: true
 #| label: session-info
 sessionInfo()
 ```
+
+## 参考文献 {.unnumbered}
+
+::: {#refs}
+:::

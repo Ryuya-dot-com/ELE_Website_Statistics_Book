@@ -24,7 +24,6 @@ required_packages <- c(
   "irr",
   "knitr",
   "network",
-  "pacman",
   "patchwork",
   "plotly",
   "sna",
@@ -42,16 +41,16 @@ if (length(missing_packages) > 0) {
 
 ## はじめに
 
-ネットワーク分析（social network analysis; SNA）は、**「個体の属性」ではなく「個体間の関係」**を分析単位に置く方法論である。従来の回帰分析や分散分析は個々の学習者を独立した観測単位として扱うが、ネットワーク分析は学習者間の相互作用の**構造**そのものを対象とする。この視点の転換により、従来の変数中心アプローチ（variable-centered approach）では捉えきれなかった社会的文脈の影響を定量的に分析できるようになる[@kennedyterry2024; @saqr2024]。
+ネットワーク分析（social network analysis; SNA）は、**「個体の属性」ではなく「個体間の関係」**を分析単位に置く方法論です。従来の回帰分析や分散分析は個々の学習者を独立した観測単位として扱いますが、ネットワーク分析は学習者間の相互作用の**構造**そのものを対象とします。この視点の転換により、従来の変数中心アプローチ（variable-centered approach）では捉えきれなかった社会的文脈の影響を定量的に分析できるようになります[@kennedyterry2024; @saqr2024]。
 
-英語教育研究では、ネットワーク分析によって以下のような問いに直接的に答えることが可能である。
+英語教育研究では、ネットワーク分析によって以下のような問いに直接的に答えることが可能です。
 
 - 協働学習において、誰がグループのハブ（情報結節点）として機能しているか
 - クラス内の交流パターンがクラス外へどの程度広がっているか
 - 介入前後で学習者コミュニティの分断が弱まったか、あるいは強まったか
 - 留学先での社会的ネットワーク構造がL2習熟度の伸びにどう関連するか[@isbell2024; @strawbridge2023]
 
-本章は、英語教育専攻の大学院生（回帰分析の基礎既習）を対象に、理論と実装の両面からネットワーク分析を体系的に解説する。具体的には、以下の4部構成で進める。
+本章は、英語教育専攻の大学院生（回帰分析の基礎既習）を対象に、理論と実装の両面からネットワーク分析を体系的に解説します。具体的には、以下の4部構成で進めます。
 
 1. **理論基礎**: グラフ理論の数学的定義と、SLA研究における意義
 2. **記述分析**: `igraph` / `tidygraph` / `ggraph` による可視化・要約・中心性分析
@@ -60,43 +59,44 @@ if (length(missing_packages) > 0) {
 
 ### この章の到達目標
 
-- グラフ理論の基本概念（ノード、エッジ、経路、次数）を定義し、説明できる。
-- `igraph` / `tidygraph` / `ggraph` を用いてネットワークの構築・可視化・要約ができる。
-- 中心性指標の違いを理解し、研究目的に合った指標を選択できる。
-- コミュニティ検出を実行し、外部変数と照合して解釈できる。
-- ERGMの基本構造を理解し、ネットワーク形成メカニズムを検定できる。
-- QAP回帰でネットワーク相関・回帰を実行できる。
-- ネットワーク分析の結果をAPA形式で報告できる。
+- グラフ理論の基本概念（ノード、エッジ、経路、次数）を定義し、説明できます。
+- `igraph` / `tidygraph` / `ggraph` を用いてネットワークの構築・可視化・要約ができます。
+- 中心性指標の違いを理解し、研究目的に合った指標を選択できます。
+- コミュニティ検出を実行し、外部変数と照合して解釈できます。
+- ERGMの基本構造を理解し、ネットワーク形成メカニズムを検定できます。
+- QAP回帰でネットワーク相関・回帰を実行できます。
+- ネットワーク分析の結果をAPA形式で報告できます。
 
 **読む順序（迷ったとき）**:
 
-- 最短ルート（30分）: イントロ → セットアップ → データ構築 → 可視化 → 中心性 → 報告テンプレート
-- 標準ルート（60分）: 上記 + グラフ理論基礎 + コミュニティ検出 + 有向ネットワーク + 回帰接続
-- 拡張ルート（90分〜）: 上記 + ERGM + QAP回帰 + SLA応用事例 + 感度分析
+- 記述分析ルート: イントロ → ネットワーク定義 → データ構築 → 可視化 → 中心性 → 報告テンプレート
+- 推論ルート: 上記 + コミュニティ検出 → QAP / MRQAP → ERGM → 感度分析
+- 発展応用ルート: 上記の中核を押さえたうえで、留学、LMS、ピア評価、語彙ネットワーク、評定者ネットワークの応用例へ進みます
 
 **この章の立場**:
 
-- 本章は「協働ネットワーク（学習者間）」に焦点を絞る。語彙共起ネットワークや空間ネットワークは別の分析フレームワークに属するため、ここでは扱わない。
-- 目的は「多機能なコード集」ではなく、**研究で使える分析思考**を身につけることである。
+- 本章の中核は「協働ネットワーク（学習者間）」です。後半の語彙ネットワークや評定者ネットワークは、同じネットワーク分析の発想を別領域へ移す発展応用として扱います。
+- 空間ネットワークや大規模な動的ネットワークモデルは別の分析フレームワークを要するため、本章では概念紹介にとどめます。
+- 目的は「多機能なコード集」ではなく、**研究で使える分析思考**を身につけることです。
 
 
 ネットワーク分析は、記述的なアプローチから統計的モデリングまで段階的に深めることができます。研究目的に応じて、どこまで進むかを判断してください。
 
 基本手順は、まずアンケートや観察から関係データを収集し、ネットワークを構築して可視化するところから始まります。次に密度・中心性・推移性などの記述統計で全体構造を把握し、研究目的が記述にとどまるならそのまま可視化と指標を報告します。仮説検証が必要な場合は ERGM / QAP / MRQAP に進み、さらにネットワーク指標と学習成果の関連を回帰分析で検討して結果を報告します。
 
-多くの英語教育研究では、まず**記述的分析**（可視化＋中心性指標）で全体構造を把握し、その後に**ERGM**や**QAP回帰**で仮説を検証する流れが一般的である。
+多くの英語教育研究では、まず**記述的分析**（可視化＋中心性指標）で全体構造を把握し、その後に**ERGM**や**QAP回帰**で仮説を検証する流れが一般的です。
 
-ネットワーク分析では、どの図を見るときも次の3点を繰り返し確認すると迷いにくい。
+ネットワーク分析では、どの図を見るときも次の3点を繰り返し確認すると迷いにくいです。
 
-1. **どこに関係が集まっているか**: 大きいノード、太いエッジ、濃いセルは「交流の量が多い場所」を示す。
-2. **どこで分断や橋渡しが起きているか**: クラスターの切れ目、媒介中心性の高いノード、コミュニティ間をまたぐエッジに注目する。
-3. **属性と構造が一致しているか**: クラス、熟達度、役割などの属性が、結びつき方の偏りと対応しているかを見る。
+1. **どこに関係が集まっているか**: 大きいノード、太いエッジ、濃いセルは「交流の量が多い場所」を示します。
+2. **どこで分断や橋渡しが起きているか**: クラスターの切れ目、媒介中心性の高いノード、コミュニティ間をまたぐエッジに注目します。
+3. **属性と構造が一致しているか**: クラス、熟達度、役割などの属性が、結びつき方の偏りと対応しているかを見ます。
 
-以下の対応表を最初に持っておくと、どの節から読むべきかを判断しやすい。
+以下の対応表を最初に持っておくと、どの節から読むべきかを判断しやすいです。
 
 | 研究質問 | 最初に見る節 | 最初に確認する出力 |
 |---|---|---|
-| 誰がクラスの中心か | 中心性 | `strength`, `betweenness`, `eigen` の上位表と散布図 |
+| 誰がクラスの中心か | 中心性 | `strength`, `betweenness`, `eigen_lcc` の上位表と散布図 |
 | クラス内で固まりができているか | 可視化・隣接行列・コミュニティ検出 | ノードの塊、ブロック対角、モジュラリティ |
 | 協働と相談は重なるか | 有向ネットワーク・QAP | QAP相関、置換分布、役割マッピング |
 | 同じクラス・同じ熟達度だと結びつきやすいか | ERGM / MRQAP | `nodematch()` 係数、Same Class 係数 |
@@ -106,29 +106,48 @@ if (length(missing_packages) > 0) {
 #| eval: true
 #| label: pre-setup
 #| include: false
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
-pacman::p_load(
-  igraph,
-  tidygraph,
-  ggraph,
-  dplyr,
-  ggplot2,
-  tibble,
-  gt,
-  tidyr,
-  network,
-  sna,
-  ergm,
-  intergraph,
-  car,
-  plotly,
-  patchwork,
-  ggrepel,
-  irr
+network_required_packages <- c(
+  "broom",
+  "car",
+  "dplyr",
+  "ergm",
+  "ggplot2",
+  "ggraph",
+  "ggrepel",
+  "glue",
+  "gt",
+  "igraph",
+  "intergraph",
+  "irr",
+  "knitr",
+  "network",
+  "patchwork",
+  "plotly",
+  "sna",
+  "tibble",
+  "tidygraph",
+  "tidyr"
 )
 
+network_missing_packages <- network_required_packages[
+  !vapply(network_required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(network_missing_packages) > 0) {
+  stop(
+    "Install required packages before rendering this chapter: ",
+    paste(network_missing_packages, collapse = ", "),
+    call. = FALSE
+  )
+}
+
+invisible(lapply(
+  network_required_packages,
+  function(pkg) suppressPackageStartupMessages(library(pkg, character.only = TRUE))
+))
+
 set.seed(2024)
-network_base_family <- "HiraginoSans-W3"
+network_base_family <- if (Sys.info()[["sysname"]] == "Darwin") "HiraginoSans-W3" else "sans"
 theme_set(theme_bw(base_size = 12, base_family = network_base_family) +
   theme(
     plot.title.position = "plot",
@@ -155,41 +174,91 @@ scale01 <- function(x) {
 # 連結成分が複数ある場合も解釈可能な平均距離（最大連結成分で計算）
 giant_mean_distance <- function(graph, weight_inv = NULL) {
   if (vcount(graph) <= 1 || ecount(graph) == 0) return(NA_real_)
+  if (!is.null(weight_inv)) {
+    graph <- igraph::set_edge_attr(graph, ".network_inv_distance", value = weight_inv)
+  }
   comps <- igraph::components(graph)
   g_gc <- induced_subgraph(graph, V(graph)[comps$membership == which.max(comps$csize)])
   if (vcount(g_gc) <= 1 || ecount(g_gc) == 0) return(NA_real_)
-  mean_distance(g_gc, directed = FALSE, weights = weight_inv)
+  gc_weights <- if (!is.null(weight_inv)) E(g_gc)$.network_inv_distance else NULL
+  mean_distance(g_gc, directed = FALSE, weights = gc_weights)
 }
 
 # igraphのバージョン差異を吸収（古い版では harmonic_centrality がない場合がある）
 robust_harmonic <- function(graph, inv_weights) {
   if ("harmonic_centrality" %in% getNamespaceExports("igraph")) {
-    harmonic_centrality(graph, weights = inv_weights, normalized = TRUE)
-  } else {
-    igraph::closeness(graph, weights = inv_weights, normalized = TRUE)
+    return(igraph::harmonic_centrality(graph, weights = inv_weights, normalized = TRUE))
   }
+
+  # 古いigraph向けの手計算: 到達不能ノードへの逆距離は0として扱う
+  if (igraph::vcount(graph) <= 1) return(rep(NaN, igraph::vcount(graph)))
+  d <- igraph::distances(graph, mode = "all", weights = inv_weights)
+  diag(d) <- Inf
+  inv_d <- 1 / d
+  inv_d[!is.finite(inv_d)] <- 0
+  rowSums(inv_d) / (igraph::vcount(graph) - 1)
+}
+
+# igraph公式ヘルプでは、固有ベクトル中心性は連結成分内での解釈が推奨される
+largest_component_eigen <- function(graph, weights = NULL) {
+  out <- rep(NA_real_, igraph::vcount(graph))
+  if (igraph::vcount(graph) <= 1 || igraph::ecount(graph) == 0) return(out)
+
+  graph_work <- igraph::set_vertex_attr(
+    graph, ".network_orig_id", value = seq_len(igraph::vcount(graph))
+  )
+  if (!is.null(weights)) {
+    graph_work <- igraph::set_edge_attr(graph_work, ".network_eigen_weight", value = weights)
+  }
+
+  comps <- igraph::components(graph_work)
+  lcc_id <- which.max(comps$csize)
+  g_lcc <- igraph::induced_subgraph(
+    graph_work, igraph::V(graph_work)[comps$membership == lcc_id]
+  )
+  if (igraph::vcount(g_lcc) <= 1 || igraph::ecount(g_lcc) == 0) return(out)
+
+  lcc_weights <- if (!is.null(weights)) igraph::E(g_lcc)$.network_eigen_weight else NULL
+  eigen_lcc <- igraph::eigen_centrality(
+    g_lcc, directed = FALSE, weights = lcc_weights
+  )$vector
+  out[igraph::V(g_lcc)$.network_orig_id] <- eigen_lcc
+  out
+}
+
+write_csv_if_changed <- function(x, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  tmp <- tempfile(fileext = ".csv")
+  on.exit(unlink(tmp), add = TRUE)
+  utils::write.csv(x, file = tmp, row.names = FALSE)
+  new_lines <- readLines(tmp, warn = FALSE)
+  old_lines <- if (file.exists(path)) readLines(path, warn = FALSE) else character()
+  if (!identical(new_lines, old_lines)) {
+    file.copy(tmp, path, overwrite = TRUE)
+  }
+  invisible(path)
 }
 ```
 
 ## グラフ理論の基礎
 
-ネットワーク分析の数学的基盤はグラフ理論（graph theory）である。ここでは、分析に必要な最小限の数学的定義を、SLA研究の文脈に即して導入する。
+ネットワーク分析の数学的基盤はグラフ理論（graph theory）です。ここでは、分析に必要な最小限の数学的定義を、SLA研究の文脈に即して導入します。
 
 ### グラフの数学的定義
 
-グラフ $G$ は、ノード（頂点）の集合 $V$ とエッジ（辺）の集合 $E$ の組として定義される。
+グラフ $G$ は、ノード（頂点）の集合 $V$ とエッジ（辺）の集合 $E$ の組として定義されます。
 
 $$G = (V, E)$$
 
-ここで $V = \{v_1, v_2, \ldots, v_n\}$ はネットワークに含まれるノード（例: 学習者）の集合であり、$E \subseteq V \times V$ はノード間の関係（例: 協働経験の有無）の集合である。
+ここで $V = \{v_1, v_2, \ldots, v_n\}$ はネットワークに含まれるノード（例: 学習者）の集合であり、$E \subseteq V \times V$ はノード間の関係（例: 協働経験の有無）の集合です。
 
-グラフの構造は**隣接行列**（adjacency matrix）$\mathbf{A}$ によって表現できる。$n \times n$ の行列 $\mathbf{A}$ の各要素は次のように定義される。
+グラフの構造は**隣接行列**（adjacency matrix）$\mathbf{A}$ によって表現できます。$n \times n$ の行列 $\mathbf{A}$ の各要素は次のように定義されます。
 
 $$A_{ij} = \begin{cases} 1 & \text{if } (v_i, v_j) \in E \\ 0 & \text{otherwise} \end{cases}$$
 
-**無向グラフ**（undirected graph）では $A_{ij} = A_{ji}$（対称行列）であり、**有向グラフ**（directed graph）では非対称となりうる。英語教育研究では、「協働作業を行った」という関係は無向（双方向的）であるのに対し、「相談をした」という関係は有向（一方向的）である場合が多い。
+**無向グラフ**（undirected graph）では $A_{ij} = A_{ji}$（対称行列）で、**有向グラフ**（directed graph）では非対称となりえます。英語教育研究では、「協働作業を行った」という関係は無向（双方向的）です。それに対し、「相談をした」という関係は有向（一方向的）になる場合が多いです。
 
-**重み付きグラフ**（weighted graph）では、隣接行列の要素がエッジの重み $w_{ij}$（例: 協働回数）を取る。
+**重み付きグラフ**（weighted graph）では、隣接行列の要素がエッジの重み $w_{ij}$（例: 協働回数）を取ります。
 
 $$W_{ij} = \begin{cases} w_{ij} & \text{if } (v_i, v_j) \in E \\ 0 & \text{otherwise} \end{cases}$$
 
@@ -197,45 +266,45 @@ $$W_{ij} = \begin{cases} w_{ij} & \text{if } (v_i, v_j) \in E \\ 0 & \text{other
 
 #### 次数と強度
 
-**次数**（degree）は、あるノードが持つエッジの数である。
+**次数**（degree）は、あるノードが持つエッジの数です。
 
 $$k_i = \sum_{j=1}^{n} A_{ij}$$
 
-重み付きグラフでは、**強度**（strength）がエッジの重みの合計として定義される。
+重み付きグラフでは、**強度**（strength）がエッジの重みの合計として定義されます。
 
 $$s_i = \sum_{j=1}^{n} W_{ij}$$
 
-次数は「何人と関わったか」を、強度は「どの程度の量の関わりがあったか」を表す。留学研究において、ネットワークの次数（接触人数）よりも強度（接触頻度）の方がL2習熟度の伸びをよく予測するという知見がある[@isbell2024]。
+次数は「何人と関わったか」を、強度は「どの程度の量の関わりがあったか」を表します。留学研究において、ネットワークの次数（接触人数）よりも強度（接触頻度）の方がL2習熟度の伸びをよく予測するという知見があります[@isbell2024]。
 
 #### 経路と測地距離
 
-ノード $v_i$ から $v_j$ への**経路**（path）は、エッジを辿ってたどり着くまでの一連のノード列である。最短経路の長さを**測地距離**（geodesic distance）$d(v_i, v_j)$ と呼ぶ。測地距離が短いほど、情報や資源が素早く伝達されうることを意味する。
+ノード $v_i$ から $v_j$ への**経路**（path）は、エッジを辿ってたどり着くまでの一連のノード列です。最短経路の長さを**測地距離**（geodesic distance）$d(v_i, v_j)$ と呼びます。測地距離が短いほど、情報や資源が素早く伝達されうることを意味します。
 
 #### 密度
 
-**密度**（density）は、理論上可能なエッジの総数に対する実際のエッジ数の比率であり、ネットワーク全体の「密な」度合いを示す。
+**密度**（density）は、理論上可能なエッジの総数に対する実際のエッジ数の比率であり、ネットワーク全体の「密な」度合いを示します。
 
 $$D = \frac{2|E|}{|V|(|V| - 1)} \quad \text{（無向グラフの場合）}$$
 
-密度 $D = 1$ はすべてのノードが互いに接続された完全グラフ、$D = 0$ はエッジが一つもない状態である。教室ネットワークでは、密度は「クラス全体の交流の活発さ」と解釈できる。
+密度 $D = 1$ はすべてのノードが互いに接続された完全グラフ、$D = 0$ はエッジが一つもない状態です。`igraph::edge_density()` の公式ヘルプでは、多重辺を持つグラフでは密度の概念が定義しにくいと説明されています。したがって、観察ログやLMSログから同じペアの複数行が出る場合は、同一ペアを集約し、自己ループの扱いを決めてから密度を計算します。教室ネットワークでは、密度は同じ境界規則・同じ観測期間・同じエッジ定義のもとで「観測された関係の広がり」と解釈します。
 
 #### 推移性（クラスタリング係数）
 
-**推移性**（transitivity）または**クラスタリング係数**は、「友人の友人もまた友人である」という三者関係（triad closure）の傾向を測定する。ノード $v_i$ の局所クラスタリング係数は次のように定義される。
+**推移性**（transitivity）または**クラスタリング係数**は、「友人の友人もまた友人です」という三者関係（triad closure）の傾向を測定します。ノード $v_i$ の局所クラスタリング係数は次のように定義されます。
 
 $$C_i = \frac{2 t_i}{k_i(k_i - 1)}$$
 
-ここで $t_i$ はノード $v_i$ の隣接ノード間に実際に存在するエッジの数である。推移性が高いネットワークでは、小グループ（クリーク）が形成されやすい傾向にある。
+ここで $t_i$ はノード $v_i$ の隣接ノード間に実際に存在するエッジの数です。$k_i < 2$ のノードでは局所クラスタリング係数は定義しにくいため、`igraph::transitivity()` では `isolates` 引数で扱いを指定します。本章の後半で報告する `type = "global"` は、ノード別の局所値ではなく、グラフ全体の三角形と connected triples の比です。推移性が高いネットワークでは、小グループ（クリーク）が形成されやすい傾向にあります。
 
 ### SLAにおけるネットワーク分析の意義
 
-@kennedyterry2024 は、ネットワーク分析がSLA研究に提供する独自の視座を3つに整理している。
+@kennedyterry2024 は、ネットワーク分析がSLA研究に提供する独自の視座を3つに整理しています。
 
-1. **社会関係資本**（social capital）: 学習者がネットワーク内の位置によってアクセスできる資源。中心的な位置にある学習者は、より多くの言語的インプットや修正フィードバックを得やすい。
-2. **仲介性**（brokerage）: 異なるグループ間を橋渡しする役割。留学先で異なるL1背景を持つ学習者同士をつなぐブローカーは、L2使用の機会を拡大しうる[@paradowski2024]。
-3. **同類選好**（homophily）: 類似した属性（L1、熟達度、クラスなど）を持つ個体同士が結びつきやすい傾向。同類選好が強すぎると、L2使用の機会が制限される可能性がある。
+1. **社会関係資本**（social capital）: 学習者がネットワーク内の位置によってアクセスできる資源です。中心的な位置にある学習者は、より多くの言語的インプットや修正フィードバックを得やすくなります。
+2. **仲介性**（brokerage）: 異なるグループ間を橋渡しする役割です。留学先で異なるL1背景を持つ学習者同士をつなぐブローカーは、L2使用の機会を拡大しうると考えられます[@burt1992; @paradowski2024]。
+3. **同類選好**（homophily）: 類似した属性（L1、熟達度、クラスなど）を持つ個体同士が結びつきやすい傾向です。同類選好が強すぎると、L2使用の機会が制限される可能性があります[@mcpherson2001]。
 
-これらの概念は、本章の後半で具体的な分析手法（中心性、コミュニティ検出、ERGM）と結びつく。
+これらの概念は、本章の後半で具体的な分析手法（中心性、コミュニティ検出、ERGM）と結びつきます。
 
 **用語ミニ辞典**:
 
@@ -253,7 +322,7 @@ $$C_i = \frac{2 t_i}{k_i(k_i - 1)}$$
 
 #### トイグラフによる具体例
 
-以下の5ノードの小さなグラフで、隣接行列と基本指標の関係を確認する。
+以下の5ノードの小さなグラフで、隣接行列と基本指標の関係を確認します。
 
 ```{r}
 #| eval: true
@@ -277,7 +346,7 @@ igraph::degree(g_toy)
 
 このミニネットワークの密度は `r round(igraph::edge_density(g_toy), 3)`、推移性は `r round(igraph::transitivity(g_toy, type = "global"), 3)` です。
 
-この例では、L2 は次数3（L1, L3, L4 と接続）で最も多くの関係を持ち、L4 と L5 は次数1で周辺に位置している。
+この例では、L2 は次数3（L1, L3, L4 と接続）で最も多くの関係を持ち、L4 と L5 は次数1で周辺に位置しています。
 
 ```{r}
 #| eval: true
@@ -301,11 +370,11 @@ ggraph(as_tbl_graph(g_toy), layout = "stress") +
   theme(plot.title = element_text(size = 12, hjust = 0.5))
 ```
 
-ノードの大きさが次数に比例している。L2 が最大のノード（$k = 3$）であり、ネットワークの中心に位置していることが視覚的にも確認できる。L4 と L5 は周辺部（$k = 1$）に位置している。
+ノードの大きさが次数に比例しています。L2 が最大のノード（$k = 3$）であり、ネットワークの中心に位置していることが視覚的にも確認できます。L4 と L5 は周辺部（$k = 1$）に位置しています。
 
 ## 回帰分析との対応で理解する
 
-回帰分析との対応関係を明確にしておくと、ネットワーク分析の発想をより速く理解できる[@saqr2024]。
+回帰分析との対応関係を明確にしておくと、ネットワーク分析の発想をより速く理解できます[@saqr2024]。
 
 | 回帰分析の発想 | ネットワーク分析での対応 |
 |---|---|
@@ -314,7 +383,7 @@ ggraph(as_tbl_graph(g_toy), layout = "stress") +
 | 目的変数は個体のアウトカム | 目的変数はリンク有無・重み、またはネットワーク指標 |
 | 独立性の仮定が重要 | 相互依存が本質（独立性が崩れやすい） |
 
-この違いにより、ネットワーク分析では次の設計判断が実装前に必要となる。
+この違いにより、ネットワーク分析では次の設計判断が実装前に必要となります。
 
 - **境界（boundary）**: どこまでをネットワークに含めるか
 - **関係定義（tie definition）**: 何をエッジとみなすか
@@ -323,7 +392,7 @@ ggraph(as_tbl_graph(g_toy), layout = "stress") +
 
 ## 研究プロンプトから分析ステップへ
 
-ネットワーク分析は、**どの研究プロンプトに答えたいか**を先に固定すると理解しやすい。以下の表は、本章の主要な問いと、それに対応する最短ルートをまとめたものである。
+ネットワーク分析は、**どの研究プロンプトに答えたいか**を先に固定すると理解しやすいです。以下の表は、本章の主要な問いと、それに対応する分析ステップをまとめたものです。
 
 | 研究プロンプト | 最初に確認する図表 | 次に取るステップ | 推論が必要な場合 |
 |---|---|---|---|
@@ -335,14 +404,14 @@ ggraph(as_tbl_graph(g_toy), layout = "stress") +
 | 評定者の厳しさや友人バイアスに関係構造が絡むか | agreement/disagreement network、halo network、互恵性表 | 「誰が誰を評定したか」と「どの基準が一緒に動くか」を切り分ける | ERGM + MFRM |
 | 結論はしきい値や欠測に頑健か | しきい値感度図、欠測ノード比較表 | 主要順位や密度が保たれるかを確認する | 補足資料で感度分析を報告 |
 
-分析の基本ステップは、次の順序で固定すると安定する。
+分析の基本ステップは、次の順序で固定すると安定します。
 
-1. **境界とエッジ定義を決める**: 誰をノードに含め、何をエッジとみなすかを先に固定する。
-2. **図で全体像をつかむ**: ネットワーク図、次数分布、隣接行列で「密度」「偏り」「孤立」を見る。
-3. **要約指標で構造を圧縮する**: 密度、推移性、中心性、コミュニティで構造を言語化する。
-4. **属性との対応を確認する**: クラス、熟達度、役割などの外部変数と照合する。
-5. **必要なら推論へ進む**: 形成メカニズムなら ERGM、行列間関連なら QAP / MRQAP を使う。
-6. **感度分析で結論を守る**: しきい値や欠測で結論が崩れないかを最後に確認する。
+1. **境界とエッジ定義を決める**: 誰をノードに含め、何をエッジとみなすかを先に固定します。
+2. **図で全体像をつかむ**: ネットワーク図、次数分布、隣接行列で「密度」「偏り」「孤立」を見ます。
+3. **要約指標で構造を圧縮する**: 密度、推移性、中心性、コミュニティで構造を言語化します。
+4. **属性との対応を確認する**: クラス、熟達度、役割などの外部変数と照合します。
+5. **必要なら推論へ進む**: 形成メカニズムなら ERGM、行列間関連なら QAP / MRQAP を使います。
+6. **感度分析で結論を守る**: しきい値や欠測で結論が崩れないかを最後に確認します。
 
 ## 研究設計チェックリスト（実装前）
 
@@ -366,14 +435,761 @@ ggraph(as_tbl_graph(g_toy), layout = "stress") +
 - 中心性の高低を、因果的な「能力の高さ」と直結させる
 - しきい値の変更で結論が変わる可能性を報告しない
 
+## 測定妥当性と倫理の確認
+
+ネットワーク分析で扱うエッジは、関係そのものではなく、**測定手続きが切り取った関係**です。アンケート指名、観察ログ、LMSログ、ピア評価のいずれも、記録の仕方によって見える構造が変わります。したがって、モデルを選ぶ前に、「このエッジは何を測っていて、何を測っていないか」を書いておく必要があります。
+
+```{r}
+#| eval: true
+#| label: measurement-ethics-table
+
+measurement_ethics <- tibble::tribble(
+  ~Data_source, ~What_the_edge_captures, ~Likely_bias, ~Design_response,
+  "指名式アンケート",
+  "想起された相談・友人・協働関係",
+  "想起バイアス、指名上限、社会的望ましさ",
+  "指名上限、質問文、観測窓、未回答処理を報告する",
+  "授業観察ログ",
+  "観察者が記録できた相互作用",
+  "観察者効果、短時間観察、非言語的やり取りの欠落",
+  "観察単位、観察時間、記録者間一致、観察外活動を明記する",
+  "LMSログ",
+  "システム上に残った返信・閲覧・共同編集",
+  "オフライン交流の欠落、閲覧と理解の混同、教員介入の影響",
+  "イベント種類を分け、返信・閲覧・いいねを同じエッジにしない",
+  "ピア評価",
+  "誰が誰を評価したか、どの評点を与えたか",
+  "友人関係、互恵性、評定者厳しさ、割当設計",
+  "評価割当、匿名化、外部成績、MFRMとの照合を記録する",
+  "留学接触日誌",
+  "接触相手・言語使用・接触時間の自己記録",
+  "記録疲れ、短い接触の欠落、相手属性の推測",
+  "日誌頻度、相手分類、言語使用割合、欠測日を報告する"
+)
+
+measurement_ethics |>
+  knitr::kable(caption = "Network measurement validity and ethics checklist")
+```
+
+倫理面では、ネットワーク図が個人の関係を可視化する点に注意します。論文や発表では、実名や容易に推測できるIDを避け、必要に応じてノードラベルを伏せます。小規模クラスでは、属性の組み合わせだけで個人が特定されることがあるため、図の解像度、属性表示、補足資料の公開範囲を事前に決めておきます。
+
+### 先行研究に基づく設計判断
+
+ネットワーク分析では、分析コードよりも前に、どの関係をどの方法で測定するかが結果を大きく左右します。したがって、実務的な助言は「経験則」として置くのではなく、ネットワーク測定・境界設定・二部ネットワーク・縦断ネットワーク・ネットワーク心理計量の先行研究に接続して説明する必要があります。
+
+```{r}
+#| eval: true
+#| label: prior-research-design-decision-table
+
+prior_research_design_decision <- tibble::tribble(
+  ~Design_issue, ~Practical_decision, ~Main_prior_research, ~Implication_for_this_chapter,
+  "ネットワーク測定",
+  "完全ネットワーク、エゴネットワーク、観察、日誌、電子ログを区別する",
+  "Marsden (1990)",
+  "質問紙だけでなく、観察ログ・LMSログ・接触日誌の測定限界を明記する",
+  "境界設定",
+  "誰をネットワークに含めるかを理論的に決める",
+  "Laumann, Marsden, & Prensky (1983)",
+  "クラス、留学先、LMS、評価設計ごとに boundary rule をコードブック化する",
+  "指名式アンケート",
+  "roster方式、free recall方式、指名上限の有無を事前に決める",
+  "Marsden (1990); Holland & Leinhardt (1973)",
+  "指名上限は欠測エッジを生むため、中心性や同類選好の解釈で報告する",
+  "二部ネットワーク",
+  "学習者 × 活動、評定者 × 受験者を直接扱うか、射影するかを分ける",
+  "Borgatti & Everett (1997); Everett (2016)",
+  "射影ネットワークでは共通活動数がエッジ重みになり、エッジが人工的に増えやすい",
+  "縦断ネットワーク",
+  "時点別の記述比較と動的モデルを分ける",
+  "Snijders, van de Bunt, & Steglich (2010)",
+  "本章では時点別記述を入口とし、SAOM/TERGM/REM は発展手法として位置づける",
+  "重み付きネットワーク",
+  "リンク有無とリンク量を別の目的変数として扱う",
+  "Krivitsky (2012)",
+  "本章の ERGM は binary ERGM であり、共同回数を目的にする場合は valued ERGM を検討する",
+  "項目ネットワーク",
+  "項目をノード、条件付き関連や類似性をエッジとして扱う",
+  "Golino & Epskamp (2017)",
+  "IRT/MFRMの代替ではなく、項目群の構造を探索する補助分析として使う"
+)
+
+prior_research_design_decision |>
+  knitr::kable(caption = "Prior research supporting key design decisions in network analysis")
+```
+
+この表の役割は、すべての発展手法を本章で実装することではありません。むしろ、読者が自分の研究に進むときに、「この判断はどの先行研究に支えられているか」「どこから先は発展手法として別に学ぶべきか」を見失わないようにするための地図です。
+
+ここで重要なのは、一般SNA文献とSLA・英語教育文献の役割を混同しないことです。Marsden、Laumann ら、Borgatti & Everett、Snijders ら、Golino & Epskamp は、主に**測定・境界・モデル化・項目構造探索の方法論的根拠**を与えます。一方、Kennedy Terry and Bayley、Isbell、Dewey、Strawbridge、Paradowski ら、Lamprianou、Tanaka、Chen は、これらの方法が**SLA・英語教育の研究質問にどう接続するか**を示す文献です[@kennedyterry2024; @isbell2024; @dewey2013; @strawbridge2023; @paradowski2024; @lamprianou2025; @tanaka2025; @chen2023]。
+
+```{r}
+#| eval: true
+#| label: method-sla-bridge-table
+
+method_sla_bridge <- tibble::tribble(
+  ~Method_area, ~General_method_basis, ~SLA_or_English_education_connection, ~Connection_strength, ~Use_in_this_chapter,
+  "ネットワーク測定",
+  "Marsden; Holland & Leinhardt",
+  "教室内の相談・協働・友人関係を質問紙で測る。言語使用頻度や接触時間を name interpreter として追加する",
+  "直接接続",
+  "指名式アンケート、観察ログ、接触日誌の設計",
+  "境界設定",
+  "Laumann, Marsden, & Prensky",
+  "クラス履修者、留学先の接触相手、LMS参加者、評定者・受験者の範囲を決める",
+  "直接接続",
+  "boundary_rule と missing_rule のコードブック化",
+  "中心性・橋渡し",
+  "Freeman; Opsahl et al.; Burt; Granovetter",
+  "言語学習者グループの中心性、留学中の仲介的位置、弱い紐帯を読む",
+  "直接接続",
+  "strength × betweenness の役割マッピング",
+  "二部ネットワーク",
+  "Borgatti & Everett; Everett",
+  "学習者 × 活動、評定者 × 受験者、学習者 × LMS投稿を扱う",
+  "近接接続",
+  "射影前の注意表と評価研究への橋渡し",
+  "縦断ネットワーク",
+  "Snijders et al.",
+  "留学・介入・学期進行に伴う相互作用ネットワークの変化を追う",
+  "直接接続",
+  "時点別記述比較と動的モデルの切り分け",
+  "valued network",
+  "Krivitsky; Opsahl et al.",
+  "接触頻度、会話時間、返信語数、共同作業回数をリンク量として扱う",
+  "直接接続",
+  "binary ERGM と valued ERGM の切り分け",
+  "項目ネットワーク",
+  "Golino & Epskamp",
+  "語彙・文法・読解項目の局所依存や内容まとまりを探索する",
+  "近接接続",
+  "IRT/MFRMの補助としての項目ネットワーク",
+  "評定者ネットワーク",
+  "SNA / ERGM / MFRM",
+  "評定者厳しさ、halo、friendship bias、AI/人間評定者の一致を点検する",
+  "直接接続",
+  "MFRM とネットワーク分析の補完関係"
+)
+
+method_sla_bridge |>
+  knitr::kable(caption = "How general network methods connect to SLA and English education research")
+```
+
+したがって、本章で一般方法論文献を引用している箇所は、SLAから離れているというより、SLAデータを扱うための測定・推論の足場を補っていると読みます。研究論文として書く場合は、方法の妥当性には一般SNA・心理計量文献を、研究質問と解釈にはSLA・英語教育文献を併用するのが最も説明しやすいです。
+
+とくに境界設定は、単なるサンプルサイズの問題ではありません。Laumann, Marsden, and Prensky [-@laumann1983boundary] が論じたように、誰をネットワーク内に含め、誰を境界外に置くかは、中心性、密度、コミュニティ、同類選好のすべてに影響します。したがって、クラス履修者だけを含めるのか、TA、教員、留学先の現地学生、オンライン上の外部協力者まで含めるのかは、分析前に理論的に決めます。
+
+### 指名式アンケート設計の具体化
+
+教室ネットワークでは、質問紙で「誰と協働したか」「誰に相談したか」「誰を友人とみなすか」を尋ねることが多いです。Marsden [-@marsden1990] が整理するように、ネットワークデータは完全ネットワーク、エゴネットワーク、観察、日誌、電子ログなど複数の方法で得られ、それぞれ測定誤差と解釈範囲が異なります。指名式アンケートでは、特に **name generator**（誰を挙げてもらうか）と **name interpreter**（挙げられた相手について何を追加で尋ねるか）を分けて設計します。
+
+```{r}
+#| eval: true
+#| label: nomination-survey-design-table
+
+nomination_survey_design <- tibble::tribble(
+  ~Survey_design, ~Question_example, ~Strength, ~Risk, ~Reporting_point,
+  "Roster方式",
+  "下のクラス名簿から、この4週間に英語学習について相談した相手を選んでください",
+  "対象集団内の関係を取りこぼしにくい",
+  "名簿順序効果、回答負担、境界外の相手を拾えない",
+  "名簿範囲、表示順、複数選択の可否を報告する",
+  "Free recall方式",
+  "この4週間に英語学習について相談した相手の名前またはIDを書いてください",
+  "境界外の相手も記録しやすい",
+  "想起漏れ、表記ゆれ、同姓同名処理が必要",
+  "同定規則、表記ゆれ処理、境界外ノードの扱いを報告する",
+  "指名上限あり",
+  "最大5名まで選んでください",
+  "回答時間を抑えやすい",
+  "次数が右側打ち切りになり、中心性や同類選好が歪む可能性がある",
+  "上限値、上限到達者数、未指名エッジの扱いを報告する",
+  "指名上限なし",
+  "該当する相手をすべて選んでください",
+  "ネットワークサイズの個人差を残しやすい",
+  "大規模クラスでは回答負担が大きい",
+  "回答時間、無回答、非常に多い指名の確認方法を報告する",
+  "Name interpreter",
+  "その相手とは何回相談しましたか。主にどの言語を使いましたか",
+  "関係の量・質・言語使用を分けて測れる",
+  "質問が多いと回答疲れが起きる",
+  "頻度、時間、言語、親密さなどの尺度を個別に報告する"
+)
+
+nomination_survey_design |>
+  knitr::kable(caption = "Design choices for nomination-based network surveys")
+```
+
+指名上限は、回答時間を抑えるためには有用ですが、Holland and Leinhardt [-@holland1973] が論じたように、測定誤差や欠測エッジはネットワーク構造の推定に影響します。特に「最大5名まで」のような固定上限を置くと、実際には多くの相手と関わっている学習者の out-degree が上限で打ち切られます。したがって、上限を置く場合は、上限に達した回答者の割合を報告し、中心性順位や同類選好の解釈を慎重にします。
+
+質問文は、関係種類ごとに分けます。たとえば「仲が良い人」と「英語課題で相談する人」と「同じグループで作業した人」は重なることもありますが、同じ関係ではありません。複数の関係を測る場合は、それぞれ別の name generator として設計し、後で multiplex network または QAP によって重なりを確認します。
+
+## ネットワーク定義の決定ルール
+
+ネットワーク分析では、モデルや中心性指標より先に、**何をノードとし、何をエッジとするか**を固定する必要があります。同じ教室データでも、学習者をノードにするのか、活動をノードにするのか、発話をノードにするのかで、分析の意味は大きく変わります。中心性やコミュニティ検出は、定義済みのネットワークに対して計算されるため、ネットワーク定義が曖昧なまま高度な分析へ進むと、結果の解釈が不安定になります。
+
+```{r}
+#| eval: true
+#| label: network-definition-decision-table
+
+network_definition_decision <- tibble::tribble(
+  ~Research_question, ~Node_definition, ~Edge_definition, ~Direction, ~Weight, ~Boundary, ~Main_caution,
+  "協働学習で誰が中心的に活動しているか",
+  "学習者",
+  "同じ課題で共同作業した",
+  "通常は無向",
+  "共同作業回数、時間、または強度",
+  "対象授業の履修者",
+  "同じグループにいたことと実際に協働したことを混同しない",
+  "誰が誰に助言を求めているか",
+  "学習者",
+  "助言・相談をした",
+  "有向",
+  "相談回数、頻度尺度、または有無",
+  "相談可能なクラス・プログラム範囲",
+  "相談する側と相談される側の役割を分けて読む",
+  "留学中の接触が L2 使用とどう関係するか",
+  "学習者または接触相手",
+  "接触、会話、共同活動",
+  "研究質問による",
+  "接触頻度、接触時間、L2 使用割合",
+  "留学先で記録対象とする関係範囲",
+  "観測されない接触相手を境界外に置くとネットワークサイズが変わる",
+  "ピア評価で誰が誰を評価しているか",
+  "評定者・被評定者",
+  "評価を行った、または評価点を与えた",
+  "有向または二部",
+  "評価回数、評点、差分、厳しさ",
+  "評価タスクに参加した学習者",
+  "評価関係と友人関係を同じエッジにしない",
+  "単語間の類似性が処理を予測するか",
+  "単語",
+  "音韻・正書法・意味類似",
+  "通常は無向",
+  "類似度、共起頻度、距離の逆数",
+  "対象語彙リスト",
+  "類似性の定義ごとに別ネットワークとして扱う",
+  "学習者と活動の参加構造を見たい",
+  "学習者と活動の二部ノード",
+  "学習者が活動に参加した",
+  "通常は二部",
+  "参加回数、滞在時間、提出数",
+  "観測対象活動と参加者",
+  "学習者同士へ射影するとエッジが人工的に増える"
+)
+
+network_definition_decision |>
+  knitr::kable(caption = "Network definition decisions before analysis")
+```
+
+定義を決めるときは、`node_id`, `node_type`, `edge_type`, `directed`, `weighted`, `time_window`, `boundary_rule`, `missing_rule` をコードブックに書きます。たとえば、「第1--4週の間に同じ課題で1回以上共同作業した」をエッジにするのと、「学期全体で共同作業時間が30分以上」をエッジにするのでは、密度、中心性、コミュニティが変わります。どちらが正しいかは研究質問によるため、後から見栄えのよい図になる定義を選びません。
+
+### エッジ定義と重みの選択
+
+エッジには少なくとも 4 つの選択があります。第1に、関係を有無だけで表すか、回数・時間・強度を重みとして残すか。第2に、相手への指名や相談のように方向を持たせるか、共同作業のように無向にするか。第3に、複数の関係種類を1つにまとめるか、協働・相談・友人関係を別ネットワークに分けるか。第4に、観測期間をどこで切るかです。
+
+```{r}
+#| eval: true
+#| label: edge-definition-decision-table
+
+edge_definition_decision <- tibble::tribble(
+  ~Design_choice, ~Use_when, ~Example, ~Reporting_point,
+  "Binary edge",
+  "関係の有無自体が研究質問です",
+  "一度でも相談した = 1",
+  "最小条件と観測期間を明記する",
+  "Weighted edge",
+  "関係の量や強度が重要です",
+  "共同作業回数、会話時間、返信語数",
+  "重みの単位、上限、外れ値処理を明記する",
+  "Directed edge",
+  "関係の送り手と受け手を区別したい場合です",
+  "A が B に助言を求めた",
+  "in-degree / out-degree を別々に報告する",
+  "Undirected edge",
+  "関係が相互的、または方向を記録していない",
+  "同じペアで共同作業した",
+  "有向データを無向化した場合は規則を明記する",
+  "Multiplex networks",
+  "複数の関係種類を比較したい場合です",
+  "協働、相談、友人関係",
+  "関係種類ごとに別分析し、必要なら QAP で重なりを見る",
+  "Time-windowed edge",
+  "関係が時間で変わると考える",
+  "第1--4週、第5--8週、学期全体",
+  "時点間で同じ境界・同じエッジ定義を保つ"
+)
+
+edge_definition_decision |>
+  knitr::kable(caption = "Choosing edge direction, weight, relation type, and time window")
+```
+
+重み付きネットワークでは、重みが「強いつながり」を意味するとは限りません。たとえば LMS の返信語数は交流量を表しますが、学習支援の質や親密さを直接表すわけではありません。重みを標準化する場合も、学習者ごとのログイン頻度や活動機会の違いを調整しているのか、単に大きな値を小さく見せているのかを区別します。
+
+## エッジリスト作成の実務
+
+R でネットワークを構築する基本形は、ノード表とエッジ表です。ノード表は「誰がいるか」、エッジ表は「誰から誰へ、どのような関係があるか」を表します。少なくとも `from`, `to`, `weight`, `edge_type`, `time_window` を明示しておくと、その後の有向/無向、重み有/無、時点別分析に移りやすいです。
+
+```{r}
+#| eval: true
+#| label: edge-list-schema
+
+edge_list_schema <- tibble::tribble(
+  ~Column, ~Meaning, ~Example,
+  "from",
+  "エッジの始点。無向ネットワークでも便宜的に入れる",
+  "S01",
+  "to",
+  "エッジの終点",
+  "S07",
+  "weight",
+  "関係の重み。二値なら 1",
+  "3",
+  "edge_type",
+  "関係種類",
+  "collaboration / advice / reply / rating",
+  "directed",
+  "方向を持つ関係か",
+  "TRUE",
+  "time_window",
+  "観測期間",
+  "week_01_04",
+  "source",
+  "元データの種類",
+  "survey / observation / LMS / peer_rating"
+)
+
+edge_list_schema |>
+  knitr::kable(caption = "Minimal edge-list schema for classroom network data")
+```
+
+### アンケート指名データから作る
+
+相談・助言・友人関係は、アンケートで複数名を指名してもらう形式で得られることが多いです。指名データは有向ネットワークとして扱うのが自然です。次の例では、各学習者が「英語学習で相談する相手」を複数名指名したとします。
+
+```{r}
+#| eval: true
+#| label: edge-from-nomination-survey
+
+nomination_raw <- tibble::tibble(
+  ego = c("S01", "S02", "S03", "S04", "S05"),
+  nominated = c("S02; S03", "S03", "S01; S05", "S02; S05", "S03"),
+  time_window = "week_01_04"
+)
+
+nomination_edges <- nomination_raw |>
+  tidyr::separate_rows(nominated, sep = ";") |>
+  dplyr::mutate(nominated = trimws(nominated)) |>
+  dplyr::filter(nominated != "", ego != nominated) |>
+  dplyr::count(
+    from = ego,
+    to = nominated,
+    time_window,
+    name = "weight"
+  ) |>
+  dplyr::mutate(
+    edge_type = "advice_nomination",
+    directed = TRUE,
+    source = "survey"
+  ) |>
+  dplyr::select(from, to, weight, edge_type, directed, time_window, source)
+
+nomination_edges |>
+  knitr::kable(caption = "Directed edge list from nomination survey data")
+```
+
+この例では `S01 -> S02` は「S01 が S02 を相談相手として指名した」ことを意味します。矢印の向きを逆にすると、in-degree と out-degree の解釈が入れ替わります。報告時には、矢印が「相談する方向」なのか「相談される方向」なのかを明記します。
+
+### 観察ログから作る
+
+授業観察やグループワーク記録では、誰と誰がどれだけ活動したかをイベント単位で記録できます。この場合は、同じペアのイベントを集約して重み付き無向ネットワークにします。
+
+```{r}
+#| eval: true
+#| label: edge-from-observation-log
+
+interaction_log <- tibble::tribble(
+  ~session_id, ~week, ~student_a, ~student_b, ~minutes,
+  "G1", 1, "S01", "S02", 12,
+  "G1", 1, "S01", "S03", 8,
+  "G2", 1, "S02", "S03", 15,
+  "G3", 2, "S01", "S02", 10,
+  "G4", 2, "S04", "S05", 20,
+  "G5", 3, "S03", "S05", 7
+)
+
+observation_edges <- interaction_log |>
+  dplyr::mutate(
+    from = pmin(student_a, student_b),
+    to = pmax(student_a, student_b)
+  ) |>
+  dplyr::group_by(from, to) |>
+  dplyr::summarise(
+    weight = sum(minutes),
+    n_events = dplyr::n(),
+    time_window = paste0("week_", min(week), "_", max(week)),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    edge_type = "observed_collaboration_minutes",
+    directed = FALSE,
+    source = "observation"
+  ) |>
+  dplyr::select(from, to, weight, n_events, edge_type, directed, time_window, source)
+
+observation_edges |>
+  knitr::kable(caption = "Weighted undirected edge list from classroom observation logs")
+```
+
+`pmin()` と `pmax()` を使ってペアの順序をそろえると、`S01--S02` と `S02--S01` が別エッジとして二重計上されることを防げます。無向ネットワークに変換する場合は、この処理を必ず確認します。
+
+### LMS・掲示板ログから作る
+
+オンライン授業では、返信、メンション、コメント、共同編集などのログからネットワークを作れます。返信ログは通常、有向ネットワークであり、`from = 返信者`, `to = 返信先` とします。
+
+```{r}
+#| eval: true
+#| label: edge-from-lms-log
+
+lms_log <- tibble::tribble(
+  ~post_id, ~author, ~reply_to_author, ~n_words, ~week,
+  "P01", "S01", NA, 42, 1,
+  "P02", "S02", "S01", 31, 1,
+  "P03", "S03", "S01", 24, 1,
+  "P04", "S01", "S02", 18, 2,
+  "P05", "S04", "S03", 36, 2,
+  "P06", "S02", "S04", 28, 3
+)
+
+lms_edges <- lms_log |>
+  dplyr::filter(!is.na(reply_to_author), author != reply_to_author) |>
+  dplyr::group_by(from = author, to = reply_to_author) |>
+  dplyr::summarise(
+    weight = dplyr::n(),
+    total_words = sum(n_words),
+    time_window = paste0("week_", min(week), "_", max(week)),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    edge_type = "reply",
+    directed = TRUE,
+    source = "LMS"
+  )
+
+lms_edges |>
+  knitr::kable(caption = "Directed edge list from LMS reply logs")
+```
+
+返信回数を重みにするか、返信語数を重みにするかで解釈は変わります。返信回数は接触頻度、返信語数は発話量に近いです。両者を同じ「強い関係」としてまとめず、研究質問に合わせて選びます。
+
+LMSログでは、同じ「オンライン上の行動」でも、イベントの意味がかなり異なります。返信、メンション、閲覧、いいね、共同編集を一つの交流指標へ足し上げると、解釈が曖昧になります。少なくとも最初の分析では、イベント種類ごとに別のネットワークとして作り、重なりを見たい場合に QAP などで比較します。
+
+```{r}
+#| eval: true
+#| label: lms-event-decision-table
+
+lms_event_decision <- tibble::tribble(
+  ~Event_type, ~Natural_edge, ~Typical_weight, ~Interpretation, ~Caution,
+  "reply",
+  "返信者 -> 返信先",
+  "返信回数、返信語数",
+  "明示的な応答関係",
+  "短い返信と長い支援を同じ重みにしない",
+  "mention",
+  "言及者 -> 言及先",
+  "言及回数",
+  "相手を呼び出す、参照する関係",
+  "肯定的言及と批判的言及を区別できない場合がある",
+  "view",
+  "閲覧者 -> 投稿者",
+  "閲覧回数、閲覧時間",
+  "接触機会、情報取得の可能性",
+  "閲覧は理解や相互作用を直接意味しない",
+  "like / reaction",
+  "反応者 -> 投稿者",
+  "反応回数、反応種類",
+  "軽い承認、関心、社会的シグナル",
+  "プラットフォーム文化に依存しやすい",
+  "co-edit",
+  "共同編集者同士",
+  "共同編集回数、編集時間",
+  "共同作業の実績",
+  "同時編集と分担編集を区別できない場合がある",
+  "teacher reply",
+  "教員 -> 学習者、または学習者 -> 教員",
+  "返信回数、フィードバック量",
+  "支援や介入の流れ",
+  "学習者間ネットワークとは別層として扱う"
+)
+
+lms_event_decision |>
+  knitr::kable(caption = "LMS event types and edge definitions")
+```
+
+### ピア評価データから作る
+
+ピア評価では、評定者から被評定者への有向エッジを作ります。エッジの重みを評点にすることもできますが、評点そのものは能力や成果の指標であり、関係の強度とは異なります。ネットワーク分析では、評価した/された構造、厳しさ、相互評価、友人関係との重なりなどを分けて扱います。
+
+```{r}
+#| eval: true
+#| label: edge-from-peer-rating
+
+peer_rating_raw <- tibble::tribble(
+  ~rater, ~ratee, ~score, ~task,
+  "S01", "S02", 4.0, "writing_1",
+  "S01", "S03", 3.5, "writing_1",
+  "S02", "S01", 4.5, "writing_1",
+  "S03", "S01", 3.0, "writing_1",
+  "S04", "S05", 4.0, "writing_1",
+  "S05", "S04", 3.5, "writing_1"
+)
+
+peer_rating_edges <- peer_rating_raw |>
+  dplyr::filter(rater != ratee) |>
+  dplyr::transmute(
+    from = rater,
+    to = ratee,
+    weight = score,
+    edge_type = "peer_rating_score",
+    directed = TRUE,
+    time_window = task,
+    source = "peer_rating"
+  )
+
+peer_rating_edges |>
+  knitr::kable(caption = "Directed edge list from peer-rating data")
+```
+
+ピア評価のネットワークを読むときは、「高い評点を受けた人」と「多くの人から評価された人」を分けます。評価設計上、全員が同じ人数を評価するなら out-degree は設計で固定されるため、中心性として解釈しにくいです。反対に、誰を評価するかを自由に選べる設計なら、評価先の偏り自体が研究対象になります。
+
+### 二部ネットワークを射影する前に確認する
+
+学習者 × 活動、評定者 × 受験者、学習者 × LMS投稿のように、2種類のノード集合があるデータは**二部ネットワーク**（two-mode / bipartite network）です。Borgatti and Everett [-@borgatti1997twomode] は、二部データでは一部ネットワークと同じ指標をそのまま使えない場面があることを整理しています。Everett [-@everett2016twomode] も、二部ネットワークを直接扱う方法と、片方のモードへ射影する方法を区別しています。
+
+```{r}
+#| eval: true
+#| label: bipartite-projection-decision-table
+
+bipartite_projection_decision <- tibble::tribble(
+  ~Original_data, ~Two_mode_edge, ~Projection, ~Projected_edge_meaning, ~Main_caution,
+  "学習者 × 活動",
+  "学習者が活動に参加した",
+  "学習者ネットワーク",
+  "同じ活動に参加した回数",
+  "大規模活動に参加しただけで多くのエッジが生まれる",
+  "評定者 × 受験者",
+  "評定者が受験者を評定した",
+  "評定者ネットワーク",
+  "同じ受験者を評定した回数、または評定の一致度",
+  "割当設計による共通性と評定傾向の類似を混同しない",
+  "学習者 × LMS投稿",
+  "学習者が投稿・返信・閲覧した",
+  "学習者ネットワークまたは投稿ネットワーク",
+  "同じ投稿に関与した、または同じ学習者に関与された",
+  "閲覧・返信・作成を同じ関与として足し上げない",
+  "単語 × 文脈",
+  "単語が文・教材・タスクに出現した",
+  "単語共起ネットワーク",
+  "同じ文脈に現れた回数",
+  "高頻度語が構造を支配しやすい"
+)
+
+bipartite_projection_decision |>
+  knitr::kable(caption = "Two-mode networks and projection decisions")
+```
+
+以下の例では、学習者が複数の活動に参加した二部ネットワークを作り、同じ活動に参加した学習者同士を結ぶ射影ネットワークへ変換します。左図は観測された「学習者 - 活動」の関係、右図はそこから作った「学習者 - 学習者」の関係です。右図のエッジは直接交流ではなく、共通活動の数を表します。
+
+```{r}
+#| eval: true
+#| label: bipartite-projection-visual
+#| fig-cap: "Two-mode Network and Learner Projection"
+#| fig-height: 5.8
+#| fig-width: 10
+
+two_mode_nodes <- tibble::tribble(
+  ~id, ~node_type, ~label,
+  "S01", "learner", "S01",
+  "S02", "learner", "S02",
+  "S03", "learner", "S03",
+  "S04", "learner", "S04",
+  "S05", "learner", "S05",
+  "S06", "learner", "S06",
+  "S07", "learner", "S07",
+  "S08", "learner", "S08",
+  "A1", "activity", "Discussion 1",
+  "A2", "activity", "Presentation",
+  "A3", "activity", "Peer Review",
+  "A4", "activity", "Project"
+)
+
+two_mode_edges <- tibble::tribble(
+  ~from, ~to,
+  "S01", "A1",
+  "S01", "A2",
+  "S02", "A1",
+  "S02", "A3",
+  "S03", "A1",
+  "S03", "A4",
+  "S04", "A2",
+  "S04", "A3",
+  "S05", "A2",
+  "S05", "A4",
+  "S06", "A3",
+  "S06", "A4",
+  "S07", "A1",
+  "S07", "A4",
+  "S08", "A2",
+  "S08", "A3"
+)
+
+two_mode_node_coords <- two_mode_nodes |>
+  dplyr::group_by(node_type) |>
+  dplyr::arrange(id, .by_group = TRUE) |>
+  dplyr::mutate(
+    x = dplyr::if_else(node_type == "learner", 0, 1),
+    y = seq(from = dplyr::n(), to = 1, length.out = dplyr::n())
+  ) |>
+  dplyr::ungroup()
+
+two_mode_edges_plot <- two_mode_edges |>
+  dplyr::left_join(
+    two_mode_node_coords |> dplyr::select(from = id, x_from = x, y_from = y),
+    by = "from"
+  ) |>
+  dplyr::left_join(
+    two_mode_node_coords |> dplyr::select(to = id, x_to = x, y_to = y),
+    by = "to"
+  )
+
+learner_projection_edges <- two_mode_edges |>
+  dplyr::rename(learner1 = from, activity = to) |>
+  dplyr::inner_join(
+    two_mode_edges |> dplyr::rename(learner2 = from, activity = to),
+    by = "activity",
+    relationship = "many-to-many"
+  ) |>
+  dplyr::filter(learner1 < learner2) |>
+  dplyr::count(learner1, learner2, name = "weight") |>
+  dplyr::rename(from = learner1, to = learner2)
+
+learner_vertices <- two_mode_nodes |>
+  dplyr::filter(node_type == "learner") |>
+  dplyr::transmute(name = id, label)
+
+g_learner_projection <- igraph::graph_from_data_frame(
+  learner_projection_edges,
+  directed = FALSE,
+  vertices = learner_vertices
+)
+
+p_two_mode <- ggplot() +
+  geom_segment(
+    data = two_mode_edges_plot,
+    aes(x = x_from, y = y_from, xend = x_to, yend = y_to),
+    color = "grey60",
+    linewidth = 0.5,
+    alpha = 0.55
+  ) +
+  geom_point(
+    data = two_mode_node_coords,
+    aes(x = x, y = y, fill = node_type),
+    shape = 21,
+    size = 4.5,
+    color = "white",
+    linewidth = 0.7
+  ) +
+  geom_text(
+    data = two_mode_node_coords,
+    aes(x = x, y = y, label = label),
+    family = network_base_family,
+    size = 3,
+    nudge_x = ifelse(two_mode_node_coords$node_type == "learner", -0.09, 0.13),
+    hjust = ifelse(two_mode_node_coords$node_type == "learner", 1, 0)
+  ) +
+  scale_x_continuous(
+    breaks = c(0, 1),
+    labels = c("Learners", "Activities"),
+    limits = c(-0.42, 1.72)
+  ) +
+  scale_fill_manual(
+    values = c(learner = "#457B9D", activity = "#E76F51"),
+    labels = c(learner = "Learner", activity = "Activity")
+  ) +
+  labs(title = "Observed two-mode network", fill = NULL) +
+  theme_void(base_family = network_base_family) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(size = 10, color = "grey25"),
+    plot.title = element_text(size = 12, hjust = 0.5)
+  )
+
+p_projection <- ggraph(as_tbl_graph(g_learner_projection), layout = "stress") +
+  geom_edge_link(aes(width = weight), color = "grey45", alpha = 0.45, show.legend = FALSE) +
+  geom_node_point(color = "#457B9D", size = 4.5, alpha = 0.95) +
+  geom_node_text(
+    aes(label = name),
+    repel = TRUE,
+    family = network_base_family,
+    size = 3,
+    max.overlaps = Inf
+  ) +
+  scale_edge_width(range = c(0.3, 2.6)) +
+  labs(title = "Learner projection") +
+  theme_graph(base_family = network_base_family) +
+  theme(plot.title = element_text(size = 12, hjust = 0.5))
+
+patchwork::wrap_plots(p_two_mode, p_projection, nrow = 1)
+```
+
+この図から分かるように、射影後のネットワークは元データより密になりやすいです。特に参加者が多い活動があると、その活動に参加した学習者全員の間にエッジが作られます。したがって、射影後の中心性やコミュニティを報告する場合は、射影規則、エッジ重みの定義、参加者数の大きい活動をどう扱ったかを必ず説明します。
+
+射影は便利ですが、情報を圧縮する操作です。たとえば、30人が参加した活動で同じ場所にいた学習者全員を結ぶと、実際に会話していないペアにもエッジが生まれます。したがって、射影後のエッジは「直接交流」ではなく、「共通活動・共通対象を持つ関係」として読みます。直接交流を主張したい場合は、活動参加データだけでなく、観察ログ、発話ログ、返信ログなどの追加情報で補強します。
+
+### 縦断ネットワークの最初の扱い
+
+介入前後、学期前半/後半、留学初期/後期のように複数時点の関係を測る場合、まずは同じ境界・同じエッジ定義で時点別ネットワークを作ります。Snijders, van de Bunt, and Steglich [-@snijders2010saom] が整理する stochastic actor-based model（SAOM）のような動的モデルは、ネットワーク変化を統計的に扱う強力な枠組みです。SLAでも、留学中の学習者相互作用を複数時点で追跡し、中心性や相互作用構造とL2発達を結びつける dynamic computational SNA の例が出てきています[@paradowski2024dynamic]。ただし、本章ではその前段階として、時点別の記述比較を入口にします。
+
+```{r}
+#| eval: true
+#| label: longitudinal-network-design-table
+
+longitudinal_network_design <- tibble::tribble(
+  ~Question, ~First_step, ~Descriptive_output, ~Advanced_model, ~Caution,
+  "介入後にクラス内交流は広がったか",
+  "pre / post で同じエッジ定義のネットワークを作る",
+  "密度、連結成分、中心性分布の差",
+  "TERGM / SAOM",
+  "履修者の入退出がある場合は境界の変化を報告する",
+  "橋渡し役は時間とともに変わるか",
+  "各時点で betweenness と role mapping を作る",
+  "順位変化、Top-k overlap",
+  "SAOM / relational event model",
+  "一時点だけ高い中心性を安定した役割と読まない",
+  "LMS返信は週ごとに活性化するか",
+  "週単位または課題単位のネットワークを作る",
+  "時点別エッジ数、返信先の集中度",
+  "relational event model",
+  "課題締切や教員介入による周期性を考慮する",
+  "留学中のL2接触は広がるか",
+  "接触日誌を同じ期間幅で集計する",
+  "L2接触割合、network size、density の変化",
+  "SAOM / mixed-effects model",
+  "自己報告頻度の変化と実際の接触変化を区別する"
+)
+
+longitudinal_network_design |>
+  knitr::kable(caption = "First steps for longitudinal network data")
+```
+
+縦断ネットワークでは、時点間でノード集合が変わるかどうかが重要です。全時点で同じ履修者を追えるなら比較は比較的単純ですが、途中参加・離脱・未回答があると、密度や中心性の変化が「関係の変化」なのか「観測されたノード集合の変化」なのかが曖昧になります。報告時には、各時点のノード数、未回答数、境界規則、同一人物の追跡方法を明記します。
+
 ## セットアップ
 
 ### 主なパッケージの役割
 
-- 記述分析だけを追うなら、まず `igraph`・`tidygraph`・`ggraph`・`gt` が入っていれば十分である。
-- 推論まで進む場合は、追加で `network`・`sna`・`ergm`・`intergraph` が必要になる。とくに `ergm` は MCMC 推定を行うため、可視化中心の章より実行時間が長い。
-- `plotly` はインタラクティブ図用のオプションであり、静的な図と表だけを読む段階では必須ではない。
-- 本章は外部アプリを前提にしない。前章の Praat / speakr のような追加ソフトは不要で、R パッケージだけで完結する。
+- 記述分析だけを追うなら、まず `igraph`・`tidygraph`・`ggraph`・`gt` が入っていれば十分です。
+- 推論まで進む場合は、追加で `network`・`sna`・`ergm`・`intergraph` が必要になります。とくに `ergm` は MCMC 推定を行うため、可視化中心の章より実行時間が長いです。
+- `plotly` はインタラクティブ図用のオプションであり、静的な図と表だけを読む段階では必須ではありません。
+- 本章は外部アプリを前提にしません。音声時系列章で扱った Praat / speakr のような追加ソフトは不要で、R パッケージだけで完結します。
 
 | パッケージ | 役割 |
 |---|---|
@@ -383,13 +1199,52 @@ ggraph(as_tbl_graph(g_toy), layout = "stress") +
 | `network` / `sna` | ERGM・QAP回帰のためのネットワーク基盤[@handcock2008] |
 | `intergraph` | igraph ↔ network 形式の相互変換 |
 | `plotly` | インタラクティブ可視化 |
-| `gt` | 学術論文品質のテーブル出力 |
+| `gt` | 高度な表出力を行う場合の選択肢（本章の本文表は主に `knitr::kable()`） |
 
-**パイプ演算子について**: 本章では、R 4.1 以降で利用できるネイティブパイプ `|>` を用いる。`dplyr` や `tidygraph` のコードも `|>` で一貫して記述できるため、学習者が別のパイプ演算子を追加で覚えなくても読み進められる。書籍やウェブ記事では `%>%` を使った例も多いが、本章では混乱を避けるため `|>` に統一する。
+### R公式ヘルプで確認する前提
+
+以下の表は、各関数の公式ヘルプ（例: `?igraph::betweenness`、`?sna::netlm`）に戻るための地図です。ネットワーク分析では、同じ `weights` でも「距離」として解釈される関数と「結合強度」として解釈される関数が混在します。したがって、分析前に関数ごとの前提を確認します。
+
+```{r}
+#| eval: true
+#| label: official-help-assumptions
+official_help_assumptions <- tibble::tribble(
+  ~パッケージ, ~関数, ~公式ヘルプで確認する前提,
+  "igraph", "`edge_density()`",
+  "単純グラフを前提とする。多重辺や自己ループがある場合、密度の解釈は不安定になる。",
+  "igraph", "`transitivity()`",
+  "`type = 'global'` はグラフ全体の推移性、`type = 'local'` はノード別の値。重み付き版は Barrat 型として別に扱う。",
+  "igraph", "`betweenness()` / `closeness()` / `harmonic_centrality()`",
+  "`weights` は距離・コストとして扱われます。協働回数のような強度を使う場合は、必要に応じて逆数などへ変換します。",
+  "igraph", "`eigen_centrality()`",
+  "`weights` は結合強度として扱われます。非連結グラフでは連結成分ごと、または最大連結成分内で解釈します。",
+  "igraph", "`cluster_louvain()` / `cluster_leiden()`",
+  "無向グラフと正の重みを前提とする。`weight` 属性がある場合は既定で使用され、`resolution` によって分割粒度が変わる。",
+  "igraph", "`sample_gnm()`",
+  "ノード数とエッジ数だけを固定したランダムグラフを生成する。次数分布や重み分布は保存しない。",
+  "ergm", "`ergm()`",
+  "`response = NULL` なら binary ERGM。重みやカウントを目的にする場合は `response` と valued ERGM の指定を確認する。",
+  "ergm", "`mcmc.diagnostics()` / `gof()`",
+  "`mcmc.diagnostics()` は推定のMCMC診断、`gof()` は推定済みモデルからのシミュレーションによる構造再現の確認。",
+  "sna", "`qaptest()` / `netlm()`",
+  "`reps`, `mode`, `diag`, `nullhyp`, 片側/両側検定を明記する。`netlm()` の既定の検定統計量は係数ではなく t 値。"
+)
+
+official_help_assumptions |>
+  knitr::kable(caption = "R公式ヘルプで確認するネットワーク分析関数の前提")
+```
+
+**パイプ演算子について**: 本章では、R 4.1 以降で利用できるネイティブパイプ `|>` を用います。`dplyr` や `tidygraph` のコードも `|>` で一貫して記述できるため、学習者が別のパイプ演算子を追加で覚えなくても読み進められます。書籍やウェブ記事では `%>%` を使った例も多いですが、本章では混乱を避けるため `|>` に統一します。
+
+### 再現性と実行時間の管理
+
+この章は ERGM、QAP、MRQAP、反復的な感度分析を含むため、通常の可視化章より実行時間が長くなります。レンダー中に不足パッケージを自動インストールすると、CRAN の状態、ネットワーク接続、ユーザーライブラリの権限に依存して結果が不安定になります。そこで本章の実行チャンクでは、不足パッケージがある場合は停止し、冒頭の `required-packages` チャンクを読者が明示的に実行して環境を整える設計にしています。
+
+また、ERGM / QAP / MRQAP のような重いチャンクには `cache: true` を付けています。ただし、データやパッケージのバージョンが変わったのに古い推定結果が残ると、本文と結果がずれます。本章では、ノード数、エッジ数、重み合計、クラス構成、主要パッケージのバージョンから `network_cache_key` を作り、後続のキャッシュに反映させます。データ生成を変更した場合は、通常の再レンダーに加えて、必要に応じて Quarto の実行キャッシュを更新します。
 
 ## 例題データ: 協働ネットワークのシミュレーション
 
-以下のシナリオを想定してデータを生成する。
+以下のシナリオを想定してデータを生成します。
 
 - 3クラス（A / B / C）、各20名、計60名
 - エッジは「共同作業を行った」関係を表す
@@ -440,10 +1295,42 @@ edges <- pairs |>
   dplyr::filter(has_link == 1) |>
   transmute(from, to, weight = as.numeric(weight))
 
-# 保存（再利用用）
-dir.create("data/network", recursive = TRUE, showWarnings = FALSE)
-write.csv(nodes |> dplyr::select(-prof_num), "data/network/nodes_collaboration.csv", row.names = FALSE)
-write.csv(edges, "data/network/edges_collaboration.csv", row.names = FALSE)
+# 保存（再利用用）。内容が変わった場合のみファイルを更新します。
+write_csv_if_changed(
+  nodes |> dplyr::select(-prof_num),
+  "data/network/nodes_collaboration.csv"
+)
+write_csv_if_changed(
+  edges,
+  "data/network/edges_collaboration.csv"
+)
+
+network_data_files <- c(
+  "data/network/nodes_collaboration.csv",
+  "data/network/edges_collaboration.csv"
+)
+network_package_versions <- paste(
+  network_required_packages,
+  vapply(network_required_packages, function(pkg) {
+    as.character(utils::packageVersion(pkg))
+  }, character(1)),
+  sep = "-",
+  collapse = "__"
+)
+network_data_hash <- paste(unname(tools::md5sum(network_data_files)), collapse = "__")
+
+network_cache_key <- paste(
+  "R", as.character(getRversion()),
+  "nodes", nrow(nodes),
+  "edges", nrow(edges),
+  "weight", sum(edges$weight),
+  "classes", paste(as.integer(table(nodes$class)), collapse = "-"),
+  "packages", network_package_versions,
+  "data", network_data_hash,
+  sep = "_"
+)
+
+knitr::opts_chunk$set(cache.extra = network_cache_key)
 ```
 
 ```{r}
@@ -460,9 +1347,9 @@ edges |>
   knitr::kable(caption = "エッジデータ（協働関係）の先頭8行")
 ```
 
-`nodes` と `edges` は役割が異なる。`nodes` は「誰がいるか」を表す属性表であり、`edges` は「誰と誰が結ばれているか」を表す関係表である。ここで、`nodes` の1行が1学習者、`edges` の1行が1ペアの関係であることを先に確認しておくと、その後の `graph_from_data_frame()` が理解しやすい。
+`nodes` と `edges` は役割が異なります。`nodes` は「誰がいるか」を表す属性表で、`edges` は「誰と誰が結ばれているか」を表す関係表です。ここで、`nodes` の1行が1学習者、`edges` の1行が1ペアの関係に対応する点を先に確認しておくと、その後の `graph_from_data_frame()` が理解しやすいです。
 
-このシミュレーションでは、同じクラス・近い熟達度のペアほど結びつきやすいように設計している。そのため、後の可視化でクラス内の塊や同類選好がある程度見えるはずであり、ERGM でも `nodematch("class")` が正方向に出やすい。
+このシミュレーションでは、同じクラス・近い熟達度のペアほど結びつきやすいように設計しています。そのため、後の可視化でクラス内の塊や同類選好がある程度見えるはずであり、ERGM でも `nodematch("class")` が正方向に出やすくなります。これは、生成過程に埋め込んだ構造を分析手順で回収できるかを確認する教材例です。実データでは、同じような結果が出ても、測定設計、事前仮説、感度分析、代替説明と合わせて解釈します。
 
 **実データで置き換えるとき**:
 
@@ -472,7 +1359,7 @@ edges |>
 
 ## グラフを構築する
 
-`igraph::graph_from_data_frame()` にエッジリストとノード属性を渡すことで、グラフオブジェクトを構築する。`tidygraph` はこの igraph オブジェクトを、ノードテーブルとエッジテーブルの二重構造（tbl_graph）として扱い、`dplyr` の動詞（`filter`, `mutate`, `arrange` など）で操作できるようにする[@pedersen2024tidygraph]。
+`igraph::graph_from_data_frame()` にエッジリストとノード属性を渡すことで、グラフオブジェクトを構築します。`tidygraph` はこの igraph オブジェクトを、ノードテーブルとエッジテーブルの二重構造（tbl_graph）として扱い、`dplyr` の動詞（`filter`, `mutate`, `arrange` など）で操作できるようにします[@pedersen2024tidygraph]。
 
 ```{r}
 #| eval: true
@@ -504,7 +1391,7 @@ tibble(
 
 ### 基本プロット
 
-可視化のマッピングを以下のように固定する。
+可視化のマッピングを以下のように固定します。
 
 - **ノード色**: クラス（A / B / C）
 - **ノードサイズ**: 強度（重み付き次数）
@@ -512,14 +1399,14 @@ tibble(
 
 **プロット解釈の共通ルール**:
 
-1. **最初に aesthetics を確認する**: 色、サイズ、太さ、矢印がそれぞれ何を表すかを先に把握する。
-2. **次に比較の基準を決める**: クラス内とクラス間、上位と下位、中央値より上か下か、0線をまたぐかどうか、など比較軸を固定する。
-3. **最後に言えることと言えないことを分ける**: 可視化は構造の手がかりを与えるが、それだけで有意差や因果効果までは示さない。
+1. **最初に aesthetics を確認する**: 色、サイズ、太さ、矢印がそれぞれ何を表すかを先に把握します。
+2. **次に比較の基準を決める**: クラス内とクラス間、上位と下位、中央値より上か下か、0線をまたぐかどうか、など比較軸を固定します。
+3. **最後に言えることと言えないことを分ける**: 可視化は構造の手がかりを与えるが、それだけで有意差や因果効果までは示しません。
 
 ::: {.callout-warning}
 ## レイアウト距離を実距離と読まない
 
-力学レイアウトでは、ノード間距離は「見やすく配置した結果」であり、心理的距離や地理的距離を直接表しているわけではない。距離そのものを問いたい場合は、隣接行列、測地距離、重み付き経路長の指標で確認する。
+力学レイアウトでは、ノード間距離は「見やすく配置した結果」であり、心理的距離や地理的距離を直接表しているわけではありません。距離そのものを問いたい場合は、隣接行列、測地距離、重み付き経路長の指標で確認します。
 :::
 
 ```{r}
@@ -559,17 +1446,17 @@ ggraph(g_tbl, layout = "fr") +
 
 **図の読み方**:
 
-- ノードの近接配置は「レイアウトアルゴリズム上の見やすさ」であり、物理的距離や心理的距離を反映していない。
-- 大きいノードは、回数を含めて多くの協働を持つ学習者である。
-- 太いエッジは、同じペアで繰り返し協働していることを示す。
+- ノードの近接配置は「レイアウトアルゴリズム上の見やすさ」であり、物理的距離や心理的距離を反映していません。
+- 大きいノードは、回数を含めて多くの協働を持つ学習者です。
+- 太いエッジは、同じペアで繰り返し協働していることを示します。
 
-**この図でまず見る点**: まず大きいノードがどのクラスに多いかを見て、次に太いエッジがクラス内に集中しているか、最後に孤立した小集団がないかを確認する。クラス色とノードサイズが重なって見える場合、属性と構造が対応している可能性が高い。
+**この図でまず見る点**: まず大きいノードがどのクラスに多いかを見て、次に太いエッジがクラス内に集中しているか、最後に孤立した小集団がないかを確認します。クラス色とノードサイズが重なって見える場合、属性と構造が対応している可能性が高いです。
 
-**この図だけでは言えない点**: レイアウト上で近くに見えること自体は統計的証拠ではない。クラス内偏りや同類選好を検証したい場合は、後の隣接行列、ERGM、QAP に進む必要がある。
+**この図だけでは言えない点**: レイアウト上で近くに見えること自体は統計的証拠ではありません。クラス内偏りや同類選好を検証したい場合は、後の隣接行列、ERGM、QAP に進む必要があります。
 
 ### レイアウトの比較
 
-ネットワーク可視化では、レイアウトアルゴリズムの選択が図の印象を大きく左右する。以下の4種類を並列して比較する。
+ネットワーク可視化では、レイアウトアルゴリズムの選択が図の印象を大きく左右します。以下の4種類を並列して比較します。
 
 ```{r}
 #| eval: true
@@ -597,18 +1484,143 @@ plots <- lapply(seq_along(layout_names), function(i) {
 (plots[[1]] + plots[[2]]) / (plots[[3]] + plots[[4]])
 ```
 
-- **Fruchterman-Reingold（FR）**: 力学モデルに基づく代表的なレイアウト。ランダム性があるため `set.seed()` が必要。
-- **Kamada-Kawai（KK）**: グラフ理論的距離を空間距離に近づける。比較的決定論的。
-- **Stress Minimization**: 測地距離を忠実に再現する。**特にこだわりがなければ推奨**[@pedersen2024ggraph]。
-- **Circle**: すべてのノードを円上に配置。コミュニティ構造を見るには不向きだが、次数の分布が一覧しやすい。
+- **Fruchterman-Reingold（FR）**: 力学モデルに基づく代表的なレイアウトです。ランダム性があるため `set.seed()` が必要です。
+- **Kamada-Kawai（KK）**: グラフ理論的距離を空間距離に近づけます。比較的決定論的です。
+- **Stress Minimization**: 測地距離を忠実に再現します。**特にこだわりがなければ推奨**[@pedersen2024ggraph]。
+- **Circle**: すべてのノードを円上に配置します。コミュニティ構造を見るには不向きですが、次数の分布が一覧しやすいです。
 
-同じネットワークでも、レイアウトが変わると「中心に見えるノード」や「固まりに見える部分」の印象は変わる。そのため、レイアウト比較の目的は「どの図がきれいか」を選ぶことではなく、「どの特徴がどのレイアウトでも安定して見えるか」を確かめることにある。
+同じネットワークでも、レイアウトが変わると「中心に見えるノード」や「固まりに見える部分」の印象は変わります。そのため、レイアウト比較の目的は「どの図がきれいか」を選ぶことではなく、「どの特徴がどのレイアウトでも安定して見えるか」を確かめることにあります。
 
-**推奨される読み順**: まず4枚すべてで同じノード群が中央付近に現れるかを見る。次に、どのレイアウトでも同じクラスのノードがまとまりやすいかを確認する。最後に、ある特徴が1枚だけで見えているなら、それは構造ではなくレイアウト依存の可能性があると考える。
+**推奨される読み順**: まず4枚すべてで同じノード群が中央付近に現れるかを見ます。次に、どのレイアウトでも同じクラスのノードがまとまりやすいかを確認します。最後に、ある特徴が1枚だけで見えているなら、それは構造ではなくレイアウト依存の可能性があると考えます。
+
+### 縦断ネットワークの小分割表示
+
+縦断ネットワークを可視化するときは、時点ごとにレイアウトを計算し直すと、ノードの移動が「関係の変化」のように見えてしまいます。時点間の変化を読みたい場合は、まず全時点の結合ネットワークから固定座標を作り、その上で各時点のエッジだけを小分割表示する方が安全です。
+
+```{r}
+#| eval: true
+#| label: longitudinal-network-small-multiples
+#| fig-cap: "Longitudinal Network Small Multiples with Fixed Node Coordinates"
+#| fig-height: 5.8
+#| fig-width: 10
+
+set.seed(2026)
+
+longitudinal_time_rules <- tibble::tribble(
+  ~time, ~keep_prop,
+  "Week 2", 0.55,
+  "Week 6", 0.75,
+  "Week 10", 1.00
+) |>
+  dplyr::mutate(time = factor(time, levels = time))
+
+edge_growth_order <- edges |>
+  dplyr::mutate(appearance_score = runif(dplyr::n()))
+
+longitudinal_edges <- lapply(seq_len(nrow(longitudinal_time_rules)), function(i) {
+  current_time <- longitudinal_time_rules$time[i]
+  current_keep <- longitudinal_time_rules$keep_prop[i]
+
+  edge_growth_order |>
+    dplyr::filter(appearance_score <= current_keep) |>
+    dplyr::mutate(time = current_time) |>
+    dplyr::select(from, to, weight, time)
+}) |>
+  dplyr::bind_rows()
+
+long_layout_coords <- ggraph::create_layout(g_tbl, layout = "stress") |>
+  as_tibble() |>
+  dplyr::select(name, x, y)
+
+long_node_coords <- tidyr::crossing(
+  time = longitudinal_time_rules$time,
+  name = long_layout_coords$name
+) |>
+  dplyr::left_join(long_layout_coords, by = "name") |>
+  dplyr::left_join(nodes, by = c("name" = "id"))
+
+long_edge_coords <- longitudinal_edges |>
+  dplyr::left_join(
+    long_layout_coords |> dplyr::select(from = name, x_from = x, y_from = y),
+    by = "from"
+  ) |>
+  dplyr::left_join(
+    long_layout_coords |> dplyr::select(to = name, x_to = x, y_to = y),
+    by = "to"
+  )
+
+ggplot() +
+  geom_segment(
+    data = long_edge_coords,
+    aes(x = x_from, y = y_from, xend = x_to, yend = y_to, linewidth = weight),
+    color = "grey45",
+    alpha = 0.32,
+    lineend = "round",
+    show.legend = FALSE
+  ) +
+  geom_point(
+    data = long_node_coords,
+    aes(x = x, y = y, color = class),
+    size = 3.2,
+    alpha = 0.95
+  ) +
+  facet_wrap(~time, nrow = 1) +
+  coord_equal() +
+  scale_color_manual(values = class_palette) +
+  scale_linewidth(range = c(0.25, 1.8)) +
+  labs(color = "Class") +
+  theme_void(base_family = network_base_family) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 11, face = "bold"),
+    panel.spacing = unit(1.2, "lines")
+  )
+```
+
+```{r}
+#| eval: true
+#| label: longitudinal-network-metrics-plot
+#| fig-cap: "Descriptive Indices Across Network Waves"
+#| fig-height: 4.8
+#| fig-width: 8.5
+
+longitudinal_metrics <- lapply(longitudinal_time_rules$time, function(current_time) {
+  edge_tp <- longitudinal_edges |>
+    dplyr::filter(time == current_time) |>
+    dplyr::select(from, to, weight)
+
+  g_tp <- igraph::graph_from_data_frame(edge_tp, directed = FALSE, vertices = nodes)
+
+  tibble::tibble(
+    time = current_time,
+    Edge_count = igraph::ecount(g_tp),
+    Density = igraph::edge_density(g_tp, loops = FALSE),
+    Mean_strength = mean(igraph::strength(g_tp, weights = igraph::E(g_tp)$weight)),
+    Components = igraph::components(g_tp)$no
+  )
+}) |>
+  dplyr::bind_rows()
+
+longitudinal_metrics |>
+  tidyr::pivot_longer(-time, names_to = "metric", values_to = "value") |>
+  ggplot(aes(x = time, y = value, group = metric, color = metric)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2.7) +
+  facet_wrap(~metric, scales = "free_y", nrow = 1) +
+  scale_color_brewer(palette = "Dark2", guide = "none") +
+  labs(x = NULL, y = NULL) +
+  theme_minimal(base_family = network_base_family) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+```
+
+小分割図では、同じ座標に同じ学習者が出ているため、エッジの増減を比較しやすいです。一方で、これはあくまで記述的可視化です。縦断的な形成過程を検定する場合は、時点数、ノードの入退出、エッジの持続性、介入タイミングを整理したうえで、TERGM、SAOM、relational event model などを検討します。
 
 ### インタラクティブ可視化（plotly）
 
-ノードにカーソルを合わせると属性情報（ID、クラス、熟達度、強度）が表示される。
+ノードにカーソルを合わせると属性情報（ID、クラス、熟達度、強度）が表示されます。
 
 ```{r}
 #| eval: true
@@ -662,11 +1674,47 @@ p_interactive <- plot_ly() |>
 p_interactive
 ```
 
-インタラクティブ図は、静的図で気になったノードを**後から確かめる補助ツール**として使うとよい。最初から細部を追うのではなく、まず静的図で大きいノードや橋渡し候補を見つけ、その後に hover で ID、クラス、熟達度、strength を確認すると迷いにくい。
+インタラクティブ図は、静的図で気になったノードを**後から確かめる補助ツール**として使うとよいです。最初から細部を追うのではなく、まず静的図で大きいノードや橋渡し候補を見つけ、その後に hover で ID、クラス、熟達度、strength を確認すると迷いにくくなります。
+
+### 静的図・動的図・表の使い分け
+
+ネットワーク分析では、図が目立ちやすい一方で、図だけでは再現性や推論の根拠を十分に伝えられません。論文本文では静的図と表を中心に置き、インタラクティブ図は探索・補足資料・授業内デモとして使うと役割がはっきりします。
+
+```{r}
+#| eval: true
+#| label: network-output-use-table
+
+network_output_use <- tibble::tribble(
+  ~Output, ~Best_use, ~Not_enough_for, ~Recommended_location,
+  "静的ネットワーク図",
+  "全体構造、クラス間の分断、橋渡し候補を示す",
+  "個別ノードの正確な順位、統計的検定",
+  "論文本文",
+  "インタラクティブ図",
+  "hover でIDや属性を確認し、探索的に細部を見る",
+  "主要結果の唯一の証拠",
+  "補足資料、授業デモ、探索ノート",
+  "隣接行列ヒートマップ",
+  "大規模・高密度ネットワークのブロック構造を見る",
+  "橋渡しノードの役割解釈",
+  "論文本文または補足資料",
+  "中心性表",
+  "上位ノード、指標値、順位を正確に報告する",
+  "ネットワーク全体の形状把握",
+  "論文本文",
+  "置換分布・GOF図",
+  "QAP/MRQAPやERGMの推論・診断を示す",
+  "ノード属性の探索",
+  "論文本文または補足資料"
+)
+
+network_output_use |>
+  knitr::kable(caption = "Choosing static figures, interactive figures, and tables")
+```
 
 ### 次数分布とエッジ重み分布
 
-ネットワークの基本的な性質は、次数分布（degree distribution）とエッジ重み分布から把握できる。次数分布は「何人と協働しているか」のばらつきを、エッジ重み分布は「1ペアあたりの協働回数」のばらつきを示す。
+ネットワークの基本的な性質は、次数分布（degree distribution）とエッジ重み分布から把握できます。次数分布は「何人と協働しているか」のばらつきを、エッジ重み分布は「1ペアあたりの協働回数」のばらつきを示します。
 
 ```{r}
 #| eval: true
@@ -737,16 +1785,16 @@ p_wt <- tibble(weight = E(g)$weight) |>
 p_deg + p_wt
 ```
 
-- 次数分布が右裾の長い（right-skewed）形状を示す場合、少数の「ハブ」学習者が多くの相手と協働していることを意味する。
-- エッジ重みが特定の値に集中している場合、協働の深さが均質であることを示唆する。逆に分散が大きい場合は、繰り返し協働するペアとそうでないペアの差が大きい。
+- 次数分布が右裾の長い（right-skewed）形状を示す場合、少数の「ハブ」学習者が多くの相手と協働していることを意味します。
+- エッジ重みが特定の値に集中している場合、協働の深さが均質な可能性を示唆します。逆に分散が大きい場合は、繰り返し協働するペアとそうでないペアの差が大きいです。
 
-この例では、左の次数分布から「接続相手の多い少数の学習者がいるか」を、右の重み分布から「関係の深さが均質か偏っているか」を読む。前者はハブの存在、後者は特定ペアへの協働集中を示す。
+この例では、左の次数分布から「接続相手の多い少数の学習者がいるか」を、右の重み分布から「関係の深さが均質か偏っているか」を読みます。前者はハブの存在、後者は特定ペアへの協働集中を示します。
 
-**推奨される読み順**: まず破線の平均より右側にどれだけ多くの棒が伸びているかを見る。次に、分布が左右対称か、右に長い裾を持つかを確認する。右裾が長いほど「一部の学習者やペアに活動が集中している」と読める。
+**推奨される読み順**: まず破線の平均より右側にどれだけ多くの棒が伸びているかを見ます。次に、分布が左右対称か、右に長い裾を持つかを確認します。右裾が長いほど「一部の学習者やペアに活動が集中している」と読めます。
 
 ### 隣接行列のヒートマップ
 
-隣接行列をヒートマップとして可視化すると、クラス内・クラス間の接続パターンを直感的に把握できる。ノードをクラスでソートすることで、**ブロック対角構造**（同クラス内で密な接続）が視覚的に確認できる。
+隣接行列をヒートマップとして可視化すると、クラス内・クラス間の接続パターンを直感的に把握できます。ノードをクラスでソートすることで、**ブロック対角構造**（同クラス内で密な接続）が視覚的に確認できます。
 
 ```{r}
 #| eval: true
@@ -800,13 +1848,13 @@ ggplot(adj_long, aes(x = from, y = to, fill = weight)) +
   )
 ```
 
-ブロック対角線上に濃い色が集中していれば、同クラス内の交流が密であること（**同類選好 / homophily**）を示している。クラス間の領域にも接続が散見される場合、クラスを超えた協働が一定程度存在していると解釈できる。
+ブロック対角線上に濃い色が集中していれば、同クラス内の交流が密なこと（**同類選好 / homophily**）を示しています。クラス間の領域にも接続が散見される場合、クラスを超えた協働が一定程度存在していると解釈できます。
 
-**この図でまず見る点**: まず対角線ブロックが濃いかどうかを見る。次に、ブロックの外側にも濃いセルがあるかを確認し、「クラス内中心」なのか「クラス横断的」なのかを判断する。
+**この図でまず見る点**: まず対角線ブロックが濃いかどうかを見ます。次に、ブロックの外側にも濃いセルがあるかを確認し、「クラス内中心」なのか「クラス横断的」なのかを判断します。
 
 ### クラス別の強度分布
 
-クラスごとに学習者の強度（strength）がどのように分布しているかを箱ひげ図とジッタープロットで可視化する。
+クラスごとに学習者の強度（strength）がどのように分布しているかを箱ひげ図とジッタープロットで可視化します。
 
 ```{r}
 #| eval: true
@@ -845,13 +1893,13 @@ tibble(
   theme(legend.position = "none")
 ```
 
-クラス間で強度の分布に明確な差がある場合、活動設計やクラスの雰囲気が協働パターンに影響している可能性がある。
+クラス間で強度の分布に明確な差がある場合、活動設計やクラスの雰囲気が協働パターンに影響している可能性があります。
 
 ## ネットワーク全体の指標
 
-**この節のプロンプト**: クラス全体の交流は、密で一体的か、それとも断片的で小集団化しているか。
+**この節のプロンプト**: クラス全体の交流は、密で一体的でしょうか。それとも断片的で小集団化しているでしょうか。
 
-ネットワークの全体構造を定量的に把握する。ここでは代表的な指標を計算し、その解釈を整理する。
+ネットワークの全体構造を定量的に把握します。ここでは代表的な指標を計算し、その解釈を整理します。
 
 ```{r}
 #| eval: true
@@ -878,21 +1926,21 @@ graph_stats |>
   knitr::kable(caption = "ネットワーク全体の記述統計")
 ```
 
-最初はすべての指標を同時に見ようとせず、`密度`、`連結成分数`、`推移性` の3つから読むとよい。密度は交流の総量、連結成分数は断片化、推移性は小グループ化の強さを表すため、教室ネットワークの全体像を最短で把握できる。
+最初はすべての指標を同時に見ようとせず、`密度`、`連結成分数`、`推移性` の3つから読むとよいです。密度は**非ゼロ関係の割合**、連結成分数は断片化、推移性は小グループ化の強さを表します。重み付きネットワークでは、交流の「量」は密度ではなく、平均強度、総エッジ重み、エッジ重み分布で確認します。
 
 | 指標 | 範囲 | 低い場合 | 高い場合 | SLA的解釈 |
 |---|---|---|---|---|
-| 密度 (`density`) | `[0, 1]` | 交流がまばら | 全員が交流 | 教室の交流活発度 |
+| 密度 (`density`) | `[0, 1]` | 非ゼロ関係がまばら | 多くのペアに関係がある | 関係の広がり |
 | 平均次数 (`mean degree`) | `[0, n-1]` | 接続数が少ない | 多くの相手と接続 | 学習者の平均的な協働相手数 |
 | 推移性 (`transitivity`) | `[0, 1]` | 三者閉鎖が弱い | クリーク傾向が強い | 小グループへの分化傾向 |
-| 平均距離 (`mean distance`) | `[1, Inf)` | 情報伝達が速い | 到達に多くのステップ | クラス全体への情報拡散速度 |
+| 平均距離 (`mean distance`) | 非重み付きでは概ね `[1, Inf)`、逆重み距離では正の実数 | 情報伝達が速い | 到達に多くのステップ | クラス全体への情報拡散速度 |
 | 連結成分数 | `[1, n]` | ほぼ全員が接続 | 孤立グループが多い | ネットワークの断片化の程度 |
 
 ## ノード中心性を計算する
 
-**この節のプロンプト**: 誰が活動量の大きいハブで、誰がグループ間の橋渡し役か。
+**この節のプロンプト**: 誰が活動量の大きいハブで、誰がグループ間の橋渡し役でしょうか。
 
-中心性（centrality）は「ネットワーク内で何を重要とみなすか」の操作的定義である[@freeman1979]。目的に応じて使い分ける必要がある。
+中心性（centrality）は「ネットワーク内で何を重要とみなすか」の操作的定義です[@freeman1979]。目的に応じて使い分ける必要があります。重み付きネットワークでは、次数だけでなく重みの合計や重み付き経路をどう扱うかも解釈に影響します[@opsahl2010]。
 
 ### 中心性の数学的定義
 
@@ -900,25 +1948,25 @@ graph_stats |>
 
 $$C_D(v_i) = k_i = \sum_{j} A_{ij}$$
 
-最も直感的な中心性であり、直接接続の数を数える。「何人の学習者と協働したか」を測定する。
+最も直感的な中心性であり、直接接続の数を数える。「何人の学習者と協働したか」を測定します。
 
 #### 強度中心性（Strength Centrality）
 
 $$C_S(v_i) = s_i = \sum_{j} W_{ij}$$
 
-重み付きの次数であり、接続の量（頻度・強さ）を考慮する。「どの程度の量の協働を行ったか」を測定する。
+重み付きの次数であり、接続の量（頻度・強さ）を考慮します。「どの程度の量の協働を行ったか」を測定します。
 
 #### 媒介中心性（Betweenness Centrality）
 
 $$C_B(v_i) = \sum_{s \neq i \neq t} \frac{\sigma_{st}(v_i)}{\sigma_{st}}$$
 
-ここで $\sigma_{st}$ はノード $s$ から $t$ への最短経路の総数、$\sigma_{st}(v_i)$ はそのうちノード $v_i$ を通過するものの数である。媒介中心性が高いノードは、異なるグループ間の「橋渡し」役を担っている。留学研究では、異なる言語コミュニティ間をつなぐブローカー的な学習者を特定するのに有用である[@paradowski2024]。
+ここで $\sigma_{st}$ はノード $s$ から $t$ への最短経路の総数、$\sigma_{st}(v_i)$ はそのうちノード $v_i$ を通過するものの数です。媒介中心性が高いノードは、異なるグループ間の「橋渡し」役を担っています。留学研究では、異なる言語コミュニティ間をつなぐブローカー的な学習者を特定するのに有用です[@paradowski2024]。
 
 #### 近接中心性（Closeness Centrality）
 
 $$C_C(v_i) = \frac{n - 1}{\sum_{j \neq i} d(v_i, v_j)}$$
 
-全ノードへの平均距離の逆数であり、「他の全員にどの程度素早く到達できるか」を示す。非連結グラフでは不安定になるため、本章では**調和中心性**（harmonic centrality）を優先する[@igraph_closeness]。
+全ノードへの平均距離の逆数であり、「他の全員にどの程度素早く到達できるか」を示します。非連結グラフでは不安定になるため、本章では**調和中心性**（harmonic centrality）を優先します[@igraph_closeness]。
 
 $$C_H(v_i) = \frac{1}{n-1} \sum_{j \neq i} \frac{1}{d(v_i, v_j)}$$
 
@@ -926,9 +1974,13 @@ $$C_H(v_i) = \frac{1}{n-1} \sum_{j \neq i} \frac{1}{d(v_i, v_j)}$$
 
 $$C_E(v_i) = \frac{1}{\lambda} \sum_{j} A_{ij} \cdot C_E(v_j)$$
 
-「重要なノードとつながっているノードは、それ自体も重要である」という再帰的な定義に基づく。単に多くの接続を持つだけでなく、影響力のある学習者とつながっている学習者を高く評価する。
+「中心性の高いノードとつながっているノードは、それ自体も高い中心性を持つ」という再帰的な定義に基づきます。単に多くの接続を持つだけでなく、中心的な位置にある学習者とつながっている学習者を高く評価します。
+
+ただし、`igraph::eigen_centrality()` の公式ヘルプでは、固有ベクトル中心性は連結グラフ、または有向グラフなら強連結グラフで解釈しやすいとされています。非連結の無向グラフで全体を一度に計算すると、一部の連結成分の値が 0 になりうるため、本章では最大連結成分内の固有ベクトル中心性を `eigen_lcc` として計算し、それ以外のノードは `NA` とします。
 
 ### 中心性の計算と上位ノード
+
+ここでの `weight` は共同作業回数であり、値が大きいほど関係量が多いです。一方、`igraph::betweenness()` や `igraph::closeness()` の `weights` は「距離」または「コスト」として扱われます。したがって、共同作業回数をそのまま距離に入れると、多く協働したペアほど遠いと解釈されてしまいます。本章では `inv_w <- 1 / weight` を使い、共同回数が多いペアほど短い距離になるように変換しています。
 
 ```{r}
 #| eval: true
@@ -942,12 +1994,13 @@ node_stats <- tibble(
   strength = strength(g, weights = E(g)$weight),
   betweenness = igraph::betweenness(g, directed = FALSE, weights = inv_w, normalized = TRUE),
   closeness_harmonic = robust_harmonic(g, inv_weights = inv_w),
-  eigen = eigen_centrality(g, directed = FALSE, weights = E(g)$weight)$vector
+  eigen_lcc = largest_component_eigen(g, weights = E(g)$weight)
 ) |>
   mutate(
     betweenness = round(betweenness, 3),
     closeness_harmonic = round(closeness_harmonic, 3),
-    eigen = round(eigen, 3)
+    eigen_lcc = round(eigen_lcc, 3),
+    eigen_lcc_plot = dplyr::coalesce(eigen_lcc, 0)
   ) |>
   arrange(desc(strength))
 ```
@@ -957,28 +2010,28 @@ node_stats <- tibble(
 #| label: node-centrality-gt
 node_stats |>
   slice_head(n = 10) |>
-  mutate(across(c(baseline_score, degree, strength, betweenness, closeness_harmonic, eigen), ~ round(.x, 3))) |>
+  mutate(across(c(baseline_score, degree, strength, betweenness, closeness_harmonic, eigen_lcc), ~ round(.x, 3))) |>
   knitr::kable(caption = "中心性上位10名（strengthでソート）")
 ```
 
 **解釈の順序**:
 
-1. まず `strength` で活動量の大きい学習者を確認する。
-2. 次に `betweenness` でクラス間ブリッジを確認する。
-3. 最後に `eigen` で「重要ノードとの接続」を確認する。
+1. まず `strength` で活動量の大きい学習者を確認します。
+2. 次に `betweenness` でクラス間ブリッジを確認します。
+3. 最後に `eigen_lcc` で、最大連結成分内に限った「中心的ノードとの接続」を確認します。
 
-特定の学習者が strength は低いが betweenness が高い場合、その学習者は少ない協働回数ながらも、異なるグループをつなぐ戦略的な位置にいると解釈できる。
+特定の学習者が strength は低いが betweenness が高い場合、その学習者は少ない協働回数ながらも、異なるグループをつなぐ戦略的な位置にいると解釈できます。
 
 ### 中心性間の相関
 
-中心性指標は互いに相関することが多いが、それぞれが測定する側面は異なる。相関行列を確認することで、指標間の冗長性と独自性を把握できる。
+中心性指標は互いに相関することが多いですが、それぞれが測定する側面は異なります。相関行列を確認することで、指標間の冗長性と独自性を把握できます。
 
 ```{r}
 #| eval: true
 #| label: centrality-correlation
 #| fig-cap: "Correlation Matrix of Centrality Measures"
 centrality_mat <- node_stats |>
-  dplyr::select(degree, strength, betweenness, closeness_harmonic, eigen) |>
+  dplyr::select(degree, strength, betweenness, closeness_harmonic, eigen_lcc) |>
   cor(use = "pairwise.complete.obs")
 
 centrality_long <- centrality_mat |>
@@ -1010,11 +2063,11 @@ ggplot(centrality_long, aes(x = Var1, y = Var2, fill = r)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), axis.title = element_blank())
 ```
 
-degree と strength は高い正の相関を示すことが多い（どちらも接続の「量」を測るため）。一方、betweenness は独自の情報を持つ傾向にあり、他の指標とは異なる学習者をハイライトする可能性がある。
+degree と strength は高い正の相関を示すことが多い（どちらも接続の「量」を測るため）。一方、betweenness は独自の情報を持つ傾向にあり、他の指標とは異なる学習者をハイライトする可能性があります。
 
-この図で重要なのは、相関が高い指標を重複して報告しすぎないことである。たとえば degree と strength がほぼ同じ動きをするなら、重みを持つ研究では strength を優先し、betweenness や eigen のような別の側面を補う方が説明力は高い。
+この図で重要なのは、相関が高い指標を重複して報告しすぎないことです。たとえば degree と strength がほぼ同じ動きをするなら、重みを持つ研究では strength を優先し、betweenness や `eigen_lcc` のような別の側面を補う方が説明力は高いです。
 
-**推奨される読み順**: まず対角線以外で最も濃い赤や青のセルを見る。次に、そのセルに書かれた相関係数が `0.8` 前後以上か、`0.3` 前後かを確認する。前者なら「かなり似た指標」、後者なら「部分的にしか重ならない指標」と読める。
+**推奨される読み順**: まず対角線以外で最も濃い赤や青のセルを見ます。次に、そのセルに書かれた相関係数が `0.8` 前後以上か、`0.3` 前後かを確認します。前者なら「かなり似た指標」、後者なら「部分的にしか重ならない指標」と読めます。
 
 ### 中心性の可視化
 
@@ -1024,12 +2077,12 @@ degree と strength は高い正の相関を示すことが多い（どちらも
 #| fig-cap: "Top 10 Nodes by Centrality Measure"
 #| fig-height: 8
 top_n_centrality <- node_stats |>
-  dplyr::select(id, class, degree, strength, betweenness, eigen) |>
-  pivot_longer(cols = c(degree, strength, betweenness, eigen), names_to = "metric", values_to = "value") |>
+  dplyr::select(id, class, degree, strength, betweenness, eigen_lcc) |>
+  pivot_longer(cols = c(degree, strength, betweenness, eigen_lcc), names_to = "metric", values_to = "value") |>
   group_by(metric) |>
-  slice_max(value, n = 10) |>
+  slice_max(value, n = 10, na_rm = TRUE) |>
   ungroup() |>
-  mutate(metric = factor(metric, levels = c("degree", "strength", "betweenness", "eigen")))
+  mutate(metric = factor(metric, levels = c("degree", "strength", "betweenness", "eigen_lcc")))
 
 ggplot(top_n_centrality, aes(x = reorder(id, value), y = value, color = class)) +
   geom_segment(aes(xend = id, y = 0, yend = value), linewidth = 0.8) +
@@ -1057,15 +2110,15 @@ ggplot(top_n_centrality, aes(x = reorder(id, value), y = value, color = class)) 
   theme(strip.text = element_text(face = "bold"))
 ```
 
-**closeness の注意**: 非連結グラフでは通常の closeness centrality が不安定になる。`igraph` 公式ドキュメントでも、解釈と前処理（連結成分の扱い）に注意が必要であると記されている[@igraph_closeness]。本章では harmonic centrality を優先している。
+**closeness の注意**: 非連結グラフでは通常の closeness centrality が不安定になります。`igraph` 公式ドキュメントでも、解釈と前処理（連結成分の扱い）に注意が必要だと記されています[@igraph_closeness]。本章では harmonic centrality を優先しています。
 
-この図では、同じ学習者が複数パネルに繰り返し現れるかどうかに注目する。複数の中心性で上位に入る学習者は「総合的に目立つノード」であり、ある1指標だけで上位に入る学習者は、特定の役割に特化している可能性が高い。
+この図では、同じ学習者が複数パネルに繰り返し現れるかどうかに注目します。複数の中心性で上位に入る学習者は「総合的に目立つノード」であり、ある1指標だけで上位に入る学習者は、特定の役割に特化している可能性が高いです。
 
-**推奨される読み順**: 各パネルを別々に見る前に、同じ ID が何度も出てくるかを探す。次に、その ID がどのクラスに属しているかを見る。これで「全般に中心的な学習者」と「特定の中心性だけ高い学習者」を切り分けやすくなる。
+**推奨される読み順**: 各パネルを別々に見る前に、同じ ID が何度も出てくるかを探します。次に、その ID がどのクラスに属しているかを見ます。これで「全般に中心的な学習者」と「特定の中心性だけ高い学習者」を切り分けやすくなります。
 
 ### Strength × Betweenness の二次元プロット
 
-Strength（活動量）と betweenness（橋渡し性）の関係を二次元散布図で可視化すると、学習者の**役割類型**が見えてくる。
+Strength（活動量）と betweenness（橋渡し性）の関係を二次元散布図で可視化すると、学習者の**役割類型**が見えてきます。
 
 ```{r}
 #| eval: true
@@ -1095,7 +2148,7 @@ ggplot(node_stats, aes(x = strength, y = betweenness)) +
   geom_vline(xintercept = med_str, linetype = "dashed", color = "grey50", linewidth = 0.4) +
   geom_hline(yintercept = med_btw, linetype = "dashed", color = "grey50", linewidth = 0.4) +
   # ポイント
-  geom_point(aes(color = class, size = eigen), alpha = 0.85) +
+  geom_point(aes(color = class, size = eigen_lcc_plot), alpha = 0.85) +
   # ラベル（上位5名のみ）
   ggrepel::geom_text_repel(
     data = node_stats |>
@@ -1117,7 +2170,7 @@ ggplot(node_stats, aes(x = strength, y = betweenness)) +
   labs(
     title = "Learner Role Mapping: Strength × Betweenness",
     x = "Strength (weighted degree)", y = "Betweenness (normalized)",
-    color = "Class", size = "Eigenvector"
+    color = "Class", size = "Eigenvector (LCC)"
   ) +
   theme_bw(base_family = network_base_family, base_size = 12) +
   theme(
@@ -1142,29 +2195,29 @@ ggplot(node_stats, aes(x = strength, y = betweenness)) +
 | 象限 | Strength | Betweenness | 学習者の特徴 |
 |---|---|---|---|
 | Active Bridge（右上） | 高 | 高 | 多くの相手と頻繁に協働し、異なるグループ間をつなぐ |
-| Quiet Bridge（左上） | 低 | 高 | 協働回数は少ないが、異なるグループ間の唯一のつなぎ役 |
-| Active Local（右下） | 高 | 低 | 特定グループ内で活発に協働するが、外部との接続は少ない |
+| Quiet Bridge（左上） | 低 | 高 | 協働回数は少ないですが、異なるグループ間の唯一のつなぎ役 |
+| Active Local（右下） | 高 | 低 | 特定グループ内で活発に協働しますが、外部との接続は少ないです |
 | Peripheral（左下） | 低 | 低 | ネットワーク周辺に位置し、協働が限定的 |
 
-SLA研究では、Quiet Bridge タイプの学習者が異なる言語背景のグループ間をつなぐ「弱い紐帯」（weak ties）の役割を果たしている可能性に注目すべきである。
+SLA研究では、Quiet Bridge タイプの学習者が異なる言語背景のグループ間をつなぐ「弱い紐帯」（weak ties）の役割を果たしている可能性に注目できます[@granovetter1973]。
 
-この散布図では、右上だけを「良い」と見る必要はない。研究質問が「誰が全体をまとめるか」なら Active Bridge が重要だが、「誰が少ない接触で橋渡ししているか」を知りたいなら Quiet Bridge の方が重要になる。
+この散布図では、右上だけを「良い」と見る必要はありません。研究質問が「誰が全体をまとめるか」なら Active Bridge が重要ですが、「誰が少ない接触で橋渡ししているか」を知りたいなら Quiet Bridge の方が重要になります。
 
-**推奨される読み順**: まず破線で区切られた4象限のうち、どこに点が多いかを見る。次に、ラベル付きノードがどの象限にいるかを確認する。最後に、点の大きさを見て、橋渡し役が同時に影響力も高いのか、それとも局所的な橋渡しにとどまるのかを考える。
+**推奨される読み順**: まず破線で区切られた4象限のうち、どこに点が多いかを見ます。次に、ラベル付きノードがどの象限にいるかを確認します。最後に、点の大きさを見て、橋渡し役が同時に影響力も高いのか、それとも局所的な橋渡しにとどまるのかを考えます。
 
 ## コミュニティ検出
 
-**この節のプロンプト**: クラス内には自然な下位集団があり、それは授業編成と一致しているか。
+**この節のプロンプト**: クラス内には自然な下位集団があり、それは授業編成と一致しているでしょうか。
 
-コミュニティ検出は、ネットワークを「内部で密・外部で疎」なサブグループに分割する手法である。教室ネットワークにおいて、検出されたコミュニティがクラス編成とどの程度一致するかを確認することで、クラスを超えた交流の程度を評価できる。
+コミュニティ検出は、ネットワークを「内部で密・外部で疎」なサブグループに分割する手法です。教室ネットワークにおいて、検出されたコミュニティがクラス編成とどの程度一致するかを確認することで、クラスを超えた交流の程度を評価できます。
 
 ### モジュラリティの定義
 
-コミュニティ分割の質は**モジュラリティ** $Q$ で評価される[@blondel2008; @newman2004]。
+コミュニティ分割の質は**モジュラリティ** $Q$ で評価されます[@blondel2008; @newman2004]。
 
 $$Q = \frac{1}{2m}\sum_{ij}\left[A_{ij} - \frac{k_i k_j}{2m}\right]\delta(c_i, c_j)$$
 
-ここで $m$ はエッジの総数、$k_i$ はノード $i$ の次数、$c_i$ はノード $i$ が属するコミュニティ、$\delta$ はクロネッカーのデルタ関数（同じコミュニティなら1、異なれば0）である。$Q$ が高いほど、コミュニティ内のエッジ密度がランダムな期待値よりも高いことを意味する。一般に $Q > 0.3$ で有意なコミュニティ構造があるとみなされる。
+ここで $m$ はエッジの総数、$k_i$ はノード $i$ の次数、$c_i$ はノード $i$ が属するコミュニティ、$\delta$ はクロネッカーのデルタ関数（同じコミュニティなら1、異なれば0）です。$Q$ が高いほど、コミュニティ内のエッジ密度がランダムな期待値よりも高いことを意味します。ただし、モジュラリティは統計的有意性そのものではなく、ネットワークサイズ、密度、重み、解像度、アルゴリズムに依存する記述指標です[@fortunato2010]。したがって、固定的な閾値だけで判断せず、複数アルゴリズム、外部ラベル、ランダム化比較と併せて読みます。
 
 ### Louvain法によるコミュニティ検出
 
@@ -1172,6 +2225,7 @@ $$Q = \frac{1}{2m}\sum_{ij}\left[A_{ij} - \frac{k_i k_j}{2m}\right]\delta(c_i, c
 #| eval: true
 #| label: community-louvain
 #| fig-cap: "Community Structure Detected by Louvain Algorithm"
+set.seed(2024)
 com_louvain <- cluster_louvain(g, weights = E(g)$weight)
 V(g)$community_louvain <- as.factor(membership(com_louvain))
 mod_louvain <- modularity(com_louvain)
@@ -1201,11 +2255,11 @@ ggraph(g_comm, layout = "fr") +
   theme_graph(base_family = network_base_family)
 ```
 
-**この図でまず見る点**: 色の塊が何個に分かれるか、塊どうしをまたぐエッジがどれくらいあるかを見る。モジュラリティが高くても、現実のクラス編成と一致するとは限らないので、後の ARI と併せて読む必要がある。
+**この図でまず見る点**: 色の塊が何個に分かれるか、塊どうしをまたぐエッジがどれくらいあるかを見ます。モジュラリティが高くても、現実のクラス編成と一致するとは限らないので、後の ARI と併せて読む必要があります。
 
 ### アルゴリズム比較
 
-コミュニティ検出はアルゴリズム依存であるため、単一の結果を絶対視すべきではない。以下では、Louvain、Leiden、Walktrap の3手法を比較する。
+コミュニティ検出はアルゴリズムに依存するため、単一の結果を絶対視すべきではありません。以下では、Louvain、Leiden、Walktrap の3手法を比較します。
 
 ```{r}
 #| eval: true
@@ -1239,11 +2293,20 @@ algo_comparison |>
 
 **アルゴリズムの使い分け**:
 
-- **Louvain**: 高速で、まず全体像をつかみたいときの標準的な出発点。
-- **Leiden**: Louvain を改良し、連結性の悪いコミュニティを避けやすい。
-- **Walktrap**: ランダムウォークに基づき、小規模ネットワークの比較に向く。
+- **Louvain**: 高速で、まず全体像をつかみたいときの標準的な出発点です。
+- **Leiden** [@traag2019]: Louvain は反復過程で **内部的に切断された (badly-connected) コミュニティ**を生成しうるという既知の欠陥を抱えており、Leiden はこの欠陥を構造的に解消します。同じ目的なら現代的には Leiden が推奨されます。
+- **Walktrap**: ランダムウォークに基づき、小規模ネットワークの比較に向いています[@pons2005]。
 
-文献対応は、Louvain = Blondel et al. (2008)、Leiden = Traag et al. (2019)、Walktrap = Pons & Latapy (2005) と整理して読む。
+::: {.callout-warning}
+#### `cluster_leiden()` の既定目的関数に注意
+`igraph::cluster_leiden()` の既定 `objective_function` は **CPM (Constant Potts Model)** で、**modularity ではありません**。CPM の出力に対して `modularity()` を計算しても解釈は可能ですが、**Louvain (modularity 最大化) との Q 値の直接比較**を行うなら、`cluster_leiden(..., objective_function = "modularity", resolution_parameter = 1)` のように明示的に modularity を指定してください。本書のデモは比較目的なので、厳密には modularity 指定で再走させるべきです。
+:::
+
+#### Modularity の解像度限界 (resolution limit)
+
+@fortunatobarthelemy2007 は、modularity 最大化が **小規模なコミュニティを統合してしまう「解像度限界」** を持つことを数学的に示しました。具体的には、ネットワーク全体の総エッジ数 $m$ に対して、エッジ数が $\sqrt{2m}$ 以下の本来別々のコミュニティが、modularity 最大化の段階で 1 つに併合されてしまう現象です。Leiden の resolution パラメータや、@fortunato2010 がレビューする他の解像度パラメータ付き手法 (Reichardt-Bornholdt, RB-ER, RB-config 等) は、この問題への部分的な対処です。実務上は、**コミュニティ数の事前期待**と推定結果が大きく食い違うときに resolution を変えて再分析するのが安全です。
+
+文献対応は、Louvain = Blondel et al. (2008)、Leiden = Traag et al. (2019)、Walktrap = Pons & Latapy (2005) と整理して読みます。
 
 ```{r}
 #| eval: true
@@ -1289,13 +2352,76 @@ p_class + p_louvain + p_walktrap +
                   theme = theme(plot.title = element_text(size = 14, face = "bold", family = network_base_family)))
 ```
 
-同一レイアウト（Fruchterman-Reingold, seed固定）の上にクラスラベル・Louvain・Walktrap の結果を並べることで、アルゴリズムによるコミュニティ分割の違いを直接比較できる。実クラスと検出コミュニティの一致・不一致パターンに注目されたい。
+同一レイアウト（Fruchterman-Reingold, seed固定）の上にクラスラベル・Louvain・Walktrap の結果を並べることで、アルゴリズムによるコミュニティ分割の違いを直接比較できます。実クラスと検出コミュニティの一致・不一致パターンに注目してください。
 
-比較の順番としては、まず左端の実クラスを見て、次に Louvain、最後に Walktrap を見ると理解しやすい。左と中央がよく似ていれば「授業編成に近い分割」、大きくずれれば「活動を通じて別の交流圏ができている」と読める。
+比較の順番としては、まず左端の実クラスを見て、次に Louvain、最後に Walktrap を見ると理解しやすいです。左と中央がよく似ていれば「授業編成に近い分割」、大きくずれれば「活動を通じて別の交流圏ができている」と読めます。
+
+### ランダムグラフとの目安比較
+
+モジュラリティの値を読むときは、「同じ程度のノード数・エッジ数を持つランダムグラフでも同じくらいの値が出るのか」を確認すると、過剰解釈を避けやすくなります。以下は、同じノード数とエッジ数を持つランダムグラフを100個作り、Louvain のモジュラリティ分布と観測値を比べる教材用の確認です。`igraph::cluster_louvain()` は `weight` 属性があると既定で重みを使うため、この比較では観測ネットワーク側も `weights = NA` として**非重み付き**にそろえます。これは正式な有意性検定ではなく、次数分布や重み分布も保存しない粗い参照線です。
+
+```{r}
+#| eval: true
+#| label: community-random-baseline
+#| fig-cap: "Observed Modularity Compared With Same-Size Random Graphs"
+#| fig-height: 4
+#| fig-width: 7
+set.seed(2024)
+n_null_graphs <- 100
+observed_mod_unweighted <- modularity(cluster_louvain(g, weights = NA))
+null_modularity <- replicate(n_null_graphs, {
+  g_null <- igraph::sample_gnm(
+    n = vcount(g),
+    m = ecount(g),
+    directed = FALSE,
+    loops = FALSE
+  )
+  modularity(cluster_louvain(g_null, weights = NA))
+})
+
+community_null_summary <- tibble(
+  指標 = c("Observed modularity", "Null median", "Null 95th percentile", "Proportion null >= observed"),
+  値 = c(
+    round(observed_mod_unweighted, 3),
+    round(median(null_modularity), 3),
+    round(quantile(null_modularity, 0.95), 3),
+    round(mean(null_modularity >= observed_mod_unweighted), 3)
+  )
+)
+
+tibble(null_modularity = null_modularity) |>
+  ggplot(aes(x = null_modularity)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 25,
+                 fill = "grey75", color = "white") +
+  geom_density(color = "#1f77b4", linewidth = 0.8) +
+  geom_vline(xintercept = observed_mod_unweighted,
+             color = "#d62728", linewidth = 1.1, linetype = "dashed") +
+  annotate("text",
+           x = observed_mod_unweighted, y = Inf,
+           vjust = 1.5, hjust = -0.05,
+           label = paste0("Observed = ", round(observed_mod_unweighted, 3)),
+           color = "#d62728", fontface = "bold",
+           family = network_base_family) +
+  labs(
+    title = "Modularity Reference Distribution",
+    x = "Modularity from same-size random graphs", y = "Density"
+  ) +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| eval: true
+#| label: community-random-baseline-table
+community_null_summary |>
+  knitr::kable(caption = "Random-graph reference for modularity")
+```
+
+観測値がランダムグラフ分布の右側に大きく離れていれば、同じ規模・同じエッジ数だけでは説明しにくいまとまりがあると読めます。ただし、この確認はクラス編成や活動設計の妥当性を直接保証するものではありません。次の外部ラベルとの照合まで含めて判断します。
 
 ### 外部妥当性の検証（クラスラベルとの照合）
 
-検出されたコミュニティが既知のクラス編成（A / B / C）とどの程度一致するかを、クロス集計と**Adjusted Rand Index（ARI）**で評価する。ARIは $[-1, 1]$ の範囲を取り、1が完全一致、0がランダムな一致水準を示す。
+検出されたコミュニティが既知のクラス編成（A / B / C）とどの程度一致するかを、クロス集計と**Adjusted Rand Index（ARI）**で評価します。ARIは $[-1, 1]$ の範囲を取り、1が完全一致、0がランダムな一致水準を示します[@hubertarabie1985]。
 
 ```{r}
 #| eval: true
@@ -1376,16 +2502,16 @@ community_class_df |>
 
 **コミュニティ検出の解釈**:
 
-- 高モジュラリティ（$Q > 0.3$）は「内部で密・外部で疎」の傾向を示す。
-- ARI が高い（例: $> 0.5$）場合、コミュニティはクラス編成を概ね反映している。
-- ARI が低い場合、クラスを超えた交流グループが形成されている可能性がある。
-- コミュニティ検出はアルゴリズム依存であるため、単一の結果を絶対視せず、外部情報（クラス編成、活動設計）と照合すること[@blondel2008; @traag2019]。
+- 高いモジュラリティは「内部で密・外部で疎」の傾向を示しますが、固定的な有意性基準ではありません。
+- ARI が高い（例: $> 0.5$）場合、コミュニティはクラス編成を概ね反映しています。
+- ARI が低い場合、クラスを超えた交流グループが形成されている可能性があります。
+- コミュニティ検出はアルゴリズムに依存するため、単一の結果を絶対視せず、外部情報（クラス編成、活動設計）と照合すること[@blondel2008; @traag2019]。
 
 ヒートマップは**行ごと**に読むと理解しやすくなります。1行の大部分が1つのクラスに集中していれば、そのコミュニティは授業編成と強く対応しています。逆に、複数クラスに色が散っていれば、授業の境界を超えた交流圏が形成されていると解釈できます。
 
 ### コミュニティ別の中心性分布
 
-コミュニティ検出の結果と中心性を統合することで、「各コミュニティ内でどの学習者がハブ的役割を担っているか」を明らかにできる。
+コミュニティ検出の結果と中心性を統合することで、「各コミュニティ内でどの学習者がハブ的役割を担っているか」を明らかにできます。
 
 ```{r}
 #| eval: true
@@ -1443,7 +2569,7 @@ p_btw_comm <- ggplot(community_centrality, aes(x = community, y = betweenness, f
 p_str_comm + p_btw_comm
 ```
 
-**推奨される読み順**: 左の図で各コミュニティの活動量の幅を見て、どの集団に活動量の高い学習者が集まっているかを確認する。次に右の図で betweenness を見て、橋渡し役が特定コミュニティに偏っているかを確かめる。左だけ高くて右が低いなら「内部では活発だが外部接続は弱い」、右が高いなら「他集団との接続にも関わる」と読める。
+**推奨される読み順**: 左の図で各コミュニティの活動量の幅を見て、どの集団に活動量の高い学習者が集まっているかを確認します。次に右の図で betweenness を見て、橋渡し役が特定コミュニティに偏っているかを確かめます。左だけ高く、右が低い場合は「内部は活発ですが外部接続は弱い」、右が高い場合は「他集団との接続にも関わる」と読めます。
 
 ```{r}
 #| eval: true
@@ -1452,20 +2578,20 @@ p_str_comm + p_btw_comm
 community_centrality |>
   group_by(community) |>
   slice_max(strength, n = 3) |>
-  dplyr::select(community, id, class, strength, betweenness, eigen) |>
+  dplyr::select(community, id, class, strength, betweenness, eigen_lcc) |>
   ungroup() |>
   arrange(community, desc(strength)) |>
-  mutate(across(c(strength, betweenness, eigen), ~ round(.x, 3))) |>
+  mutate(across(c(strength, betweenness, eigen_lcc), ~ round(.x, 3))) |>
   knitr::kable(caption = "各コミュニティ内のハブ学習者（上位3名）")
 ```
 
-コミュニティ内でstrengthが突出して高い学習者は、そのサブグループの情報結節点として機能している可能性が高い。betweennessが同時に高い場合は、他コミュニティとの橋渡し役も兼ねている。
+コミュニティ内でstrengthが突出して高い学習者は、そのサブグループの情報結節点として機能している可能性が高いです。betweennessが同時に高い場合は、他コミュニティとの橋渡し役も兼ねています。
 
 ## 有向ネットワークへの拡張（相談ネットワーク）
 
-**この節のプロンプト**: 誰が相談される側で、誰が相談を送り出す側か。
+**この節のプロンプト**: 誰が相談される側で、誰が相談を送り出す側でしょうか。
 
-協働（無向）だけではなく、相談行動（有向）を扱うことで、次のような問いに答えられる。
+協働（無向）だけではなく、相談行動（有向）を扱うことで、次のような問いに答えられます。
 
 - 誰が相談を受ける中心か（in-degree）
 - 誰が相談を多く送るか（out-degree）
@@ -1510,14 +2636,15 @@ g_dir <- simplify(g_dir, remove.multiple = TRUE, remove.loops = TRUE)
 ```{r}
 #| eval: true
 #| label: directed-centrality
+dir_hits <- igraph::hits_scores(g_dir)
 dir_stats <- tibble(
   id = V(g_dir)$name,
   class = V(g_dir)$class,
   indegree = igraph::degree(g_dir, mode = "in"),
   outdegree = igraph::degree(g_dir, mode = "out"),
   pagerank = page_rank(g_dir)$vector,
-  authority = authority.score(g_dir)$vector,
-  hub = hub.score(g_dir)$vector
+  authority = dir_hits$authority,
+  hub = dir_hits$hub
 ) |>
   arrange(desc(indegree))
 
@@ -1552,15 +2679,15 @@ ggraph(as_tbl_graph(g_dir), layout = "fr") +
 
 - `indegree` が高い: 相談される側（知識の集積点）
 - `outdegree` が高い: 相談する側（探索行動が多い）
-- `pagerank` が高い: 重要ノードから参照される中心（Webのリンク構造と同じ原理）
-- `authority` が高い: 多くの hub から指し示される権威的ノード
-- `hub` が高い: 多くの authority を指し示す結節点
+- `pagerank` が高い: 指名構造上、重要なノードからも参照される位置[@page1999]
+- `authority` が高い: 多くの hub から指し示される位置[@kleinberg1999]
+- `hub` が高い: 多くの authority を指し示す位置[@kleinberg1999]
 
-この有向図では、矢印の向きが「相談する側 → 相談される側」であることを最初に確認する。ノードサイズは in-degree なので、大きいノードほど「相談を受ける中心」であり、単に多く発話していることを示すわけではない。
+この有向図では、矢印の向きが「相談する側 → 相談される側」であることを最初に確認します。ノードサイズは in-degree なので、大きいノードほど「相談を受ける中心」です。単に多く発話していることを示すわけではありません。
 
 ### In-degree × Out-degree の役割マッピング
 
-In-degree（相談される頻度）と out-degree（相談する頻度）の二次元空間に学習者を配置すると、相談ネットワーク上での役割が類型化できる。
+In-degree（相談される頻度）と out-degree（相談する頻度）の二次元空間に学習者を配置すると、相談ネットワーク上での役割が類型化できます。
 
 ```{r}
 #| eval: true
@@ -1599,9 +2726,9 @@ ggplot(dir_stats, aes(x = outdegree, y = indegree)) +
   ) +
   # 象限ラベル
   annotate("text", x = max(dir_stats$outdegree) * 0.95, y = max(dir_stats$indegree) * 0.95,
-           label = "Active Expert", fontface = "bold", size = 3.5, hjust = 1, color = "#2e7d32") +
+           label = "Active Recipient", fontface = "bold", size = 3.5, hjust = 1, color = "#2e7d32") +
   annotate("text", x = min(dir_stats$outdegree) + 0.5, y = max(dir_stats$indegree) * 0.95,
-           label = "Silent Authority", fontface = "bold", size = 3.5, hjust = 0, color = "#e65100") +
+           label = "Quiet Recipient", fontface = "bold", size = 3.5, hjust = 0, color = "#e65100") +
   annotate("text", x = max(dir_stats$outdegree) * 0.95, y = min(dir_stats$indegree) + 0.3,
            label = "Active Seeker", fontface = "bold", size = 3.5, hjust = 1, color = "#1565c0") +
   annotate("text", x = min(dir_stats$outdegree) + 0.5, y = min(dir_stats$indegree) + 0.3,
@@ -1635,30 +2762,37 @@ ggplot(dir_stats, aes(x = outdegree, y = indegree)) +
 
 | 象限 | In-degree | Out-degree | 学習者の特徴 |
 |---|---|---|---|
-| Active Expert（右上） | 高 | 高 | 多くの相談を受け、自らも積極的に相談する。ネットワークの中核 |
-| Silent Authority（左上） | 高 | 低 | 相談されることが多いが自分からは相談しない。知識権威 |
-| Active Seeker（右下） | 低 | 高 | 自ら積極的に相談するが、相談される機会は少ない。学習者タイプ |
-| Isolated（左下） | 低 | 低 | 相談の授受が少ない。ネットワーク周辺に位置 |
+| Active Recipient（右上） | 高 | 高 | 多くの相談を受け、自らも積極的に相談します。ネットワークの中核 |
+| Quiet Recipient（左上） | 高 | 低 | 相談されることが多いですが自分からは相談しません。相談を集める位置 |
+| Active Seeker（右下） | 低 | 高 | 自ら積極的に相談しますが、相談される機会は少ないです。学習者タイプ |
+| Isolated（左下） | 低 | 低 | 相談の授受が少ないです。ネットワーク周辺に位置 |
 
-SLA研究では、**Silent Authority** タイプが熟達度の高い学習者に多く見られる一方、**Active Seeker** タイプはL2使用機会を積極的に開拓している学習者として注目に値する。
+SLA研究では、**Quiet Recipient** タイプが熟達度の高い学習者に多く見られる可能性がある一方、**Active Seeker** タイプはL2使用機会を積極的に開拓している学習者として注目に値します。
 
-**推奨される読み順**: まず右上と左上を区別する。どちらも相談される側だが、右上は自分からも相談しており、左上は受け手に偏っている。次に右下を見ると、まだ中心ではないが学習機会を探して動いている学習者を捉えやすい。
+**推奨される読み順**: まず右上と左上を区別します。どちらも相談される側ですが、右上は自分からも相談しており、左上は受け手に偏っています。次に右下を見ると、まだ中心ではありませんが学習機会を探して動いている学習者を捉えやすいです。
 
 ## ERGM: 指数ランダムグラフモデル
 
-**この節のプロンプト**: 同類選好や三角形閉鎖のような形成メカニズムは、偶然以上に強いか。
+**この節のプロンプト**: 同類選好や三角形閉鎖のような形成メカニズムは、偶然以上に強いでしょうか。
+
+行列間の関連を先に確認したい場合は、後の QAP / MRQAP 節から読む方が自然です。ERGM は、単に「同じクラスだと関係が強いか」を見るだけでなく、ネットワーク全体の形成メカニズムをモデル化したい場合に使います。
 
 ### なぜERGMが必要か
 
-ここまでの分析は記述的（descriptive）である。密度や中心性は構造を要約するが、「同じクラスの学習者同士は有意に協働しやすいか」「熟達度が近い学習者同士のリンク形成確率は高いか」といった**推論的**な問いには答えられない。
+ここまでの分析は記述的（descriptive）です。密度や中心性は構造を要約しますが、「同じクラスの学習者同士は有意に協働しやすいか」「熟達度が近い学習者同士のリンク形成確率は高いか」といった**推論的**な問いには答えられません。
 
-通常の回帰分析でダイアド（ペア）データを分析する場合、観測の独立性が仮定されるが、ネットワークデータでは同一ノードが複数のダイアドに関与するため、この仮定が構造的に破れる。**指数ランダムグラフモデル**（Exponential Random Graph Model; ERGM）は、この問題に対処するためのモデルである[@robins2007; @lusher2013]。
+通常の回帰分析でダイアド（ペア）データを分析する場合、観測の独立性が仮定されますが、ネットワークデータでは同一ノードが複数のダイアドに関与するため、この仮定が構造的に破れます。**指数ランダムグラフモデル**（Exponential Random Graph Model; ERGM）は、この問題に対処するためのモデルです[@robins2007; @lusher2013]。
 
-**ERGMの直感的理解**: ERGMは「ロジスティック回帰 + ネットワーク依存項」と捉えると理解しやすくなります。通常のロジスティック回帰がダイアドの属性からリンクの有無を予測するのに対し、ERGMはそれに加えて「三角形の閉鎖」や「互恵性」といったネットワーク構造の効果もモデルに組み込む。
+::: {.callout-note}
+#### 「観測されたネットワーク 1 つ」をどう推論につなげるか
+SLA・教育研究のネットワーク分析では、しばしば「クラス 1 つ・コホート 1 つ」を観測しただけのデータで推論したい場面があります。ERGM はこの **「$n=1$ ネットワーク」** という見かけの問題に対する概念的回答を提供します。すなわち、観測されたネットワーク 1 つを「ある形成メカニズムに従う**ネットワーク分布**から抽出された 1 標本」とみなし、その分布のパラメータ (homophily・transitivity・popularity 等の強度) を推定する枠組みです。これにより、個人や対関係を独立観測として扱う回帰の枠組みを離れた推論が可能になります [@lusher2013]。
+:::
+
+**ERGMの直感的理解**: ERGMは、導入段階では「ロジスティック回帰に似た係数表を持つネットワーク形成モデル」と捉えると理解しやすいです。通常のロジスティック回帰がダイアドの属性からリンクの有無を予測するのに対し、ERGMはそれに加えて「三角形の閉鎖」や「互恵性」といったネットワーク構造の効果もモデルに組み込みます。ただし、ERGMの係数は独立した1ペアだけの効果ではなく、残りのネットワーク構造を条件づけた change statistic に対応する条件付き log-odds として読みます。
 
 ### 数学的基礎
 
-ERGMは、観測されたネットワーク $y$ が生じる確率を以下のように定義する。
+ERGMは、観測されたネットワーク $y$ が生じる確率を以下のように定義します。
 
 $$P(Y = y \mid \theta) = \frac{\exp\left(\theta^{\top} g(y)\right)}{c(\theta)}$$
 
@@ -1668,11 +2802,13 @@ $$P(Y = y \mid \theta) = \frac{\exp\left(\theta^{\top} g(y)\right)}{c(\theta)}$$
 - $\theta$: 各統計量に対応するパラメータ（log-odds として解釈される）
 - $c(\theta)$: 正規化定数（すべての可能なネットワーク上の和。直接計算は不可能なため、MCMC-MLE で推定する）
 
-各パラメータ $\theta_k$ は、「他の条件が同じとき、統計量 $g_k(y)$ が1単位増えた場合のリンク形成のlog-odds変化」と解釈できる。これは、ロジスティック回帰における係数の解釈と全く同じである。
+各パラメータ $\theta_k$ は、「他のネットワーク構造を固定して、当該 tie を追加または削除したときに、対応する統計量 $g_k(y)$ がどれだけ変わるか」に対する条件付き log-odds の変化として解釈します。属性項（例: `nodematch("class")`）はロジスティック回帰の係数に近い読み方ができますが、`gwesp` のような構造項はネットワーク全体の依存構造を含むため、単純な1ペアの独立効果とは読みません。
 
 ### statnet による実装
 
-ERGM の推定には `statnet` / `ergm` パッケージを使用する[@hunter2008; @handcock2008]。`igraph` オブジェクトを `network` オブジェクトに変換してからモデルを推定する。
+ERGM の推定には `statnet` / `ergm` パッケージを使用します[@hunter2008; @handcock2008]。`igraph` オブジェクトを `network` オブジェクトに変換してからモデルを推定します。
+
+本章の ERGM 例は、共同作業**回数**ではなく、共同作業関係の**有無**を目的とする binary ERGM です。`ergm()` で `response` を指定しない場合、エッジの重み属性はモデル化されず、リンクが存在するかどうかが扱われます。共同作業回数や返信回数そのものを目的にする場合は、valued ERGM や `ergm.count` のような拡張を検討する必要があります[@krivitsky2012valued]。
 
 ```{r}
 #| eval: true
@@ -1684,6 +2820,10 @@ g_for_ergm <- g
 keep_attrs <- c("name", "class", "proficiency", "baseline_score")
 for (a in vertex_attr_names(g_for_ergm)) {
   if (!(a %in% keep_attrs)) g_for_ergm <- delete_vertex_attr(g_for_ergm, a)
+}
+# この例は binary ERGM として扱うため、共同作業回数の weight はモデルには入れない
+if ("weight" %in% edge_attr_names(g_for_ergm)) {
+  g_for_ergm <- delete_edge_attr(g_for_ergm, "weight")
 }
 # 数値・文字型を明示変換
 V(g_for_ergm)$baseline_score <- as.numeric(V(g_for_ergm)$baseline_score)
@@ -1699,6 +2839,8 @@ tibble(
 ) |>
   knitr::kable(caption = "Network Summary")
 ```
+
+`gwesp` (geometrically weighted edgewise shared partner) は、`triangle` 項の直接投入が引き起こす **モデル退化 (degeneracy)** を回避するために設計された幾何加重統計量です [@snijders2006]。@hunter2007curved は GWESP を含む曲指数族 (curved exponential family) としての理論的位置付けと、`gwdsp` (geometrically weighted dyadwise shared partner)・`gwdegree` を含む geometrically weighted 統計量ファミリーの統一的扱いを与えています。本章のデモは GWESP のみを使いますが、実研究で複数の構造項を同時に検討するなら、`gwesp + gwdsp + gwdegree` の 3 項セットが標準的な出発点です。
 
 ```{r}
 #| eval: true
@@ -1784,11 +2926,11 @@ ggplot(ergm_forest, aes(x = estimate, y = term)) +
   theme(axis.text.y = element_text(size = 10))
 ```
 
-**推奨される読み順**: まず横線が 0 の縦破線をまたいでいるかを見る。区間が 0 をまたがなければ、その項の効果は 0 から十分離れていると読める。次に点が右側か左側かを見て、正の効果か負の効果かを確認する。最後に、どの項の区間が最も右や左に離れているかで、相対的に強い効果を把握する。
+**推奨される読み順**: まず横線が 0 の縦破線をまたいでいるかを見ます。区間が 0 をまたがなければ、その項の効果は 0 から十分離れていると読めます。次に点が右側か左側かを見て、正の効果か負の効果かを確認します。最後に、どの項の区間が最も右や左に離れているかで、相対的に強い効果を把握します。
 
 #### オッズ比への変換
 
-ERGMの係数はlog-oddsであるため、$\exp(\hat{\theta})$ でオッズ比に変換すると、「他の条件が同じとき、その特徴を持つペアはリンク形成のオッズが何倍か」という解釈が可能になる。
+ERGMの係数はlog-oddsなので、$\exp(\hat{\theta})$ でオッズ比に変換すると、「他の構造条件を考慮したうえで、その特徴を持つペアはリンクが存在するオッズが何倍か」という解釈が可能になります。この読み方は本例の binary ERGM に対するもので、共同作業回数そのものの倍率を表すわけではありません。
 
 ```{r}
 #| eval: true
@@ -1806,7 +2948,7 @@ ergm_or |>
   knitr::kable(caption = "ERGM推定結果: オッズ比への変換")
 ```
 
-ERGMの係数はlog-oddsとして解釈する。以下のガイドを参照されたい。
+ERGMの係数はlog-oddsとして解釈します。以下のガイドを参照してください。
 
 | ERGM項 | 意味 | SLA的解釈 |
 |---|---|---|
@@ -1815,13 +2957,70 @@ ERGMの係数はlog-oddsとして解釈する。以下のガイドを参照さ�
 | `nodematch("proficiency")` | 同熟達度の同類選好 | 近い熟達度の学習者同士が結びつきやすいか |
 | `gwesp(0.5)` | 三角形の閉鎖傾向（GWESP） | 「友人の友人とも協働する」傾向の強さ |
 
-**オッズ比の読み方**: 例えば `nodematch("class")` のオッズ比が 5.0 であれば、「同じクラスに属するペアは、異なるクラスのペアと比較して、協働関係を持つオッズが5倍高い」と解釈する。信頼区間が1を含まなければ統計的に有意である。
+**オッズ比の読み方**: 例えば `nodematch("class")` のオッズ比が 5.0 であれば、「同じクラスに属するペアは、異なるクラスのペアと比較して、協働関係を持つオッズが5倍高い」と解釈します。信頼区間が1を含まなければ統計的に有意です。
 
-ERGM の結果表は、`edges` を「全体のつながりやすさ」、`nodematch()` を「属性による偏り」、`gwesp` を「三角形閉鎖」と分けて読むと整理しやすい。まず符号が正か負か、次に信頼区間や p 値、最後にオッズ比の大きさを見る順序を守ると混乱しにくい。
+ERGM の結果表は、`edges` を「全体のつながりやすさ」、`nodematch()` を「属性による偏り」、`gwesp` を「三角形閉鎖」と分けて読むと整理しやすいです。まず符号が正か負か、次に信頼区間や p 値、最後にオッズ比の大きさを見る順序を守ると混乱しにくいです。
+
+### 推論診断図の読み方
+
+ERGM、QAP、MRQAP では、係数表だけでなく診断図も結果の一部です。ただし、図の目的が異なります。MCMC 診断は推定過程、GOF はモデルの構造再現、QAP/MRQAP の置換図は非独立な行列データに対する帰無分布を見ています。以下の表のように、図ごとに読む順番を固定すると解釈が安定します。
+
+```{r}
+#| eval: true
+#| label: network-inference-diagnostic-guide
+
+network_inference_diagnostic_guide <- tibble::tribble(
+  ~Diagnostic_plot, ~First_check, ~Reasonable_pattern, ~Warning_pattern, ~Next_step,
+  "ERGM MCMC trace",
+  "トレースが一方向に流れ続けていないか",
+  "中心付近を行き来し、極端な自己相関が残らない",
+  "単調なドリフト、長い停滞、強い自己相関",
+  "モデル項を減らす、MCMC設定を調整する、退化を疑う",
+  "ERGM GOF",
+  "観測線がシミュレーション包絡のどこにあるか",
+  "degree、測地距離、shared partners が大きく外れない",
+  "複数パネルで観測線が端または外側に出る",
+  "構造項を見直す、代替モデルと比較する",
+  "QAP permutation distribution",
+  "観測統計量が置換分布の中心からどれだけ離れるか",
+  "事前仮説方向に十分離れ、p値と整合する",
+  "係数は大きいが置換分布の中心付近にある",
+  "通常回帰のp値ではなくQAPのp値を報告する",
+  "MRQAP coefficient plot",
+  "統制後の係数が0をまたぐか",
+  "主要説明変数の符号と区間が理論と整合する",
+  "統制変数を入れると符号が大きく変わる",
+  "共線性、距離行列の作り方、代替仕様を点検する",
+  "Sensitivity plot",
+  "しきい値や欠測処理を変えて結論が保たれるか",
+  "中心的結論が大きく変わらない",
+  "特定のしきい値だけで結論が出る",
+  "主分析と探索的分析を分けて報告する"
+)
+
+network_inference_diagnostic_guide |>
+  knitr::kable(caption = "Reading guide for ERGM/QAP/MRQAP diagnostic figures")
+```
+
+### MCMC収束診断
+
+ERGM では、係数表を見る前に、推定に使われた MCMC が十分に混合しているかを確認します。これは次の GOF とは別の確認です。`mcmc.diagnostics()` は推定過程のサンプル統計量、自己相関、トレースの挙動を点検するための関数であり、モデルが観測ネットワークを再現できるかを調べる `gof()` とは目的が異なります。
+
+```{r}
+#| eval: true
+#| label: ergm-mcmc-diagnostics
+#| fig-cap: "MCMC Diagnostics for the ERGM Fit"
+#| fig-height: 7
+#| fig-width: 8
+#| cache: true
+ergm::mcmc.diagnostics(ergm_fit)
+```
+
+ここでは、トレースが一方向に流れ続けていないか、自己相関が極端に高く残っていないか、観測統計量からのずれが系統的でないかを確認します。診断に問題がある場合は、モデル項を減らす、`control.ergm()` の MCMC 設定を調整する、またはそもそもネットワークサイズ・密度・項の組み合わせが推定に適しているかを見直します。
 
 ### 適合度診断（Goodness of Fit）
 
-モデルが観測ネットワークの構造的特徴を適切に再現できているかを確認する。
+モデルが観測ネットワークの構造的特徴を適切に再現できているかを確認します。
 
 ```{r}
 #| eval: true
@@ -1833,24 +3032,24 @@ ergm_gof <- ergm::gof(ergm_fit)
 plot(ergm_gof)
 ```
 
-適合度プロットでは、太い実線が観測データ、箱ひげ図がモデルからのシミュレーションを示す。観測値がシミュレーションの範囲内に収まっていれば、モデルの適合は良好と判断できる。
+適合度プロットでは、太い実線が観測データ、箱ひげ図がモデルからのシミュレーションを示します。観測値が箱ひげ図やシミュレーション包絡の中心的な範囲におおむね収まっていれば、モデルはその統計量を比較的よく再現していると考えられます。ただし、単に最小値と最大値の範囲内にあるだけでは十分ではなく、複数のパネルで系統的に外れていないかを見ます。
 
-見る順番としては、まず degree 分布、次に測地距離、最後に edge-wise shared partners を確認するとよい。観測線が複数のパネルで箱ひげ図の外側に大きく外れる場合、そのモデルは「見かけ上有意」でもネットワーク構造を十分には再現できていない。
+見る順番としては、まず degree 分布、次に測地距離、最後に edge-wise shared partners を確認するとよいです。観測線が複数のパネルで箱ひげ図の外側に大きく外れる場合、そのモデルは「見かけ上有意」でもネットワーク構造を十分には再現できていません。
 
-**推奨される読み方**: 箱ひげ図は「モデルがふつうに再現する範囲」、実線は「実際のデータ」を表す。したがって、実線が箱ひげ図の真ん中付近に重なれば良好、端に触れる程度ならやや不安、外へ大きく外れるならその構造をモデルが捉え切れていないと考える。
+**推奨される読み方**: 箱ひげ図は「モデルがふつうに再現する範囲」、実線は「実際のデータ」を表します。したがって、実線が箱ひげ図の真ん中付近に重なれば良好、端に触れる程度ならやや不安、外へ大きく外れるならその構造をモデルが捉え切れていないと考えます。
 
 **ERGMのよくある問題**:
 
-- **モデル退化**（degeneracy）: `triangle` 項を直接投入するとMCMLEが収束しないことがある。代わりに `gwesp` や `gwdsp` を使用する。
-- **計算時間**: ノード数100以上では数分～数十分かかる場合がある。`control.ergm()` で反復回数を調整する。
-- **有向/無向の一致**: グラフの方向性とモデル項（`mutual` は有向のみ）を一致させる。
-- **解釈の範囲**: ERGMはネットワーク形成メカニズムのモデルであり、因果関係を直接示すものではない。
+- **モデル退化**（degeneracy）: `triangle` 項を直接投入するとMCMLEが収束しないことがあります。代わりに `gwesp` や `gwdsp` を使用します。
+- **計算時間**: ノード数100以上では数分～数十分かかる場合があります。`control.ergm()` で反復回数を調整します。
+- **有向/無向の一致**: グラフの方向性とモデル項（`mutual` は有向のみ）を一致させます。
+- **解釈の範囲**: ERGMはネットワーク形成メカニズムのモデルであり、因果関係を直接示すものではありません。
 
 ### モデル比較: SEM とどこが似ていて、どこが違うか
 
-ここは、ネットワーク分析を初めて学ぶ読者が混乱しやすい点である。結論を先に言うと、**ERGM には SEM にやや近いモデル比較の発想があるが、ネットワーク分析全体が SEM のように fit index で回るわけではない**。
+ここは、ネットワーク分析を学ぶ読者が混乱しやすい点です。結論を先に言うと、**ERGM には SEM にやや近いモデル比較の発想がありますが、ネットワーク分析全体が SEM のように fit index で回るわけではありません**。
 
-この整理は、ERGM の理論的背景についてはネットワーク統計の教科書と論文[@robins2007; @lusher2013]、実装面については `ergm` パッケージの公式ヘルプ（`anova.ergm`, `AIC.ergm`, `summary.ergm`）に依拠している。QAP / MRQAP 側の説明は、古典的文献と方法論研究[@krackhardt1988; @dekker2007] に基づいている。
+この整理は、ERGM の理論的背景についてはネットワーク統計の教科書と論文[@robins2007; @lusher2013]、実装面については `ergm` パッケージの公式ヘルプ（`anova.ergm`, `AIC.ergm`, `summary.ergm`）に依拠しています。QAP / MRQAP 側の説明は、古典的文献と方法論研究[@krackhardt1988; @dekker2007] に基づいています。
 
 | 手法 | 比較のしかた | SEM に近いか | 実務上の読み方 |
 |---|---|---|---|
@@ -1859,15 +3058,15 @@ plot(ergm_gof)
 | ERGM | `anova()`、`AIC()`、`BIC()`、GOF を使って候補モデルを比べる | 高い | 「項を足すと説明は良くなるか、ただし構造再現も改善するか」を見る |
 | QAP / MRQAP | 置換分布、係数、説明変数集合の変化を見る | 中くらい | 「非独立性を考えても関連が残るか」を比べる |
 
-したがって、「SEM のようにモデル比較をするのか」という問いに対する短い答えは次のようになる。
+したがって、「SEM のようにモデル比較をするのか」という問いに対する短い答えは次のようになります。
 
-- **ERGM では、かなりする**。とくに入れ子モデルなら `anova()` 比較ができる。
-- **QAP / MRQAP では、AIC/BIC 中心ではない**。置換にもとづく係数の安定性と有意性を主に見る。
-- **可視化や中心性分析では、モデル比較というより感度分析・頑健性確認である**。
+- **ERGM では、かなり行います**。とくに入れ子モデルなら `anova()` 比較ができます。
+- **QAP / MRQAP では、AIC/BIC 中心ではありません**。置換にもとづく係数の安定性と有意性を主に見ます。
+- **可視化や中心性分析では、モデル比較というより感度分析・頑健性確認です**。
 
 #### ERGM の段階的モデル比較
 
-ERGM は、`edges only` から始めて、属性項や三角形閉鎖項を順に足していくと理解しやすい。ここでは、同じネットワークに対して 3 つの入れ子モデルを比較する。
+ERGM は、`edges only` から始めて、属性項や三角形閉鎖項を順に足していくと理解しやすいです。ここでは、同じネットワークに対して 3 つの入れ子モデルを比較します。
 
 ```{r}
 #| eval: true
@@ -1918,27 +3117,27 @@ ergm_anova_tbl |>
 
 **比較の読み方**:
 
-- まず `AIC` と `BIC` を見る。一般には**小さい方がよい**。
-- 次に `anova()` を見る。これは**同じデータに対する入れ子モデル比較**であり、項を足したぶんだけ適合が改善したかを確認する。
-- ただし、ここで止めてはいけない。`AIC` が下がっても、先ほどの GOF 図で degree 分布や共有パートナー構造を再現できていなければ、そのモデルはネットワーク構造の説明としては不十分である。
+- まず `AIC` と `BIC` を見ます。一般には**小さい方がよいです**。
+- 次に `anova()` を見ます。これは**同じデータに対する入れ子モデル比較**であり、項を足したぶんだけ適合が改善したかを確認します。
+- ただし、ここで止めてはいけません。`AIC` が下がっても、先ほどの GOF 図で degree 分布や共有パートナー構造を再現できていなければ、そのモデルはネットワーク構造の説明としては不十分です。
 
-SEM との違いを一言で言えば、ERGM でも「単純モデル → 少し複雑なモデル → 構造項を足したモデル」という比較は行う。しかし、**最終判断は fit index だけでなく、シミュレーションによる構造再現まで含めて行う**点が大きい。
+SEM との違いを一言で言えば、ERGM でも「単純モデル → 少し複雑なモデル → 構造項を足したモデル」という比較は行います。しかし、**最終判断は fit index だけでなく、シミュレーションによる構造再現まで含めて行う**点が大きいです。
 
-一方、QAP や MRQAP では通常、`CFI` や `RMSEA` のような適合度指標でモデル全体を比較するわけではない。説明変数を増減させながら、係数の符号、置換分布、p 値、そして結果の頑健性を見る。そのため、「ネットワーク分析全体が SEM と同じ比較文化を持つ」とは考えない方がよい。
+一方、QAP や MRQAP では通常、`CFI` や `RMSEA` のような適合度指標でモデル全体を比較するわけではありません。説明変数を増減させながら、係数の符号、置換分布、p 値、そして結果の頑健性を見ます。そのため、「ネットワーク分析全体が SEM と同じ比較文化を持つ」とは考えない方がよいでしょう。
 
 ## QAP回帰: ネットワークの非独立性に対処する
 
-**この節のプロンプト**: 2つのネットワークやダイアド変数の関連は、非独立性を考慮しても残るか。
+**この節のプロンプト**: 2つのネットワークやダイアド変数の関連は、非独立性を考慮しても残るでしょうか。
 
 ### なぜQAPが必要か
 
-ネットワークデータにおいて、ノード $i$ が関与するすべてのダイアド $(i, j_1), (i, j_2), \ldots$ は独立ではない。通常のOLS回帰やロジスティック回帰をダイアドデータに適用すると、標準誤差が過小推定され、Type I error が増大する[@krackhardt1988; @dekker2007]。
+ネットワークデータにおいて、ノード $i$ が関与するすべてのダイアド $(i, j_1), (i, j_2), \ldots$ は独立ではありません。通常のOLS回帰やロジスティック回帰をダイアドデータに適用すると、標準誤差が過小推定され、Type I error が増大します[@krackhardt1988; @dekker2007]。
 
-**Quadratic Assignment Procedure（QAP）**は、ネットワーク行列の行と列を同時に置換する（permutation）ことで、ネットワーク構造を保持したまま帰無分布を構成する非パラメトリック検定法である。
+**Quadratic Assignment Procedure（QAP）**は、ネットワーク行列の行と列を同時に置換する（permutation）ことで、ネットワーク構造を保持したまま帰無分布を構成する非パラメトリック検定法です[@butts2008]。
 
 ### QAP相関
 
-協働ネットワークと相談ネットワークの間に関連があるかを検定する。
+協働ネットワークと相談ネットワークの間に関連があるかを検定します。ここでは「同じペアが協働も相談もしているか」という重なりを見るため、相談ネットワークはいったん無向化します。相談する方向そのものを研究質問にする場合は、in-degree / out-degree や相互性を別に扱います。
 
 ```{r}
 #| eval: true
@@ -1947,11 +3146,12 @@ SEM との違いを一言で言えば、ERGM でも「単純モデル → 少し
 # igraph → 隣接行列
 adj_collab <- as_adjacency_matrix(g, attr = "weight", sparse = FALSE)
 adj_advice <- as_adjacency_matrix(g_dir, sparse = FALSE)
+adj_advice_undirected <- pmax(adj_advice, t(adj_advice))
 
 # ノード順序を一致させる
 common_ids <- intersect(rownames(adj_collab), rownames(adj_advice))
 adj_collab_aligned <- adj_collab[common_ids, common_ids]
-adj_advice_aligned <- adj_advice[common_ids, common_ids]
+adj_advice_aligned <- adj_advice_undirected[common_ids, common_ids]
 
 # QAP検定
 set.seed(2024)
@@ -1960,12 +3160,21 @@ qap_result <- sna::qaptest(
   sna::gcor, g1 = 1, g2 = 2, reps = 2000
 )
 
+qap_p_two_sided <- min(1, 2 * min(qap_result$pleeq, qap_result$pgreq))
 qap_summary <- tibble(
-  指標 = c("Observed correlation", "Permutation p value", "Permutations"),
-  値 = c(round(qap_result$testval, 3), round(qap_result$pgreq, 4), 2000),
+  指標 = c("Observed correlation", "p (less or equal)", "p (greater or equal)", "Two-sided p", "Permutations"),
+  値 = c(
+    round(qap_result$testval, 3),
+    round(qap_result$pleeq, 4),
+    round(qap_result$pgreq, 4),
+    round(qap_p_two_sided, 4),
+    2000
+  ),
   意味 = c(
     "協働ネットワークと相談ネットワークの対応の強さ",
-    "置換分布に照らした片側p値",
+    "観測相関が負方向にどの程度極端か",
+    "観測相関が正方向にどの程度極端か",
+    "方向を事前に決めない場合の目安",
     "帰無分布を作るための置換回数"
   )
 )
@@ -1978,19 +3187,32 @@ qap_summary |>
 #| eval: true
 #| label: qap-correlation-plot
 #| fig-cap: "QAP Permutation Distribution and Observed Correlation"
-hist(qap_result$dist, breaks = 40, col = "grey80", border = "white",
-     main = "QAP Permutation Distribution",
-     xlab = "Permuted Correlation", ylab = "Frequency")
-abline(v = qap_result$testval, col = "red", lwd = 2, lty = 2)
-legend("topright", legend = paste("Observed r =", round(qap_result$testval, 3)),
-       col = "red", lwd = 2, lty = 2, bty = "n")
+tibble(permuted = qap_result$dist) |>
+  ggplot(aes(x = permuted)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 40,
+                 fill = "grey75", color = "white") +
+  geom_density(color = "#1f77b4", linewidth = 0.8) +
+  geom_vline(xintercept = qap_result$testval,
+             color = "#d62728", linewidth = 1.2, linetype = "dashed") +
+  annotate("text",
+           x = qap_result$testval, y = Inf,
+           vjust = 1.5, hjust = -0.05,
+           label = paste0("Observed r = ", round(qap_result$testval, 3)),
+           color = "#d62728", fontface = "bold",
+           family = network_base_family) +
+  labs(
+    title = "QAP Permutation Distribution",
+    x = "Permuted correlation", y = "Density"
+  ) +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(legend.position = "bottom")
 ```
 
-この図では、赤い破線が置換分布の中心ではなく端に位置しているかを確認する。端に大きく離れていれば、「行列の対応を保ったまま並べ替えても、これほど強い相関はあまり出ない」と解釈できる。
+この図では、赤い破線が置換分布の中心ではなく端に位置しているかを確認します。端に大きく離れていれば、「行列の対応を保ったまま並べ替えても、これほど強い相関はあまり出ない」と解釈できます。
 
 ### MRQAP回帰
 
-**Multiple Regression QAP（MRQAP）**は、ダイアド特性（同クラスか否か、熟達度の差など）から関係の強さ（協働回数）を予測する回帰分析である[@dekker2007]。帰無分布の構成にはDouble Semi-Partialing（DSP）法を用いる。
+**Multiple Regression QAP（MRQAP）**は、ダイアド特性（同クラスか否か、熟達度の差など）から関係の強さ（協働回数）を予測する回帰分析です[@krackhardt1988; @dekker2007]。本章では無向の協働回数を目的行列とするため、`sna::netlm()` で `mode = "graph"` を明示し、QAP semi-partialing permutation（`nullhyp = "qapspp"`）を用います。片側検定を報告する場合は、正方向・負方向のどちらを事前に想定したかを本文で明示します。
 
 ```{r}
 #| eval: true
@@ -2011,13 +3233,14 @@ for (i in seq_len(n_nodes)) {
   }
 }
 
-# MRQAP回帰（DSP法）
+# MRQAP回帰（QAP semi-partialing permutation）
 set.seed(2024)
 mrqap_fit <- sna::netlm(
   adj_collab_aligned,
   list(same_class_mat, prof_gap_mat),
   reps = 2000,
-  nullhyp = "qap"
+  nullhyp = "qapspp",
+  mode = "graph"
 )
 
 ```
@@ -2032,17 +3255,22 @@ mrqap_names <- c("(Intercept)", "Same Class", "Proficiency Gap")
 mrqap_table <- tibble(
   変数 = mrqap_names,
   推定値 = round(mrqap_coefs, 4),
-  `QAP p値 (右側)` = round(c(
-    mrqap_fit$pleeq[1],
+  想定方向 = c("解釈対象外", "正方向", "負方向"),
+  `p (less or equal)` = round(mrqap_fit$pleeq, 4),
+  `p (greater or equal)` = round(mrqap_fit$pgreq, 4),
+  `Two-sided p` = round(pmin(1, 2 * pmin(mrqap_fit$pleeq, mrqap_fit$pgreq)), 4),
+  `仮説方向のp値` = round(c(
+    NA_real_,
     mrqap_fit$pgreq[2],
     mrqap_fit$pleeq[3]
   ), 4)
 ) |>
   mutate(
     判定 = case_when(
-      `QAP p値 (右側)` < 0.001 ~ "***",
-      `QAP p値 (右側)` < 0.01  ~ "**",
-      `QAP p値 (右側)` < 0.05  ~ "*",
+      is.na(`仮説方向のp値`) ~ "",
+      `仮説方向のp値` < 0.001 ~ "***",
+      `仮説方向のp値` < 0.01  ~ "**",
+      `仮説方向のp値` < 0.05  ~ "*",
       TRUE ~ "n.s."
     )
   )
@@ -2051,33 +3279,33 @@ mrqap_table |>
   knitr::kable(caption = "MRQAP回帰結果")
 ```
 
-置換回数は 2000、目的変数は協働回数である。p値は片側検定として読み、Same Class は右側（正の効果）、Proficiency Gap は左側（負の効果）を検定している。
+置換回数は 2000、目的変数は協働回数です。表には左側・右側・両側のp値を併記しています。`sna::netlm()` の既定では、QAP の検定統計量は係数そのものではなく t 値です。仮説方向のp値は、Same Class では右側（正の効果）、Proficiency Gap では左側（負の効果）を採用しています。方向を事前に決めていない探索的分析では、両側p値を主に報告する方が安全です。
 
 ```{r}
 #| eval: true
 #| label: mrqap-permutation-plot
-#| fig-cap: "MRQAP Permutation Distribution: Same Class Coefficient"
+#| fig-cap: "MRQAP Permutation Distribution: Same Class t Statistic"
 #| fig-height: 4
 #| fig-width: 6
-# Same Class 係数の置換分布
+# Same Class の検定統計量（既定ではt値）の置換分布
 perm_dist_class <- mrqap_fit$dist[, 2]
-obs_coef_class <- mrqap_fit$coefficients[2]
+obs_stat_class <- mrqap_fit$tstat[2]
 
 tibble(permuted = perm_dist_class) |>
   ggplot(aes(x = permuted)) +
   geom_histogram(aes(y = after_stat(density)), bins = 40,
                  fill = "grey75", color = "white") +
   geom_density(color = "#1f77b4", linewidth = 0.8) +
-  geom_vline(xintercept = obs_coef_class, color = "#d62728",
+  geom_vline(xintercept = obs_stat_class, color = "#d62728",
              linewidth = 1.2, linetype = "dashed") +
   annotate("text",
-           x = obs_coef_class, y = Inf, vjust = 1.5, hjust = -0.1,
-           label = paste0("Observed = ", round(obs_coef_class, 3)),
+           x = obs_stat_class, y = Inf, vjust = 1.5, hjust = -0.1,
+           label = paste0("Observed t = ", round(obs_stat_class, 3)),
            color = "#d62728", size = 3.8, fontface = "bold",
            family = network_base_family) +
   labs(
     title = "MRQAP Permutation Distribution: Same Class",
-    x = "Permuted Coefficient", y = "Density"
+    x = "Permuted t statistic", y = "Density"
   ) +
   theme_bw(base_family = network_base_family, base_size = 12) +
   theme(
@@ -2097,23 +3325,23 @@ tibble(permuted = perm_dist_class) |>
   ) + theme(legend.position = "bottom")
 ```
 
-通常のOLS回帰では、ダイアド間の非独立性により標準誤差が過小推定される。QAP回帰は行列の行と列を同時に置換することでこの問題に対処し、より保守的（正確な）p値を提供する[@dekker2007]。
+通常のOLS回帰では、ダイアド間の非独立性により標準誤差が過小推定されます。QAP回帰は行列の行と列を同時に置換することでこの問題に対処し、より保守的（正確な）p値を提供します[@dekker2007]。
 
-MRQAP の置換分布も、見方は QAP 相関と同じである。観測係数の縦線が置換分布の裾に寄っているほど、その説明変数は「ネットワーク構造を壊さずに並べ替えても残りにくい効果」を持つと読む。
+MRQAP の置換分布も、見方は QAP 相関と同じです。観測係数の縦線が置換分布の裾に寄っているほど、その説明変数は「ネットワーク構造を壊さずに並べ替えても残りにくい効果」を持つと読みます。
 
 **ERGMとQAPの使い分け**:
 
-- **ERGM**: ネットワーク形成の**生成モデル**。同類選好・三角形閉鎖などのメカニズムを同時に検定できる。構造的な依存をモデルの中に組み込む。
-- **QAP**: ネットワーク行列間の**関連検定**。置換により非独立性に対処する。計算が軽く、探索的分析に向いている。
-- 両者は補完的に使用することが推奨される[@saqr2024]。
+- **ERGM**: ネットワーク形成の**生成モデル**です。同類選好・三角形閉鎖などのメカニズムを同時に検定できます。構造的な依存をモデルの中に組み込みます。
+- **QAP**: ネットワーク行列間の**関連検定**です。置換により非独立性に対処します。計算が軽く、探索的分析に向いています。
+- 両者は補完的に使用することが推奨されます[@saqr2024]。
 
 ## ネットワーク指標を回帰へ接続する
 
-**この節のプロンプト**: ネットワーク位置を個人レベルのアウトカム予測子として扱うと、何が見えて何が見えなくなるか。
+**この節のプロンプト**: ネットワーク位置を個人レベルのアウトカム予測子として扱うと、何が見えて何が見えなくなるでしょうか。
 
-回帰分析既習者向けに、ネットワーク中心性を個人レベルのアウトカムの予測子として用いる最小例を示す。ここでは、中心性が「学期中の伸び（gain）」と関連するかを確認する。
+回帰分析既習者向けに、ネットワーク中心性を個人レベルのアウトカムの予測子として用いる最小例を示します。ここでは、中心性が「学期中の伸び（gain）」と関連するかを確認します。
 
-**重要な留意事項**: これは**方法理解のためのシミュレーション**であり、因果推論を行う例ではない。ネットワークデータは相互依存を持つため、通常の回帰仮定（独立性）が崩れやすい。厳密な推論には、前節で紹介したERGMやQAPが必要である[@krackhardt1988]。
+**重要な留意事項**: これは**方法理解のためのシミュレーション**であり、因果推論を行う例ではありません。ネットワークデータは相互依存を持つため、通常の回帰仮定（独立性）が崩れやすくなります。ERGM はネットワーク形成、QAP / MRQAP は主に行列・ダイアド関係を扱うため、個人レベルの `gain` を中心性で予測する回帰の非独立性を万能に解決するわけではありません。実データでは、研究デザイン、置換・ブートストラップ、ネットワーク自己相関、縦断モデルなどを研究質問に合わせて検討します。
 
 ```{r}
 #| eval: true
@@ -2153,10 +3381,10 @@ par(mfrow = c(1, 1))
 
 **診断図の読み方**:
 
-- `Residuals vs Fitted`: 残差が横にランダムに散っていればよい。曲線的な形が出ると線形性が怪しい。
-- `Normal Q-Q`: 点が対角線に沿えば残差の正規性は概ね妥当。端で大きく外れると外れた残差がある。
-- `Scale-Location`: 横方向にほぼ一定の幅なら分散は安定。右に行くほど広がるなら不均一分散を疑う。
-- `Residuals vs Leverage`: 右上や右下の孤立点は影響の大きい観測候補である。
+- `Residuals vs Fitted`: 残差が横にランダムに散っていればよいです。曲線的な形が出ると線形性が疑われます。
+- `Normal Q-Q`: 点が対角線に沿えば残差の正規性は概ね妥当です。端で大きく外れると外れた残差があります。
+- `Scale-Location`: 横方向にほぼ一定の幅なら分散は安定しています。右に行くほど広がるなら不均一分散を疑います。
+- `Residuals vs Leverage`: 右上や右下の孤立点は影響の大きい観測候補です。
 
 ```{r}
 #| eval: true
@@ -2169,15 +3397,56 @@ car::vif(m_gain) |>
   knitr::kable(caption = "VIF (Variance Inflation Factor)")
 ```
 
-この節では、回帰係数そのものよりも「ネットワーク指標を通常の個票回帰に入れると何が起きるか」を理解することが目的である。したがって、係数の有意性だけでなく、診断図と VIF を見て、通常の回帰の前提がどこまで満たされているかを確認することが重要になる。
+この節では、回帰係数そのものよりも「ネットワーク指標を通常の個票回帰に入れると何が起きるか」を理解することが目的です。したがって、係数の有意性だけでなく、診断図と VIF を見て、通常の回帰の前提がどこまで満たされているかを確認することが重要になります。
 
 ## SLA・心理言語学・評価研究への応用例
 
-ここまでの例は、主に「学習者をノードとする教室ネットワーク」を扱ってきた。しかし、同じ発想は心理言語学の**語彙ネットワーク**や、パフォーマンス評価研究の**評定者ネットワーク**にもそのまま拡張できる。本節では、SLAで典型的な学習者間ネットワークに加え、LDT（lexical decision task）系のメガスタディと、MFRM（many-facet Rasch measurement）と接続しうる評価研究の例も位置づける。
+ここまでの例は、主に「学習者をノードとする教室ネットワーク」を扱ってきました。本節では、まず同じ発想を留学・教室・LMS・ピア評価へ広げます。続く語彙ネットワークと評定者ネットワークは、学習者間ネットワークから一歩離れた発展応用であり、ノードとエッジの意味が変わる点に注意して読みます。
 
 ### 留学ネットワークと熟達度の伸び
 
-留学研究では、学習者のソーシャルネットワーク構造がL2習熟度の伸びに関連することが報告されている[@isbell2024; @dewey2013; @strawbridge2023]。ここでは、エゴネットワーク（ego-network: ある個人を中心とするネットワーク）データを想定したシミュレーションを示す。
+留学研究では、学習者のソーシャルネットワーク構造がL2習熟度の伸びに関連することが報告されています[@isbell2024; @dewey2013; @strawbridge2023]。ここでは、エゴネットワーク（ego-network: ある個人を中心とするネットワーク）データを想定したシミュレーションを示します。
+
+接触日誌を用いる場合、少なくとも「誰と」「どの言語で」「どれくらい」「どの活動で」接触したかを分けて記録します。これにより、単なる接触人数と、L2使用機会や接触の質を切り分けやすくなります。
+
+```{r}
+#| eval: true
+#| label: study-abroad-contact-diary-schema
+
+contact_diary_schema <- tibble::tribble(
+  ~Column, ~Meaning, ~Example,
+  "ego_id",
+  "記録する学習者",
+  "SA01",
+  "alter_id_or_type",
+  "接触相手ID、またはホストファミリー・現地学生などの分類",
+  "local_student",
+  "language_used",
+  "主に使用した言語",
+  "English / Japanese / mixed",
+  "minutes",
+  "接触時間",
+  "35",
+  "activity",
+  "接触場面",
+  "meal / class project / club / messaging",
+  "frequency",
+  "観測窓内の接触回数",
+  "4",
+  "closeness",
+  "主観的親密さや関係の近さ",
+  "1--5 scale",
+  "same_L1",
+  "同じL1背景か",
+  "TRUE / FALSE",
+  "local_contact",
+  "現地コミュニティとの接触か",
+  "TRUE / FALSE"
+)
+
+contact_diary_schema |>
+  knitr::kable(caption = "Example columns for study-abroad contact diaries")
+```
 
 ```{r}
 #| eval: true
@@ -2215,11 +3484,11 @@ broom::tidy(m_abroad, conf.int = TRUE) |>
   knitr::kable(caption = "OLS: Study Abroad Network → L2 Gain")
 ```
 
-このシミュレーションでは、L2話者との接触割合（`prop_l2_contacts`）が熟達度の伸びの主要な予測子となっている。これは @isbell2024 の知見――ネットワークの次数よりもL2使用の質（特にL2話者との接触比率）が重要である――と整合的な結果である。
+このシミュレーションでは、L2話者との接触割合（`prop_l2_contacts`）が熟達度の伸びの主要な予測子となっています。これは @isbell2024 の知見、つまりネットワークの次数よりもL2使用の質（特にL2話者との接触比率）の重要性を示す知見と整合的な結果です。
 
 ### 教室インタラクションとWTC
 
-教室環境では、ネットワーク位置が学習者のWillingness to Communicate（WTC）と関連する可能性がある。中心的な位置にある学習者はより多くのコミュニケーション機会にさらされ、WTCが高まりやすいと仮定できる。
+教室環境では、ネットワーク位置が学習者のWillingness to Communicate（WTC）と関連する可能性があります。中心的な位置にある学習者はより多くのコミュニケーション機会にさらされ、WTCが高まりやすいと仮定できます。
 
 ```{r}
 #| eval: true
@@ -2244,7 +3513,7 @@ broom::tidy(m_wtc, conf.int = TRUE) |>
 
 ### ピア評価ネットワーク
 
-ライティング授業などで実施されるピア・アセスメント（peer assessment）は、「誰が誰を評価したか」という**有向重み付きネットワーク**として自然にモデル化できる。ここでは、30名の学習者が互いの作文を評価する場面をシミュレーションし、ネットワーク指標とライティング成績の関連を検討する。
+ライティング授業などで実施されるピア・アセスメント（peer assessment）は、「誰が誰を評価したか」という**有向重み付きネットワーク**として自然にモデル化できます。ここでは、30名の学習者が互いの作文を評価する場面をシミュレーションし、ネットワーク指標とライティング成績の関連を検討します。
 
 ```{r}
 #| eval: true
@@ -2286,12 +3555,13 @@ tibble(
   knitr::kable(caption = "ピア評価ネットワークの概要")
 ```
 
-互恵性（reciprocity）は、「AがBを評価し、かつBもAを評価している」ペアの割合を示す。ランダムな割り当てでは互恵性は低く、自発的な選択では高くなる傾向がある。
+互恵性（reciprocity）は、「AがBを評価し、かつBもAを評価している」ペアの割合を示します。ランダムな割り当てでは互恵性は低く、自発的な選択では高くなる傾向があります。
 
 ```{r}
 #| eval: true
 #| label: sla-peer-assessment-centrality
-# Hub（良い評価者）とAuthority（良い被評価者）の計算
+# HITSは評価リンク構造を読む指標。ここではscoreを結合強度として反映する。
+pa_hits <- igraph::hits_scores(g_pa, weights = E(g_pa)$score)
 pa_stats <- tibble(
   id = V(g_pa)$name,
   proficiency = V(g_pa)$proficiency,
@@ -2303,8 +3573,8 @@ pa_stats <- tibble(
     if (length(in_edges) == 0) return(NA_real_)
     mean(in_edges$score)
   }),
-  hub = hub.score(g_pa)$vector,
-  authority = authority.score(g_pa)$vector
+  hub = pa_hits$hub,
+  authority = pa_hits$authority
 )
 
 pa_stats |>
@@ -2341,7 +3611,7 @@ ggraph(as_tbl_graph(g_pa), layout = "fr") +
   theme_graph(base_family = network_base_family)
 ```
 
-この図では、まず大きいノードが「多く評価される学習者」であることを把握し、次に濃いエッジが「高い評価」を表すことを確認する。評価が特定の熟達度層に偏っているか、互恵的なやり取りが目立つかを見ると、単なる成績差だけでなく社会的な評価構造も把握しやすい。
+この図では、まず大きいノードが「多く評価される学習者」を表す点を把握し、次に濃いエッジが「高い評価」を表すことを確認します。評価が特定の熟達度層に偏っているか、互恵的なやり取りが目立つかを見ると、単なる成績差だけでなく社会的な評価構造も把握しやすいです。
 
 ```{r}
 #| eval: true
@@ -2356,21 +3626,21 @@ broom::tidy(m_pa, conf.int = TRUE) |>
 
 **ピア評価ネットワークの研究への示唆**:
 
-- **Authority score** が高い学習者は、多くの評価者から高い評価を受けている「優れた被評価者」であり、ライティング能力の代理指標として機能しうる。
-- **Hub score** が高い学習者は、多くの他者を評価している「活発な評価者」であり、メタ認知的な学習効果が期待される。
-- 互恵性が高い場合、評価の質に**社会的バイアス**（友人関係に基づく甘い評価）が混入している可能性がある。ERGM で `mutual` 項を検定することで確認できる。
+- **Authority score** が高い学習者は、評価ネットワーク上で高い重みの入次数を受ける位置にいます。ただし、それだけでライティング能力の代理指標とはみなさず、MFRM、事前成績、評定者厳しさ、友人関係ネットワークと照合して解釈します。
+- **Hub score** が高い学習者は、高い重みを持つ評価リンクを多く送り出す位置にいます。これは評定参加の構造的位置であり、評価者の質やメタ認知的な学習効果は、コメント品質、評定精度、事後成績変化などの外部基準と照合して確認します。
+- 互恵性が高い場合、評価の質に**社会的バイアス**（友人関係に基づく甘い評価）が混入している可能性があります。ERGM で `mutual` 項を検定することで確認できます。
 
 ### 心理言語学: 語彙ネットワークと LDT メガスタディ
 
-**この節のプロンプト**: 単語同士の類似性構造は、反応時間や正答率のばらつきをどこまで説明できるか。
+**この節のプロンプト**: 単語同士の類似性構造は、反応時間や正答率のばらつきをどこまで説明できるでしょうか。
 
-心理言語学では、ノードを**単語**、エッジを**音韻類似・正書法類似・意味類似**として定義した語彙ネットワークが広く用いられている。ここでの目的変数は、学習者間の成績差ではなく、LDT や spoken word recognition における**反応時間（RT）**や**正答率**である。したがって、`degree`、`closeness`、`clustering coefficient` などのネットワーク指標は、個票の目的変数ではなく、**単語項目側の予測子**として mixed-effects model に入れるのが自然である。
+心理言語学では、ノードを**単語**、エッジを**音韻類似・正書法類似・意味類似**として定義した語彙ネットワークが広く用いられています。ここでの目的変数は、学習者間の成績差ではなく、LDT や spoken word recognition における**反応時間（RT）**や**正答率**です。したがって、`degree`、`closeness`、`clustering coefficient` などのネットワーク指標は、個票の目的変数ではなく、**単語項目側の予測子**として mixed-effects model に入れるのが自然です。
 
-LDT のメガスタディとしては、英語語彙判断データベースである English Lexicon Project と British Lexicon Project が代表的であり[@balota2007; @keuleers2011]、これらは「単語頻度や語長だけでなく、語彙ネットワーク上の位置が語彙処理をどこまで予測するか」を検討するための基盤になる。実際、音韻近傍ネットワークの clustering coefficient が spoken word recognition に影響すること[@chan2009]、closeness centrality が lexical processing に関連すること[@goldstein2017]、さらに mental lexicon における「keyword」の位置づけがネットワーク中心性から説明できること[@vitevitchgoldstein2014] が報告されている。L2 研究でも、語彙ネットワークの発達軌跡を追うアプローチが提案されている[@chen2023]。
+LDT のメガスタディとしては、英語語彙判断データベースの English Lexicon Project と British Lexicon Project が代表的です[@balota2007; @keuleers2011]。これらは「単語頻度や語長だけでなく、語彙ネットワーク上の位置が語彙処理をどこまで予測するか」を検討するための基盤になります。実際、音韻近傍ネットワークの clustering coefficient が spoken word recognition に影響すること[@chan2009]、closeness centrality が lexical processing に関連すること[@goldstein2017]、さらに mental lexicon における「keyword」の位置づけがネットワーク中心性から説明できること[@vitevitchgoldstein2014] が報告されています。L2 研究でも、語彙ネットワークの発達軌跡を追うアプローチが提案されています[@chen2023]。
 
-ここでいう **メガスタディ** とは、数十人・数百人規模の参加者に、数千から数万語レベルの単語項目を提示し、**項目ごとの RT・accuracy・語彙特性を大規模に蓄積した公開データ**を指す。単語ごとに平均 RT や正答率が得られるため、研究者は新たに LDT を実施しなくても、公開された語彙判断データに語彙ネットワーク指標を結合し、いわば「virtual experiment」として二次分析を行える。SLA や心理言語学の研究で重要なのは、`frequency` や `length` に加えて、`degree` や `closeness` のような**ネットワーク位置**がどこまで追加説明力を持つかを検討する点である。
+ここでいう **メガスタディ** とは、数十人・数百人規模の参加者に、数千から数万語レベルの単語項目を提示し、**項目ごとの RT・accuracy・語彙特性を大規模に蓄積した公開データ**を指します。単語ごとに平均 RT や正答率が得られるため、研究者は新たに LDT を実施しなくても、公開された語彙判断データに語彙ネットワーク指標を結合し、いわば「virtual experiment」として二次分析を行えます。SLA や心理言語学の研究で重要なのは、`frequency` や `length` に加えて、`degree` や `closeness` のような**ネットワーク位置**がどこまで追加説明力を持つかを検討する点です。
 
-端的に述べると、LDT メガスタディは「**単語ごとの成績表**」である。1 行が 1 語で、そこに「どれくらい速く認識されたか」「どれくらい正確に認識されたか」が入っている。ネットワーク分析は、その成績表に対して「その単語は語彙ネットワークの中でどこに位置しているか」という列を追加する作業だと考えると分かりやすい。
+端的に述べると、LDT メガスタディは「**単語ごとの成績表**」です。1 行が 1 語で、そこに「どれくらい速く認識されたか」「どれくらい正確に認識されたか」が入っています。ネットワーク分析は、その成績表に対して「その単語は語彙ネットワークの中でどこに位置しているか」という列を追加する作業だと考えると分かりやすいです。
 
 | 役割 | たとえ | 具体例 |
 |---|---|---|
@@ -2378,11 +3648,11 @@ LDT のメガスタディとしては、英語語彙判断データベースで�
 | SUBTLEX / AoA / prevalence / concreteness | 単語ごとのプロフィール表 | 頻度、獲得年齢、親密度、具象性 |
 | CLEARPOND / WordNet | 単語どうしを結ぶ地図 | 近傍語サイズ、意味関係、エッジ定義 |
 
-したがって、研究の問いはかなり素朴である。  
-「**よく使われる単語は速く認識されるか**」  
-「**近傍語が多い単語は有利か不利か**」  
-「**ネットワークの中心にある単語は、頻度を統制してもなお速く認識されるか**」  
-この問いに答えるために、公開データを結合していく。
+したがって、研究の問いはかなり素朴です。
+「**よく使われる単語は速く認識されるか**」
+「**近傍語が多い単語は有利か不利か**」
+「**ネットワークの中心にある単語は、頻度を統制してもなお速く認識されるか**」
+この問いに答えるために、公開データを結合していきます。
 
 | 研究文脈 | ノードとエッジ | 主な目的変数 | よく使う指標 | 代表研究 |
 |---|---|---|---|---|
@@ -2393,15 +3663,15 @@ LDT のメガスタディとしては、英語語彙判断データベースで�
 
 **公開リソースとオープンなツール**:
 
-重要なのは、**ELP は RT / accuracy の中心データベースであって、心理言語学的指標の全てを 1 つで賄うわけではない**という点である。探索的なメガスタディでは、通常、`ELP / BLP` に対して `SUBTLEX` の頻度、`CLEARPOND` の近傍指標、AoA / concreteness / prevalence などの公開 norms をマージして分析する。したがって、研究設計としては「単一データベースを探す」よりも、「公開 norms を結合できるか」を先に考えた方が実践的である。
+重要なのは、**ELP は RT / accuracy の中心データベースであって、心理言語学的指標の全てを 1 つで賄うわけではありません**という点です。探索的なメガスタディでは、通常、`ELP / BLP` に対して `SUBTLEX` の頻度、`CLEARPOND` の近傍指標、AoA / concreteness / prevalence などの公開 norms をマージして分析します。したがって、研究設計としては「単一データベースを探す」よりも、「公開 norms を結合できるか」を先に考えた方が実践的です。
 
-簡潔に述べると、次の3段階になる。
+簡潔に述べると、次の3段階になります。
 
-1. **まず RT を持ってくる**: ELP / BLP から「どの単語が速かったか」を取る。
-2. **次に単語の特徴を持ってくる**: SUBTLEX や AoA norms から「その単語はどれくらいよく使われるか、どれくらい早く覚えられるか」を取る。
-3. **最後にネットワークの位置を作る**: CLEARPOND や WordNet を使って、単語どうしのつながりを定義し、`degree` や `closeness` を計算する。
+1. **まず RT を持ってくる**: ELP / BLP から「どの単語が速かったか」を取ります。
+2. **次に単語の特徴を持ってくる**: SUBTLEX や AoA norms から「その単語はどれくらいよく使われるか、どれくらい早く覚えられるか」を取ります。
+3. **最後にネットワークの位置を作る**: CLEARPOND や WordNet を使って、単語どうしのつながりを定義し、`degree` や `closeness` を計算します。
 
-この3つを 1 つのデータフレームにまとめれば、LDT メガスタディの探索的分析が始められる。
+この3つを 1 つのデータフレームにまとめれば、LDT メガスタディの探索的分析を始められます。
 
 | リソース | 何が手に入るか | 典型的な用途 |
 |---|---|---|
@@ -2416,15 +3686,16 @@ LDT のメガスタディとしては、英語語彙判断データベースで�
 | [WordNet](https://wordnet.princeton.edu/) | semantic relation と synset 情報 | 意味ネットワークのエッジ定義に使う |
 | [LexOPS docs](https://JackEdTaylor.github.io/LexOPSdocs/) / [package paper](https://doi.org/10.3758/s13428-020-01389-1) | 刺激選定と統制のためのオープンソース R ツール | 頻度・長さ・具象性などを統制した単語リストを再現可能に作る |
 
-実務的なワークフローは単純である。まず ELP / BLP から**目的変数**としての RT / accuracy を取得し、次に CLEARPOND や WordNet から**エッジ定義**を作り、語彙ネットワークを構築する。そのうえで `degree`、`closeness`、`clustering` を算出し、`SUBTLEX frequency`、`length`、`prevalence`、`AoA`、`concreteness` のような標準的統制変数と一緒に mixed-effects model へ入れる。新しい実験を組む場合には、LexOPS のようなオープンソースツールを使うと、条件間で頻度や長さを揃えた刺激集合を再現可能に作りやすい。
+実務的なワークフローは単純です。まず ELP / BLP から**目的変数**としての RT / accuracy を取得し、次に CLEARPOND や WordNet から**エッジ定義**を作り、語彙ネットワークを構築します。そのうえで `degree`、`closeness`、`clustering` を算出し、`SUBTLEX frequency`、`length`、`prevalence`、`AoA`、`concreteness` のような標準的統制変数と一緒に mixed-effects model へ入れます。新しい実験を組む場合には、LexOPS のようなオープンソースツールを使うと、条件間で頻度や長さを揃えた刺激集合を再現可能に作りやすくなります。
 
 #### ミニシミュレーション: 語彙ネットワークと LDT RT
 
-公開メガスタディをその場でダウンロードしなくても、**単語がノードで RT が目的変数になる**という構図は小さなシミュレーションで確認できる。以下では、英語の短語をノードとする toy lexical network を作り、ネットワーク位置と LDT RT の関係を可視化する。
+公開メガスタディをその場でダウンロードしなくても、**単語がノードで RT が目的変数になる**という構図は小さなシミュレーションで確認できます。以下では、英語の短語をノードとする toy lexical network を作り、ネットワーク位置と LDT RT の関係を可視化します。
 
 ```{r}
 #| eval: true
 #| label: toy-ldt-megastudy-data
+set.seed(2024)
 toy_words <- tibble(
   word = c("cat", "bat", "cap", "map", "mat", "man", "fan", "fin",
            "bin", "big", "dig", "dog", "fog", "log", "bog", "book",
@@ -2467,7 +3738,8 @@ g_words <- graph_from_data_frame(toy_edges, directed = FALSE, vertices = toy_wor
 toy_lexicon <- tibble(
   word = V(g_words)$name,
   degree = igraph::degree(g_words),
-  closeness = igraph::closeness(g_words, normalized = TRUE),
+  # 非連結語彙ネットワークでも解釈できるように、調和中心性を使う
+  closeness = robust_harmonic(g_words, inv_weights = rep(1, ecount(g_words))),
   clustering = transitivity(g_words, type = "localundirected")
 ) |>
   left_join(toy_words, by = "word") |>
@@ -2568,16 +3840,16 @@ p_lex_network + p_lex_rt + plot_layout(guides = "collect")
 
 **この図の読み方**:
 
-- 左図では、まず**大きいノード**を見る。そこは語彙ネットワークの中心に近い単語である。
-- 次に色を見る。**低い RT（速い反応）**ほど寒色になっているので、中心に近い単語ほど速いかを視覚的に確認する。
-- 右図では、`x` 軸が closeness、`y` 軸が RT である。したがって、**右に行くほど、かつ下に行くほど**「ネットワーク中心にあり、認知処理が速い」単語だと読める。
-- 点の大きさは語頻度なので、大きな点が常に速いなら frequency の寄与が強く、中心性の効果が frequency を超えて残るかは回帰で確かめる必要がある。
+- 左図では、まず**大きいノード**を見ます。そこは語彙ネットワークの中心に近い単語です。
+- 次に色を見ます。**低い RT（速い反応）**ほど寒色になっているので、中心に近い単語ほど速いかを視覚的に確認します。
+- 右図では、`x` 軸が closeness、`y` 軸が RT です。したがって、**右に行くほど、かつ下に行くほど**「ネットワーク中心にあり、認知処理が速い」単語だと読めます。
+- 点の大きさは語頻度なので、大きな点が常に速いなら frequency の寄与が強く、中心性の効果が frequency を超えて残るかは回帰で確かめる必要があります。
 
-ただし、この図は toy data であるため、実研究では ELP / BLP のような公開メガスタディに、語頻度・長さ・近傍密度・意味類似などを結合して検証する。しかし、構造としてはこの小さな例と同じであり、**単語がノード、RT が目的変数、ネットワーク指標が予測子**という考え方さえ理解すれば、大規模データへそのまま拡張できる。
+ただし、この図は toy data なので、実研究では ELP / BLP のような公開メガスタディに、語頻度・長さ・近傍密度・意味類似などを結合して検証します。構造としてはこの小さな例と同じで、**単語がノード、RT が目的変数、ネットワーク指標が予測子**という考え方が出発点になります。ただし、大規模データではエッジ定義、統制変数、参加者・項目の反復測定構造、語彙資源間の結合規則が解釈を左右します。
 
-#### メガスタディを読むときの注意: 指標は多いが、独立ではない
+#### メガスタディを読むときの注意: 指標は多いですが、独立ではありません
 
-メガスタディの魅力は、`frequency`、`prevalence`、`AoA`、`neighborhood size`、`concreteness` など、多くの心理言語学的指標を一度に検討できる点にある。しかし、ここで最も注意が必要なのは、**それらの指標どうしがしばしば強く相関する**ことである。たとえば、よく使われる単語は一般に prevalence も高く、獲得年齢も早くなりやすい。したがって、「たくさんの列を集めた」ことと「それぞれの効果を綺麗に分離できる」ことは同じではない。
+メガスタディの魅力は、`frequency`、`prevalence`、`AoA`、`neighborhood size`、`concreteness` など、多くの心理言語学的指標を一度に検討できる点にあります。しかし、ここで最も注意が必要なのは、**それらの指標どうしがしばしば強く相関する**ことです。たとえば、よく使われる単語は一般に prevalence も高く、獲得年齢も早くなりやすいです。したがって、「たくさんの列を集めた」ことと「それぞれの効果を綺麗に分離できる」ことは同じではありません。
 
 ```{r}
 #| eval: true
@@ -2624,31 +3896,71 @@ toy_predictor_cor |>
 
 **この図の読み方**:
 
-- まず `log_freq` と `prevalence`、`aoa` のセルを見る。ここが強く相関していれば、頻度・親密度・獲得年齢はかなり重なった情報を持っている。
-- 次に `closeness` や `orthographic_n` と `rt` のセルを見る。ネットワーク指標が RT とどの方向に関係していそうかの当たりをつけられる。
-- 最後に、**RT と相関している指標が複数あっても、それぞれが独立に効いているとは限らない**ことを思い出す。ここで必要になるのが、統制変数を入れた回帰や mixed-effects model である。
+- まず `log_freq` と `prevalence`、`aoa` のセルを見ます。ここが強く相関していれば、頻度・親密度・獲得年齢はかなり重なった情報を持っています。
+- 次に `closeness` や `orthographic_n` と `rt` のセルを見ます。ネットワーク指標が RT とどの方向に関係していそうかの当たりをつけられます。
+- 最後に、**RT と相関している指標が複数あっても、それぞれが独立に効いているとは限らない**ことを思い出します。ここで必要になるのが、統制変数を入れた回帰や mixed-effects model です。
 
-実務上は、次の順で考えると混乱しにくい。
+実務上は、次の順で考えると混乱しにくいです。
 
 1. **まず理論的に必須の統制変数を決める**: 典型的には frequency, length, AoA など。
-2. **そのうえでネットワーク指標を加える**: `degree` や `closeness` が追加説明力を持つかを見る。
-3. **探索的な指標は段階的に追加する**: prevalence, concreteness, valence などを一度に全部入れない。
+2. **そのうえでネットワーク指標を加える**: `degree` や `closeness` が追加説明力を持つかを見ます。
+3. **探索的な指標は段階的に追加する**: prevalence, concreteness, valence などを一度に全部入れません。
 
-つまり、メガスタディの「探索的」とは、何でも一括で投げ込むことではない。**公開データを広く使いつつ、モデルの解釈はむしろ慎重に行う**ことが重要である。
+つまり、メガスタディの「探索的」とは、何でも一括で投げ込むことではありません。**公開データを広く使いつつ、モデルの解釈はむしろ慎重に行う**ことが重要です。
 
-この章の視点に引き寄せるなら、学習者ネットワークで使った `strength` や `betweenness` の発想を、単語ネットワークでは `degree`、`closeness`、`clustering` に置き換えて読むことになる。違うのは、**観測単位が学習者ではなく単語項目になる**点と、RT/accuracy には参加者・項目の反復測定構造があるため、通常の OLS より mixed-effects model が適切になりやすい点である。
+この章の視点に引き寄せるなら、学習者ネットワークで使った `strength` や `betweenness` の発想を、単語ネットワークでは `degree`、`closeness`、`clustering` に置き換えて読むことになります。違うのは、**観測単位が学習者ではなく単語項目になる**点と、RT/accuracy には参加者・項目の反復測定構造があるため、通常の OLS より mixed-effects model が適切になりやすい点です。
+
+### テスト項目ネットワークとネットワーク心理計量
+
+英語教育測定では、項目をノードとして扱うネットワークも考えられます。たとえば、語彙テスト項目、文法判断項目、読解設問をノードにし、「同じ構文を使う」「同じ本文に依存する」「誤答パターンが似ている」「残差相関が高い」といった関係をエッジにします。これは IRT や MFRM の代替ではなく、項目群の構造を探索し、局所依存や下位領域のまとまりを見つける補助的な視点です。
+
+ネットワーク心理計量では、項目間の条件付き関連をネットワークとして推定し、コミュニティ検出で次元数や項目群を探索する Exploratory Graph Analysis（EGA）が提案されています[@golino2017ega]。教育測定に応用する場合も、項目ネットワークのエッジは「同じ能力を測っている証拠」と即断せず、内容領域、項目形式、同一本文依存、語彙重複、受験者集団の特性と照合します。
+
+```{r}
+#| eval: true
+#| label: item-network-design-table
+
+item_network_design <- tibble::tribble(
+  ~Item_network_edge, ~Possible_data_source, ~What_it_can_suggest, ~Caution,
+  "同じ構文・語彙を含む",
+  "項目仕様書、専門家コーディング",
+  "内容領域や言語形式のまとまり",
+  "内容類似は統計的な局所依存とは限らない",
+  "同じ読解本文に依存する",
+  "テスト設計表、本文ID",
+  "テストレット構造、本文依存",
+  "本文依存を能力次元と混同しない",
+  "誤答パターンが似ている",
+  "受験者 × 項目反応行列",
+  "同じ誤概念・同じ方略による反応",
+  "難易度が似ているだけでも相関が出る",
+  "IRT/MFRM残差が関連する",
+  "測定モデルの残差相関",
+  "モデルで説明しきれない局所依存",
+  "探索結果として扱い、内容レビューで確認する",
+  "EGAで同じコミュニティに入る",
+  "項目間の条件付き関連ネットワーク",
+  "潜在次元候補、項目群のまとまり",
+  "サンプルサイズ、推定法、安定性確認が必要"
+)
+
+item_network_design |>
+  knitr::kable(caption = "Design options for item networks in language assessment")
+```
+
+実務上は、項目ネットワークを単独の結論にしない方がよいです。まず IRT / MFRM / 因子分析で測定モデルを確認し、その後で項目ネットワークを用いて「どの項目同士が局所的に結びついているか」「内容表と統計的まとまりが一致するか」を点検します。この順序なら、ネットワーク分析は測定モデルの競合相手ではなく、項目設計を精査するための追加レンズとして機能します。
 
 ### 評価研究: MFRM とネットワーク分析の接点
 
-**この節のプロンプト**: 誰が誰をどう評定したかという関係構造は、評定者厳しさや友人バイアスの理解をどこまで補えるか。
+**この節のプロンプト**: 誰が誰をどう評定したかという関係構造は、評定者厳しさや友人バイアスの理解をどこまで補えるでしょうか。
 
-MFRM は、学習者能力、評定者厳しさ、課題難易度、評定カテゴリの機能を同時に扱う枠組みであり[@linacre1989; @eckes2015]、パフォーマンス評価研究では中心的な位置を占める。一方、ネットワーク分析が得意なのは、「**誰が誰を評定したか**」「互恵的な評定が起きているか」「友人同士で甘い評定が集中していないか」といった**関係構造そのもの**である。
+MFRM は、学習者能力、評定者厳しさ、課題難易度、評定カテゴリの機能を同時に扱う枠組みであり[@linacre1989; @eckes2015]、パフォーマンス評価研究では中心的な位置を占めます。一方、ネットワーク分析が得意なのは、「**誰が誰を評定したか**」「互恵的な評定が起きているか」「友人同士で甘い評定が集中していないか」といった**関係構造そのもの**です。
 
-この2つは競合関係というより、扱う問いがずれている。MFRM は主として**パラメータ化された厳しさ・能力・課題差**を捉え、ネットワーク分析は**割当構造・互恵性・同類選好・偏った接続**を可視化する。したがって、実務上は「MFRM で評定の主要因を整理し、ネットワーク分析で残余の関係構造を点検する」という二段階の使い分けが分かりやすい。
+この2つは競合関係というより、扱う問いがずれています。MFRM は主として**パラメータ化された厳しさ・能力・課題差**を捉え、ネットワーク分析は**割当構造・互恵性・同類選好・偏った接続**を可視化します。したがって、実務上は「MFRM で評定の主要因を整理し、ネットワーク分析で残余の関係構造を点検する」という二段階の使い分けが分かりやすいです。
 
-Lamprianou の最近の応用研究[@lamprianou2025] は、この接点をかなり具体的に示している。対象は、136 本の英作文を 80 名の人間評定者と ChatGPT が評定したデータであり、NA を使って MFRM の再分析を行っている。この論文で重要なのは、「ネットワーク分析は MFRM と別物だから比較できない」という立場ではなく、**評定者効果という同じ問いに対して、NA が視覚的かつ関係構造的な追加情報を返せる**ことを示している点である。実際、評定者の severity と bias の推定は MFRM とほぼ完全に一致し、NA 側で設計した consistency 指標も Infit / Outfit と非常に高く対応したと報告されている[@lamprianou2025]。
+Lamprianou の最近の応用研究[@lamprianou2025] は、この接点をかなり具体的に示しています。対象は、136 本の英作文を 80 名の人間評定者と ChatGPT が評定したデータであり、NA を使って MFRM の再分析を行っています。この論文で重要なのは、「ネットワーク分析は MFRM と別物だから比較できない」という立場ではなく、**評定者効果という同じ問いに対して、NA が視覚的かつ関係構造的な追加情報を返せる**ことを示している点です。当該データセットでは、評定者の severity と bias の推定が MFRM と高く対応し、NA 側で設計した consistency 指標も Infit / Outfit と高く対応したと報告されています[@lamprianou2025]。
 
-Lamprianou[@lamprianou2025] の実装を、この章の読者向けに言い換えると次のようになる。
+Lamprianou[@lamprianou2025] の実装を、この章の読者向けに言い換えると次のようになります。
 
 | ネットワーク | ノード | エッジの意味 | 最初に読むべき点 | MFRM とどうつながるか |
 |---|---|---|---|---|
@@ -2656,11 +3968,11 @@ Lamprianou[@lamprianou2025] の実装を、この章の読者向けに言い換�
 | Directed disagreement network | 評定者 | 「どちらがより厳しい/寛大か」という方向つき差分 | in-strength / out-strength の偏り | severity の順序づけと対応する |
 | Halo network | 評定者 × 評価基準 | 同一評定者内の基準間相関 | 同じ評定者の基準間エッジが不自然に強くないか | 基準間の halo effect を点検する |
 
-とくに、評価研究では **exact agreement だけでなく Krippendorff's alpha を併用する** という示唆が有用である。exact agreement は説明しやすいが、部分一致や偶然一致を考慮しない。Krippendorff's alpha は、区間尺度としての情報と chance agreement の補正を入れられるため、評定者ネットワークの重みとしてより情報量が多い[@lamprianou2025]。したがって、実務では「まず exact agreement で直感的に見る、次に alpha で厳密に確認する」という二段階が扱いやすい。
+とくに、評価研究では **exact agreement だけでなく Krippendorff's alpha を併用する** という示唆が有用です。exact agreement は説明しやすいですが、部分一致や偶然一致を考慮しません。Krippendorff's alpha は、尺度水準に合う距離関数と十分な共通評定数がある場合、部分一致と chance agreement の補正を重みに反映できます[@lamprianou2025]。したがって、実務では「まず exact agreement で直感的に見て、次に alpha で条件つきで確認する」という二段階が扱いやすいです。
 
 #### ミニシミュレーション: Agreement Network と Directed Disagreement Network
 
-ここでは、Lamprianou[@lamprianou2025] の発想を理解するために、**10 名の評定者が 24 本の作文を 3 基準で評定する**小さなシミュレーションを作る。`R09` と `AI` には意図的に強い halo を埋め込み、`AI` にはノイズを少なくして「過度に一貫した評定者」に近い振る舞いを持たせる。
+ここでは、Lamprianou[@lamprianou2025] の発想を理解するために、**10 名の評定者が 24 本の作文を 3 基準で評定する**小さなシミュレーションを作ります。`R09` と `AI` には意図的に強い halo を埋め込み、`AI` にはノイズを少なくして「過度に一貫した評定者」に近い振る舞いを持たせます。
 
 ```{r}
 #| eval: true
@@ -2850,16 +4162,16 @@ p_agreement / p_severity + plot_layout(guides = "keep")
 
 **この図の読み方**:
 
-- 左の agreement network では、まず**太くて濃いエッジ**を見る。そこは「似た評定を安定して出す評定者ペア」である。
-- 同じ左図で、**ノードの大きさ**は平均 `alpha` を表す。大きいノードほど、多くの他者と一貫して近い評定をしている。
-- 右の directed disagreement network では、**矢印の向き**だけを先に見る。矢印は「より lenient な評定者から、より strict な評定者」へ向かう。
-- 右図の大きいノードは平均スコアが高く、相対的に lenient な評定者である。したがって、大きいノードから多く矢印が出ていれば、その評定者は甘めに採点している。
+- 左の agreement network では、まず**太くて濃いエッジ**を見ます。そこは「似た評定を安定して出す評定者ペア」です。
+- 同じ左図で、**ノードの大きさ**は平均 `alpha` を表します。大きいノードほど、多くの他者と一貫して近い評定をしています。
+- 右の directed disagreement network では、**矢印の向き**だけを先に見ます。矢印は「より lenient な評定者から、より strict な評定者」へ向かいます。
+- 右図の大きいノードは平均スコアが高く、相対的に lenient な評定者です。したがって、大きいノードから多く矢印が出ていれば、その評定者は甘めに採点しています。
 
-このシミュレーションでは、`AI` は多くの評定者とそこそこ整合する一方で、ノイズが少ないため「過度に整った評定者」として振る舞いやすい。`R09` は高 halo の人間評定者として設計しているため、agreement network では一部の評定者と近く見えても、後で示す halo 指標では目立ちやすい。
+このシミュレーションでは、`AI` は多くの評定者とそこそこ整合する一方で、ノイズが少ないため「過度に整った評定者」として振る舞いやすくなります。`R09` は高 halo の人間評定者として設計しているため、agreement network では一部の評定者と近く見えても、後で示す halo 指標では目立ちやすくなります。
 
 #### ミニシミュレーション: Halo Pattern を可視化する
 
-halo effect は、「同じ評定者の中で、別々の評価基準が必要以上に一緒に動く」現象として読むと分かりやすい。Lamprianou[@lamprianou2025] はこれを halo network として表現しているが、入門段階では**評定者ごとの基準間相関ヒートマップ**に落とすと読みやすい。
+halo effect は、「同じ評定者の中で、別々の評価基準が必要以上に一緒に動く」現象として読むと分かりやすいです。Lamprianou[@lamprianou2025] はこれを halo network として表現していますが、基礎確認では**評定者ごとの基準間相関ヒートマップ**に落とすと読みやすいです。
 
 ```{r}
 #| eval: true
@@ -2916,11 +4228,11 @@ ggplot(halo_plot_data, aes(x = criterion_pair, y = rater, fill = rho)) +
 
 **推奨される読み順**:
 
-- まず**一番濃い行**を探す。その評定者は、3 基準をかなり似たパターンで動かしている。
-- 次に**行の中で 3 セルが全部高いか**を見る。全部高ければ、特定の 2 基準だけでなく、基準全体にまたがる halo を疑いやすい。
-- 最後に `AI` や `R09` のような事前に高 halo を入れた評定者が上位に来るかを確認する。シミュレーションの意図と図の挙動が一致していれば、halo 指標の意味が理解しやすい。
+- まず**一番濃い行**を探します。その評定者は、3 基準をかなり似たパターンで動かしています。
+- 次に**行の中で 3 セルが全部高いか**を見ます。全部高ければ、特定の 2 基準だけでなく、基準全体にまたがる halo を疑いやすくなります。
+- 最後に `AI` や `R09` のような事前に高 halo を入れた評定者が上位に来るかを確認します。シミュレーションの意図と図の挙動が一致していれば、halo 指標の意味が理解しやすいです。
 
-この図は「高相関だから必ず悪い」と断定するためのものではない。本当に基準同士が強く関連している可能性もある。したがって、halo は **基準定義の重なり**、**評定順序**、**評定者訓練**、そして MFRM の fit 指標と合わせて解釈する必要がある。
+この図は「高相関だから必ず悪い」と断定するためのものではありません。本当に基準同士が強く関連している可能性もあります。したがって、halo は **基準定義の重なり**、**評定順序**、**評定者訓練**、そして MFRM の fit 指標と合わせて解釈する必要があります。
 
 | MFRM が主に答える問い | ネットワーク分析が補う問い | 実務上の含意 |
 |---|---|---|
@@ -2929,23 +4241,23 @@ ggplot(halo_plot_data, aes(x = criterion_pair, y = rater, fill = rho)) +
 | 受験者能力はどの程度か | 受験者が友人や同質集団から高評定を受けていないか | 能力差と社会的バイアスを分離して考える |
 | 評定カテゴリは機能しているか | 互恵評定や閉じた評定クリークがないか | 尺度機能と評定ネットワークの偏りを別々に点検する |
 
-直接に「MFRM + ノード中心性」を一つの標準モデルへ統合した SLA 研究は、現時点ではまだ多くない。ただし、評定者効果を social network analysis と ERGM で検討した研究[@lamprianou2017] や、言語評価における評定者効果をネットワーク分析で比較した最近の研究[@lamprianou2025] は、この接点が十分に研究可能であることを示している。Lamprianou[@lamprianou2025] はさらに、**halo effect を評定者 × 基準ノードのネットワークとして可視化できる**こと、そして ChatGPT の評定にも無視できない halo pattern が見えることを報告している。EFL 口頭発表の peer assessment における friendship bias を MFRM の観点から扱った研究[@tanaka2025] は、友人関係ネットワークや互恵性指標を明示的に追加すれば、さらに一歩踏み込めることを示唆している。
+直接に「MFRM + ノード中心性」を一つの標準モデルへ統合した SLA 研究は、現時点ではまだ多くありません。ただし、評定者効果を social network analysis と ERGM で検討した研究[@lamprianou2017] や、言語評価における評定者効果をネットワーク分析で比較した最近の研究[@lamprianou2025] は、この接点が十分に研究可能だと示しています。Lamprianou[@lamprianou2025] はさらに、**halo effect を評定者 × 基準ノードのネットワークとして可視化できる**こと、そして ChatGPT の評定にも無視できない halo pattern が見えることを報告しています。EFL 口頭発表の peer assessment における friendship bias を MFRM の観点から扱った研究[@tanaka2025] は、友人関係ネットワークや互恵性指標を明示的に追加すれば、さらに一歩踏み込めることを示唆しています。
 
-Lamprianou[@lamprianou2025] の議論から、この章の読者が持ち帰るべき実務的ポイントは次の4点である。
+Lamprianou[@lamprianou2025] の議論から、この章の読者が持ち帰るべき実務的ポイントは次の4点です。
 
-1. **NA は MFRM の代替というより補完である**: severity や bias は MFRM と照合しつつ、NA は可視化と関係構造の把握に強みを持つ。
-2. **部分的に欠測した評定デザインでも扱いやすい**: pairwise 比較にもとづくため、部分的に交差した評定設計や疎なデータにも比較的強い。
-3. **新規ユーザーは NA と MFRM を並行して走らせるのが安全である**: ただし推定値の尺度は異なるので、生の数値を直接比較するのではなく、順位や相関を見る。
-4. **設計は薄すぎない方がよい**: Lamprianou は、少なくとも 10 essays per batch と 4 raters per link、異常評定を疑うなら 20 essays per batch と 8 raters per link を勧めている[@lamprianou2025]。
+1. **NA は MFRM の代替というより補完です**: severity や bias は MFRM と照合しつつ、NA は可視化と関係構造の把握に強みを持ちます。
+2. **部分的に欠測した評定デザインでも扱いやすいです**: pairwise 比較にもとづくため、部分的に交差した評定設計や疎なデータにも比較的強いです。
+3. **新規ユーザーは NA と MFRM を並行して走らせるのが安全です**: ただし推定値の尺度は異なるので、生の数値を直接比較するのではなく、順位や相関を見ます。
+4. **設計は薄すぎない方がよいです**: Lamprianou は、当該研究文脈で、少なくとも 10 essays per batch と 4 raters per link、異常評定を疑うなら 20 essays per batch と 8 raters per link を目安として示しています[@lamprianou2025]。必要な密度は、評定尺度、評定者数、欠測構造、推定したい偏りによって変わります。
 
-したがって、SLA・心理言語学の大学院研究で現実的なのは、次のような設計である。
+したがって、SLA・心理言語学の大学院研究で現実的なのは、次のような設計です。
 
-1. **MFRM で主要な評定者効果を推定する**: 学習者能力、評定者厳しさ、課題難易度を分けておく。
-2. **評定者-被評定者ネットワークを構築する**: 有向ネットワーク、二部ネットワーク、または multiplex network として表す。
-3. **関係構造の偏りを点検する**: 互恵性、同類選好、クリーク、中心性の偏りを見る。
-4. **必要なら残差的な偏りと照合する**: MFRM で説明しきれない評定の偏りが、ネットワーク位置や友人関係と結びつくかを確認する。
+1. **MFRM で主要な評定者効果を推定する**: 学習者能力、評定者厳しさ、課題難易度を分けておきます。
+2. **評定者-被評定者ネットワークを構築する**: 有向ネットワーク、二部ネットワーク、または multiplex network として表します。
+3. **関係構造の偏りを点検する**: 互恵性、同類選好、クリーク、中心性の偏りを見ます。
+4. **必要なら残差的な偏りと照合する**: MFRM で説明しきれない評定の偏りが、ネットワーク位置や友人関係と結びつくかを確認します。
 
-この使い方なら、MFRM の利点を失わずに、「誰が誰を評定したか」という設計情報を統計的に捨てずに済む。
+この使い方なら、MFRM の利点を失わずに、「誰が誰を評定したか」という設計情報を統計的に捨てずに済みます。
 
 **応用研究デザインテンプレート**:
 
@@ -2960,13 +4272,13 @@ Lamprianou[@lamprianou2025] の議論から、この章の読者が持ち帰る�
 
 ## 感度分析と頑健性の確認
 
-**この節のプロンプト**: しきい値や欠測に対して、主要な結論はどこまで安定しているか。
+**この節のプロンプト**: しきい値や欠測に対して、主要な結論はどこまで安定しているでしょうか。
 
-ネットワーク分析の結果は、エッジの定義（しきい値）や欠測データに影響を受けやすい。結果の信頼性を担保するために、感度分析を実施することが推奨される。
+ネットワーク分析の結果は、エッジの定義（しきい値）や欠測データに影響を受けやすいです。結果の信頼性を担保するために、感度分析を実施することが推奨されます。
 
 ### しきい値の感度分析
 
-エッジの最小重みしきい値を変えたとき、主要な指標がどの程度変化するかを確認する。
+エッジの最小重みしきい値を変えたとき、主要な指標がどの程度変化するかを確認します。
 
 ```{r}
 #| eval: true
@@ -2998,7 +4310,34 @@ sensitivity_results |>
   knitr::kable(caption = "エッジ重みしきい値別のネットワーク指標")
 ```
 
-この表は「どの値が一番よいか」を選ぶためではなく、**しきい値を動かしたときに結論がどれだけ揺れるか**を見るために使う。密度や連結成分数が急変するなら、エッジ定義に強く依存した結果だと判断すべきである。
+この表は「どの値が一番よいか」を選ぶためではなく、**しきい値を動かしたときに結論がどれだけ揺れるか**を見るために使います。密度や連結成分数が急変するなら、エッジ定義に強く依存した結果だと判断すべきです。
+
+```{r}
+#| eval: true
+#| label: threshold-sensitivity-plot
+#| fig-cap: "Sensitivity of Network Metrics to Edge Weight Thresholds"
+#| fig-height: 6
+#| fig-width: 9
+sensitivity_results |>
+  tidyr::pivot_longer(
+    cols = c(density, mean_degree, transitivity, n_components),
+    names_to = "metric",
+    values_to = "value"
+  ) |>
+  ggplot(aes(x = threshold, y = value)) +
+  geom_line(color = "#1f77b4", linewidth = 0.8) +
+  geom_point(color = "#d62728", size = 2.5) +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_x_continuous(breaks = thresholds) +
+  labs(
+    title = "Threshold Sensitivity of Network-Level Metrics",
+    x = "Minimum edge weight retained", y = "Metric value"
+  ) +
+  theme_bw(base_family = network_base_family, base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+折れ線図では、表よりも「どの指標がどのしきい値で急に変わるか」を把握しやすいです。密度と平均次数は下がるのが自然ですが、連結成分数が急増する場合は、弱いエッジを除いた瞬間にネットワークが断片化しています。
 
 ```{r}
 #| eval: true
@@ -3052,13 +4391,40 @@ rank_comparison |>
   ) + theme(legend.position = "bottom")
 ```
 
-ここでは「誰が1位か」だけでなく、「しきい値を変えても上位メンバーが大きく入れ替わらないか」を見る。順位が多少動いても主要な学習者群が維持されるなら、中心性の解釈は比較的頑健だと言える。
+ここでは「誰が1位か」だけでなく、「しきい値を変えても上位メンバーが大きく入れ替わらないか」を見ます。順位が多少動いても主要な学習者群が維持されるなら、中心性の解釈は比較的頑健だと言えます。
 
-**推奨される読み順**: まず同じ学習者の3本の棒の高さが似ているかを見る。似ていれば、その学習者の中心性はしきい値変更に対して安定している。逆に、あるしきい値でだけ急に棒が低くなるなら、その学習者の中心性は弱い結びつきに依存している可能性がある。
+**推奨される読み順**: まず同じ学習者の3本の棒の高さが似ているかを見ます。似ていれば、その学習者の中心性はしきい値変更に対して安定しています。逆に、あるしきい値でだけ急に棒が低くなるなら、その学習者の中心性は弱い結びつきに依存している可能性があります。
+
+```{r}
+#| eval: true
+#| label: threshold-rank-stability-table
+rank_stability <- rank_comparison |>
+  group_by(threshold) |>
+  mutate(rank = min_rank(desc(strength))) |>
+  ungroup()
+
+baseline_ranks <- rank_stability |>
+  dplyr::filter(threshold == "weight >= 1") |>
+  dplyr::select(id, baseline_rank = rank)
+
+rank_stability_summary <- rank_stability |>
+  left_join(baseline_ranks, by = "id") |>
+  group_by(threshold) |>
+  summarise(
+    `Spearman rank correlation with baseline` = round(cor(rank, baseline_rank, method = "spearman"), 3),
+    `Top-10 overlap` = round(length(intersect(id[rank <= 10], top10_baseline)) / length(top10_baseline), 3),
+    .groups = "drop"
+  )
+
+rank_stability_summary |>
+  knitr::kable(caption = "Centrality rank stability across thresholds")
+```
+
+順位相関は、全体の順位がどれだけ保たれるかを示します。Top-10 overlap は、中心性上位として報告する学習者群がしきい値を変えても残るかを見る指標です。棒グラフで個別の変動を見て、この表で全体の安定性を確認すると、感度分析の説明が簡潔になります。
 
 ### 欠測ノードの影響
 
-調査票の未回答者や欠席者が結果にどの程度影響するかを、ランダムにノードを除去して確認する。
+調査票の未回答者や欠席者が結果にどの程度影響するかを、ランダムにノードを除去して確認します。
 
 ```{r}
 #| eval: true
@@ -3085,17 +4451,54 @@ missing_comparison |>
   knitr::kable(caption = "欠測ノード（10%除去）の影響")
 ```
 
-この表では、除去後に密度や推移性がどの程度変わるかを見る。値がほとんど変わらなければ、少数の欠測で全体構造は崩れにくい。逆に連結成分数が増えたり密度が大きく落ちたりするなら、そのネットワークは欠測に敏感である。
+この表では、除去後に密度や推移性がどの程度変わるかを見ます。値がほとんど変わらなければ、少数の欠測で全体構造は崩れにくいです。逆に連結成分数が増えたり密度が大きく落ちたりするなら、そのネットワークは欠測に敏感です。
+
+1回だけノードを除去すると、たまたま重要な橋渡しノードを引いたかどうかに結果が左右されます。実務では、同じ割合の欠測を何度もシミュレーションして、指標のばらつきを見る方が安定します。
+
+```{r}
+#| eval: true
+#| label: missing-node-repeated-sensitivity
+set.seed(2024)
+n_missing_iter <- 100
+
+missing_iter_results <- lapply(seq_len(n_missing_iter), function(iter) {
+  remove_ids_iter <- sample(V(g)$name, n_remove)
+  g_iter <- delete_vertices(g, which(V(g)$name %in% remove_ids_iter))
+  tibble(
+    iteration = iter,
+    density = edge_density(g_iter),
+    transitivity = transitivity(g_iter, type = "global"),
+    n_components = igraph::components(g_iter)$no,
+    largest_component = max(igraph::components(g_iter)$csize)
+  )
+}) |>
+  bind_rows()
+
+missing_iter_summary <- missing_iter_results |>
+  tidyr::pivot_longer(-iteration, names_to = "metric", values_to = "value") |>
+  group_by(metric) |>
+  summarise(
+    median = round(median(value, na.rm = TRUE), 3),
+    p10 = round(quantile(value, 0.10, na.rm = TRUE), 3),
+    p90 = round(quantile(value, 0.90, na.rm = TRUE), 3),
+    .groups = "drop"
+  )
+
+missing_iter_summary |>
+  knitr::kable(caption = "Repeated 10% node-removal sensitivity summary")
+```
+
+この表では中央値だけでなく、10パーセンタイルと90パーセンタイルを見ます。ばらつきが小さければ、欠測に対して構造指標は比較的安定しています。ばらつきが大きい場合は、「どのノードが欠測したか」に結論が依存しているため、欠測処理を限界として明記します。
 
 **感度分析の報告**:
 
-- しきい値を変更しても主要な結論（例: 中心性上位の学習者、コミュニティ構造）が安定しているかを確認する。
-- 結果が大きく変わる場合は、結論の限界として明記する。
-- 少なくとも2-3の異なる条件で頑健性を確認し、その結果を論文の補足資料に含めることが望ましい。
+- しきい値を変更しても主要な結論（例: 中心性上位の学習者、コミュニティ構造）が安定しているかを確認します。
+- 結果が大きく変わる場合は、結論の限界として明記します。
+- 少なくとも2-3の異なる条件で頑健性を確認し、その結果を論文の補足資料に含めることが望ましいです。
 
 ## 結果報告テンプレート（APA形式）
 
-ネットワーク分析の結果を論文で報告する際には、以下のテンプレートを参考にされたい。`glue::glue()` による自動生成例も示す。
+ネットワーク分析の結果を論文で報告する際には、以下のテンプレートを参考にしてください。`glue::glue()` による自動生成例も示します。
 
 ### 記述統計の報告
 
@@ -3110,7 +4513,7 @@ report_descriptive <- glue::glue(
   "(density = {round(edge_density(g), 2)}, mean degree = {round(mean(igraph::degree(g)), 2)}, ",
   "mean strength = {round(mean(strength(g, weights = E(g)$weight)), 2)}). ",
   "Global transitivity was {round(transitivity(g, type = 'global'), 2)}, ",
-  "indicating {'moderate' } triadic closure. ",
+  "which should be interpreted relative to network size, density, and the task design. ",
   "The largest connected component included {max(igraph::components(g)$csize)} of ",
   "{gorder(g)} nodes ({round(max(igraph::components(g)$csize) / gorder(g) * 100, 1)}%)."
 )
@@ -3128,8 +4531,9 @@ report_community <- glue::glue(
   "{length(unique(membership(com_louvain)))} communities ",
   "(modularity Q = {round(mod_louvain, 2)}). ",
   "The Adjusted Rand Index comparing detected communities with class labels was ",
-  "{round(ari_value, 2)}, suggesting {'moderate'} correspondence between ",
-  "algorithmically detected communities and administrative class assignments."
+  "{round(ari_value, 2)}. This value describes correspondence between ",
+  "algorithmically detected communities and administrative class assignments; ",
+  "it is not a significance test by itself."
 )
 knitr::asis_output(report_community)
 ```
@@ -3143,17 +4547,56 @@ knitr::asis_output(report_community)
 ergm_coef_edges <- round(ergm_coefs["edges", "Estimate"], 2)
 ergm_coef_class <- round(ergm_coefs["nodematch.class", "Estimate"], 2)
 ergm_p_class <- round(ergm_coefs["nodematch.class", "Pr(>|z|)"], 3)
+ergm_p_class_text <- ifelse(
+  ergm_p_class < 0.001,
+  "< .001",
+  paste0("= ", format(ergm_p_class, nsmall = 3))
+)
+ergm_class_direction <- ifelse(ergm_coef_class >= 0, "positive", "negative")
 
 report_ergm <- glue::glue(
   "An ERGM was fitted to test homophily effects on network formation. ",
+  "The model was binary (response = NULL) and used the formula ",
+  "edges + nodematch(class) + nodematch(proficiency) + gwesp(0.5, fixed = TRUE). ",
   "The baseline edges parameter was {ergm_coef_edges}. ",
-  "Same-class homophily was {'significant' } ",
-  "(estimate = {ergm_coef_class}, p {'<'} {max(ergm_p_class, 0.001)}), ",
-  "indicating that learners in the same class were more likely to collaborate. ",
-  "Model fit was assessed using goodness-of-fit diagnostics for degree distribution, ",
-  "geodesic distance, and edge-wise shared partners."
+  "Same-class homophily showed a {ergm_class_direction} coefficient ",
+  "(estimate = {ergm_coef_class}, p {ergm_p_class_text}). ",
+  "Because this is a binary ERGM, the coefficient refers to the presence of a collaboration tie, ",
+  "not to the number of collaboration events. ",
+  "MCMC diagnostics were inspected separately from goodness-of-fit diagnostics. ",
+  "Model fit was assessed using simulated goodness-of-fit diagnostics for degree distribution, ",
+  "geodesic distance, and edge-wise shared partners. ",
+  "The model was estimated with ergm {as.character(utils::packageVersion('ergm'))}."
 )
 knitr::asis_output(report_ergm)
+```
+
+### QAP/MRQAP結果の報告
+
+```{r}
+#| eval: true
+#| label: reporting-mrqap
+#| results: asis
+mrqap_coef_class <- round(mrqap_fit$coefficients[2], 2)
+mrqap_t_class <- round(mrqap_fit$tstat[2], 2)
+mrqap_p_class <- round(mrqap_fit$pgreq[2], 3)
+mrqap_p_class_text <- ifelse(
+  mrqap_p_class < 0.001,
+  "< .001",
+  paste0("= ", format(mrqap_p_class, nsmall = 3))
+)
+
+report_mrqap <- glue::glue(
+  "An MRQAP regression was fitted with sna::netlm() to predict the collaboration-count matrix. ",
+  "The matrices used the same node ordering, diagonal entries were excluded (diag = FALSE), ",
+  "and the undirected graph mode was specified (mode = 'graph'). ",
+  "The QAP semi-partialing plus null hypothesis was used (nullhyp = 'qapspp') with 2000 permutations. ",
+  "For the Same Class predictor, the coefficient was {mrqap_coef_class}, ",
+  "the default t-value statistic was {mrqap_t_class}, and the directional p-value was {mrqap_p_class_text}. ",
+  "Because the p-value is permutation-based, it should be reported with the matrix definition, ",
+  "node ordering, mode, null hypothesis, permutation count, and sidedness."
+)
+knitr::asis_output(report_mrqap)
 ```
 
 ### 報告チェックリスト
@@ -3161,11 +4604,13 @@ knitr::asis_output(report_ergm)
 **論文報告のチェックリスト**:
 
 - [ ] ノード定義、エッジ定義、重み、観測期間、欠測処理を明記した
+- [ ] エッジのデータソース（アンケート、観察、LMS、ピア評価など）と edge list への変換規則を明記した
+- [ ] 有向データを無向化した場合、または重みを二値化した場合、その規則と理由を明記した
 - [ ] ノード数、エッジ数、密度、連結性、推移性を報告した
 - [ ] 中心性上位ノードの結果とコミュニティ構造（モジュラリティ）を示した
-- [ ] 使用したアルゴリズム（Louvain、Leidenなど）とその選択理由を記載した
-- [ ] ERGMを使用した場合、モデル項の選択理由と適合度診断を報告した
-- [ ] QAPを使用した場合、置換回数と帰無分布を報告した
+- [ ] 使用したアルゴリズム（Louvain、Leidenなど）、重み使用の有無、`resolution`、乱数seed、`igraph`バージョンを記載した
+- [ ] ERGMを使用した場合、formula、binary/valued、`response`、`reference`、`constraints`、`control.ergm()`、MCMC診断、適合度診断を報告した
+- [ ] QAP/MRQAPを使用した場合、行列作成規則、ノード順序、`mode`、`diag`、`nullhyp`、置換回数、片側/両側、帰無分布を報告した
 - [ ] 回帰分析でネットワーク指標を使用した場合、非独立性の限界を明示した
 - [ ] 感度分析（しきい値変更、欠測シミュレーション）の結果を報告した
 - [ ] 結果を因果的主張に飛躍させていない
@@ -3173,73 +4618,85 @@ knitr::asis_output(report_ergm)
 
 ## FAQ（よくある質問）
 
-**Q: ネットワーク分析に最低何名の参加者が必要か？**  
-明確な下限はないが、一般にノード数20名未満では中心性指標の安定性が低下する。ERGMの推定にはノード数50以上が推奨される[@lusher2013]。小規模データではQAPやエゴネットワーク分析を検討すると良い。
+**Q: ネットワーク分析に最低何名の参加者が必要か？**
+明確な下限はありませんが、一般にノード数20名未満では中心性指標の安定性が低下します。ERGMの推定可能性は、ノード数だけでなく、密度、モデル項、欠測、同類選好の強さ、退化の有無に依存します。50名程度は粗い実務的目安にすぎないため、小規模データでは項を絞り、MCMC診断、GOF、感度分析を確認し、必要に応じてQAPやエゴネットワーク分析を検討するとよいです[@lusher2013]。
 
-**Q: 縦断データ（複数時点）はどう扱うか？**  
-各時点のネットワークを個別に分析し、指標の変化を追跡する方法が最も単純である。時点間のネットワーク変化を統計的にモデル化するには、TERGM（temporal ERGM）やREM（relational event model）が適しているが、本章の範囲外である。
+**Q: 縦断データ（複数時点）はどう扱うか？**
+各時点のネットワークを個別に分析し、指標の変化を追跡する方法が最も単純です。時点間のネットワーク変化を統計的にモデル化するには、TERGM（temporal ERGM）やREM（relational event model）が適していますが、本章の範囲外です。
 
-**Q: 二部ネットワーク（学習者 × 活動）はどう扱うか？**  
-`igraph` の `bipartite` 属性を使用して二部グラフとして表現する。分析時には、一方のモードへの射影（projection）を行い、「同じ活動に参加した学習者同士」のネットワークに変換してから中心性やコミュニティ検出を適用するのが一般的である。
+**Q: 二部ネットワーク（学習者 × 活動）はどう扱うか？**
+`igraph` の `bipartite` 属性を使用して二部グラフとして表現します。分析時には、一方のモードへの射影（projection）を行い、「同じ活動に参加した学習者同士」のネットワークに変換してから中心性やコミュニティ検出を適用するのが一般的です。
 
-**Q: igraph と statnet は同じ結果を返すか？**  
-基本的な指標（次数、密度、推移性など）は同じ結果を返す。ただし、ERGMは `statnet` / `ergm` パッケージ専用であるため、ERGMを使う場合は `intergraph::asNetwork()` で変換が必要である[@handcock2008]。
+**Q: igraph と statnet は同じ結果を返すか？**
+基本的な指標（次数、密度、推移性など）は同じ結果を返します。ただし、ERGMは `statnet` / `ergm` パッケージ専用のため、ERGMを使う場合は `intergraph::asNetwork()` で変換が必要です[@handcock2008]。
 
-**Q: 中心性が高い学習者 = 優秀な学習者か？**  
-いいえ。中心性は構造的位置の指標であり、能力や成績の指標ではない。betweennessが高い学習者は異なるグループ間の橋渡し役であるが、それが学習成果に正の影響を与えるかは別の検証が必要である。因果推論には実験デザインや適切な統計モデリングが求められる。
+**Q: 中心性が高い学習者 = 優秀な学習者か？**
+いいえ。中心性は構造的位置の指標であり、能力や成績の指標ではありません。betweennessが高い学習者は異なるグループ間の橋渡し役ですが、それが学習成果に正の影響を与えるかは別の検証が必要です。因果推論には実験デザインや適切な統計モデリングが求められます。
 
-**Q: ERGMが収束しない場合はどうするか？**  
-(1) `triangle` を `gwesp` に置き換える、(2) `control.ergm()` で反復回数やバーンイン期間を増やす、(3) モデルを簡略化する（項を減らす）、の順に対処する。ノード数が少なすぎる場合（< 30）は、ERGMの適用自体を再検討する。
+**Q: ERGMが収束しない場合はどうするか？**
+(1) `triangle` を `gwesp` に置き換える、(2) `control.ergm()` で反復回数やバーンイン期間を増やす、(3) モデルを簡略化する（項を減らす）、の順に対処します。ノード数が少なすぎる場合（< 30）は、ERGMの適用自体を再検討します。
 
 ## 最終チェックリスト
 
-ネットワーク分析を研究に用いる際の最終確認事項である。
+ネットワーク分析を研究に用いる際の最終確認事項です。
 
 - [ ] 研究質問とネットワーク定義が1対1で対応している
 - [ ] 有向/無向、重み有/無の選択理由を説明できる
-- [ ] 境界設定（誰を含め、何をエッジとみなすか）が明確である
+- [ ] 境界設定（誰を含め、何をエッジとみなすか）が明確です
+- [ ] ノード表とエッジ表の列定義（`from`, `to`, `weight`, `edge_type`, `time_window`, `source`）をコードブック化している
+- [ ] アンケート指名、観察ログ、LMSログ、ピア評価など、データソースごとの変換規則を記録している
+- [ ] 複数の関係種類（協働・相談・友人関係など）を1つに混ぜず、必要に応じて multiplex / QAP として扱っている
 - [ ] 指標の意味を混同していない（degree と betweenness など）
 - [ ] 可視化の美しさではなく、解釈可能性を優先している
 - [ ] コミュニティ検出では複数のアルゴリズムを比較している
-- [ ] ERGMを使用する場合、モデル退化を回避し適合度を確認している
-- [ ] QAPを使用する場合、置換回数が十分である（2000回以上推奨）
+- [ ] ERGMを使用する場合、モデル退化を回避し、MCMC診断と適合度診断を別々に確認している
+- [ ] QAPを使用する場合、置換回数が十分であり（2000回以上推奨）、`mode`、`diag`、`nullhyp`、片側/両側を記録している
 - [ ] 通常の回帰にネットワーク指標を投入する場合、非独立性の限界を明記している
 - [ ] しきい値や欠測に対する感度分析を実施している
+- [ ] `sessionInfo()`、主要パッケージのバージョン、乱数seed、キャッシュ更新の有無を記録している
 - [ ] 結果を因果主張に飛躍させていない
 
 ## 推薦図書・リソース
 
-**発展的な文献**:
-
 **入門書**:
 
-- @borgatti2018 -- ネットワーク分析の概念と方法を体系的に学べる教科書。数式は最小限で、応用例が豊富。
-- @hanneman2005 -- 無料オンライン教科書。基礎概念から丁寧に解説。
-- @saqr2024 -- Rによる実装に焦点を当てたチュートリアル。教育研究の文脈で書かれている。
+- @borgatti2018 -- ネットワーク分析の概念と方法を体系的に学べる教科書です。数式は最小限で、応用例が豊富です。
+- @hanneman2005 -- 無料オンライン教科書です。基礎概念から丁寧に解説しています。
+- @saqr2024 -- Rによる実装に焦点を当てたチュートリアル。教育研究の文脈で書かれています。
 
 **SLA特化**:
 
-- @kennedyterry2024 -- SLA研究におけるネットワーク分析の理論と方法を包括的に解説した初の専門書。
-- @paradowski2024 -- 言語学習者グループの中心性分析に関するプライマー。
+- @kennedyterry2024 -- SLA研究におけるネットワーク分析の理論と方法を包括的に解説した初の専門書です。
+- @paradowski2024 -- 言語学習者グループの中心性分析に関するプライマーです。
+- @paradowski2024dynamic -- 留学中の学習者相互作用を複数時点で扱う dynamic computational SNA の近年例です。
+
+**方法論基盤**:
+
+- @marsden1990 -- ネットワーク測定の古典的整理です。質問紙、観察、日誌、電子ログの測定差を考える基盤になります。
+- @laumann1983boundary -- ネットワーク境界設定の古典的論点です。誰をネットワーク内に含めるかを理論的に決める際の根拠になります。
+- @holland1973 -- 指名データの測定誤差がネットワーク構造に与える影響を考えるための基礎です。
+- @borgatti1997twomode -- 二部ネットワークの分析と射影の考え方を整理した代表的論文です。
+- @snijders2010saom -- 縦断ネットワークを動的にモデル化する stochastic actor-based model の基礎です。
 
 **心理言語学・語彙ネットワーク**:
 
-- @balota2007 -- English Lexicon Project。LDT メガスタディを用いた語彙処理研究の基盤資料。
-- @keuleers2011 -- British Lexicon Project。英語の語彙判断データを大規模に提供する代表的リソース。
-- @vitevitchgoldstein2014 -- mental lexicon をネットワークとして捉える発想を整理した論文。
-- @goldstein2017 -- closeness centrality と lexical processing の接続を示す短い実証論文。
+- @balota2007 -- English Lexicon Project です。LDT メガスタディを用いた語彙処理研究の基盤資料です。
+- @keuleers2011 -- British Lexicon Project です。英語の語彙判断データを大規模に提供する代表的リソースです。
+- @vitevitchgoldstein2014 -- mental lexicon をネットワークとして捉える発想を整理した論文です。
+- @goldstein2017 -- closeness centrality と lexical processing の接続を示す短い実証論文です。
+- @golino2017ega -- 項目間ネットワークから次元構造を探索する EGA の基礎文献です。
 
 **評価研究・評定者ネットワーク**:
 
-- @eckes2015 -- MFRM の定番的入門書。評定者厳しさや課題難易度をどう分離するかを体系的に学べる。
-- @lamprianou2017 -- 評定者効果を SNA と ERGM で扱う代表的研究。
-- @lamprianou2025 -- 言語評価における評定者効果を、agreement/disagreement network、halo network、MFRM 比較まで含めて示した最近の応用例。
-- @tanaka2025 -- friendship bias と peer assessment を扱う EFL 文脈の近接研究。
+- @eckes2015 -- MFRM の定番的入門書です。評定者厳しさや課題難易度をどう分離するかを体系的に学べます。
+- @lamprianou2017 -- 評定者効果を SNA と ERGM で扱う代表的研究です。
+- @lamprianou2025 -- 言語評価における評定者効果を、agreement/disagreement network、halo network、MFRM 比較まで含めて示した最近の応用例です。
+- @tanaka2025 -- friendship bias と peer assessment を扱う EFL 文脈の近接研究です。
 
 **高度な手法**:
 
-- @lusher2013 -- ERGMの理論と応用を詳述。ERGMを本格的に使う際の必読文献。
-- @wasserman1994 -- ネットワーク分析の古典的教科書。数学的基盤を深く学びたい場合に参照。
+- @lusher2013 -- ERGMの理論と応用を詳述しています。ERGMを本格的に使う際の必読文献です。
+- @wasserman1994 -- ネットワーク分析の古典的教科書です。数学的基盤を深く学びたい場合に参照します。
 
 ## セッション情報
 

@@ -22,6 +22,7 @@ required_packages <- c(
   "dplyr",
   "eRm",
   "ggrepel",
+  "gt",
   "knitr",
   "latticeExtra",
   "mirt",
@@ -48,6 +49,8 @@ if (length(missing_packages) > 0) {
 
 
 ## はじめに
+
+**本章へようこそ**。本章では、第 11 章の基本 Rasch モデル (1PL) を、英語教育研究で頻出する複雑な評価データ構造へ拡張する 5 つの主要モデル — **段階反応モデル (GRM)**・**部分得点モデル (PCM) と評定尺度モデル (RSM)**・**多相ラッシュモデル (MFRM)**・**多次元 IRT (MIRT)**・**モッケン尺度分析 (Mokken)** — を学びます。第 11 章の延長として、ライティング・スピーキング評価で典型の「順序評定 + 評価者差 + 多技能」を統一的に扱える枠組みを獲得します。第 7 章ベイズ推定 (brms による Bayesian MFRM)、第 10 章 G theory (分散成分による評価者効果の集計) との橋渡しも担い、本書全体の測定理論パートを締めくくります。本章を読み終えると、評価データの構造に応じてどのモデルを選ぶべきかを判断し、`mirt`/`TAM`/`mokken` で実装・診断・報告できるようになります。
 
 英語教育研究で扱う評価データは、しばしば「正誤」より複雑です。たとえば、作文やスピーキングでは部分点を含む順序評定が使われ、さらに採点者（rater）差や課題（task）差が得点に混入します。このとき古典的な合計点比較だけでは、**学習者能力の差**と**測定デザイン由来の差**を切り分けにくくなります。IRT、とくに Rasch 系モデルは、この切り分けを明示的に行うための枠組みです[@rasch1980; @bondfox2007]。
 
@@ -115,18 +118,68 @@ Likert 型データの場合はまず **GRM** → **Mokken** の順に進み、�
 **技術用語**:
 
 - **ロジット尺度（logit scale）**: 対数オッズ比の尺度。$\text{logit}(p) = \log(p/(1-p))$。IRT では能力と項目パラメータをこの共通尺度で表現し、直接比較を可能にする。
-- **特異的客観性（specific objectivity）**: Rasch モデルの性質で、項目パラメータの推定が受験者集団に依存せず、能力推定が使用項目に依存しないこと。異なる集団・異なるテスト間での公平な比較を保証する。
+- **特異的客観性（specific objectivity）**: Rasch モデルが適合し、項目・受験者が共通尺度上で適切にリンクされているときに、項目比較が特定の受験者集団に、受験者比較が特定の項目集合に過度に依存しにくくなる性質です。無条件に公平な比較を保証するものではないため、適合度、局所独立性、DIF、アンカーの質を併せて確認します。
 - **十分統計量（sufficient statistic）**: 素点（合計点）がパラメータ推定に必要な情報をすべて含んでいること。Rasch 系モデルで素点が $\theta$ の十分統計量になる。
 - **しきい値（threshold）**: GRM でカテゴリ間の境目に対応する能力水準。$b_{i1} < b_{i2} < \cdots$ の順序性が重要。
 - **IIO（不変項目順序）**: 能力水準が変わっても項目の難易度順位が変わらない性質。
 - **Guttman パターン**: 完全な階層的反応パターン。能力の高い受験者はすべての易しい項目に正答するパターン。
-- **公正スコア（fair score）**: MFRM で採点者厳しさを補正した後の能力推定値。同じ能力の受験者が異なる採点者から同じスコアを得ることを保証する。
+- **公正スコア（fair score）**: MFRM で採点者厳しさなどのファセット効果を分離した後の能力推定値です。モデルが適切に適合している範囲で、採点者の厳しさに由来する不公平を小さくすることを目指します。
 - **Infit / Outfit**: 項目適合度指標。Infit は能力が項目困難度に近い受験者の反応に重みを置く。Outfit は外れ値に敏感。期待値 1.0、0.7–1.3 が許容範囲。
+
+**Mokken Scalability 系統 (H 関係)**:
+
+- **H (Loevinger 全体係数)**: 尺度全体のスケーラビリティ。H ≥ 0.30 で最低許容、≥ 0.40 で中、≥ 0.50 で強。
+- **Hi (項目別)**: 各項目の H への寄与度。低い Hi 項目は尺度から除外候補。
+- **Hij (項目ペア)**: 項目ペア間のスケーラビリティ。AISP の項目グループ化の起点。
+- **HT (IIO 検定統計量; Ligtvoet et al. 2010)**: 不変項目順序の強さ。HT < 0.30 で No IIO、≥ 0.50 で Strong IIO。
+
+::: {.callout-important}
+#### 第 11 章 Rasch から第 12 章拡張モデルへの樹形図
+
+第 11 章で学んだ基本 Rasch モデル ($\theta_n - b_i$) を起点に、本章の 5 拡張は次の樹形に整理できます。**自分のデータに何が必要かを最初に決めると、どのモデルを選ぶかが明確**です。
+
+```{mermaid}
+%%| label: fig-rasch-extensions-tree
+%%| fig-cap: "第 11 章 Rasch (1PL) から第 12 章拡張モデルへの樹形図。応答型・ファセット数・次元数の 3 軸で拡張先が分岐する。"
+flowchart TD
+    R["第 11 章 Rasch (1PL)<br/>P(X=1) = logit⁻¹(θ - b)<br/>2値 + 受験者・項目"]
+
+    R -->|"応答が順序"| ORD["順序応答モデル"]
+    ORD -->|"全項目同じ識別力 + 同じ段階構造"| RSM["RSM<br/>Andrich 1978"]
+    ORD -->|"全項目同じ識別力<br/>(項目別段階構造)"| PCM["PCM<br/>Masters 1982"]
+    ORD -->|"項目別識別力"| GPCM["GPCM<br/>Muraki 1992"]
+    ORD -->|"累積ロジット型<br/>(項目別識別力)"| GRM["GRM<br/>Samejima 1969"]
+
+    R -->|"評価者・課題ファセット追加"| MFRM["MFRM<br/>θ - b - α - γ - τ<br/>Linacre 1989"]
+
+    R -->|"多次元 (複数潜在特性)"| MIRT["MIRT<br/>P = logit⁻¹(a₁θ₁ + a₂θ₂ + d)<br/>Reckase 2009"]
+    MIRT -->|"一般因子 + 特殊因子"| BIF["Bifactor IRT<br/>Gibbons & Hedeker 1992"]
+
+    R -->|"ICC 形状を仮定しない<br/>(non-parametric)"| MOK["Mokken<br/>Sijtsma & Molenaar 2002"]
+
+    style R fill:#e7f3ff,stroke:#0066cc,stroke-width:2px
+    style RSM fill:#fff3e0
+    style PCM fill:#fff3e0
+    style GPCM fill:#fff3e0
+    style GRM fill:#fff3e0
+    style MFRM fill:#e8f5e9
+    style MIRT fill:#fce4ec
+    style BIF fill:#fce4ec
+    style MOK fill:#f3e5f5
+```
+
+| 拡張軸 | 第 11 章で固定 | 第 12 章で緩和 |
+|:---|:---|:---|
+| 応答型 | 2 値 (正誤) | 順序 (リッカート) → GRM/PCM/RSM/GPCM |
+| ファセット数 | 受験者 + 項目 | + 評価者・課題 → MFRM |
+| 次元数 | 1 次元 | 多次元 → MIRT/Bifactor |
+| パラメトリック仮定 | logit 関数を仮定 | 仮定しない → Mokken |
+:::
 
 本章で扱う中心モデルは次の5つです。
 
 1. **段階反応モデル（GRM）**: 順序カテゴリ応答を、項目ごとの識別力としきい値で記述する[@samejima1969]。
-2. **部分得点モデル / 評定尺度モデル（PCM/RSM）**: Rasch 系の隣接カテゴリモデルで、識別力を等値化し特異的客観性を保持する[@masters1982; @andrich1978]。
+2. **部分得点モデル / 評定尺度モデル（PCM/RSM）**: Rasch 系の隣接カテゴリモデルで、識別力を等値化し、適合が十分であれば特異的客観性を活かした尺度解釈が可能になる[@masters1982; @andrich1978]。
 3. **多相ラッシュモデル（MFRM）**: 受験者・項目に加え、採点者・課題などの複数ファセットを同時推定する[@linacre1989]。
 4. **多次元 IRT（MIRT）**: 語彙・文法・読解など複数潜在特性を同時推定する[@reckase2009; @chalmers2012]。
 5. **モッケン尺度分析（MSA）**: パラメトリックな項目関数を仮定しない尺度性評価を行う[@mokken1971; @vanderark2007]。
@@ -136,9 +189,9 @@ Likert 型データの場合はまず **GRM** → **Mokken** の順に進み、�
 第11章で扱った1PL（Rasch）モデルは、項目識別力を等しいと仮定する代わりに、尺度不変性と解釈可能性の高さを得る設計です。IRT の一般的な理論と応用については de Ayala [-@deayala2009] および Embretson & Reise [-@embretsonreise2000] が包括的なリファレンスです。
 ただし実務では、次のような要請が頻繁に生じます。
 
-- 部分点を含む評定尺度を扱いたい  
-- 項目ごとにカテゴリ機能が異なる可能性を許したい  
-- 項目困難度の背後にある設計要因を検証したい  
+- 部分点を含む評定尺度を扱いたい
+- 項目ごとにカテゴリ機能が異なる可能性を許したい
+- 項目困難度の背後にある設計要因を検証したい
 - 採点者の厳しさを同時に補正したい
 
 これに対応する代表的な拡張が以下です。
@@ -171,7 +224,7 @@ Likert 型データの場合はまず **GRM** → **Mokken** の順に進み、�
 
 ##### 数理的な違い（簡潔版）
 - PCM（隣接カテゴリ; [@masters1982]）: 隣接カテゴリ間のロジットが「能力 − ステップ困難度」の差で表現されます。各項目・各ステップごとの困難度を自由に推定できます。
-- RSM（隣接カテゴリ＋共通ステップ; [@andrich1978]）: ステップ困難度を「項目の位置β_i」と「共通ステップτ_k」に分解し、全項目で同じτ_kを共有します。
+- RSM（隣接カテゴリ＋共通ステップ; [@andrich1978]）: ステップ困難度を「項目の位置 $\beta_i$」と「共通ステップ $\tau_k$」に分解し、全項目で同じ $\tau_k$ を共有します。
 - LLTM（[@fischer1973]）: 項目困難度をQマトリクスと設計要因の線形結合として制約し、難易度の生成要因を検証します。
 - MFRM（[@linacre1989]）: 能力・項目・採点者（厳しさ）・課題等の複数ファセットを同時に扱い、応答のロジットがそれらの差（和）で表されます。
 
@@ -184,6 +237,33 @@ Likert 型データの場合はまず **GRM** → **Mokken** の順に進み、�
 - `mokken` / `psych`: ノンパラメトリック尺度分析と心理測定の基礎統計を補助する。
 - `tidyverse` / `mvtnorm`: シミュレーションデータの生成、整形、可視化を支える。
 - `DT` / `plotly` / `patchwork` / `ggrepel` / `latticeExtra`: 対話表、対話図、複数図の合成、ラベル可読性の調整、`mirt` の lattice ベース描画を支える。
+
+本章の拡張モデルでは、同じ `mirt` や `TAM` でも第11章より出力の読み方が複雑になります。二値 Rasch では「項目困難度」と読めた列が、PCM/RSM ではしきい値やステップ、MFRM では採点者・課題・カテゴリステップを含むファセット効果に変わります。したがって、出力を読むときは、モデル名だけでなく「どの関数の、どのオブジェクト成分を、どのパラメータ化で読んでいるか」を明示します。
+
+| パッケージ | 拡張モデルで特に確認する出力 | 読み方 | 誤読しやすい点 |
+|:--|:--|:--|:--|
+| `mirt` | `coef(mod, IRTpars = TRUE, simplify = TRUE)$items` | GRM では識別力とカテゴリしきい値、GPCM/PCM では項目・カテゴリ構造を確認します。 | `IRTpars = FALSE` の `d` は困難度そのものではありません。報告用には `IRTpars = TRUE` の `a`, `b` 系出力を使う方が読みやすいです。 |
+| `mirt` | `extract.mirt(mod, "AIC")`, `extract.mirt(mod, "BIC")`, `extract.mirt(mod, "converged")` | モデル比較と収束確認に使います。 | `stats::AIC()`/`BIC()` が空の値を返すことがあるため、本章では `safe_aic()`/`safe_bic()` を定義して使います。 |
+| `mirt` | `M2(mod)`, `residuals(mod, type = "Q3")`, `iteminfo()`, `testinfo()` | 全体適合、局所依存、条件付き測定精度を確認します。 | M2 はカテゴリ数と標本サイズの影響を受けます。Q3 は局所依存の探索であり、単独で項目削除を決める指標ではありません。 |
+| `TAM` | `mod$xsi` | PCM/RSM/MFRM の項目、ステップ、採点者、課題などのパラメータを読みます。 | `$xsi` の全行を項目困難度として扱わないでください。`formulaA` と行名を確認して、対象ファセットだけを抽出します。 |
+| `TAM` | `mod$ic`, `mod$EAP.rel`, `TAM::tam.wle(mod)` | 情報量規準、EAP 信頼性、WLE 能力推定値と誤差を確認します。 | `tam.wle()` の `WLE.rel` は各人物行に同じ値が繰り返されることがあります。信頼性として報告する場合は1値として扱います。 |
+| `TAM` | `TAM::tam.fit(mod)$itemfit` | Infit/Outfit による局所的な項目適合を確認します。 | fit は内容妥当性やカテゴリ機能の代替ではありません。MSQ, t, p を合わせて、項目内容と照合します。 |
+
+### 商用・実務用ソフトウェアの位置づけ
+
+本章では、再現可能な分析手順を示すためにRパッケージを中心に扱います。しかし、英語教育評価、資格試験、プレイスメントテスト、ライティング・スピーキング採点の実務では、商用ソフトウェアがよく使われます。商用ソフトウェアは、モデル推定そのものだけでなく、項目バンク、アンカー・等化、技術報告書、CAT配信、監査可能な運用記録をまとめて扱う点に強みがあります。一方で、GUI出力だけに依存すると、推定法、リンク関数、パラメータ化、制約、アンカー指定が見えにくくなることがあります。したがって、研究報告では「どのソフトを使ったか」だけでなく、「どのモデルを、どの推定法・制約・スケールで推定したか」まで明記します。
+
+| ソフトウェア | 主な用途 | 本章との対応 | 読み方・注意点 |
+|:--|:--|:--|:--|
+| Winsteps | Rasch/1PL、PCM、RSM、Wright map、項目・人適合度、アンカー・等化 | PCM/RSM、Wright map、fit、DIF | Rasch型モデルの標準的な実務ツールとしてよく引用されます。出力は豊富ですが、推定法、アンカー、カテゴリ処理、尺度中心化の指定を確認します。 |
+| Facets | 多相ラッシュモデル（受験者・項目・採点者・課題・観点など） | MFRM、採点者厳しさ、接続性、fair score | パフォーマンス評価のMFRMでよく使われます。採点者が全受験者を採点しない疎な設計では、接続性とアンカー設計の確認が不可欠です。 |
+| ACER ConQuest | 一次元・多次元IRT、多相モデル、潜在回帰、plausible values、大規模評価 | PCM/RSM、GPCM、MIRT、多相・潜在回帰 | 大規模評価や調査型アセスメントで有用です。Rの`mirt`や`TAM`と同じモデル名でも、パラメータ化や制約が異なる場合があります。 |
+| flexMIRT / IRTPRO | 一次元・多次元・多母集団IRT、GRM/GPCM等、スコアリング | GRM、MIRT、多母集団IRT、DIF | 多次元・多母集団の実務分析で強力です。GUIやバッチ処理を使う場合でも、モデル式、等値制約、事前分布、リンク関数を報告します。 |
+| Xcalibre | Rasch/1PL、2PL、3PL、PCM/GPCM、RSM/GRM、DIF、技術報告書作成 | GRM、PCM/RSM、DIF、技術報告 | GUIとWord形式レポートが強みです。報告書の表をそのまま使う前に、モデル選択とDIF判定が事前計画に沿っているかを確認します。 |
+| FastTestなどの配信プラットフォーム | 項目バンク、フォーム作成、CAT配信、露出制御、終了規則 | CAT、項目バンク、運用 | 推定済み項目パラメータを運用に使う段階のツールです。研究分析用ソフトというより、テスト運用・配信・監査の基盤として理解します。 |
+| SAS PROC IRT / Stata `irt` など | 汎用商用統計環境内でのIRT推定 | GRM、GPCM、2PL/3PL、MIRTの一部 | 所属機関で既にSAS/Stataを使う場合は便利です。ただし、Rasch/MFRM専用ソフトほど診断出力や運用機能が揃わない場合があります。 |
+
+この表は「どれが最も優れているか」を決める表ではありません。修士・博士課程の研究では、Rで分析を再現できることが大きな利点です。一方、先行研究を読むときや、実際の試験運用に関わるときには、Winsteps、Facets、ConQuest、IRTPRO、flexMIRT、Xcalibre の出力形式と用語に慣れておくと、論文・技術報告書・実務資料を読みやすくなります。
 
 ```{r setup}
 #| message: false
@@ -205,7 +285,8 @@ pacman::p_load(
   plotly,
   patchwork,
   ggrepel,
-  mvtnorm
+  mvtnorm,
+  gt
 )
 
 options(digits = 3)
@@ -249,20 +330,20 @@ safe_bic <- function(mod) extract.mirt(mod, "BIC")
 
 自分のデータに適したモデルの目安がついたところで、具体的な分析に入る前に、回帰分析の知識がある読者向けに本章で使う対応関係を整理しておきます。
 
-- **ロジスティック回帰**  
+- **ロジスティック回帰**
   - 観測可能な説明変数 $x$ から、$P(Y=1)$ を予測する。
-- **IRT（Rasch/GRM/MIRT）**  
+- **IRT（Rasch/GRM/MIRT）**
   - 観測された応答パターンから、潜在変数 $\theta$（能力）と項目パラメータを同時に推定する。
 
 したがって、IRTは「回帰の相手を潜在特性に置き換えたモデル」と捉えると理解しやすくなります。ただし、IRTでは次の追加的な利点があります。
 
-1. 項目ごとに難易度・弁別力・しきい値を分離して解釈できる。  
-2. 受験者能力と項目特性を同一ロジット尺度で比較できる。  
+1. 項目ごとに難易度・弁別力・しきい値を分離して解釈できる。
+2. 受験者能力と項目特性を同一ロジット尺度で比較できる。
 3. 測定不変性（群間比較の公平性）をモデルとして検証しやすい。
 
 ### この章の到達目標
-- 実務で順序評定を扱うなら、まずGRM節を通読してください。  
-- 下位尺度や複数技能（例: 語彙・文法・読解）を同時に扱うならMIRT節へ。  
+- 実務で順序評定を扱うなら、まずGRM節を通読してください。
+- 下位尺度や複数技能（例: 語彙・文法・読解）を同時に扱うならMIRT節へ。
 - パラメトリック仮定に慎重な探索段階ではMokken節を先に確認すると有効です。
 
 回帰分析との橋渡しを確認したところで、最初の拡張モデルである GRM に進みます。GRM は英語教育研究で最も頻繁に使われる順序 IRT モデルです。
@@ -331,15 +412,15 @@ GRMは「累積ロジット」型で、PCM/RSM（隣接カテゴリ型）とは�
 
 これらはすべて「順序カテゴリ」を扱いますが、**どのロジットを使うか**と、**説明変数が観測か潜在か**が異なります。
 
-1. GRM（累積ロジット; [@samejima1969]）  
+1. GRM（累積ロジット; [@samejima1969]）
    $$\log\frac{P(Y_i \ge k \mid \theta)}{P(Y_i < k \mid \theta)} = a_i(\theta - b_{ik})$$
 
-2. PCM/RSM（隣接カテゴリロジット; [@masters1982; @andrich1978]）  
+2. PCM/RSM（隣接カテゴリロジット; [@masters1982; @andrich1978]）
    $$\log\frac{P(Y_i = k \mid \theta)}{P(Y_i = k-1 \mid \theta)} = \theta - \delta_{ik}$$
-   - PCM: $\delta_{ik}$ を項目ごとに自由化  
+   - PCM: $\delta_{ik}$ を項目ごとに自由化
    - RSM: $\delta_{ik} = \beta_i + \tau_k$（$\tau_k$を全項目で共有）
 
-3. 順序ロジスティック回帰（比例オッズ）の典型形  
+3. 順序ロジスティック回帰（比例オッズ）の典型形
    $$\log\frac{P(Y \ge k \mid x)}{P(Y < k \mid x)} = \alpha_k + \beta x$$
    - 回帰では $x$ は観測変数
    - IRTでは $\theta$ は潜在変数で、項目パラメータと同時推定
@@ -355,13 +436,13 @@ GRMは「累積ロジット」型で、PCM/RSM（隣接カテゴリ型）とは�
 
 #### 英語教育ケース（GRM）: 先行研究ベース再現（Sumi & Miyazawa, 2017）
 
-対応する先行研究: EFL読解の動的評価を段階評定で測定し、GRMで項目機能を検討した研究 [@sumi2017]。  
+対応する先行研究: EFL読解の動的評価を段階評定で測定し、GRMで項目機能を検討した研究 [@sumi2017]。
 本章での再現目的: 「段階評定の読解データ」に対して、しきい値構造と情報関数を使って測定精度を解釈する。
 
 再現シナリオ:
-- 読解課題を複数カテゴリで採点したデータを想定し、`itemtype='graded'`で推定する。  
-- 項目ごとのしきい値順序（`b1 < b2 < ...`）を確認し、順序逆転項目は評定基準の見直し候補にする。  
-- Q3/LDG2で局所依存を点検し、内容重複や共通刺激の影響を確認する [@yen1984; @christensen2017]。  
+- 読解課題を複数カテゴリで採点したデータを想定し、`itemtype='graded'`で推定する。
+- 項目ごとのしきい値順序（`b1 < b2 < ...`）を確認し、順序逆転項目は評定基準の見直し候補にする。
+- Q3/LDG2で局所依存を点検し、内容重複や共通刺激の影響を確認する [@yen1984; @christensen2017]。
 - テスト情報関数により、どの能力帯で読解評価の精度が高いかを示す。
 
 結果の記述例（再現報告テンプレート）:
@@ -468,6 +549,74 @@ rare_flags |>
 ```
 
 希少カテゴリ（使用率 5% 未満）を持つ項目は、しきい値パラメータの推定が不安定になる可能性があります。該当項目が多い場合は、隣接カテゴリの統合を検討してください。
+
+::: {.callout-warning}
+**ゼロ頻度カテゴリ — 「希少」とは別問題の構造的ゼロ**
+
+5 段階尺度で **1, 2, 4, 5 が観測されるが 3 が完全に欠落** といったケースは、希少カテゴリ (< 5% は観測あり) とは**質的に異なる問題**です。Linacre は WINSTEPS で **incidental/sampling zero** (偶然観測されなかった) と **structural zero** (本来存在しない・使われない) を区別し、それぞれ異なる処理を推奨しています [WINSTEPS STKEEP](https://www.winsteps.com/winman/stkeep.htm)。
+
+**各パッケージの挙動** (CRAN ドキュメント・公式 vignette 確認):
+
+| パッケージ | ゼロ頻度カテゴリ (中間) があるとき |
+|------------|-----------------------------------|
+| **`eRm::PCM`** (CML) | 内部設計行列 $W$ で当該カテゴリパラメータを **0 に固定して推定継続** (クラッシュしない)。ただし当該閾値は識別不能扱いで NA/0 となり、項目間で構造が崩れるため警告あり |
+| **`eRm::RSM`** | RSM は全項目で**共通の閾値構造**を仮定するため、1 項目で欠落カテゴリがあると共通閾値推定が直接歪み、全項目に影響 |
+| **`mirt`** `itemtype = "graded"` (GRM) | 累積差分型 $P(Y \ge k)$ のため**推定は継続**するが、欠落カテゴリの境界閾値が ±∞ 付近に張り付き、SE が膨大化 (収束問題が報告される、Chalmers 公式) |
+| **`mirt`** `itemtype = "gpcm"/"PCM"` | 隣接差分型のため step parameter が定義不能で **収束失敗または閾値発散**。Chalmers は GitHub・フォーラムで **downcoding (連番化)** を推奨 |
+| **`TAM::tam.mml`** | MML/EM のため推定は通るが、当該 step parameter が発散する挙動が一般的に報告される。`tam.threshold()` で確認 |
+| **`WINSTEPS`** | `STKEEP=Yes` (**既定**): incidental zero として保持、Andrich 閾値を「最高閾値 + 40 logits」に近似。`STKEEP=No`: structural zero として連番化 (1,2,4,5 → 1,2,3,4) |
+
+**3 つの実務的対処** (場面別):
+
+```r
+# (1) 隣接カテゴリと統合: 中間カテゴリの欠落を埋める
+# 連続性を保ち、閾値順序を安定化させる古典的アプローチ
+SAT12_merged <- SAT12
+SAT12_merged[SAT12_merged == 3] <- 2  # cat 3 を cat 2 に統合
+# 結果: 1, 2, 4, 5 → 1, 2, 4, 5 (3 が消えただけ; eRm 用には別途 0 始まり化が必要)
+
+# (2) 連番化 (downcoding / renumber): structural zero に対応
+# 観測されたカテゴリを 0 始まり連番に詰める。Chalmers (mirt) と
+# WINSTEPS STKEEP=No が推奨する処理
+SAT12_renumbered <- as.data.frame(lapply(SAT12, function(x) {
+  observed <- sort(unique(na.omit(x)))
+  match(x, observed) - 1L  # 1,2,4,5 → 0,1,2,3
+}))
+
+# (3) GRM を使う (PCM/RSM より相対的に推定が通りやすい)
+# 累積差分型のため推定は継続するが、欠落カテゴリの境界 SE が不安定になる点に注意
+fit_grm <- mirt(SAT12, 1, itemtype = "graded")
+```
+
+**判定指針** (Linacre のフレーム):
+
+| 状況 | 性格 | 推奨処理 | 論文での記載例 |
+|------|------|----------|---------------|
+| 偶然観測されなかった (sample が小さい、特殊サンプル) | **incidental / sampling zero** | (1) 隣接カテゴリ統合、または `STKEEP=Yes` 同等で番号保持 | 「カテゴリ X はサンプルで観測されなかったため隣接カテゴリと統合した」 |
+| そもそも誰も使わない不適切なカテゴリ (ラベル設計の問題) | **structural zero** | (2) downcoding / renumber、または `STKEEP=No` | 「カテゴリ X はラベル設計上機能していないため除外し連番化した」 |
+| 群間で出現パターンが異なる (例: 高校生群は cat 3 を使うが大学生群は使わない) | 不変性に直結 | **両群共通の前処理**を採用 (群別処理は DIF 分析に影響) | 「群間で前処理を統一し、その上で MFRM/multipleGroup で不変性を検証」 |
+
+**検出コード**:
+
+```r
+# 各項目で「中間が抜けているか」を診断
+detect_structural_zero <- function(X) {
+  purrr::map_dfr(seq_along(X), function(j) {
+    obs <- sort(unique(na.omit(X[[j]])))
+    expected <- seq(min(obs), max(obs))
+    missing_cats <- setdiff(expected, obs)
+    if (length(missing_cats) > 0) {
+      tibble::tibble(Item = names(X)[j],
+                    Observed = paste(obs, collapse = ","),
+                    Missing  = paste(missing_cats, collapse = ","))
+    } else NULL
+  })
+}
+detect_structural_zero(SAT12)
+```
+
+希少カテゴリ ($< 5\%$) と構造的ゼロ ($= 0\%$) の両方を出力する **データ事前監査** を抽出表段階で組み込んでおくと、推定段階での収束問題で時間を失いません。なお `eRm::PCM` はクラッシュせず警告で済むことが多いですが、出力された閾値が解釈不能な NA や極端値になっていないか必ず確認してください。
+:::
 
 ### モデル推定
 
@@ -576,7 +725,9 @@ $Q_3$ の閾値は固定値ではなく、項目数・標本サイズ・カテ�
 
 **論文での報告例**: 「残差相関（Q3; Yen, 1984）の範囲は x.xx〜x.xx であった。|Q3| > .20 のペアは x 組検出され、局所依存の可能性を確認した。」
 
-```{r grm-q3-heatmap}
+```{r}
+#| label: fig-grm-q3-heatmap
+#| fig-cap: "GRM 残差相関 (Yen's Q3) ヒートマップ。黒枠で囲まれたセルは |Q3| ≥ 0.2 の局所依存候補。Yen (1984) の期待値 −1/(J−1) ≈ −0.034 (J=30 項目) を考慮した補正版 Q3* で読むのが原則。"
 #| fig-height: 7
 #| fig-width: 8
 #| eval: true
@@ -644,7 +795,9 @@ eigen_df |>
   knitr::kable(caption = "PCA of Residual Correlations")
 ```
 
-```{r grm-pca-scree}
+```{r}
+#| label: fig-grm-pca-scree
+#| fig-cap: "GRM 残差 PCA のスクリープロット (一次元性検証)。第 1 コントラスト固有値が 2.0 未満なら一次元性は実用上保たれている (Linacre の 20% rule)。"
 #| fig-height: 4
 #| fig-width: 7
 #| eval: true
@@ -815,7 +968,9 @@ if (nrow(disordered) > 0) {
 
 #### 推定パラメータの散布図（GRM結果）
 
-```{r grm-parameter-map}
+```{r}
+#| label: fig-grm-parameter-map
+#| fig-cap: "GRM 項目パラメータの散布図。横軸は項目の平均困難度 (b_mean = $\\bar{b_{ik}}$)、縦軸は識別力 a。右上 (難易・高識別) の項目が高能力者の弁別に最も有効、左下 (易・低識別) は基礎能力スクリーニング用。"
 #| fig-height: 5.2
 #| fig-width: 8.8
 #| eval: true
@@ -875,7 +1030,7 @@ ggplot(grm_plot_df, aes(x = b_mean, y = a, label = Item)) +
   ) + theme(legend.position = "bottom")
 ```
 
-この図で、右側ほど高能力帯でカテゴリ遷移が起きる項目、上側ほど弁別力が高い項目を意味します。  
+この図で、右側ほど高能力帯でカテゴリ遷移が起きる項目、上側ほど弁別力が高い項目を意味します。
 「高弁別だが難しすぎる項目」「易しいが弁別が弱い項目」を一目で把握できます。
 
 #### カテゴリ特性曲線
@@ -884,7 +1039,7 @@ ggplot(grm_plot_df, aes(x = b_mean, y = a, label = Item)) +
 #| fig-height: 8
 #| fig-width: 10
 #| eval: true
-plot(fit_grm, 
+plot(fit_grm,
      type = 'trace',
      which.items = 1:6,
      facet_items = TRUE,
@@ -974,11 +1129,11 @@ plot(fit_grm,
 #| warning: false
 #| message: false
 #| eval: true
-# 例: 最下位2カテゴリ（0 と 1）を統合
-# SAT12 は 0-4 の5段階。0 と 1 をまとめて4段階にする
+# 例: 最下位2カテゴリ（元データの 1 と 2）を統合
+# SAT12 は 1-5 の5段階。1 と 2 をまとめて4段階にする
 SAT12_collapsed <- SAT12
-SAT12_collapsed[SAT12_collapsed == 0] <- 1  # カテゴリ0を1に統合
-# 統合後カテゴリ: 1,2,3,4 → 連番 0,1,2,3 に再コーディング
+SAT12_collapsed[SAT12_collapsed == 1] <- 2  # カテゴリ1を2に統合
+# 統合後カテゴリ: 2,3,4,5 → 連番 0,1,2,3 に再コーディング
 SAT12_collapsed <- as.data.frame(lapply(SAT12_collapsed, function(x) {
   as.integer(factor(x)) - 1L
 }))
@@ -1041,7 +1196,40 @@ data.frame(
 3. **しきい値逆転が解消**したかを再確認する（統合後の `threshold-order-check` を実行）。
 4. 統合は理論的にも正当化できるか（例: 「全く同意しない」と「同意しない」は実質的に区別されていなかった）を確認する。
 
-#### 発展：モデル比較（GRM vs GPCM）
+#### 発展：GPCM (Generalized Partial Credit Model) の定式化
+
+@muraki1992 の **GPCM** は、PCM (Masters 1982) に項目別識別力 $a_i$ を導入した拡張です。隣接カテゴリ確率の比に基づく定式化:
+
+$$
+P(Y_i = k | \theta) = \frac{\exp\left[\sum_{j=0}^{k} a_i (\theta - \delta_{ij})\right]}{\sum_{r=0}^{m_i} \exp\left[\sum_{j=0}^{r} a_i (\theta - \delta_{ij})\right]}
+$$
+
+ここで $a_i$ は項目 $i$ の識別力（**項目間で異なるが、同一項目内のカテゴリ間では共通**）、$\delta_{ij}$ は項目 $i$ のカテゴリ $j$ の閾値、$m_i$ はカテゴリ数 - 1。$k = 0$ で空和を 0 と定義します。
+
+#### モデル間のネスト関係
+
+二値 1PL/2PL から polytomous モデルへの拡張は次のネスト関係を持ちます:
+
+| モデル | 識別力 $a_i$ | 閾値構造 $\delta_{ik}$ | 制約 |
+|:---|:---:|:---:|:---|
+| **RSM** (Andrich 1978) | $a_i = 1$ | $\delta_{ik} = \delta_i + \tau_k$、$\sum_k \tau_k = 0$ | 全項目で同一の段階構造 |
+| **PCM** (Masters 1982) | $a_i = 1$ | 項目別 $\delta_{ik}$ | RSM の閾値制約を緩和 (Rasch 制約のみ保持) |
+| **GPCM** (Muraki 1992) | $a_i$ 自由 | 項目別 $\delta_{ik}$ | PCM の Rasch 制約を緩和 |
+
+これに対し **GRM (Samejima 1969)** は累積ロジット型でリンク関数自体が異なるため、上記三者とは**非ネスト関係**です。LR 検定が使えるのは RSM ⊂ PCM ⊂ GPCM のみで、GRM は AIC/BIC でのみ比較可能です。
+
+::: {.callout-note}
+#### Threshold vs Step difficulty: 用語の混同に注意
+
+GRM の $b_{ik}$ と PCM の $\delta_{ik}$ はどちらも「閾値 (threshold)」と呼ばれますが、**意味が異なります**[@thissensteinberg1986]:
+
+- **GRM の $b_{ik}$**: 累積カテゴリ確率 $P(Y \geq k|\theta) = 0.5$ となる $\theta$ 値（**累積ロジット境界**）
+- **PCM/GPCM の $\delta_{ik}$**: カテゴリ $k-1$ と $k$ の選択確率が等しくなる $\theta$ 値（**隣接カテゴリ等確率点**）
+
+GRM の $b_{ik}$ は常に単調増加（$b_{i1} < b_{i2} < \cdots$）ですが、PCM/GPCM の $\delta_{ik}$ は順序逆転 (disordered thresholds) が起こりえます。順序逆転は中間カテゴリの選択確率が常に他のカテゴリより低いことを示し、ルーブリック改訂の重要な手がかりです。
+:::
+
+#### モデル比較（GRM vs GPCM）
 
 GRM（累積ロジット型）と GPCM（隣接カテゴリ型）は同じ順序データに対する競合モデルです。AIC/BIC と M2 適合度で比較し、データに適したモデルを選択します。
 
@@ -1081,7 +1269,7 @@ comp |>
 2. しきい値の順序性を確認し、逆転があればカテゴリ統合を検討する。
 3. Wright Map（人-項目マップ）で能力分布と項目位置の対応を一目で把握する。
 
-GRM が「累積ロジット」で順序データをモデル化したのに対し、Rasch 系の PCM/RSM は「隣接カテゴリロジット」を用います。PCM と RSM は識別力を全項目で等しく制約する（$a_i = 1$）代わりに、**特異的客観性**（specific objectivity）と**素点の十分統計量性**を得る設計です[@masters1982; @andrich1978]。この性質により、項目パラメータの推定が受験者集団の構成に依存しなくなり、異なる集団間での公平な比較が容易になります。
+GRM が「累積ロジット」で順序データをモデル化したのに対し、Rasch 系の PCM/RSM は「隣接カテゴリロジット」を用います。PCM と RSM は識別力を全項目で等しく制約する（$a_i = 1$）代わりに、**特異的客観性**（specific objectivity）と**素点の十分統計量性**を活かす設計です[@masters1982; @andrich1978]。ただし、これらはモデル適合、局所独立性、DIF、リンク設計が十分に確認されている範囲で解釈すべき性質です。制約がデータに合っていない場合は、GRM/GPCM や MIRT に切り替える判断も必要です。
 
 ### 理論的背景
 
@@ -1089,9 +1277,9 @@ GRM が「累積ロジット」で順序データをモデル化したのに対�
 
 部分得点モデル[@masters1982]は、隣接カテゴリ間のロジットを「能力 − ステップ困難度」の差で表現します。項目 $i$ のカテゴリ $k$（$k = 0, 1, \ldots, m_i$）の確率は：
 
-$$P(Y_i = k \mid \theta) = \frac{\exp\left(\sum_{j=0}^{k} (\theta - \delta_{ij})\right)}{\sum_{c=0}^{m_i} \exp\left(\sum_{j=0}^{c} (\theta - \delta_{ij})\right)}$$
+$$P(Y_i = k \mid \theta) = \frac{\exp\left(\sum_{j=1}^{k} (\theta - \delta_{ij})\right)}{\sum_{c=0}^{m_i} \exp\left(\sum_{j=1}^{c} (\theta - \delta_{ij})\right)}$$
 
-ここで $\delta_{ij}$ はステップ $j$ の困難度パラメータで、$\delta_{i0} \equiv 0$ とします。隣接カテゴリ間のログオッズは単純に：
+ここで $\delta_{ij}$ はステップ $j$ の困難度パラメータです。$k=0$ または $c=0$ のときの和は空和なので 0 とします。これによりカテゴリ0の指数部は $\exp(0)=1$ になり、基準カテゴリとして扱われます。隣接カテゴリ間のログオッズは単純に：
 
 $$\log\frac{P(Y_i = k \mid \theta)}{P(Y_i = k-1 \mid \theta)} = \theta - \delta_{ik}$$
 
@@ -1109,7 +1297,7 @@ PCM のポイント：
 - カテゴリ1 vs 0: $\log\frac{P(Y=1)}{P(Y=0)} = 0 - (-0.5) = 0.5$（カテゴリ1の方がやや選ばれやすい）
 - カテゴリ2 vs 1: $\log\frac{P(Y=2)}{P(Y=1)} = 0 - 1.0 = -1.0$（カテゴリ1の方が選ばれやすい）
 
-確率に変換すると $P(Y=0) = 0.186$, $P(Y=1) = 0.507$, $P(Y=2) = 0.307$ となります。GRM との違いは、**識別力が全項目で同一**（$a=1$ に固定）であるため、曲線の「急峻さ」が項目間で変わらない点です。
+確率に変換すると $P(Y=0) = 0.186$, $P(Y=1) = 0.507$, $P(Y=2) = 0.307$ となります。GRM との違いは、**識別力が全項目で 1 に固定**（Rasch 制約 $a_i = 1, \forall i$）であるため、曲線の「急峻さ」が項目間で変わらない点です。「全項目で同一」とは GPCM (Muraki 1992) の「識別力等値制約 $a_1 = a_2 = \cdots$」とは異なります（GPCM は等値だが 1 ではない自由値、PCM は厳密に 1）。
 
 #### RSM の数理モデル（Andrich, 1978）
 
@@ -1147,7 +1335,7 @@ Rasch 系モデルでは、条件付き最尤推定法（CML）と周辺最尤�
 |---|---|---|
 | 推定原理 | 素点で条件付け、人パラメータを消去 | 能力分布（通常は正規）を仮定し積分で消去 |
 | 能力分布の仮定 | 不要 | 必要（通常 $\theta \sim N(0, \sigma^2)$） |
-| 特異的客観性 | 厳密に保持 | 近似的に保持 |
+| 特異的客観性 | Rasch モデルが適合する場合に、素点条件づけを通じて直接扱いやすい | Rasch 制約が適合する場合に、能力分布仮定のもとで近似的に扱う |
 | 小標本での効率 | やや劣る | 優れる |
 | 20項目以上での差 | ほぼ同一の推定値 | ほぼ同一の推定値 |
 | 適用範囲 | Rasch 系のみ | 2PL, GPCM, MFRM 等にも拡張可能 |
@@ -1372,7 +1560,9 @@ data.frame(
   knitr::kable(caption = "Item Location Parameter Correlations Across Packages")
 ```
 
-```{r pcm-package-scatter}
+```{r}
+#| label: fig-pcm-package-scatter
+#| fig-cap: "PCM 推定結果のクロスパッケージ比較 (eRm CML vs TAM MML)。45 度線上の点は 2 パッケージで完全一致、ずれは識別制約 (sum-to-zero vs N(0,1)) と推定法 (CML vs MML) の差異を反映。"
 #| fig-height: 5
 #| fig-width: 8
 #| eval: true
@@ -1442,7 +1632,7 @@ PCM は GRM に比べてパラメータ数が少ない（識別力を推定し�
 
 #### 適合度の信頼楕円図（Rasch 特有）
 
-`plotGOF` は Rasch 系モデル固有の適合度可視化です。データを2群（例：中央値で分割）に分け、各群で推定した項目パラメータを対角線上にプロットします。95% 信頼楕円が対角線を含んでいれば、その項目は群間で不変（Rasch の特異的客観性が成立）と判断されます[@bondfox2007]。
+`plotGOF` は Rasch 系モデル固有の適合度可視化です。データを2群（例：中央値で分割）に分け、各群で推定した項目パラメータを対角線上にプロットします。95% 信頼楕円が対角線を含んでいれば、その項目について群間の項目位置差は大きくないと解釈できます。ただし、これだけで Rasch の特異的客観性全体が成立したと結論づけるのではなく、一次元性、局所独立性、DIF、カテゴリ機能と併せて判断します[@bondfox2007]。
 
 ```{r pcm-gof-ellipse}
 #| fig-height: 6
@@ -1748,15 +1938,15 @@ ok_gpcm_comp <- !inherits(fit_gpcm_comp, "try-error")
 comp_all <- data.frame(
   Model = c("RSM", "PCM", "GPCM", "GRM"),
   Family = c("Rasch (adjacent)", "Rasch (adjacent)", "2PL (adjacent)", "2PL (cumulative)"),
-  AIC = c(safe_aic(fit_rsm_mirt),
+  AIC = c(if (ok_rsm_mirt) safe_aic(fit_rsm_mirt) else NA_real_,
           safe_aic(fit_pcm_mirt),
           if (ok_gpcm_comp) safe_aic(fit_gpcm_comp) else NA_real_,
           safe_aic(fit_grm)),
-  BIC = c(safe_bic(fit_rsm_mirt),
+  BIC = c(if (ok_rsm_mirt) safe_bic(fit_rsm_mirt) else NA_real_,
           safe_bic(fit_pcm_mirt),
           if (ok_gpcm_comp) safe_bic(fit_gpcm_comp) else NA_real_,
           safe_bic(fit_grm)),
-  logLik = c(as.numeric(logLik(fit_rsm_mirt)),
+  logLik = c(if (ok_rsm_mirt) as.numeric(logLik(fit_rsm_mirt)) else NA_real_,
              as.numeric(logLik(fit_pcm_mirt)),
              if (ok_gpcm_comp) as.numeric(logLik(fit_gpcm_comp)) else NA_real_,
              as.numeric(logLik(fit_grm)))
@@ -1770,17 +1960,26 @@ comp_all |>
 #| warning: false
 #| eval: true
 # PCM vs RSM: ネストモデルの尤度比検定
-anova(fit_rsm_mirt, fit_pcm_mirt)
+if (ok_rsm_mirt) {
+  anova(fit_rsm_mirt, fit_pcm_mirt)
+} else {
+  data.frame(
+    Message = "RSM (mirt) が推定できなかったため、PCM vs RSM の尤度比検定は実行していません。カテゴリ数・カテゴリ分布・RSM の共通ステップ仮定を確認してください。"
+  ) |>
+    knitr::kable(caption = "PCM vs RSM LRT")
+}
 ```
 
-**結果の読み方**: p < .05 であれば、PCM が RSM より有意に良い適合を示しています。つまり「全項目で共通のステップ構造」という RSM の仮定は厳しすぎる可能性があります。p が有意でなければ、より倹約的な RSM を採用する根拠となります。
+**結果の読み方**: 同じ推定枠組み内で RSM と PCM がどちらも収束している場合、p < .05 であれば、PCM が RSM より統計的に良い適合を示しています。つまり「全項目で共通のステップ構造」という RSM の仮定は厳しすぎる可能性があります。p が有意でなければ、より倹約的な RSM を採用する根拠の1つになります。ただし、尤度比検定だけで決めず、カテゴリ機能、Wright Map、研究上の評定設計も併せて判断してください。
 
 #### PCM vs RSM の選択指針
 - **RSM が適切な場合**: 全項目が同一フォーマットの Likert 型評定で、カテゴリ機能が概ね共通。パラメータの倹約性が重視される場面。
 - **PCM が適切な場合**: 項目によりカテゴリの使われ方や閾の間隔が異なる。テスト項目の形式が混在する場面。
 - **GRM/GPCM との選択**: 識別力の項目間差異が実質的に大きい場合は GRM/GPCM を検討。Rasch の等尺度性や特異的客観性を重視する場合は PCM/RSM を選択。
 
-```{r pcm-grm-icc-comparison}
+```{r}
+#| label: fig-pcm-grm-icc-comparison
+#| fig-cap: "GRM (累積ロジット型) と PCM (隣接カテゴリ型) のカテゴリ確率曲線の比較。同じ順序データに対し、累積ロジット型は「累積カテゴリ確率」を直接モデル化、隣接カテゴリ型は「隣り合うカテゴリの選択確率」をモデル化する。リンク関数の差により形状が異なる。"
 #| fig-height: 6
 #| fig-width: 10
 #| warning: false
@@ -1822,18 +2021,18 @@ GRM（左パネル）では累積ロジットモデルに基づき、各カテ�
 
 ### カテゴリ機能の診断（Linacre の8基準）
 
-PCM/RSM で最も重要な診断は、評定カテゴリが意図通りに機能しているかの確認です。Linacre [-@linacre2002]は以下の8基準を提案しており、Rasch 系の研究で広く参照されています。
+PCM/RSM で最も重要な診断は、評定カテゴリが意図通りに機能しているかの確認です。Linacre [-@linacre2002] は以下の 8 基準を提案しており、Rasch 系の研究で広く参照されています (出典: Linacre 1999 *J Outcome Measurement* 3:103–122; Linacre 2002 *J Applied Measurement* 3:85–106; rasch.org/rn2.htm)。
 
 | 基準 | 内容 | 判断の目安 |
 |------|------|-----------|
-| 1 | 各カテゴリに少なくとも10件の観測 | 10件未満 → 隣接カテゴリと統合を検討 |
-| 2 | カテゴリ間の観測分布が規則的 | 極端な偏りがないこと |
-| 3 | 平均能力値がカテゴリとともに単調増加 | 逆転 → カテゴリ定義の見直し |
-| 4 | 各カテゴリの Outfit MSQ < 2.0 | 2.0超 → ノイズが大きいカテゴリ |
-| 5 | ステップ較正値（Andrich threshold）が単調増加 | 逆転 → disordered thresholds |
-| 6 | 評定から測定値、測定値から評定の対応（coherence） | 双方向の整合性を確認 |
-| 7 | ステップ間隔が 1.4 ロジット以上、5.0 ロジット以下 | 狭すぎる → カテゴリ統合、広すぎる → カテゴリ追加を検討 |
-| 8 | カテゴリ確率曲線が明確なピークを持つ | ピークのないカテゴリは実質的に機能していない |
+| G1 | 各カテゴリに **少なくとも 10 件** の観測 | 10 件未満 → 隣接カテゴリと統合を検討 |
+| G2 | カテゴリ間の観測分布が規則的 (単峰または周辺ピーク) | 極端な偏りがないこと |
+| G3 | 平均観測能力値がカテゴリとともに単調増加 | 逆転 → カテゴリ定義の見直し |
+| G4 | 各カテゴリの **Outfit MSQ < 2.0** | 2.0 超 → ノイズが大きいカテゴリ |
+| G5 | **Andrich threshold (ステップ較正値) が単調増加** (advancing thresholds) | 逆転 → disordered thresholds、カテゴリ機能不全 |
+| G6 | 評定から測定値・測定値から評定の対応 (coherence) ≥ 40% | 双方向の整合性を確認 |
+| G7 | 隣接 threshold が **1.4 ロジット以上** 前進 (狭すぎないか) | 狭すぎる → カテゴリ統合 (G7 違反は単峰性も損なう) |
+| G8 | 隣接 threshold が **5.0 ロジット未満** で前進 (広すぎないか) | 広すぎる → 中間カテゴリ追加を検討 |
 
 ```{r pcm-category-diagnostics}
 #| fig-height: 6
@@ -1875,7 +2074,9 @@ plot(fit_pcm_mirt,
 
 期待スコア曲線は、能力 $\theta$ に対する各項目の期待得点を示します。PCM では識別力が等しいため、曲線の傾き（急峻さ）は全項目で同一で、左右の位置（困難度）のみが異なります。曲線の階段状のステップ幅がカテゴリの「有効な弁別帯域」を反映しています。
 
-```{r pcm-threshold-map}
+```{r}
+#| label: fig-pcm-threshold-map
+#| fig-cap: "PCM 全項目のステップ閾値マップ。各項目について 4 段階の閾値 (cat1-2, cat2-3, cat3-4, cat4-5) を点で表示。閾値が左右に大きく散らばる項目は段階間の弁別が広く、密集している項目は弁別が狭い。"
 #| fig-height: 6
 #| fig-width: 10
 #| eval: true
@@ -1989,6 +2190,42 @@ Wind [-@wind2023]は、PCM と GPCM における評定尺度の機能不全を�
 
 英語教育のパフォーマンス評価（ライティング・スピーキング・プレゼンテーション等）では、テスト得点に影響する要因は受験者能力と項目困難度だけではありません。**採点者の厳しさ**、**課題の難易度**、**評価観点**などの複数の「ファセット」が得点に混入します[@linacre1989]。MFRM はこれらのファセットを同時にモデル化し、各要因の効果を分離・定量化します。
 
+::: {.callout-important}
+#### MFRM と第 10 章 G theory の双対性: 同じ問題を異なる角度から解く
+
+評価者効果を扱う方法として、本書では二つの異なる枠組みを学んできました:
+
+| 枠組み | 推定対象 | 出力の粒度 | 主な用途 |
+|:---|:---|:---|:---|
+| **第 10 章 G theory** | 分散成分 $\sigma^2_p, \sigma^2_t, \sigma^2_r, \sigma^2_{pt}, \sigma^2_e$ | **集計レベル**（評価者全体の分散） | 設計効率の評価 (D study)、何人の評価者・課題が必要かの判断 |
+| **第 12 章 MFRM** | 個別パラメータ $\theta_n, \beta_i, \alpha_j$ | **個人レベル**（評価者 $j$ の厳しさを個別ロジット値で） | 公正スコア (fair average) の算出、特定評価者への訓練介入 |
+
+両者は**同じデータ構造の異なる側面を見ている双対関係**にあり、補完的に使うべきです:
+
+1. **G theory で集計診断**: $\sigma^2_r$ が大きければ評価者効果が深刻 → MFRM で個別補正へ進む
+2. **MFRM で個別補正**: 厳しい評価者 $\alpha_j > 1.0$ の特定 → 訓練介入 or 公正スコア発行
+3. **G theory で再検証**: 介入後に $\sigma^2_r$ が縮小したか D study で確認
+
+第 7 章ベイズ推定の brms (`(1|rater)` GLMM) は、この双対関係を**単一モデル内で実現**します（分散成分の事後分布と個別効果の事後分布を同時に出力）。MFRM は頻度論的に Rasch 制約 (識別力 = 1) のもとで個別パラメータに特化した実装、G theory は分散成分のみに特化した実装と理解できます。
+:::
+
+::: {.callout-tip}
+#### FACETS と TAM の出力対応
+
+本章では `TAM::tam.mml.mfr()` を使いますが、**Linacre の FACETS** が言語テスト現場の事実上標準です。両者の出力対応:
+
+| 量 | FACETS | TAM (`mod_mfrm`) |
+|:---|:---|:---|
+| 受験者能力 $\theta_n$ | Table 7.x の `Measure` 列 | `tam.wle(mod_mfrm)$theta` |
+| 項目困難度 $\beta_i$ | Table 8 の `Measure` 列 (item facet) | `mod_mfrm$xsi[item rows, "xsi"]` |
+| 採点者厳しさ $\alpha_j$ | Table 7 の `Measure` 列 (rater facet) | `mod_mfrm$xsi[rater rows, "xsi"]` |
+| Infit/Outfit MSQ | Table 7/8 の `Infit MnSq`, `Outfit MnSq` | `tam.fit(mod_mfrm)$itemfit$Infit/Outfit` |
+| Bias z 統計量 | Table 13/14 の `Bias`, `t` | `tam.fit()` の interaction 出力 |
+| Separation reliability | Table 7 footer の `Separation`, `Reliability` | `tam.wle()$WLE.rel`, `mod_mfrm$xsi.facets$reliability` |
+
+FACETS で書かれた論文を R で再現する際の参照表として活用してください。
+:::
+
 ### 理論的背景
 
 #### MFRM の数理モデル（Linacre, 1989）
@@ -2011,7 +2248,7 @@ $$\log\frac{P(Y_{nijt} = k)}{P(Y_{nijt} = k-1)} = \theta_n - \beta_i - \alpha_j 
 MFRM のポイント：
 
 - すべてのファセットパラメータが**同一のロジット尺度**上に配置されるため、「採点者Aは採点者Bより0.5ロジット厳しい」のような直接比較が可能。
-- Rasch の特異的客観性が各ファセットに拡張される。すなわち、項目パラメータの推定は特定の採点者集団に依存しない。
+- Rasch の特異的客観性の考え方を複数ファセットへ拡張し、モデルが適合し接続性が確保されている範囲で、項目・採点者・課題の効果を同一尺度上で分離して解釈できる。
 - パフォーマンス評価の公平性検証に不可欠なツール[@bijani2022]。
 
 #### 数値例で理解する MFRM
@@ -2021,7 +2258,7 @@ MFRM のポイント：
 - **採点者 A**: $\log\frac{P(Y=1)}{P(Y=0)} = 1.0 - 0.0 - 0.5 - 0.0 = 0.5$ → カテゴリ1の確率がやや高い
 - **採点者 B**: $\log\frac{P(Y=1)}{P(Y=0)} = 1.0 - 0.0 - (-0.3) - 0.0 = 1.3$ → カテゴリ1の確率がかなり高い
 
-同じ受験者・同じ項目でも、厳しい採点者 A の方がカテゴリ1を与える確率が低くなります。この差（0.8 ロジット）が MFRM で補正される「採点者効果」です。補正後の公正スコア（$\hat{\theta}_n = 1.0$）は採点者に依存しません。
+同じ受験者・同じ項目でも、厳しい採点者 A の方がカテゴリ1を与える確率が低くなります。この差（0.8 ロジット）が MFRM で分離される「採点者効果」です。補正後の能力推定値（$\hat{\theta}_n = 1.0$）は、モデル上は採点者厳しさの影響を取り除いた値として解釈します。
 
 #### 英語教育での典型的なユースケース
 
@@ -2052,7 +2289,7 @@ MFRM のポイント：
 
 MFRM では、すべてのファセット要素が推定ネットワーク上で「接続」されている必要があります。
 
-- **完全交差デザイン**: 全採点者が全受験者を評定 → 接続性は自動的に保証。小規模評価（採点者3–5名）で一般的。
+- **完全交差デザイン**: 全採点者が全受験者を評定 → 接続性は設計上ほぼ確保される。小規模評価（採点者3–5名）で一般的。
 - **不完全交差デザイン**: 各採点者が受験者の一部のみを評定 → 接続性に注意。採点者間に「リンク受験者」（複数の採点者に評定される受験者）が必要。
 - **接続性が不十分な場合**: 採点者パラメータが推定不能（TAM では xsi = 99 として出力される）。
 
@@ -2165,10 +2402,14 @@ mod_mfrm$xsi |>
 #| eval: true
 # 項目パラメータの抽出
 # TAM の xsi 行名は formulaA に依存する（例: "item1", "I1" 等）
-# 項目パラメータ = "step" を含まず、かつ "rater"/"topic"/"female" を含まない行
+# 項目以外のファセット名 (rater/topic/female 等) を data.sim.facets の列名から動的に取得
+# (ハードコードを避け、別データに移植したときも動くようにする)
+facet_names <- if (exists("data.sim.facets")) colnames(data.sim.facets) else character(0)
+exclude_pattern <- paste(c("step", facet_names), collapse = "|")
+
 item_params <- mod_mfrm$xsi |>
   tibble::rownames_to_column("Parameter") |>
-  dplyr::filter(!grepl("step|rater|topic|female", Parameter, ignore.case = TRUE)) |>
+  dplyr::filter(!grepl(exclude_pattern, Parameter, ignore.case = TRUE)) |>
   dplyr::filter(abs(xsi) < 90) |>
   slice(seq_len(ncol(data.sim.mfr))) |>  # 項目数分だけ取得
   mutate(Item = Parameter)
@@ -2286,28 +2527,55 @@ data.frame(
   knitr::kable(caption = "Person Ability Estimates (WLE)")
 ```
 
-**読み方**: WLE 信頼性は受験者能力推定の精度を示します。.70 以上でグループレベルの比較、.80 以上で個人レベルの判定に使用可能です[@bondfox2007]。Mean θ はロジットスケールの平均で、0 が中央（項目困難度と対応）です。SD θ が大きいほど受験者間の能力差が大きいことを意味します。
+**読み方**: WLE 信頼性は受験者能力推定の精度を示します。.70 以上でグループレベルの比較、.80 以上で個人レベルの判定を検討する目安になります[@bondfox2007]。ただし、高利害の個人判定では、条件付き標準誤差、採点者適合、接続性、DIF/バイアス分析も併せて確認してください。Mean θ はロジットスケールの平均で、0 が中央（項目困難度と対応）です。SD θ が大きいほど受験者間の能力差が大きいことを意味します。
 
-#### 公正スコア（fair score）の算出
+#### 公正スコア（fair score / fair average）の算出
 
-MFRM の核心的成果物は、採点者厳しさを補正した**公正スコア**です。WLE で推定された $\hat{\theta}_n$ は既に採点者効果が分離されているため、これ自体が公正スコアとして機能します。実務では、ロジット尺度の $\hat{\theta}$ を元のカテゴリスケールに逆変換して報告することが多いです。
+MFRM の核心的成果物は、採点者厳しさを分離した**補正後の能力推定値**です。ここで重要な区別:
 
-```{r mfrm-fair-score}
+| 量 | 定義 | スケール |
+|:---|:---|:---|
+| **能力推定値 $\hat\theta_n$ (WLE)** | MFRM が推定する受験者 $n$ の潜在能力 | ロジット尺度 |
+| **公正平均 (fair average)** [@linacre2014facets] | $\hat\theta_n$ の能力者が **平均的厳しさの採点者 $\bar\alpha$ と平均的項目 $\bar\beta$ で評定された場合の期待カテゴリ得点** | 元のカテゴリスケール (0–$K$) |
+
+実務的には、ロジットスケールの $\hat\theta_n$ そのものは「公正スコア」と呼ぶにはスケールが異なるため、**期待カテゴリ得点 $E[Y | \hat\theta_n, \bar\alpha, \bar\beta]$ への逆変換**が必要です。下記コードはまずロジットの $\hat\theta_n$ を表示し、次に fair average をカテゴリスケールで計算します。
+
+```{r}
+#| label: fig-mfrm-fair-score
+#| fig-cap: "MFRM 素点 vs WLE 公正スコア。同じ素点 (横軸) でも採点者が異なれば WLE (縦軸) が異なる現象を可視化。厳しい採点者から評定を受けた受験者は WLE が上方に補正される (= 真の能力が素点より高い)。これが公正補正の本質。"
 #| warning: false
 #| message: false
 #| eval: true
-# 公正スコアの算出: WLE theta をカテゴリスケール（0-K）に逆変換
-# 逆変換: 期待スコア E(Y|theta) を各受験者の theta で計算
+# Step 1: WLE theta (logit scale) と素点の比較
 K <- max(data.sim.mfr, na.rm = TRUE)  # 最大カテゴリ値
 theta_hat <- wle_mfrm$theta
-
-# 素点（raw score）と公正スコアの比較
 raw_scores <- rowMeans(data.sim.mfr, na.rm = TRUE)
+
+# Step 2: 公正平均 (fair average) の算出
+# E[Y | theta_n, alpha_bar, beta_bar] = sum_k k * P(Y=k | theta_n, alpha_bar, beta_bar)
+# alpha_bar, beta_bar は各 facet のロジット平均 (= 0、識別制約により)
+# tau_global: ステップパラメータを mod_mfrm の xsi から取得し、
+# K 段階モデルなので最初の K 個の閾値だけを使う
+xsi_full <- mod_mfrm$xsi$xsi
+tau_global <- head(xsi_full[is.finite(xsi_full)], K)
+if (length(tau_global) < K) {
+  tau_global <- c(tau_global, rep(0, K - length(tau_global)))
+}
+
+fair_avg <- sapply(theta_hat, function(th) {
+  # PCM 形式: P(Y=k|theta) = exp(sum_{j=0}^k (theta - tau_j)) / sum
+  # 平均的項目・採点者下では tau_j のみが残る (alpha_bar = beta_bar = 0)
+  num <- exp(cumsum(c(0, th - tau_global)))
+  if (any(!is.finite(num))) return(NA_real_)
+  probs <- num / sum(num)
+  sum((0:K) * probs)  # 期待カテゴリ得点
+})
 
 fair_comparison <- data.frame(
   Person = seq_along(theta_hat),
   Raw_Score = raw_scores,
-  Theta_WLE = theta_hat,
+  Theta_WLE = theta_hat,                        # ロジット尺度
+  Fair_Average = round(fair_avg, 2),            # カテゴリスケール (0-K)
   Rater = data.sim.facets$rater
 )
 
@@ -2349,7 +2617,7 @@ data.frame(
   knitr::kable(caption = "Rater Severity Impact Assessment")
 ```
 
-採点者厳しさのレンジが受験者能力のSDの50%を超える場合、補正なしの素点比較は公平性に重大な問題を持ちます。この場合は WLE による公正スコアの使用を強く推奨します。
+採点者厳しさのレンジが受験者能力のSDの50%を超える場合、補正なしの素点比較は公平性に大きく影響する可能性があります。この場合は、WLE による補正後スコアを主要結果にするか、少なくとも素点結果との感度比較を報告することを検討します。
 
 ### 可視化
 
@@ -2357,7 +2625,9 @@ data.frame(
 
 ファセットマップは MFRM の Wright Map に相当する可視化で、受験者能力・項目困難度・採点者厳しさを**同一のロジット尺度**上に並べて表示します。
 
-```{r mfrm-facet-map}
+```{r}
+#| label: fig-mfrm-facet-map
+#| fig-cap: "MFRM の自作ファセットマップ (受験者能力・項目困難度・評価者厳しさを共通ロジット尺度に並列表示)。3 ファセットの分布範囲が重なれば、テストは対象集団に適した難易度。本書テーマで配色を統一した教育用版。"
 #| fig-height: 8
 #| fig-width: 10
 #| eval: true
@@ -2406,6 +2676,55 @@ patchwork::wrap_plots(p_person, p_item, p_rater, ncol = 3)
 - 受験者能力の分布範囲と項目困難度の範囲が重なっていれば、テストは対象集団に適した難易度を持つ。
 - 採点者厳しさの散らばりが大きいほど、採点者間の補正が重要になる。
 
+::: {.callout-tip}
+#### `WrightMap` パッケージ + `TAM::IRT.WrightMap()` 公式実装
+
+上記の自作 ggplot は教育目的で配色とテーマを統一していますが、Linacre/Torres-Irribarra/Freund 系列の **`WrightMap` パッケージ** [@torresirribarra2014wrightmap] が MFRM Wright map の事実上標準で、TAM の `IRT.WrightMap()` から直接呼び出せます。論文 figure として再現性を重視する場合に推奨されます:
+
+```{r}
+#| eval: false
+#| label: fig-mfrm-wrightmap-official
+#| fig-width: 10
+#| fig-height: 7
+#| fig-cap: "WrightMap パッケージによる MFRM の正準 Person-Item map。受験者能力分布 (左)、項目困難度 + 段階閾値 (右)、評価者厳しさ (下) を 1 図に統合。"
+
+# TAM 公式の Wright map 実装 (WrightMap パッケージ依存)
+# install.packages("WrightMap") が必要
+TAM::IRT.WrightMap(
+  mod_mfrm,
+  type = "Wright",          # 古典的 Wright map スタイル
+  show.thr.lab = TRUE,      # 段階閾値ラベル表示
+  show.thr.sym = TRUE,      # 段階閾値シンボル表示
+  oma = c(1, 1, 1, 1)
+)
+
+# 直接 WrightMap::wrightMap() を呼ぶ場合 (細かい配色・配置制御可能)
+thr_mfrm <- TAM::tam.threshold(mod_mfrm)
+WrightMap::wrightMap(
+  thetas      = wle_mfrm$theta,           # 受験者能力 (logit)
+  thresholds  = thr_mfrm,                 # 項目 × 段階の閾値行列
+  item.side   = WrightMap::itemModern,   # 現代的項目側スタイル
+  person.side = WrightMap::personDens,   # 密度プロット
+  main.title  = "MFRM Wright Map (with rater facet)",
+  axis.persons = "Examinee Ability (logits)",
+  axis.items   = "Item Difficulty + Step Thresholds",
+  dim.color    = "#0072B2"                # Okabe-Ito blue
+)
+```
+
+**自作 ggplot 版 vs WrightMap 公式版の使い分け**:
+
+| 観点 | 自作 ggplot 版 (前図) | WrightMap 公式版 |
+|:---|:---|:---|
+| 配色・テーマ | 本書全体と統一可能 | パッケージ既定 |
+| 段階閾値表示 | 別途実装が必要 | 自動表示 (`show.thr.sym`) |
+| 評価者ファセット | patchwork で 3 パネル統合 | 標準実装は受験者+項目のみ (rater は別図) |
+| 査読者の慣れ | 新しい表現 | Linacre 系研究者には馴染み深い |
+| 論文用途 | テーマ統一を重視する場合 | 再現性・標準性を重視する場合 |
+
+両者を併記することで、本書の読者が**「自作」と「公式」のいずれの選択肢も知る**ことができます。
+:::
+
 #### 採点者厳しさの可視化
 
 ```{r mfrm-rater-plot}
@@ -2422,7 +2741,7 @@ rater_plot_df <- rater_params |>
 ggplot(rater_plot_df, aes(x = reorder(Rater, xsi), y = xsi, color = Severity)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
   geom_pointrange(aes(ymin = lower, ymax = upper), size = 0.8) +
-  scale_color_manual(values = c("Severe" = "#d95f02", "Average" = "#7570b3", "Lenient" = "#1b9e77")) +
+  scale_color_manual(values = c("Severe" = "#D55E00", "Average" = "#0072B2", "Lenient" = "#009E73")) +
   coord_flip() +
   labs(
     title = "Rater Severity with 95% CI",
@@ -2486,7 +2805,9 @@ MFRM で検出可能な採点者効果は、Myford & Wolfe [-@myfordwolfe2003; -
 | **ハロー効果** (Halo effect) | 観点間で過度に一貫した評定 | Infit MSQ | < 0.5 で要注意 |
 | **差異的厳しさ** (Differential severity) | 特定の観点や受験者群で厳しさが異なる | バイアス分析 | 交互作用の $t$ 統計量 |
 
-```{r mfrm-rater-diagnostics}
+```{r}
+#| label: fig-mfrm-rater-diagnostics
+#| fig-cap: "MFRM 採点者ごとのスコア分布。中心化傾向 (中間カテゴリ過剰使用) や range restriction (極端カテゴリ未使用) の視覚的診断。分布の幅と形状で各評価者の評定傾向を判定。"
 #| fig-height: 6
 #| fig-width: 10
 #| eval: true
@@ -2508,6 +2829,18 @@ ggplot(data.frame(rater = factor(data.sim.facets$rater),
 #### バイアス分析（採点者×項目の交互作用）
 
 バイアス分析は、特定の採点者が特定の項目（観点）で系統的に厳しい/甘い傾向を検出します。これは差異的厳しさ（differential severity）の直接的な検証です[@eckes2005]。
+
+::: {.callout-note}
+#### Bias z 統計量の数学的定義 (Wright & Stone 1979)
+
+採点者 $j$ × 項目 $i$ の交互作用の bias z 統計量は、観測スコアと期待スコアの差を、その差の標準誤差で標準化した量として定義されます[@wrightstone1979]:
+
+$$
+z_{ji} = \frac{O_{ji} - E_{ji}}{\sqrt{\text{Var}(O_{ji})}}, \quad E_{ji} = \sum_n P(Y_{nji} | \hat\theta_n, \hat\alpha_j, \hat\beta_i, \hat\tau)
+$$
+
+ここで $O_{ji}$ は採点者 $j$ × 項目 $i$ の観測スコア合計、$E_{ji}$ は MFRM モデルからの期待スコア、$\text{Var}(O_{ji})$ は二項/多項分散の和です。$|z_{ji}| > 2$ で「統計的にバイアスあり」と判定するのが慣例ですが、サンプルサイズに敏感なため、効果量（observed - expected の logit 差）と併読します。FACETS の Tables 13/14、`TAM::tam.fit()` の出力で計算可能です。
+:::
 
 ```{r mfrm-bias-analysis}
 #| warning: false
@@ -2549,7 +2882,9 @@ if (!inherits(mod_mfrm_bias, "try-error")) {
 }
 ```
 
-```{r mfrm-bias-heatmap}
+```{r}
+#| label: fig-mfrm-bias-heatmap
+#| fig-cap: "MFRM 採点者×項目バイアスヒートマップ。色の濃さは交互作用パラメータ |xsi| (logit)、|xsi| > 0.5 で実質的バイアスの目安。bias z 統計量と併読することで、特定の評価者×項目組合せでの差異的厳しさを特定する。"
 #| fig-height: 5
 #| fig-width: 8
 #| warning: false
@@ -2590,7 +2925,7 @@ if (!inherits(mod_mfrm_bias, "try-error") && nrow(bias_params) > 0) {
 
 ### 発展：採点者疲労・ドリフト（動的 MFRM）
 
-ここまでは、採点者厳しさを**固定されたファセット**として扱ってきました。しかし実務では、長い採点セッションや複数日にまたがる運用の中で、採点者の厳しさが時間とともに動くことがあります。ここで問題になるのが、**疲労**（だんだん厳しく / 甘くなる）や**ドリフト**（時間とともに基準がずれる）です [@eckes2015; @myford2000; @uto2020; @uto2023drift]。
+ここまでは、採点者厳しさを**固定されたファセット**として扱ってきました。しかし実務では、長い採点セッションや複数日にまたがる運用の中で、採点者の厳しさが時間とともに動くことがあります。ここで問題になるのが、**疲労**（だんだん厳しく / 甘くなる）や**ドリフト**（時間とともに基準がずれる）です [@eckes2015; @wolfe2001drift; @myfordwolfe2009; @uto2020; @uto2023drift]。
 
 この話題をたどるときは、**Uto の一連の論文を中核文献として読むと整理しやすい**です。理由は、`MFRM をベイズ推定でどう一般化するか`、`rubric-based performance assessment をどう多次元化するか`、そして `採点者厳しさドリフトをどう Markov 的に記述するか` を、同じ研究ラインの中で系統的に整理しているからです。@uto2020 は generalized many-facet Rasch model を Hamiltonian Monte Carlo で推定する枠組みを与え、@uto2021 は rubric-based performance assessment へ多次元拡張を行い、@uto2023drift は rater severity drift を **Markov modeling** で扱っています。@uto2018comparison も、採点者パラメータを含む IRT 系モデルを比較する入口として有用です。
 
@@ -2598,7 +2933,8 @@ SLA の口頭・作文評定で直感的に言えば、採点者が 1 本目と 
 
 ```{r}
 #| eval: true
-#| label: bayes-mfrm-rater-drift
+#| label: fig-bayes-mfrm-rater-drift
+#| fig-cap: "動的 MFRM (Bayesian, Uto 2020/2023): 評価者厳しさの時系列推移。Rater A は安定、B は累積疲労で漸進的に厳しく、C は中盤で基準シフト。Static MFRM では個別の固定 severity しか出ないため、これらの drift パターンは検出不可。"
 rater_order <- 1:60
 
 rater_drift_tbl <- bind_rows(
@@ -2874,14 +3210,30 @@ Note. Based on Eckes (2015) and Myford & Wolfe (2003, 2004).
 
 2パラメータ多次元IRTモデルの項目応答確率は以下のように表されます：
 
-$$P(X_{ij} = 1|\boldsymbol{\theta}_j) = \frac{1}{1 + \exp(-\mathbf{a}_i'\boldsymbol{\theta}_j - d_i)}$$
+$$P(X_{ij} = 1|\boldsymbol{\theta}_j) = \frac{1}{1 + \exp\left[-(\mathbf{a}_i'\boldsymbol{\theta}_j + d_i)\right]} = \mathrm{logit}^{-1}(\mathbf{a}_i'\boldsymbol{\theta}_j + d_i)$$
 
-ここで：
-- $\boldsymbol{\theta}_j = (\theta_{j1}, \theta_{j2})$：受験者jの多次元能力ベクトル（例: 語彙力と推論力の2つ）
-- $\mathbf{a}_i = (a_{i1}, a_{i2})$：項目iの弁別力ベクトル（各次元への感度の強さ）
+ここで（一般に $D$ 次元、本節の例では $D = 2$、後述の Bifactor 節では $D = 5$）：
+- $\boldsymbol{\theta}_j = (\theta_{j1}, \theta_{j2}, \ldots, \theta_{jD})^\top \in \mathbb{R}^D$：受験者jの多次元能力ベクトル（例: 語彙力と推論力の2つ、または CEFR 4 技能 + 一般因子の 5 つ）
+- $\mathbf{a}_i = (a_{i1}, a_{i2}, \ldots, a_{iD})^\top$：項目iの弁別力ベクトル（各次元への感度の強さ）
 - $d_i$：項目iの切片パラメータ（全体的な易しさ）
 
 **直感的な理解**: 1次元 IRT では $a \times \theta + d$ の1つのスコアで正答確率が決まりましたが、多次元では $a_1\theta_1 + a_2\theta_2 + d$ と**複数の能力の重み付き合計**で決まります。$a_1$ が大きく $a_2$ が小さい項目は主に語彙力で解ける問題、逆なら推論力を主に測る問題です。
+
+::: {.callout-note}
+**多次元識別力 (MDISC) と多次元困難度 (MDIFF) — Reckase (2009)**
+
+多次元 IRT では、項目を 2 つの要約量で特徴づけられます [@reckase2009 pp.114--116]:
+
+$$
+\mathrm{MDISC}_i = \|\mathbf{a}_i\| = \sqrt{\sum_{d=1}^{D} a_{id}^2}, \qquad \mathrm{MDIFF}_i = -\frac{d_i}{\|\mathbf{a}_i\|}
+$$
+
+- **MDISC** は項目 $i$ の最大識別力 (任意の方向で達成できる最大の傾き) で、1 次元 IRT の $a$ に対応
+- **MDIFF** は項目 $i$ の中心点までの符号付き距離 (1 次元 IRT の $b$ に対応)
+- $\mathbf{a}_i / \|\mathbf{a}_i\|$ は項目 $i$ が最も識別する **方向単位ベクトル** で、項目内容の主軸を示す
+
+`mirt::MDISC(fit)` と `mirt::MDIFF(fit)` で取得可能。多次元バイプロットでは、項目を「中心 = MDIFF 位置・矢印方向 = $\mathbf{a}_i$」として描画し、項目間の構成的多様性を可視化します。
+:::
 
 #### 数値例で理解する MIRT
 
@@ -2894,6 +3246,84 @@ $$P(X_{ij} = 1|\boldsymbol{\theta}_j) = \frac{1}{1 + \exp(-\mathbf{a}_i'\boldsym
 | C（両方平均） | 0.0 | 0.0 | $1.5(0) + 0.3(0) + 0.5 = 0.5$ | .62 |
 
 受験者 A と B は「総合力」では同レベルでも、語彙力に強く依存するこの項目では大きな差が生じます。これが多次元モデルの特徴です。
+
+::: {.callout-important}
+**MIRT とカテゴリカル因子分析 (CFA) の数学的同値性**
+
+MIRT は、**カテゴリカル/順序データに対する確認的因子分析 (CFA)** と数学的に同一のモデルを、別の言語で表現したものです [@takane1987; @kamata2008; @wirthedwards2007]。これは psychometrics の二大伝統 (ETS/IRT 系と LISREL/SEM 系) を統合する重要な視点です。
+
+**二値項目での同値性 (M2PL ↔ tetrachoric CFA)**:
+
+$$
+\underbrace{P(X_{ij} = 1 | \theta_j) = \Phi\!\left(a_i \theta_j - b_i\right)}_{\text{IRT (probit, normal-ogive)}} \quad\Longleftrightarrow\quad \underbrace{X_{ij}^* = \lambda_i \eta_j + \varepsilon_{ij},\ X_{ij} = \mathbb{1}(X_{ij}^* > \tau_i)}_{\text{CFA on tetrachoric correlation}}
+$$
+
+**順序項目での同値性 (M-GRM ↔ polychoric CFA)**:
+
+$$
+\underbrace{P(X_{ij} \ge k | \theta_j) = \Phi\!\left(a_i \theta_j - b_{ik}\right)}_{\text{Graded Response Model (probit)}} \quad\Longleftrightarrow\quad \underbrace{X_{ij}^* = \lambda_i \eta_j + \varepsilon_{ij},\ X_{ij} = k \text{ if } \tau_{i,k-1} < X_{ij}^* \le \tau_{ik}}_{\text{ordinal CFA on polychoric correlation}}
+$$
+
+**パラメータ間の変換式** (標準化負荷 $|\lambda_i| < 1$, 潜在因子分散 1 の標準化解):
+
+| IRT 表記 | CFA 表記 | 変換式 |
+|----------|---------|--------|
+| 識別力 $a_i^{\mathrm{probit}}$ | 因子負荷 $\lambda_i$ | $a_i^{\mathrm{probit}} = \lambda_i / \sqrt{1 - \lambda_i^2}$ |
+| 困難度 $b_i$ | 閾値 $\tau_i$ | $b_i = \tau_i / \lambda_i \cdot \sqrt{1 - \lambda_i^2}$ |
+| logit 識別力 $a_i^{\mathrm{logit}}$ | (logit リンク) | $a_i^{\mathrm{logit}} \approx 1.702 \times a_i^{\mathrm{probit}}$ |
+| 切片 $d_i$ | 閾値 $\tau_i$ | $d_i = -a_i \cdot \tau_i / \lambda_i \cdot \sqrt{1-\lambda_i^2}$ |
+
+**スケーリング定数 1.702** は、ロジスティック CDF と標準正規 CDF を $|\theta| \le 4$ の範囲で最も近づける定数です。`mirt` (logit 既定) と `lavaan::cfa(ordered=...)` (probit 既定) の出力を比較する際は、この変換が必要になります。
+
+**実装上の対応**:
+
+| 対応するペア | IRT 系実装 | CFA 系実装 | 推定法 |
+|------------|-----------|-----------|--------|
+| 二値 1 因子 | `mirt::mirt(dat, 1, "2PL")` | `lavaan::cfa(model, ordered=names(dat))` | MML / WLSMV |
+| 二値多次元 | `mirt::mirt(dat, K, "2PL")` | `lavaan::cfa(multifactor, ordered=...)` | MML / WLSMV |
+| 順序 GRM | `mirt::mirt(dat, 1, "graded")` | `lavaan::cfa(model, ordered=...)` | MML / WLSMV |
+| Bifactor | `mirt::bfactor(dat, specific)` | `lavaan::cfa(bifactor_syntax, ordered=...)` | MML / WLSMV |
+| ベイズ | `brms::brm(... ~ (1|item) + (1|person))` | `blavaan::bcfa(...)` | MCMC (どちらも Stan) |
+
+```{r}
+#| eval: false
+#| label: mirt-cfa-equivalence-demo
+
+# 同じデータに mirt (IRT) と lavaan (ordinal CFA) を当てて比較
+library(mirt); library(lavaan)
+dat <- expand.table(LSAT7)  # 二値 5 項目
+
+# (1) MIRT 1 因子 2PL
+fit_mirt <- mirt::mirt(dat, 1, "2PL", verbose = FALSE)
+mirt_a <- coef(fit_mirt, simplify = TRUE)$items[, "a1"]
+
+# (2) lavaan ordinal CFA (WLSMV)
+model <- '
+  F =~ Item_1 + Item_2 + Item_3 + Item_4 + Item_5
+'
+fit_lav <- lavaan::cfa(model, data = dat, ordered = names(dat), std.lv = TRUE)
+lambda <- lavaan::standardizedSolution(fit_lav) |>
+  dplyr::filter(op == "=~") |>
+  dplyr::pull(est.std)
+
+# (3) 変換式で確認: a^probit = λ / √(1-λ²)
+a_from_lambda <- lambda / sqrt(1 - lambda^2)
+a_logit_pred <- 1.702 * a_from_lambda
+
+# 比較
+data.frame(item = paste0("Item_", 1:5),
+           mirt_a_logit = round(mirt_a, 3),
+           lavaan_lambda_std = round(lambda, 3),
+           predicted_a_logit = round(a_logit_pred, 3))
+# 通常 mirt_a と predicted_a_logit はほぼ一致 (推定誤差程度)
+```
+
+**実務的含意**:
+- 第 9 章で **`lavaan::cfa(..., ordered=...)`** を使った順序 CFA は、内部的に WLSMV で polychoric correlation を扱い、本章 `mirt::mirt(..., itemtype = "graded")` と **同じ問題を解いています**
+- 「測定モデル」を SEM の言葉で語るか、IRT の言葉で語るかの違いに過ぎず、ベイズ実装 (`blavaan` / `brms`) では Stan の同じバックエンドが両方を処理します
+- どちらを主分析にするかは、**研究文脈** (尺度開発系 → CFA、テスト開発系 → IRT) と **共著者の伝統** で選びます
+- @wirthedwards2007 の包括的レビューが両者の橋渡しとして必読です
+:::
 
 ### 実行前ガイド（MIRT）
 
@@ -2921,13 +3351,13 @@ $$P(X_{ij} = 1|\boldsymbol{\theta}_j) = \frac{1}{1 + \exp(-\mathbf{a}_i'\boldsym
 
 #### 英語教育ケース（MIRT）: 先行研究ベース再現（Min et al., 2021）
 
-対応する先行研究: 子どものL2英語読解が初期には多次元的で、時間経過とともに次元が収束する可能性をMIRTで検証した研究 [@min2021]。  
+対応する先行研究: 子どものL2英語読解が初期には多次元的で、時間経過とともに次元が収束する可能性をMIRTで検証した研究 [@min2021]。
 本章での再現目的: 1因子モデルと多因子モデルを比較し、次元構造の発達的変化をどう解釈するかを示す。
 
 再現シナリオ:
-- 同一領域の読解項目に対し、1因子/2因子以上の競合モデルを設定する。  
-- 適合指標（AIC/BIC/M2）と因子相関を併せて評価し、過剰次元化を避ける。  
-- 学年・時点ごとに同様の分析を繰り返し、次元数の変化を比較する。  
+- 同一領域の読解項目に対し、1因子/2因子以上の競合モデルを設定する。
+- 適合指標（AIC/BIC/M2）と因子相関を併せて評価し、過剰次元化を避ける。
+- 学年・時点ごとに同様の分析を繰り返し、次元数の変化を比較する。
 - 交差負荷が多い項目は、語彙・統語・推論など複合処理項目として内容面で再解釈する [@reckase2009]。
 
 結果の記述例（再現報告テンプレート）:
@@ -3124,11 +3554,11 @@ cov_matrix <- mirt_params$cov
 # Convert to correlation matrix
 if(is.matrix(cov_matrix) && nrow(cov_matrix) == ncol(cov_matrix)) {
   cor_matrix <- cov2cor(cov_matrix)
-  
+
   # 因子間相関を表示
   cor_df <- as.data.frame(cor_matrix)
   rownames(cor_df) <- colnames(cor_df) <- c("Factor 1", "Factor 2")
-  
+
   cor_df |>
     knitr::kable(caption = "Factor Correlation Matrix")
 }
@@ -3212,7 +3642,9 @@ MIRT でも GRM 節と同様に Q3 で局所依存を確認できます（`resid
 
 #### 因子負荷マップ（MIRT結果）
 
-```{r mirt-loading-map}
+```{r}
+#| label: fig-mirt-loading-map
+#| fig-cap: "MIRT 2 因子の項目負荷マップ。横軸 F1、縦軸 F2 の負荷で項目を配置。F1-dominant (右下)、F2-dominant (左上)、cross-loading (右上、両次元に強く負荷)、weak loading (原点付近) の 4 群で項目特性が分類される。CEFR 4 技能の単純構造を確認するのに有用。"
 #| fig-height: 5.8
 #| fig-width: 8.2
 #| eval: true
@@ -3422,6 +3854,212 @@ subplot(
 )
 ```
 
+### Bifactor IRT モデル: 一般因子と特殊因子
+
+英語教育研究では「総合英語力 (general factor) + 4 技能 (specific factors: Reading, Listening, Speaking, Writing)」のような階層構造を扱う場面が頻繁にあります。この場合、**Bifactor IRT モデル**[@gibbons1992bifactor; @cai2010bifactor]が、Compensatory MIRT より自然な定式化を提供します:
+
+$$
+P(X_{ij} = 1 | \theta_{j0}, \theta_{jk}) = \mathrm{logit}^{-1}\left(a_{i0}\theta_{j0} + a_{ik}\theta_{jk} + d_i\right)
+$$
+
+ここで $\theta_{j0}$ は受験者 $j$ の**一般因子 (g 因子)**、$\theta_{jk}$ は項目 $i$ が属する**特殊因子**（4 技能のいずれか）です。一般因子は全項目に負荷し、特殊因子は項目グループ内のみに負荷する（直交制約）構造です。
+
+```{r mirt-bifactor-example}
+#| eval: false
+
+# 例: 4 技能テスト (R: 1-10, L: 11-20, S: 21-30, W: 31-40) の bifactor 構造
+# specific 引数で各項目が属する特殊因子を整数で指定
+fit_bifactor <- mirt::bfactor(
+  data    = score_matrix,
+  model   = c(rep(1, 10), rep(2, 10), rep(3, 10), rep(4, 10)),  # specific 因子の番号
+  itemtype = "2PL"
+)
+
+# 一般因子の負荷と特殊因子の負荷を分離して確認
+summary(fit_bifactor)
+
+# ECV (Explained Common Variance): g 因子が共通分散をどれだけ説明するか
+# ECV > 0.7 で「一次元的扱いが許容される」(Reise et al. 2013)
+omega <- mirt::extract.mirt(fit_bifactor, "omega")  # ω_h, ω_total
+
+# 一般因子の能力推定値 (CEFR 全体レベル相当)
+theta_g <- mirt::fscores(fit_bifactor, method = "EAP")[, 1]
+
+# 各特殊因子の能力推定値 (各技能の独自能力相当)
+theta_specific <- mirt::fscores(fit_bifactor, method = "EAP")[, -1]
+```
+
+**ECV (Explained Common Variance) と $\omega_h$**: Bifactor モデルでは、g 因子と特殊因子の共通分散の比 ECV が「実質的に一次元として扱えるか」の判断材料です[@reise2013bifactor]。**ECV > 0.7 かつ $\omega_h > 0.7$** なら g 因子優位で一次元的解釈が許容されます。CEFR の総合レベル判定（A1-C2）と各技能の Profile 表示の両方を行うテストでは、bifactor IRT が標準的な選択です。
+
+#### Bifactor IRT の可視化: 負荷ヒートマップと ECV バー
+
+Bifactor モデルの解釈は、**「g 因子と特殊因子のどちらが項目を主に説明しているか」**を視覚化することで一目で把握できます。以下は概念実証用の可視化コードです:
+
+```{r}
+#| eval: false
+#| label: fig-bifactor-loadings
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Bifactor IRT の負荷行列ヒートマップ。g 因子は全項目に負荷し、特殊因子 (R/L/S/W) は項目グループ内のみに負荷する直交構造。色の濃さは負荷の絶対値、横方向の比較で項目が g 主体か specific 主体かを判定する。"
+
+# Bifactor fit から負荷行列を抽出 (sl_loadings: g + 4 specific factors の標準化負荷)
+sl_loadings <- mirt::summary(fit_bifactor, verbose = FALSE)$rotF
+
+loading_long <- as_tibble(sl_loadings, rownames = "Item") |>
+  pivot_longer(-Item, names_to = "Factor", values_to = "Loading") |>
+  mutate(
+    Factor = factor(Factor, levels = c("G", "F1", "F2", "F3", "F4"),
+                    labels = c("g (一般)", "F1: Reading", "F2: Listening",
+                               "F3: Speaking", "F4: Writing")),
+    Item = factor(Item, levels = unique(Item))
+  )
+
+ggplot(loading_long, aes(x = Factor, y = Item, fill = Loading)) +
+  geom_tile(color = "white", linewidth = 0.3) +
+  geom_text(aes(label = sprintf("%.2f", Loading)), size = 2.8) +
+  scale_fill_gradient2(low = "#0072B2", mid = "white", high = "#D55E00",
+                       midpoint = 0, limits = c(-1, 1), name = "Loading") +
+  labs(
+    title = "Bifactor IRT: standardized loadings on general & specific factors",
+    subtitle = "Items load on g (column 1) and one specific skill factor (cols 2-5).",
+    x = NULL, y = NULL
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+```{r}
+#| eval: false
+#| label: fig-bifactor-ecv
+#| fig-width: 8
+#| fig-height: 5
+#| fig-cap: "Bifactor IRT の ECV (Explained Common Variance) と項目別 g 寄与率。ECV > 0.7 かつ $\\omega_h$ > 0.7 で g 因子優位 = 実質的に一次元的扱いが許容される (Reise et al. 2013 基準)。"
+
+# 項目ごとの ECV (general factor の寄与率) 計算
+# ECV_item = a_g^2 / (a_g^2 + sum(a_specific^2))
+ecv_item <- apply(sl_loadings, 1, function(x) {
+  a_g  <- x[1]
+  a_sp <- x[-1][!is.na(x[-1])]
+  (a_g^2) / (a_g^2 + sum(a_sp^2))
+})
+
+ecv_overall <- mean(ecv_item)
+# omega オブジェクトが先行チャンクで未生成の場合のフォールバック (独立実行に対応)
+omega_h     <- if (exists("omega") && "omega_h" %in% names(omega)) omega["omega_h"] else NA_real_
+omega_total <- if (exists("omega") && "omega_t" %in% names(omega)) omega["omega_t"] else NA_real_
+
+# 項目別 ECV のバー
+ecv_df <- tibble::tibble(
+  Item = factor(names(ecv_item), levels = names(ecv_item)),
+  ECV = ecv_item,
+  Pass = ecv_item >= 0.70  # Reise et al. 2013 閾値
+)
+
+ggplot(ecv_df, aes(x = Item, y = ECV, fill = Pass)) +
+  geom_col() +
+  geom_hline(yintercept = 0.70, linetype = "dashed", color = "#D55E00",
+             linewidth = 0.6) +
+  scale_fill_manual(values = c("TRUE" = "#009E73", "FALSE" = "#999999"),
+                    name = "ECV ≥ 0.70?",
+                    labels = c("TRUE" = "g-dominant", "FALSE" = "specific-influenced")) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title    = sprintf("Item-level ECV (overall ECV = %.2f, ω_h = %.2f, ω_total = %.2f)",
+                       ecv_overall, omega_h, omega_total),
+    subtitle = "破線: Reise et al. (2013) の 0.70 閾値。多くの項目が g-dominant なら一次元的扱いが許容",
+    x = NULL, y = "Explained Common Variance by g-factor"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        legend.position = "top")
+```
+
+**この 2 図の使い分け**: 負荷ヒートマップ（上記の `fig-bifactor-loadings` チャンク）は「どの項目がどの因子で説明されるか」のパターンを示し、ECV バー（同じく `fig-bifactor-ecv` チャンク）は「全体および項目レベルで g 因子優位性が確保されているか」の判定に使います。いずれも `eval: false` のデモコードなので、実データに `mirt::bfactor()` を当てて `eval: true` に切り替えると論文 figure として再現できます。CEFR 総合レベル判定 (A1-C2) と 4 技能 Profile の両方を報告するテスト設計では、両者を併記することで査読者が一次元 vs 多次元の議論を即座に検証できます。
+
+### Testlet model: 局所依存への構造的対処
+
+リーディング・リスニングテストでは、**1 つの文章 (passage / testlet) に複数項目が紐づく**ことが普通です。同じ文章を読んだ受験者の項目反応は、能力 $\theta$ を統制しても**局所依存** (local dependence) を持ちます。Yen の Q3 が大きく出る場合、Testlet 内の局所依存が原因のことが多いです。
+
+**Testlet response model** [@bradlow1999testlet] は、testlet 効果を**ランダム効果**として明示的にモデル化します:
+
+$$
+P(X_{ij} = 1 | \theta_j, \gamma_{jt(i)}) = \mathrm{logit}^{-1}\left(a_i (\theta_j + \gamma_{jt(i)} - b_i)\right)
+$$
+
+ここで $\gamma_{jt(i)} \sim N(0, \sigma^2_t)$ は受験者 $j$ × testlet $t(i)$ のランダム効果で、$\sigma^2_t$ はその testlet の局所依存の強さを表します。$\sigma^2_t \to 0$ で通常の 2PL に縮退します。
+
+実装は `mirt` の **constrained MIRT** で代用可能です（testlet を 1 つの特殊因子として扱う bifactor の特殊形）。`brms` の Bayesian 実装 (第 7 章) では、`(1 | passage_id)` のランダム切片で同等のモデルを書けます。
+
+```{r}
+#| eval: false
+#| label: fig-testlet-variance
+#| fig-width: 8
+#| fig-height: 4.5
+#| fig-cap: "Testlet 別の局所依存分散 $\\sigma^2_t$ のバーチャート。$\\sigma^2_t > 0.3$ の testlet は受験者反応に強い文脈依存があり、項目を独立扱いすると標準誤差が過小評価される。$\\sigma^2_t \\to 0$ で通常の 2PL に縮退。"
+
+# Testlet 効果の分散 (brms または mirt constrained MIRT で推定)
+# ここでは概念実証として 6 つの testlet (passage) の分散を仮定
+testlet_var_df <- tibble::tibble(
+  passage_id = paste0("P", 1:6),
+  sigma2_t   = c(0.45, 0.12, 0.32, 0.55, 0.08, 0.22),
+  warn       = c(0.45, 0.12, 0.32, 0.55, 0.08, 0.22) > 0.30
+)
+
+ggplot(testlet_var_df, aes(x = reorder(passage_id, sigma2_t), y = sigma2_t,
+                            fill = warn)) +
+  geom_col(width = 0.6) +
+  geom_hline(yintercept = 0.30, linetype = "dashed", color = "#D55E00",
+             linewidth = 0.6) +
+  scale_fill_manual(values = c("TRUE" = "#D55E00", "FALSE" = "#0072B2"),
+                    name = "σ²_t > 0.30?",
+                    labels = c("TRUE" = "Strong dependence",
+                               "FALSE" = "Acceptable")) +
+  labs(
+    title    = expression(paste("Testlet local dependence variance ", sigma^2 [t])),
+    subtitle = "破線: σ²_t = 0.30 の経験的閾値 (Bradlow et al. 1999 を参考)",
+    x = "Passage / Testlet",
+    y = expression(paste(sigma^2 [t], " (logit² scale)"))
+  ) +
+  coord_flip() +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top")
+```
+
+**この図の使いどころ**: リーディング・リスニングテスト分析で、各 testlet の $\sigma^2_t$ を一覧で示すことで、(a) どの passage で局所依存が強いか、(b) 通常の 2PL で報告された SE が過小評価されている可能性のある問題を特定できます。論文の Method/Results では、ICC 図と併記して「テストレット効果が無視できないため Bradlow et al. 1999 の testlet response model を採用した」根拠として使用します。
+
+::: {.callout-tip}
+#### Compensatory vs Non-compensatory MIRT の使い分け
+
+本章で主に扱う Compensatory MIRT ($\mathbf{a}^\top \boldsymbol\theta$ で能力を線形和) に対し、**Non-compensatory (Partially Compensatory) MIRT** [@reckase2009; @sympson1978] は能力を積形式で組み合わせ、各次元での閾値超えを **すべて** 要求します:
+
+$$
+P(X_{ij} = 1 | \boldsymbol{\theta}_j) = \prod_{d=1}^{D} \mathrm{logit}^{-1}\!\left(a_{id} (\theta_{jd} - b_{id})\right)
+$$
+
+各次元での「正答」確率が独立に計算され、全次元の積が項目正答確率となるため、**1 つの次元でも能力が低いと正答確率が大きく下がる** 性質があります。
+
+| モデル | 能力の組合せ | 適する場面 |
+|:---|:---|:---|
+| **Compensatory** (M2PL) | 線形和 ($a_1\theta_1 + a_2\theta_2 + d$) | 一方の能力で他方を補える (例: 語彙不足を文脈推論で補う読解) |
+| **Non-compensatory** (PC2PL) | 積 ($\prod_d P_d$) | 全要素が必要 (例: L2 リスニングで音声認識 AND 統語処理 AND 意味理解、CDM の DINA との親和性も高い) |
+
+`mirt` パッケージは **`itemtype = "PC2PL"`** で非補償型を直接サポートしています (L3748 参照)。ただし非補償型は (a) 推定が補償型より不安定 (尤度面が複雑)、(b) 高次元で収束問題が起きやすい、(c) パラメータ数が多い、という特徴があるため、補償型をベースラインとして比較感度分析として実行するのが現代的な運用です。**CDM 節 (L4974 付近) の DINA は非補償型 MIRT の離散版** とみなせる関係にあり、両者を併用すると属性プロファイルが連続/離散の二側面から検証できます。
+
+```r
+# 非補償型 MIRT (PC2PL) の最小例
+mirt_model <- mirt.model("F1 = 1-15
+                          F2 = 16-30")
+fit_pc2pl <- mirt::mirt(dat, mirt_model, itemtype = "PC2PL",
+                        technical = list(NCYCLES = 2000),
+                        verbose = FALSE)
+# 補償型との比較
+fit_m2pl <- mirt::mirt(dat, mirt_model, itemtype = "2PL", verbose = FALSE)
+anova(fit_m2pl, fit_pc2pl)  # 非ネストのため AIC/BIC 比較
+```
+:::
+
 ### 論文での MIRT 報告の記述例
 
 #### 記述例（MIRT: そのまま改変可能）
@@ -3443,7 +4081,7 @@ subplot(
 
 ### 理論的背景
 
-モッケン尺度分析（MSA）は、ノンパラメトリックIRTの代表的手法であり、項目特性曲線の具体形状（ロジスティック形など）を固定せずに、順序関係の妥当性を検証する枠組みです [@mokken1971; @sijtsma2002; @vanderark2007]。  
+モッケン尺度分析（MSA）は、ノンパラメトリックIRTの代表的手法であり、項目特性曲線の具体形状（ロジスティック形など）を固定せずに、順序関係の妥当性を検証する枠組みです [@mokken1971; @sijtsma2002; @vanderark2007]。
 したがってMSAは「精密なパラメータ推定」より、**尺度として最低限成立しているか**の診断に強みがあります。
 
 以下の2つの主要モデルがあります：
@@ -3457,14 +4095,14 @@ subplot(
    - MHMの全仮定
    - 不変項目順序（IIO）
 
-MHMが成立すると、合計得点（またはrestscore）の増加に伴って項目得点が単調に増えることを期待できます。  
+MHMが成立すると、合計得点（またはrestscore）の増加に伴って項目得点が単調に増えることを期待できます。
 DMMはさらに厳しく、能力水準が変わっても項目困難度の順位が不変であることを要請します。教育測定では、形成的評価で順位情報を使う場合にIIOの確認が特に重要です [@sijtsma2002; @sijtsmavanderark2017]。
 
 #### MHMとDMMの違い（実務判断の要点）
 
 | 観点 | MHM | DMM |
 |---|---|---|
-| 仮定 | 一次元性・局所独立・単調性 | MHMの全仮定 + 不変項目順序（IIO） |
+| 仮定 | (i) 潜在特性の一次元性 (UD), (ii) 局所独立性 (LI), (iii) 項目反応関数の非減少性 (M) | MHM の全 3 公理 + 項目反応関数の非交差性 (Non-intersecting IRFs)。**IIO はこれの manifest な帰結** |
 | 主な問い | 「尺度として成立するか」 | 「項目難易の順位を安定的に解釈できるか」 |
 | 主指標 | H, Hi, Hij、単調性違反数 | HT、IIO違反数（有意違反） |
 | 典型用途 | 項目プールの探索・初期スクリーニング | 順位情報の利用（発達段階、形成的評価） |
@@ -3511,13 +4149,13 @@ MSAは、**探索段階のスクリーニング**として実施し、必要に�
 
 #### 英語教育ケース（Mokken）: 先行研究ベース再現（Wind & Engelhard, 2015）
 
-対応する先行研究: 評定者介在型評価（rater-mediated assessment）にMokken尺度分析を適用し、評定品質を検証した研究 [@wind2015]。  
+対応する先行研究: 評定者介在型評価（rater-mediated assessment）にMokken尺度分析を適用し、評定品質を検証した研究 [@wind2015]。
 本章での再現目的: 項目や評定カテゴリの順序性が保たれているかを、パラメトリック仮定を置かずに点検する。
 
 再現シナリオ:
-- `coefH`でH/Hiを算出し、尺度性の弱い項目を抽出する。  
-- `check.monotonicity`と`check.iio`で、評定順序の破綻を検出する。  
-- 必要に応じて`aisp`で下位尺度候補を抽出し、内容レビューと照合する。  
+- `coefH`でH/Hiを算出し、尺度性の弱い項目を抽出する。
+- `check.monotonicity`と`check.iio`で、評定順序の破綻を検出する。
+- 必要に応じて`aisp`で下位尺度候補を抽出し、内容レビューと照合する。
 - 評定品質の改善（カテゴリ文言、採点基準、項目改作）を行い再検証する [@sijtsma2002; @vanderark2007]。
 
 結果の記述例（再現報告テンプレート）:
@@ -3528,11 +4166,11 @@ MSAは、**探索段階のスクリーニング**として実施し、必要に�
 
 2値応答であっても、探索段階ではMokkenを使う実務的理由があります。
 
-- ICC形状や識別力構造を固定しないため、モデル誤指定の影響を減らせる。  
-- 小〜中規模標本で項目スクリーニングを行いやすい。  
-- 主目的が「能力推定」より「尺度として成立する項目集合の選別」である場合に適合する。  
+- ICC形状や識別力構造を固定しないため、モデル誤指定の影響を減らせる。
+- 小〜中規模標本で項目スクリーニングを行いやすい。
+- 主目的が「能力推定」より「尺度として成立する項目集合の選別」である場合に適合する。
 
-つまり、**2値=必ずパラメトリックIRT**ではなく、  
+つまり、**2値=必ずパラメトリックIRT**ではなく、
 **探索(Mokken)→確認(GRM/PCM/2PL)** の二段階設計が妥当な場面が多い、というのが先行研究の実務的示唆です [@sijtsma2002; @sijtsmavanderark2017; @wind2015]。
 
 #### 3文献の比較（目的変数とモデル選択理由）
@@ -3545,10 +4183,10 @@ MSAは、**探索段階のスクリーニング**として実施し、必要に�
 
 #### Mokkenの意思決定フロー（実務）
 
-1. `coefH`で全体HとHiを確認し、尺度としての最低基準（例: H >= .30）を満たすか判断する。  
-2. `check.monotonicity`で違反項目を特定し、違反が多い項目は文言修正候補として保留する。  
-3. `check.iio`でIIOの強さ（HT）を確認し、順位利用が妥当か判断する。  
-4. `aisp`で下位尺度候補を抽出し、内容妥当性レビューと照合する。  
+1. `coefH`で全体HとHiを確認し、尺度としての最低基準（例: H >= .30）を満たすか判断する。
+2. `check.monotonicity`で違反項目を特定し、違反が多い項目は文言修正候補として保留する。
+3. `check.iio`でIIOの強さ（HT）を確認し、順位利用が妥当か判断する。
+4. `aisp`で下位尺度候補を抽出し、内容妥当性レビューと照合する。
 5. 改訂後データで再実行し、必要に応じてGRM/PCMへ移行する。
 
 ### データ準備
@@ -3592,6 +4230,24 @@ data.frame(
 #### Loevinger's H係数
 
 Mokken分析の最初のステップは、項目集合が**尺度として機能するか**を H 係数で判定することです。H は「実際の応答パターンがどれだけ Guttman（完全順序）パターンに近いか」を 0〜1 で表します。H < .30 であれば、項目集合は尺度として不適格であり、合計得点の使用は正当化されません。
+
+::: {.callout-note}
+**Loevinger H の代数定義 (Mokken 1971; Sijtsma & Molenaar 2002)**
+
+Loevinger H 係数には項目ペア・項目別・尺度全体の 3 階層があります:
+
+$$
+H_{ij} = 1 - \frac{F_{ij}^{\mathrm{obs}}}{F_{ij}^{\mathrm{exp}}} = \frac{\mathrm{Cov}(X_i, X_j)}{\mathrm{Cov}_{\max}(X_i, X_j)}
+$$
+
+ここで $F_{ij}^{\mathrm{obs}}$ は項目 $i, j$ の組み合わせで観測された **Guttman エラー数** (易しい項目で誤答かつ難しい項目で正答)、$F_{ij}^{\mathrm{exp}}$ は局所独立を仮定した期待エラー数。
+
+- **項目ペア H**: $H_{ij}$ — 上記
+- **項目別 H**: $H_i = (\sum_{j \ne i} \mathrm{Cov}(X_i, X_j)) / (\sum_{j \ne i} \mathrm{Cov}_{\max}(X_i, X_j))$ — 項目 $i$ と他項目との一貫性
+- **尺度全体 H**: $H = (\sum_{i<j} \mathrm{Cov}(X_i, X_j)) / (\sum_{i<j} \mathrm{Cov}_{\max}(X_i, X_j))$ — 尺度全体のスケーラビリティ
+
+Mokken (1971) の経験則: $H \ge .30$ 最低許容、$\ge .40$ 中程度、$\ge .50$ 強い尺度。`mokken::coefH(X)` で 3 階層すべての H 係数を一括取得できます。すべての $H_{ij} \ge 0$ かつ $H_i \ge $ lowerbound という条件を満たすことが、Monotone Homogeneity Model の必要条件です。
+:::
 
 ```{r mokken-h-coefficient}
 #| eval: true
@@ -3803,7 +4459,7 @@ ggplot(curve_data, aes(x = theta, y = p, color = Model)) +
   theme(legend.position = "bottom")
 ```
 
-注: Mokken側はrestscoreの標準化値を横軸に使う経験的曲線で、2PL側は潜在能力$\theta$スケールです。  
+注: Mokken側はrestscoreの標準化値を横軸に使う経験的曲線で、2PL側は潜在能力$\theta$スケールです。
 したがってこの図は**絶対位置より曲線形状の比較**に主眼があります。
 
 #### 項目ペアのスケーラビリティ（Hij）
@@ -3906,7 +4562,9 @@ if (any(mem == 1)) {
 
 **AISP の仕組みと結果の読み方**
 
-AISP（Automated Item Selection Procedure）は、H ≥ 下限基準（ここでは .30）を満たす項目を自動的にグループ化するアルゴリズムです。具体的には、最も高い Hi を持つ項目から出発し、追加しても全体の H が基準を下回らない項目を順に取り込みます。1つのスケールが飽和すると、残り項目から次のスケールを構築します。
+AISP（Automated Item Selection Procedure）は、H ≥ 下限基準（ここでは .30）を満たす項目を自動的にグループ化するアルゴリズムです。具体的には、**最も Hij が高い項目ペア（pairwise Loevinger 係数が最大の 2 項目）を起点**に、Hj 検定（z 検定で有意かつ Hj ≥ lowerbound）を満たす項目を逐次追加していきます[@mokken1971; @vanderark2007mokken]。1 つのスケールが飽和すると、残り項目から次のスケールを構築します。
+
+なお、より新しい R 実装の `mokken::aisp(..., search = "ga")` では、Genetic Algorithm（GA）に基づく大域探索が選択でき、項目ペア起点の greedy search よりも安定したスケール構造を返します[@straat2013ga]。
 
 結果表の各行は以下のように解釈します：
 
@@ -4046,6 +4704,36 @@ if (nrow(violations_to_show) > 0) {
 }
 ```
 
+::: {.callout-note}
+#### `crit` 値の解釈基準 (Molenaar & Sijtsma 2000)
+
+`check.monotonicity()` の出力列 `crit` は、複数の違反指標 (`#vi`, `maxvi`, `zmax` 等) を 1 つの数値に統合したサマリ指標です。Molenaar & Sijtsma (2000) は次の経験的基準を提示しています[@molenaarsijtsma2000]:
+
+| `crit` 値 | 評価 | 推奨アクション |
+|:---|:---|:---|
+| `crit < 40` | 違反は軽微 | そのまま採用可 |
+| `40 ≤ crit < 80` | 中程度の違反 | 項目内容を確認、データ構造に問題があれば改訂候補 |
+| `crit ≥ 80` | 深刻な違反 | 項目を尺度から除外候補、または小サンプル時のサンプリング誤差を疑う |
+
+`crit` は他の単独指標 (例: `#vi`) よりも頑健な総合判定として推奨されます。論文では `crit` 値に加え `#vi`, `maxvi`, `zmax` を併記することで査読者が違反の性質を判断できるようになります。
+:::
+
+::: {.callout-tip}
+#### Mokken Scale Analysis の 7-step 手順 (Sijtsma & van der Ark 2017)
+
+Mokken 分析は探索的になりがちですが、@sijtsmavanderark2017 は以下の **7-step procedure** を標準ワークフローとして推奨しています:
+
+1. **検証する公理の選択**: MHM (UD/LI/M) のみか、DMM (+IIO) も検証するか決定
+2. **項目選択**: AISP で初期スケール構造を探索 (lowerbound = 0.30 から)。`mokken::aisp(..., search = "ga")` で Genetic Algorithm 探索を併用すると、項目ペア起点の greedy search よりも安定した結果が得られる[@straat2013ga]
+3. **単調性 (M) の検証**: `check.monotonicity()` で IRF の非減少性を確認、`crit` 値で判定
+4. **局所独立性 (LI) の検証**: `check.iio()` または `check.pmatrix()` で項目残差相関を確認
+5. **項目順序 (IIO) の検証**: DMM を採用する場合のみ。HT 係数で判定 (前述の 4 段階基準)
+6. **信頼性の評価**: `check.reliability()` で MS coefficient (Molenaar-Sijtsma) を計算
+7. **報告**: H, Hi, Hij, HT, 違反数, 信頼性をすべて 1 つの表にまとめ、データセット・サンプルサイズ・lowerbound 値を必ず Method に明記
+
+このフローは Mokken をパラメトリック IRT (Rasch/2PL) の前段階として位置付けるか、独立した分析として完結させるかに関係なく適用できます。
+:::
+
 ```{r mokken-monotonicity-diagnostic}
 #| fig-height: 8
 #| fig-width: 10
@@ -4142,6 +4830,19 @@ if (!is.null(iio_check$violations)) {
 # IIO statistics
 # 注意: $sig.violations は公式ドキュメントに存在しない要素
 # 有意性判定は $results 内の個別検定結果を参照するか、HT で判断する
+# HT の解釈基準 (Ligtvoet, van der Ark, te Marvelde, & Sijtsma 2010):
+#  HT < 0.30 : no IIO
+#  0.30 ≤ HT < 0.40 : weak IIO
+#  0.40 ≤ HT < 0.50 : medium IIO
+#  HT ≥ 0.50 : strong IIO
+ht_label <- function(ht) {
+  if (is.na(ht)) return("HT unavailable")
+  if (ht < 0.30) return("No IIO (HT < 0.30)")
+  if (ht < 0.40) return("Weak IIO (0.30 ≤ HT < 0.40)")
+  if (ht < 0.50) return("Medium IIO (0.40 ≤ HT < 0.50)")
+  return("Strong IIO (HT ≥ 0.50)")
+}
+
 iio_stats <- data.frame(
   Statistic = c("HT Coefficient", "Items with IIO Violations"),
   Value = c(
@@ -4149,19 +4850,20 @@ iio_stats <- data.frame(
     n_vi
   ),
   Assessment = c(
-    ifelse(is.na(ht_value), "HT unavailable",
-           ifelse(ht_value >= 0.3, "IIO Holds", "IIO Does Not Hold")),
+    ht_label(ht_value),
     ifelse(n_vi == 0, "No Violations", paste0(n_vi, " items with violations"))
   )
 )
 
-ht_color <- if (is.na(ht_value)) "#FFF3CD" else if (ht_value >= 0.3) "#D4EDDA" else "#F8D7DA"
+ht_color <- if (is.na(ht_value)) "#FFF3CD" else if (ht_value >= 0.30) "#D4EDDA" else "#F8D7DA"
 
 iio_stats |>
-  knitr::kable(caption = "Invariant Item Ordering (IIO) Test")
+  knitr::kable(caption = "Invariant Item Ordering (IIO) Test (HT 4 段階基準: Ligtvoet et al. 2010)")
 ```
 
-```{r mokken-iio-ordering-plot}
+```{r}
+#| label: fig-mokken-iio-ordering-plot
+#| fig-cap: "IIO の視覚的検証——能力 3 群別の項目正答率順位（高群と低群で順位が保たれていれば IIO 成立）"
 #| fig-height: 5.5
 #| fig-width: 8
 #| warning: false
@@ -4215,6 +4917,48 @@ ggplot(iio_plot_df, aes(x = Item, y = Proportion, color = Group, group = Group))
 上図で線が交差しなければ IIO が成立していることを視覚的に確認できます。交差が見られる項目ペアは IIO 違反の候補です。
 
 HT 係数が .30 以上であれば IIO が概ね成立していると判断します。有意な違反ペアが多い場合は、どの項目間で順位逆転が起きているかを確認し、内容的に順位変動が説明可能か（例：教育課程の違いで難易度が逆転する項目）を検討してください。
+
+::: {.callout-tip}
+#### `mokken::plot.iio()` による公式診断プロット
+
+mokken パッケージは `check.iio()` の戻り値に対する **`plot()` メソッド**を提供しています。これは「観測項目反応関数 (IRF) と 95% 信頼帯」を能力区分ごとに描画する mokken 公式の標準診断です:
+
+```{r}
+#| eval: false
+#| label: fig-mokken-plot-iio
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "mokken::plot.iio() の公式診断プロット。各項目について能力 rest-score 区分での観測 IRF を 95% 信頼帯付きで描画。IRF が単調非減少で、項目間の交差がなければ IIO 成立。"
+
+# mokken 公式の plot.iio() メソッドで全項目の IRF を一括描画
+# ci = TRUE で 95% 信頼帯を追加、curves = "both" で観測 + 期待を重ねる
+par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+plot(iio_check, ci = TRUE, curves = "both", item.pairs = FALSE,
+     ask = FALSE)
+par(mfrow = c(1, 1))
+```
+
+```{r}
+#| eval: false
+#| label: fig-mokken-plot-restscore
+#| fig-width: 10
+#| fig-height: 5
+#| fig-cap: "mokken::check.restscore() による rest-score 単調性プロット。観測 IRF が rest-score (合計点 - 当該項目得点) に対して非減少なら単調性公理 (M) が成立。"
+
+# 単調性検証用の rest-score プロット
+restscore_check <- check.restscore(SAT12_binary)
+par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+plot(restscore_check, ask = FALSE)
+par(mfrow = c(1, 1))
+```
+
+**公式プロット vs ggplot 自作プロットの使い分け**:
+
+- **公式プロット (上記)**: `mokken` のアルゴリズムが内部で使う rest-score 区分と完全一致するため、`check.iio()` / `check.monotonicity()` の数値結果と整合的に読める
+- **ggplot 自作プロット (前述 @fig-mokken-iio-ordering-plot 風)**: 配色・テーマを本書全体で統一でき、論文 figure として直接使える
+
+論文掲載用には ggplot 自作版、内部診断には公式 plot を使い分けるのが効率的です。Sijtsma & van der Ark (2017) の 7-step procedure では、Step 3 (単調性) と Step 5 (IIO) でいずれの図も生成して内容判断と統計判断の両面から検討することを推奨しています[@sijtsmavanderark2017]。
+:::
 
 #### 不変項目順序（IIO）の考え方
 
@@ -4318,19 +5062,337 @@ reliability_comparison |>
 
 モッケン尺度分析を論文で報告する際は、次の順で最低限の情報を明示すると査読での再現可能性が高まります [@sijtsmavanderark2017]。
 
-1. データ仕様: 項目数、カテゴリ数、欠測処理、分析対象サンプルN。  
-2. 尺度性: 全体H、Hiの分布、採用/除外項目の基準。  
-3. 仮定診断: 単調性違反（件数と該当項目）、IIOのHTと違反の程度。  
-4. 信頼性: α、λ2、MSなどの併記。  
-5. 改訂判断: 文言修正・カテゴリ統合・項目削除の根拠。  
+1. データ仕様: 項目数、カテゴリ数、欠測処理、分析対象サンプルN。
+2. 尺度性: 全体H、Hiの分布、採用/除外項目の基準。
+3. 仮定診断: 単調性違反（件数と該当項目）、IIOのHTと違反の程度。
+4. 信頼性: α、λ2、MSなどの併記。
+5. 改訂判断: 文言修正・カテゴリ統合・項目削除の根拠。
 6. 次段階: 確認的分析（GRM/PCM/MIRT）へ移る条件。
 
 #### 記述例（そのまま改変可能）
 「予備調査データ（N = xxx）に対してモッケン尺度分析を実施した。尺度全体のHは`r round(h_value, 3)`であり、項目レベルではHi < .30の項目を改訂候補とした。単調性診断でx項目に違反が観察され、IIO指標HTはx.xxであった。これらの結果に基づき、項目文言を修正した上で次ラウンドで再検証し、基準を満たした尺度に対してGRMによる確認的分析を行った。」
 
+## 認知診断モデル（CDM / DCM）{.tabset}
+
+### この節の要点（CDM）
+
+ここまでの IRT/Rasch/MIRT/Mokken は、すべて **連続的な潜在能力 $\theta$** を仮定してきました。しかし「この学習者は **どのスキルが習得済みで、どのスキルが未習得か**」という**スキル・プロファイルとしての診断**には、連続スコアより**カテゴリ的な習得状態 (mastery / non-mastery)** で表す方が自然な場合があります。**認知診断モデル (Cognitive Diagnostic Models, CDM)** ―別名 **診断分類モデル (Diagnostic Classification Models, DCM)** ―は、各受験者の潜在属性を **2 値 (1 = 習得 / 0 = 未習得)** のベクトル $\boldsymbol{\alpha}_i = (\alpha_{i1}, \ldots, \alpha_{iK})$ として推定する手法群です [@junker2001; @rupp2010]。
+
+英語教育では、Buck & Tatsuoka (1998) のリスニング属性分析を先駆けとして、TOEFL のリスニング/リーディング (Lee & Sawaki 2009; Sawaki, Kim & Gentile 2009)、LanguEdge (Jang 2009)、IELTS リスニング (Harding, Alderson & Brunfaut 2015)、高ステイクスリーディング (Ravand 2016) など、診断的フィードバック・形成的評価の領域で広く使われています。
+
+### CDM の核心: Q-matrix と属性ベクトル
+
+CDM の出発点は **Q-matrix** (項目 × 属性の関連付け行列) です [@tatsuoka1983]。例えば、英語リーディング 6 項目で 3 つの属性 (語彙、統語、推論) を測定する場合:
+
+$$
+Q = \begin{pmatrix}
+1 & 0 & 0 \\
+0 & 1 & 0 \\
+1 & 1 & 0 \\
+0 & 0 & 1 \\
+1 & 0 & 1 \\
+1 & 1 & 1
+\end{pmatrix}
+\quad \begin{matrix} \text{Item 1: 語彙のみ} \\ \text{Item 2: 統語のみ} \\ \text{Item 3: 語彙+統語} \\ \text{Item 4: 推論のみ} \\ \text{Item 5: 語彙+推論} \\ \text{Item 6: 全属性} \end{matrix}
+$$
+
+各受験者 $i$ の属性ベクトル $\boldsymbol{\alpha}_i \in \{0,1\}^K$ は **$2^K$ 通りの潜在クラス**のいずれかに分類され、$K = 3$ なら 8 通り (000, 100, 010, 001, 110, 101, 011, 111)。各クラスの所属確率を事後推定するのが CDM の中心的タスクです。
+
+::: {.callout-tip}
+**Q-matrix は内容専門家 (subject matter experts) が構築する**
+
+Q-matrix は本質的に **理論駆動** で構築されます。SLA では (a) 項目内容の徹底的な分析 (item content analysis)、(b) 受験者の think-aloud protocol、(c) 専門家パネルによる Q-matrix 評定の合議 (Sawaki, Kim & Gentile 2009) を経て初めて意味のある属性構造が得られます。Q-matrix の妥当性は de la Torre (2008) の **stepwise Wald test** や Chiu (2013) の **Q-matrix refinement** で経験的に検証可能ですが、**統計的探索だけで Q-matrix を「発見」することは推奨されません**。理論的根拠と統計的検証の両輪が必要です。
+:::
+
+### 主要モデル: DINA / DINO / GDINA / LCDM
+
+| モデル | 仮定 | 数式 (項目 $j$, 受験者 $i$) | 用途 |
+|------|------|---------------------------|------|
+| **DINA** [@junker2001] | **AND ゲート**: 必要属性をすべて持っていれば正答 (slip $s_j$ の確率で誤答) | $P(X_{ij}=1\|\boldsymbol{\alpha}_i) = (1-s_j)^{\eta_{ij}} g_j^{1-\eta_{ij}}$, $\eta_{ij} = \prod_k \alpha_{ik}^{q_{jk}}$ | スキルが「すべて揃って初めて」効くテスト |
+| **DINO** [@templin2006] | **OR ゲート**: 必要属性のいずれか 1 つでもあれば正答 | $\eta_{ij} = 1 - \prod_k (1 - \alpha_{ik})^{q_{jk}}$ | 心理アセスメント、症状診断 |
+| **GDINA** [@delatorre2011] | **一般化**: DINA, DINO, ACDM, LLM, RRUM をすべて包含 | $P(X_{ij}=1\|\boldsymbol{\alpha}_i^*) = \delta_{j0} + \sum_k \delta_{jk}\alpha_{ik} + \cdots$ (主効果 + 交互作用) | モデル選択の出発点として推奨 |
+| **LCDM** [@henson2009] | **対数線形**: 全 CDM を対数線形枠組みで統一 | $\mathrm{logit}\,P = \lambda_{j,0} + \boldsymbol{\lambda}_{j,1}^\top \boldsymbol{\alpha} + \cdots$ | GDINA と数学的に等価、SEM 派の好み |
+
+**用語の整理**:
+
+- $s_j$ (slip): 必要属性をすべて持つのに誤答する確率 (注意ミス、ケアレス)
+- $g_j$ (guessing): 必要属性が欠けているのに正答する確率 (推測の成功)
+- DINA は **2 母数モデル** ($s_j, g_j$ のみ)、GDINA は属性数 $K_j^*$ に応じて $2^{K_j^*}$ 母数
+
+### R による CDM 実装
+
+`GDINA` パッケージ [@ma2024_gdina] が現代の標準実装で、DINA・DINO・GDINA・LCDM・ACDM・LLM・RRUM をすべて統一インターフェースで扱えます。`CDM` パッケージ [@robitzsch2024_cdm] は `din()`/`gdina()` を提供し、`metaSEM` や `sirt` と整合します。
+
+```{r}
+#| eval: false
+#| label: gdina-fit-example
+
+# 例: 30 項目 × 4 属性のリーディングテスト (シミュレーション)
+library(GDINA)
+
+# 1. データと Q-matrix
+# dat: N × J 二値応答 (0/1)、Q: J × K 属性指示行列
+data(sim30GDINA)  # 同梱データ
+dat <- sim30GDINA$simdat
+Q   <- sim30GDINA$simQ
+
+# 2. DINA モデル
+fit_dina <- GDINA(dat, Q, model = "DINA")
+summary(fit_dina)
+
+# 3. GDINA モデル (一般化)
+fit_gdina <- GDINA(dat, Q, model = "GDINA")
+summary(fit_gdina)
+
+# 4. モデル比較 (情報量規準と LRT)
+anova(fit_dina, fit_gdina)
+# DINA は GDINA の特殊例 (β = 0 制約) のためネスト LRT 適用可
+modelfit(fit_gdina)  # M2, RMSEA2, SRMSR
+
+# 5. 個人別属性プロファイルの推定
+person_param <- personparm(fit_gdina, what = "EAP")  # 各属性の事後期待値
+attr_pattern <- personparm(fit_gdina, what = "MAP")  # 最尤属性パターン
+head(attr_pattern)  # e.g., (1,1,0,1) = 属性 1,2,4 を習得、3 は未習得
+
+# 6. 項目母数の解釈
+itemparm(fit_gdina, what = "delta")  # GDINA の δ パラメータ
+itemparm(fit_dina, what = "gs")        # DINA の guessing と slip
+
+# 7. Q-matrix 妥当性検証 (de la Torre 2008)
+Qval(fit_gdina, eps = 0.95)  # 経験的に支持されない属性指示を検出
+```
+
+### モデル選択と適合度
+
+CDM のモデル選択は **項目別** に行うのが現代的です。**de la Torre & Lee (2013)** の Wald test は、各項目について GDINA を縮約モデル (DINA, DINO, ACDM, LLM, RRUM) と比較し、**項目ごとに最適なモデル**を選択します:
+
+```{r}
+#| eval: false
+#| label: cdm-item-level-modelselection
+
+# 項目別モデル選択 (Wald test)
+item_selection <- modelcomp(fit_gdina, models = c("GDINA", "DINA", "DINO", "ACDM", "LLM", "RRUM"))
+print(item_selection)
+# 各項目で「最も節約的かつ適合する」モデルを返す
+# → 項目によって DINA、DINO、GDINA を使い分けるハイブリッド分析が可能
+```
+
+**全体適合度** (Liu, Tian & Xin 2016 の M2 統計量) と **分類精度** (受験者の属性プロファイル復元率) を併報告します:
+
+```{r}
+#| eval: false
+
+# 全体適合度
+modelfit(fit_gdina)  # M2, df, p, RMSEA2, SRMSR
+
+# 分類精度 (シミュレーションで真値が既知の場合)
+real_attrs <- sim30GDINA$attribute  # 真の属性パターン
+est_attrs  <- personparm(fit_gdina, what = "MAP")[, 1:4]
+mean(rowSums(real_attrs == est_attrs) == ncol(real_attrs))  # 全属性一致率
+```
+
+### SLA における CDM 応用と注意点
+
+英語教育研究での CDM 適用は急速に拡大していますが、以下の前提を満たさない場合、結果は誤導的になります:
+
+| 前提 | 確認方法 | 違反時の影響 |
+|------|---------|------------|
+| Q-matrix の理論的妥当性 | Subject matter experts による合議 [@sawaki2009qmatrix] | 属性プロファイルが解釈不能 |
+| 属性数 $K$ が項目数 $J$ に対して妥当 ($K \le \log_2 J$ の目安) | 経験則: $J \ge 30$ で $K \le 4-5$ | クラス分離が不安定 |
+| 局所独立性 | $Q_3$、Q-matrix refinement | 属性誤推定、モデル不適合 |
+| サンプルサイズ | DINA で $N \ge 500$、GDINA で $N \ge 1000$ 推奨 | 小クラスの推定不能 |
+| 単一次元 vs 多次元の判定 | MIRT との比較、属性間相関 | CDM 不要のケースに無理に適用するリスク |
+
+**SLA での主要応用例**:
+- @buck1998rule: フリーレスポンスリスニングの属性分析 (Rule Space)
+- @jang2009cda: LanguEdge L2 リーディングの Fusion Model 適用
+- @lee2009three: TOEFL ESL リーディング/リスニングへの DINA・Fusion・LCDM 比較
+- @sawaki2009qmatrix: 大規模リーディング/リスニングの Q-matrix 構築方法論
+- @harding2015diagnostic: SFL リスニング診断アセスメントの原則
+- @ravand2016: 高ステイクスリーディング診断
+- @yi2017probing: L2 リーディング/リスニング属性の相対重要度
+
+::: {.callout-warning}
+**CDM を使うべきでない場面**
+
+- **属性が連続的に変化する** (例: 語彙サイズ、流暢さ): MIRT または bifactor-IRT が適切
+- **Q-matrix を構築する理論的根拠が薄い**: 探索的因子分析 (EFA) や Mokken 尺度分析が先
+- **サンプルが小さい ($N < 300$)**: 古典的 IRT/Rasch のほうが安定
+- **目的が総合スコアの提供**: IRT で十分。CDM はプロファイルが目的のときのみ
+- **Q-matrix の誤指定が懸念される**: `Qval()` による事後検証は補助的で、根本解決ではない
+:::
+
+### IRT / MIRT / CDM の使い分け
+
+| 観点 | IRT (1 次元) | MIRT (連続多次元) | CDM (離散多属性) |
+|------|------|------|------|
+| 潜在変数の性質 | 連続 1 次元 $\theta$ | 連続 $K$ 次元 $\boldsymbol{\theta}$ | 離散 2 値 $K$ 属性 $\boldsymbol{\alpha}$ |
+| 受験者の表現 | スコア 1 個 | スコア $K$ 個 | プロファイル ($2^K$ クラスの 1 つ) |
+| 主目的 | 順位づけ・セレクション | 多次元プロファイリング | 強み弱み診断 |
+| 必要サンプル | $N \ge 200$ | $N \ge 500$ | $N \ge 500$–$1000$ |
+| Q-matrix 必須性 | 不要 | 不要 (因子負荷で表現) | **必須** |
+| SLA 典型応用 | 統一試験スコア化 | CEFR 4 技能 | 診断的フィードバック |
+
+### 報告テンプレート（英語）
+
+> A cognitive diagnostic analysis was conducted using the GDINA model [@delatorre2011] to estimate examinees' mastery profiles across $K$ attributes. The Q-matrix was constructed by three subject matter experts and refined using the empirically based method of @delatorre2008_qmatrix. Item-level model selection via the Wald test [@delatorre2011] indicated that XX% of items were best fit by DINA and YY% by GDINA. The model showed adequate fit (M2 = ZZZ, RMSEA2 = .043, SRMSR = .045) and a classification accuracy of CC% across all attributes. Posterior attribute probabilities were used to provide individualized diagnostic feedback.
+
+## 回答時間と正答の共同モデリング (Response Time IRT) {.tabset}
+
+### この節の要点 (RT-IRT)
+
+ここまでの IRT/Rasch/MIRT/CDM はすべて **正誤データのみ** から潜在能力を推定してきました。しかし、**コンピュータベースのテスト (CBT)** では各項目の **回答時間 (response time, RT)** が自動取得され、**正答情報と独立した第二の証拠源**になります。RT は (a) **学習者の認知過程** (素早く正解 = 自動化、遅くて正解 = 統制処理)、(b) **項目の認知負荷**、(c) **「適当回答 (rapid guessing)」の検出** という 3 つの観点で活用できます。
+
+英語教育では、Pellicer-Sánchez & Schmitt (2012) の Yes/No 語彙テスト RT スコアリング、Hashimoto & Egbert (2019) の語彙難度予測への RT 統合、Goldhammer et al. (2014) の PIAAC 読解での time-on-task 効果分析などが代表的応用です。Computer-Delivered IELTS や CBT 化された TOEIC では、項目別 RT が運用上の品質管理に使われています。
+
+### Lognormal RT モデルと階層 IRT/RT モデル
+
+**Lognormal RT モデル** [@vanderlinden2006lognormal]:
+
+$$
+\log T_{ij} = \beta_j - \tau_i + \varepsilon_{ij}, \qquad \varepsilon_{ij} \sim N(0, \sigma_j^{-2})
+$$
+
+- $\tau_i$: 受験者 $i$ の **遅さ (slowness)** ($\tau$ が高いほど遅い)
+- $\beta_j$: 項目 $j$ の **時間集約度 (time intensity)** ($\beta$ が高いほど時間がかかる項目)
+- $\sigma_j$: 項目 $j$ の **時間識別力** ($\sigma$ が高いほど受験者間で RT が分散しにくい)
+
+**階層 IRT/RT モデル** [@vanderlinden2007hierarchical] は、Lognormal RT モデルと 2PL IRT を **2 段階の階層モデル** で結合します:
+
+- **第 1 層** (項目内): 各項目で 2PL (正答) と Lognormal (RT) を **条件付き独立** にモデル化
+- **第 2 層** (項目・受験者間): 受験者の能力 $\theta_i$ と遅さ $\tau_i$ の **二変量正規分布** $(\theta_i, \tau_i) \sim N_2(\boldsymbol{\mu}_P, \boldsymbol{\Sigma}_P)$、項目側パラメータの二変量正規
+
+**$\rho(\theta, \tau)$ の解釈** が中心的な関心です:
+
+- $\rho < 0$: **速くて正確** (能力が高いほど短時間で正解 — automaticity)
+- $\rho > 0$: **遅くて正確** (能力が高いほど慎重に時間をかける — careful processing)
+- $\rho \approx 0$: 速さと能力は独立 (例: 容易すぎるテスト)
+
+### Rapid Guessing の検出: Threshold Method
+
+**Wise & Kong (2005) の Response Time Effort (RTE)** [@wise2005rte] は、各項目に **無効反応閾値 $\delta_j$** を設定し、$T_{ij} < \delta_j$ なら「適当回答 (rapid guess)」と判定します。受験者 $i$ の RTE は:
+
+$$
+\mathrm{RTE}_i = \frac{1}{K} \sum_{j=1}^{K} \mathbb{1}(T_{ij} \ge \delta_j)
+$$
+
+慣例的に **RTE < .90 を低努力受験者** とし、その受験者を分析から除外するか、Effort-Moderated IRT [@wise2006emirt] で「rapid guessing 反応を欠測扱い」にして再推定します。
+
+**閾値 $\delta_j$ の決定法** は 3 つの方法が提案されており、@rios2024threshold が比較を行っています:
+
+| 方法 | 計算式 | 特徴 |
+|------|------|------|
+| **Wise & Kong (2005)** 視覚法 | RT ヒストグラムの二峰性の谷 | 直感的だが主観的 |
+| **NT method** (Wise & Ma 2012) | $\delta_j = \min(0.10 \cdot \bar{T}_j,\ 10\text{秒})$ | 簡便、operational 利用が広い |
+| **VITP** (Lee & Jia 2014) | 候補閾値 $\delta$ ごとに $\delta$ 以下の正答率がチャンス水準 ($\approx 1/K$, $K$ は選択肢数) になる最大の $\delta$ | 4 手法比較で頑健性が支持される [@rios2024threshold] |
+
+### R による実装
+
+```{r}
+#| eval: false
+#| label: rt-irt-implementation
+
+# 方法 1: LNIRT パッケージ (Fox, Klotzke, Klein Entink 2025)
+# 階層 IRT/RT モデルの Gibbs 推定
+library(LNIRT)
+fit_lnirt <- LNIRT(RT = rt_matrix, Y = response_matrix,
+                   data = NULL, alpha = 0.95)
+summary(fit_lnirt)
+# 出力: Mtheta (能力), Mtau (遅さ), Mab (項目母数),
+#       EAPCP (θ-τ 事後相関の EAP)
+
+# 方法 2: brms による Bayesian 階層 RT-IRT (Koenig et al. 2023 の最小実装)
+library(brms); library(tidyr)
+
+# データを long 形式に変換 (各行 = 1 受験者 × 1 項目)
+long <- dat |>
+  pivot_longer(everything(),
+               names_to = c(".value", "item"),
+               names_pattern = "(rt|y)_(.+)") |>
+  dplyr::mutate(person = rep(1:N, each = K))
+
+# 多変量モデル: 同じ person タグ "p" で θ-τ の事後相関を推定
+bf_acc <- bf(y  ~ 1 + (1|i|item) + (1|p|person), family = bernoulli())
+bf_rt  <- bf(rt ~ 1 + (1|i|item) + (1|p|person), family = lognormal())
+
+fit <- brm(bf_acc + bf_rt + set_rescor(FALSE),
+           data = long, chains = 4, cores = 4,
+           prior = prior(lkj(2), class = "cor"))
+# (1|p|person) の "p" 共有タグが van der Linden 第 2 層の
+# (θ_i, τ_i) ~ N_2 を表現する
+VarCorr(fit)$person$cor   # ρ(θ, τ) の事後分布
+```
+
+```{r}
+#| eval: false
+#| label: rapid-guessing-detection
+
+# Rapid Guessing 検出: NT 法と VITP 法の自前実装
+detect_rapid_guess <- function(RT, Y, K_options = 4, method = c("NT", "VITP")) {
+  method <- match.arg(method)
+  if (method == "NT") {
+    # Wise & Ma (2012) NT method
+    delta <- pmin(0.10 * colMeans(RT, na.rm = TRUE), 10)
+  } else {
+    # Lee & Jia (2014) VITP: 正答率がチャンス水準になる最大閾値
+    delta <- vapply(seq_len(ncol(RT)), function(j) {
+      candidates <- quantile(RT[, j], probs = seq(0.05, 0.5, 0.05), na.rm = TRUE)
+      p_correct <- vapply(candidates, function(d) {
+        mean(Y[RT[, j] <= d, j], na.rm = TRUE)
+      }, numeric(1))
+      candidates[which.min(abs(p_correct - 1 / K_options))]
+    }, numeric(1))
+  }
+  is_valid <- t(t(RT) >= delta)
+  list(threshold = delta,
+       RTE = rowMeans(is_valid, na.rm = TRUE),
+       n_low_effort = sum(rowMeans(is_valid, na.rm = TRUE) < 0.90))
+}
+
+# 使用例
+result <- detect_rapid_guess(rt_matrix, y_matrix, K_options = 4, method = "VITP")
+result$RTE                    # 受験者ごとの RTE
+result$n_low_effort           # RTE < .90 の受験者数
+
+# Effort-Moderated IRT: rapid guessing を欠測扱いにして再推定
+y_moderated <- y_matrix
+y_moderated[!is_valid] <- NA  # rapid guessing を NA に
+fit_moderated <- mirt::mirt(y_moderated, 1, "2PL", verbose = FALSE)
+```
+
+### 発展モデル: Mixture と CDM への接続
+
+**Mixture RT-IRT** [@wang2015mixture]: rapid guessing と solution behavior を **2 成分混合分布** で同時推定。Threshold 法より柔軟だが推定が困難。
+
+**Cognitive Diagnosis with RT** [@zhan2018cdmrt]: DINA + RT の階層モデル。属性別の認知負荷と遅さを同時推定。CDM 節 (L5066) で扱った属性プロファイル分析に **RT による情報追加** を行う形。
+
+### SLA / 言語テストでの応用と注意点
+
+| 応用領域 | 代表研究 | 主な発見 |
+|---------|--------|---------|
+| **語彙テストの RT スコアリング** | @pellicer2012yesno | Yes/No テストで RT を採点に組み込むと nonword 法より精度向上 |
+| **語難度予測** | @hashimoto2019word | 語認知 RT を頻度・概念性などの予測子に統合 |
+| **PIAAC 読解** | @goldhammer2014timeontask | time-on-task 効果が読解で負・問題解決で正 (難度依存) |
+| **CDM × RT** | @zhan2018cdmrt | リーディング診断で属性習得と認知負荷の同時推定 |
+| **CBT 全般のレビュー** | @wise2017rapid | rapid guessing 検出と effort 補正の体系的解説 |
+
+::: {.callout-warning}
+**Response Time IRT を使う際の注意**
+
+1. **「速い = 適当」ではない場合がある**: 能力の高い受験者は短時間で正解する (automaticity)。RTE 閾値は項目ごとに設定し、能力 × RT の交互作用を確認
+2. **Lognormal の前提**: RT が右に長く裾を引く分布を仮定。**ヒストグラム + Q-Q plot で正規性確認**を必須
+3. **テスト stake の影響**: 高 stake テスト (TOEFL 等) では rapid guessing は稀、低 stake (placement test) では頻発。**テスト文脈で RTE 閾値を調整**
+4. **欠測データとの混同**: RT が極端に短いセルが「適当回答」か「画面操作ミス」か区別できないため、複数閾値で感度分析
+5. **CDM × RT は推定が重い**: Stan で実装する場合 4 chains × 4000 iter で数時間。`LNIRT` の Gibbs が現実的選択肢
+:::
+
+### 報告テンプレート（英語）
+
+> Joint accuracy and response time analysis was conducted using the hierarchical IRT/RT model [@vanderlinden2007hierarchical] implemented via the LNIRT package [@fox2023lnirt]. The estimated correlation between examinees' ability ($\theta$) and slowness ($\tau$) was $\hat\rho = -0.32$, 95% CrI [$-0.45$, $-0.18$], indicating that more able examinees responded faster on average. Rapid guessing was identified using the VITP threshold method [@rios2024threshold], yielding examinee-level RTE scores; XX% of examinees had RTE < .90 and were flagged for follow-up. As a sensitivity analysis, the Effort-Moderated IRT model [@wise2006emirt] was estimated by treating rapid-guess responses as missing; ability estimates were broadly similar (correlation $r = .98$ with the original 2PL estimates).
+
 ## 実務ガイドとモデル選択 {.tabset}
 
-GRM・PCM/RSM・MFRM・MIRT・Mokken の各手法を個別に実行してきました。ここでは、どの手法をどの場面で選ぶかを整理し、実務的な意思決定を支援します。
+GRM・PCM/RSM・MFRM・MIRT・Mokken の各手法を個別に実行してきました。ここでは、どの手法をどの場面で選ぶかを整理し、実務的な意思決定を支援します。本章で扱う各手法の論文報告は、まず L2 量的研究全体の透明性原則として APA 第 7 版と *Language Learning* の Open Methods ガイドライン [@norris2015] (記述統計・効果量と CI・データ準備・再現に必要な詳細水準・データ/コード公開) を満たし、その上で IRT/Rasch 固有の項目 (推定方法、項目・人 separation reliability、項目適合度 Infit/Outfit、必要に応じて DIF 効果量や感度分析) を、各手法の慣行に沿って追加報告します。
 
 ### 比較表
 
@@ -4348,7 +5410,7 @@ GRM・PCM/RSM・MFRM・MIRT・Mokken の各手法を個別に実行してきま�
 
 ### 探索→確認の2段階設計（MSA→GRM/MIRT）
 
-実務では、最初からパラメトリックモデルを固定するより、  
+実務では、最初からパラメトリックモデルを固定するより、
 **第1段階でMSAにより項目集合を整備し、第2段階でGRM/MIRTで確認する**設計が有効です [@sijtsmavanderark2017; @chalmers2012]。
 
 実装は、Step 0 として初期項目プール（内容妥当性＋予備調査）を準備し、Step 1 で Mokken（H / Hi / 単調性 / IIO）により項目をスクリーニングします。尺度品質が不十分なら項目文言・カテゴリ設計・項目構成を修正して Step 1 を再実行します。品質が許容水準に達したら、単次元構造なら Step 2A（GRM/PCM）、多次元構造なら Step 2B（MIRT）で確認し、続いて Step 3 で不変性・DIF・尺度リンクを検証します。最終的に Step 4 で妥当性議論を含めて解釈と報告を行います。
@@ -4396,6 +5458,97 @@ if (length(scale1_items) >= 5) {
 この2段階設計では、Mokken（ノンパラメトリック）で「尺度として最低限の品質を持つ項目群」を特定し、GRM（パラメトリック）で「精密なパラメータ推定と情報関数分析」を行います。Mokken で除外された項目は、内容面の改訂後に再度プールに追加して検証するサイクルが推奨されます[@sijtsmavanderark2017]。
 
 ### 実践的推奨事項
+
+#### R・商用ソフト・配信プラットフォームの棲み分け
+
+IRT分析では、R、商用推定ソフト、配信プラットフォームを同じ役割として扱わない方が安全です。Rは、コードを残して再現可能に分析し、図表を論文本文に合わせて調整するのに向いています。商用推定ソフトは、技術報告書、項目バンク管理、アンカー指定、運用上の定型レポートに強みがあります。CAT配信プラットフォームは、項目パラメータを使って実際に受験者へ項目を提示し、露出制御・終了規則・セキュリティ・ログ管理を行う段階で使います。
+
+| 目的 | 第一候補 | 併用候補 | 確認すべき点 |
+|:--|:--|:--|:--|
+| 研究論文・技術報告書で再現可能に分析する | R（`mirt`, `TAM`, `eRm`, `difR`, `mokken`） | 商用ソフトで感度分析 | スクリプト、パッケージ版、乱数種、推定法、収束条件を残します。 |
+| Rasch型の項目・人マップを実務的に報告する | Winsteps | Rで図を再作成 | 測定尺度の中心化、アンカー、fit基準、カテゴリ統合の判断を記録します。 |
+| 採点者・課題・観点を含むパフォーマンス評価を運用する | Facets | `TAM` / Bayesian MFRM | 採点者間の接続性、共通答案、採点者ドリフト、bias interactionを確認します。 |
+| 大規模評価で多次元・多母集団・潜在回帰を扱う | ConQuest / flexMIRT / IRTPRO | Rで二次解析・可視化 | 群間リンク、plausible values、母集団モデル、標準誤差の扱いを明記します。 |
+| 校内・機関テストの技術報告書を作る | Xcalibre等 | Rで追加可視化 | 自動出力のDIF判定やモデル比較を、事前に決めた基準と照合します。 |
+| CATを実装・配信する | FastTest等の配信基盤 | Rで事前シミュレーション | 項目露出、内容制約、停止規則、再推定・再等化のスケジュールを設計します。 |
+
+商用ソフトを使った場合でも、論文や報告書には最低限、(1) ソフト名とバージョン、(2) モデル名と項目タイプ、(3) 推定法、(4) 尺度の同定・リンク・アンカー、(5) 欠測・カテゴリ統合・除外項目の処理、(6) 適合度・DIF・信頼性/情報量、(7) スコア変換やCAT運用の規則を記載します。これらが明示されていれば、Rで再現する場合にも、別ソフトで感度分析する場合にも、結果の違いを原因に戻して検討しやすくなります。
+
+::: {.callout-tip}
+**主要 IRT/Rasch ソフトウェアの詳細比較 (2024–2025)**
+
+業界・学界で使われる主要な IRT/Rasch ソフトウェアを、対応モデル・価格・特徴で整理します。価格は **2024–2025 年時点の公式情報に基づく目安**で、為替・契約年数・教育機関割引で変動します。
+
+**(1) 商用ソフトウェア (有料)**:
+
+| ソフト | 開発元 / 公式 | 主要モデル | 価格目安 (個人/Academic) | 特徴 |
+|------|------------|-----------|----------|------|
+| **WINSTEPS 5.11** [@linacre2024winsteps] | Linacre / [winsteps.com](https://www.winsteps.com) | Rasch (1PL), PCM, RSM | **個人 USD 149** (買切), 機関 USD 2,250 | Wright Map・infit/outfit・DIF・等化の **Rasch 業界標準**。JMLE+PROX 推定。**Ministep** (項目 25/人 75 制限) は無料 |
+| **FACETS 4.5** [@linacre2024facets] | Linacre | Many-Facet Rasch (MFRM) | 個人 USD 150 程度 | 評価者・課題・受験者を同時校正。**Cambridge English / IELTS Speaking 評定の標準**。**Minifac** (2,000 データ点制限) は無料 |
+| **Mplus 9** [@muthen2024mplus] | Muthén & Muthén / [statmodel.com](https://www.statmodel.com) | 1-4PL, GRM, GPCM, 多次元・ベイズ IRT, 測定不変性 | Base USD 350 (大学), Combination USD 695, Mixture USD 850 | **CFA/SEM/IRT を統一**、ベイズ MCMC + WLSMV 対応。Demo 版あり (変数数制限) |
+| **flexMIRT 3.6** [@cai2017flexmirt] | VPG / [vpgcentral.com](https://vpgcentral.com/software/flexmirt/) | 1/2/3PL, GRM, GPCM, NRM, Bifactor, 多次元, 多群 | Academic 年額 USD 199–249, Commercial USD 1,000+ | Bifactor・multilevel IRT が高速。2 週試用無料 |
+| **IRTPRO 6** [@cai2011irtpro] | VPG (旧 SSI) | 1/2/3PL, GRM, GPCM, NRM, 二次元, 複数群 | Academic 年額 **USD 399**, Standard USD 2,435 | 2020 以降サブスク化。**PARSCALE/MULTILOG/BILOG-MG** は事実上後継統合 |
+| **ACER ConQuest 5** [@adams2020conquest] | ACER / [shop.acer.org](https://shop.acer.org/conquest-5) | PCM, MFRM, 多次元 Rasch, 潜在回帰 | Standard AUD 600 (買切, $n \le 3{,}000$) | **PISA / TIMSS / PIAAC で使用**。R 連携 (`conquestr`, `TAM`, `sirt::R2conquest`) |
+| **Stata 19** [@stata2025irt] | StataCorp | `irt 1pl/2pl/3pl/grm/pcm/rsm/nrm` | Stata Standard ライセンス内 | Stata 14 以降標準搭載。MML 推定 |
+| **SAS PROC IRT** | SAS Institute | 1PL/2PL/3PL/GRM/GPCM, M2PL | SAS ライセンス内 | SAS 13.1 以降。`PROC MCMC` でベイズ拡張 |
+
+**(2) 無料・OSS**:
+
+| ソフト | 開発者 | 主要機能 | 状況 |
+|------|------|------|------|
+| **R packages** | Mair, Robitzsch, Chalmers ほか | `eRm` (CML), `TAM` (MML), `mirt` (MML, 多次元, ベイズ), `sirt`, `ltm`, `immer` (MFRM), `GDINA`, `mokken`, `difR`, `equate` | **CRAN 安定維持、開発最も活発**、本書の中心 |
+| **jMetrik 4.1.1** [@meyer2017jmetrik] | J. P. Meyer (UVa) / [itemanalysis.com/jmetrik](https://itemanalysis.com/jmetrik/) | CTT, Rasch, 1/2/3/4PL, GPCM (MMLE), 因子分析 | Java, クロス OS, GUI 完備。緩慢な更新だが現役 |
+| **Ministep / Minifac** | Linacre | WINSTEPS/FACETS の制限版 | 教育用には十分 |
+
+**(3) SLA / 言語テスティング業界の実態**:
+
+| 試験・調査 | 採用ソフト |
+|-----------|----------|
+| **TOEFL iBT (ETS)** | 内製 PARSCALE/MULTILOG 系 + ETS 内部 IRT エンジン |
+| **IELTS (Cambridge/IDP/British Council)** | **WINSTEPS + FACETS** (Speaking/Writing 評定者校正の標準) |
+| **Cambridge English / TEAP / IELTS Speaking** | **FACETS (MFRM) がデファクト** |
+| **JLPT (国際交流基金)** | BILOG-MG → 近年は R (`mirt`, `TAM`) ・SAS PROC IRT に移行傾向 |
+| **ACTFL OPI** | rating 校正に **FACETS** 使用例多数 |
+| **PISA / TIMSS / PIAAC** | **ACER ConQuest** (多次元 Rasch + plausible values が標準) |
+| **JALT / JLTA / 日本語教育学会** | **WINSTEPS が圧倒的多数**、近年 R (eRm/TAM/mirt) が増加傾向 |
+:::
+
+::: {.callout-note}
+**R で代替できる範囲と、できない範囲**
+
+**R で完全代替可**: 1/2/3PL、GRM、GPCM、RSM、PCM、多次元 IRT、Bifactor、DIF (`difR`, `lordif`)、等化 (`equate`, `plink`, `equateIRT`)、Mokken、CDM。**`mirt` + `TAM` + `eRm` + `GDINA` で flexMIRT/IRTPRO/Mplus IRT の主要機能をほぼ網羅** できます。
+
+**R に弱い領域**:
+
+1. **Mplus のベイズ多次元 IRT × CFA 統合**: 同一構文内で潜在変数モデルを SEM と IRT の両言語で書き換えられる柔軟性は Mplus 独自。R では `blavaan` + `brms` の使い分けが必要
+2. **flexMIRT の高速 multilevel bifactor EM**: 大規模データで `mirt::bfactor()` よりも高速・安定
+3. **Facets の rater equity 即時可視化**: `bias interaction analysis`・`fair averages` の即時出力は商用優位。R では `TAM::tam.mml.mfr()` + 自前可視化
+4. **ConQuest の plausible values**: 大規模国際調査の標準だが、R では `TAM::tam.pv()` で部分代替
+
+**R と商用ソフトの推定値の差異**:
+
+- **WINSTEPS** は **JMLE + PROX 補正** を使用する一方、`eRm` は **CML**、`TAM`/`mirt` は **MML**
+- 同じ Rasch モデルでも **logit 標準化後はほぼ一致** するが、JMLE は分散がやや大きく出る傾向 (Linacre 2022; @nicklinvitta2022)
+- **infit/outfit MSQ** は同一公式 (Wright-Masters 1982; Smith 1991) なので、`eRm::personfit()`/`itemfit()` と WINSTEPS は数値レベルで一致
+- 論文では **「WINSTEPS で報告された値を R (`eRm`) で再現した」** という相互検証が査読耐性を高めます ([@nicklinvitta2022])
+:::
+
+::: {.callout-warning}
+**商用ソフト → R 移行時の落とし穴**
+
+WINSTEPS や Facets で慣れた研究者が R に移行する際、以下の差異で結果が変わって混乱することがあります:
+
+| 観点 | WINSTEPS/Facets の慣行 | R の標準 |
+|------|---------------------|---------|
+| 符号の向き | `b` は **正で難しい** (項目側で定義) | `eRm::coef()` は **easiness β** (b の符号反転、`b = -coef()`)、`mirt::coef(IRTpars=TRUE)` は **困難度 b** (WINSTEPS と同じ向き) |
+| 尺度の中心 | 項目平均 = 0 を既定 | `mirt` は受験者平均 = 0 を既定。比較時は中心化を揃える |
+| 欠測の扱い | 既定で欠測のセルを除外 | `mirt::mirt()` は MML が欠測を自然に扱う (MAR 仮定下) |
+| カテゴリ番号 | 1 始まり許容 | `eRm::PCM/RSM` は **0 始まり必須**、`mirt` は元の番号で OK |
+| Wright Map | 内蔵で出力 | `WrightMap::wrightMap()` または `eRm::plotPImap()` を別途呼ぶ |
+| infit/outfit ZSTD | Wilson-Hilferty 変換 | `eRm`, `TAM` は同一公式で計算 (一致を確認可能) |
+
+**実務指針**: 同じデータを **WINSTEPS/Facets と R の両方で推定** し、(a) 項目困難度の相関 ($r > .99$ が目安)、(b) 標準誤差の幾何学的一致、(c) infit/outfit MSQ の同等性、を確認してから論文に進むのが安全です。両者で大きく異なる場合は、推定法の違い (CML/JMLE/MML) と中心化の違いをまず疑います。
+:::
 
 #### 手法選択のガイドライン
 
@@ -4624,7 +5777,7 @@ items_out <- if (!is.null(res_ord$names)) res_ord$names else colnames(SAT12)
 本分析ではランダム群分けを用いているため、DIF は偶然変動による小さな値（ほぼ全項目が A）になることが期待されます。実データでは理論的に DIF が予想される群変数（L1背景、性別、受験形式など）を用いてください。
 
 ```{r dif-effect-size-plot}
-#| fig-height: 5
+#| fig-height: 8
 #| fig-width: 9
 #| eval: true
 # 効果量プロット: 全項目の ΔR² を Jodoin & Gierl 分類境界とともに表示
@@ -4638,15 +5791,24 @@ ggplot(dif_plot_df, aes(x = reorder(Item, -deltaR2), y = deltaR2, fill = Class))
   geom_col(alpha = 0.8) +
   geom_hline(yintercept = 0.035, linetype = "dashed", color = "#ff7f00", linewidth = 0.5) +
   geom_hline(yintercept = 0.070, linetype = "dashed", color = "#e31a1c", linewidth = 0.5) +
-  annotate("text", x = 1, y = 0.038, label = "B threshold", color = "#ff7f00", hjust = 0, size = 3) +
-  annotate("text", x = 1, y = 0.073, label = "C threshold", color = "#e31a1c", hjust = 0, size = 3) +
   scale_fill_manual(values = c("A" = "#1b9e77", "B" = "#d95f02", "C" = "#d62728")) +
+  scale_x_discrete(labels = \(x) stringr::str_replace(x, "Item\\.", "Item ")) +
+  scale_y_continuous(
+    breaks = c(0, 0.035, 0.070),
+    labels = c("0", ".035", ".070"),
+    expand = expansion(mult = c(0, 0.08))
+  ) +
   coord_flip() +
   labs(
     title = "DIF Effect Size by Item (ΔR²)",
     subtitle = "Jodoin & Gierl classification: A (negligible), B (moderate), C (large)",
     x = "Item",
-    y = "ΔR²"
+    y = "ΔR²",
+    caption = "Dashed lines mark the B (.035) and C (.070) review thresholds."
+  ) +
+  theme(
+    axis.text.y = element_text(size = 8),
+    plot.caption = element_text(size = 9, hjust = 0)
   )
 ```
 
@@ -4680,9 +5842,11 @@ mg_constrained <- try(
 )
 
 if (!inherits(mg_constrained, "try-error")) {
-  # DIF 検定（尤度比法: 各項目の全パラメータを順次解放して検定）
+  # DIF 検定（尤度比法: 各項目の傾き a1 と閾値 d1..dK を順次解放して検定）
+  dif_pars <- c("a1", paste0("d", seq_len(length(sort(unique(as.integer(unlist(SAT12_dif))))) - 1)))
   dif_results <- try(
-    DIF(mg_constrained, c('a1'), scheme = 'drop_sequential', seq_stat = 'BIC'),
+    DIF(mg_constrained, dif_pars, scheme = 'drop_sequential', seq_stat = 'BIC',
+        verbose = FALSE),
     silent = TRUE
   )
 
@@ -4764,6 +5928,128 @@ ggplot(df_conv, aes(x = Total, y = T)) +
 #### 発展：plink による等化（Stocking–Lord 法）
 
 異なるテストフォーム間で共通項目がある場合、`plink` パッケージで Stocking–Lord 法による等化が可能です。手順は (1) 群別に GRM を推定、(2) 共通項目を指定、(3) `plink()` で A/B 定数を算出、(4) パラメータ変換です。アンカー汚染（DIF 項目をアンカーに含めること）を避けるため、事前に DIF フリーな項目を同定しておくことが重要です[@stocking1983; @haebara1980]。
+
+## 章間統合: 第 12 章と本書他章との接続
+
+第 12 章は本書全体の中で **測定理論パートを締めくくる役割**を担います。第 5-7 章 (回帰系) で学んだロジスティック回帰と GLMM、第 9 章 (因子分析・SEM) の潜在変数モデル、第 10 章 (G theory) の分散成分分析、第 11 章 (Rasch/IRT 基礎) を統合し、英語教育研究で頻出する複雑な評価データ構造に対する実装解を提供します。
+
+### 本書全体での位置づけ家系図
+
+```{mermaid}
+%%| label: fig-ch12-cross-chapter-tree
+%%| fig-cap: "第 12 章を本書全体に位置付ける家系図。GLM/GLMM (第 5-6 章) を出発点とし、Rasch (第 11 章) を経て本章の 5 つの拡張モデルへ到達。各拡張は SEM・G theory・ベイズ推定 (第 9-7 章) と双対関係を持つ。"
+flowchart TD
+    GLM["第 5 章 GLM<br/>logistic regression"]
+    GLMM["第 6 章 GLMM<br/>(1|person) + (1|item)"]
+    SEM["第 9 章 因子分析・SEM<br/>lavaan, CFA"]
+    G["第 10 章 G theory<br/>分散成分 σ²_p, σ²_r"]
+    BAYES["第 7 章 ベイズ推定<br/>brms, Stan"]
+    R11["第 11 章 Rasch<br/>θ - b<br/>2値 + 1次元 + 1ファセット"]
+
+    GLM --> R11
+    GLMM --> R11
+
+    R11 --> CH12["第 12 章 拡張ラッシュモデル"]
+
+    CH12 --> ORD["GRM/PCM/RSM/GPCM<br/>順序応答"]
+    CH12 --> MFRM["MFRM<br/>+ 評価者ファセット"]
+    CH12 --> MIRT["MIRT/Bifactor<br/>+ 多次元"]
+    CH12 --> MOK["Mokken<br/>non-parametric"]
+    CH12 --> TST["Testlet<br/>+ ランダム効果"]
+
+    SEM <-.->|"binary CFA<br/>(tetrachoric)<br/>= MIRT"| MIRT
+    SEM <-.->|"hierarchical CFA<br/>= Bifactor IRT"| MIRT
+    G <-.->|"σ²_r 集計 vs<br/>α_j 個別"| MFRM
+    BAYES <-.->|"brms (1|rater)<br/>= Bayesian MFRM"| MFRM
+    BAYES <-.->|"Uto 2020/2023<br/>動的 MFRM"| MFRM
+    GLMM <-.->|"random item IRT<br/>(Dunn 2024)"| ORD
+    GLMM <-.->|"nested random effect<br/>(1|item:testlet)"| TST
+
+    style R11 fill:#e7f3ff,stroke:#0066cc,stroke-width:2px
+    style CH12 fill:#fff3e0,stroke:#cc6600,stroke-width:3px
+    style ORD fill:#fff3e0
+    style MFRM fill:#e8f5e9
+    style MIRT fill:#fce4ec
+    style MOK fill:#f3e5f5
+    style TST fill:#fff8e1
+```
+
+### 章ごとの具体的な接続
+
+#### 第 5 章 GLM・第 6 章 GLMM との接続
+
+IRT は本質的に **「2 値/順序応答に対するロジスティック (混合) 回帰」** です。本書の流れで言えば:
+
+| 第 5/6 章の概念 | 第 11/12 章への対応 |
+|:---|:---|
+| `glm(y ~ 0 + item, family = binomial)` の項目固定効果 | Rasch 項目困難度 $b_i$ |
+| `glmer(y ~ (1|person) + (1|item), family = binomial)` の交差ランダム効果 | Rasch (random item IRT, RPRI; @dunn2024) |
+| GLMM のリンク関数 (logit) | IRT の logistic 関数 (1PL/2PL) |
+| GLMM のリンク関数 (probit) | IRT の正規 ogive モデル |
+| 順序ロジスティック GLMM (`brms::cumulative()`) | GRM (Samejima 1969) |
+| 隣接ロジスティック GLMM | PCM (Masters 1982) |
+
+**Explanatory IRT** [@deboeck2004] は、GLMM のように項目特性 (語彙頻度、難易度、形式) を固定効果に追加した IRT で、第 6 章の混合効果モデルの自然な延長です。
+
+#### 第 7 章 ベイズ推定との接続
+
+第 7 章の brms による Bayesian IRT 実装と、本章の頻度論的 IRT は **同じモデルの異なる推定枠組み**です:
+
+| 本章のモデル | brms 実装 (第 7 章) |
+|:---|:---|
+| Rasch (1PL) | `brm(correct ~ 0 + (1|person) + (1|item), family = bernoulli())` |
+| 2PL | `brm(bf(correct ~ a*theta - delta, nl = TRUE) + nlf(...))` |
+| GRM | `brm(rating ~ ..., family = cumulative())` |
+| PCM | `brm(rating ~ ..., family = acat())` |
+| MFRM | `brm(rating ~ ... + (1|rater), family = cumulative())` |
+| MIRT | `brm(... , family = bernoulli())` で複数 person random effect |
+
+ベイズ実装の利点は (a) **小サンプル時の安定性** (事前分布による正則化)、(b) **動的 MFRM** (Uto 2020/2023 の rater drift)、(c) **事後分布全体での不確実性評価**。本章で扱った頻度論的推定が困難な場合 (3PL の境界解、MFRM の評価者数 < 5 など)、第 7 章のベイズ実装が有力な代替となります。
+
+#### 第 9 章 因子分析・SEM との接続: IRT = CFA の二重構造
+
+**MIRT と確認的因子分析 (CFA) は数学的に等価**です:
+
+- 2 値項目の MIRT (M2PL): 識別力 $a_i$ → CFA の因子負荷 $\lambda_i$ (tetrachoric correlation matrix の CFA に対応)
+- 順序項目の MIRT (M-GRM): polychoric correlation matrix の CFA に対応
+- **Bifactor IRT (本章)** = **階層 CFA** (一般因子 + 直交特殊因子)
+
+| IRT の観点 | CFA の観点 |
+|:---|:---|
+| 識別力 $a_i$ | 因子負荷 $\lambda_i$ |
+| 切片 $d_i$ | 切片 $\nu_i$ |
+| 能力 $\theta$ | 潜在因子 $\eta$ |
+| 項目情報量 $I_i(\theta)$ | $(\partial P_i / \partial \theta)^2 / [P_i(1-P_i)]$ (CFA の reliability に相当) |
+| local independence | uncorrelated residuals |
+
+第 9 章で `lavaan::cfa(..., ordered = ...)` を使った CFA は、内部的に WLSMV 推定で polychoric correlation を扱い、本章の `mirt::mirt(..., itemtype = "graded")` と同じ問題を解いています。**「測定モデル」を SEM の言葉で語るか、IRT の言葉で語るかの違い**であり、ベイズ実装 (第 7 章) ではこの境界がさらに溶けます (`blavaan` で SEM、`brms` で IRT、いずれも同じ Stan で動く)。
+
+#### 第 10 章 G theory との接続: 集計 vs 個別の双対性
+
+(MFRM 節の callout-important「MFRM と第 10 章 G theory の双対性: 同じ問題を異なる角度から解く」で詳述済み) MFRM と G theory は同じ評価者効果データを扱うが、**G theory は分散成分 ($\sigma^2_r$) で集計**、**MFRM は個別パラメータ ($\alpha_j$) で個別補正**するという双対関係。両者を併用すると:
+
+1. G theory の D study で「何人の評価者・課題が必要か」を設計判断
+2. MFRM で「どの評価者が厳しいか」を個別特定
+3. 公正スコア (fair average) で個別評価者効果を補正した受験者能力を発行
+
+#### 第 11 章 Rasch との接続: 拡張パスの整理
+
+(章冒頭の樹形図 @fig-rasch-extensions-tree で詳述済み) 第 11 章の基本 Rasch ($\theta - b$) を起点に、応答型・ファセット数・次元数の 3 軸で本章の 5 拡張へ分岐する整理。
+
+### 次に読む章
+
+本章の読了後は、研究関心に応じて以下の章へ進むのが効率的です:
+
+| 関心 | 推奨章 | 接続点 |
+|:---|:---|:---|
+| **Rasch 基礎の再確認** | **第 11 章 Rasch/IRT** | 1PL モデル、Wright Map、infit/outfit、CML/MML 推定の基礎 |
+| **小サンプル・複雑モデルでの安定推定** | **第 7 章 ベイズ推定** | brms による IRT 実装 (本章で学んだ全モデル) |
+| **多次元構造の精緻化 (因子間相関、階層因子)** | **第 9 章 因子分析・SEM** | MIRT ↔ CFA の双対性、Bifactor IRT ↔ hierarchical CFA |
+| **集計レベル評価者効果と D study 設計** | **第 10 章 G theory** | MFRM の補完。両者の双対性を理解 |
+| **ロジスティック GLMM の基礎再確認** | **第 6 章 GLMM** | Rasch = `glmer(... family = binomial)` の特殊形 |
+| **縦断的 IRT・経年比較**| **第 13 章 時系列分析** | 等化された logit 尺度の経時変化、CEFR 維持 |
+| **メタ分析による過去 IRT 研究の統合** | **第 17 章 メタ分析** | 効果量変換、出版バイアス分析 |
+| **介入研究 (DID, propensity score)** | **第 18 章 因果推論** | テスト得点を outcome とした介入効果評価 |
 
 ## まとめ
 
@@ -4962,6 +6248,8 @@ mokken::aisp(SAT12_binary, lowerbound = 0.3) # 自動項目選択
 mokken::check.monotonicity(SAT12_binary)     # 単調性チェック
 ```
 
+**ここまでお疲れさまでした**。
+
 ## 参考文献
 
 ::: {#refs}
@@ -4977,3 +6265,42 @@ mokken::check.monotonicity(SAT12_binary)     # 単調性チェック
 - [TAM: Reference manual (PDF)](https://cran.r-project.org/web/packages/TAM/TAM.pdf)
 - [mokken: CRAN package page](https://cran.r-project.org/package=mokken)
 - [mokken: Reference manual (PDF)](https://cran.r-project.org/web/packages/mokken/mokken.pdf)
+- [Winsteps: Rasch measurement software](https://www.winsteps.com/)
+- [Facets: Many-facet Rasch measurement software](https://www.winsteps.com/facets.htm)
+- [ACER ConQuest](https://www.acer.org/au/conquest)
+- [flexMIRT](https://vpgcentral.com/software/flexmirt/)
+- [SSI Live / IRTPRO](https://ssilive.com/)
+- [Xcalibre](https://assess.com/xcalibre/)
+- [FastTest](https://assess.com/fasttest/)
+- [SAS PROC IRT documentation](https://support.sas.com/documentation/onlinedoc/stat/131/irt.pdf)
+- [Stata IRT features](https://www.stata.com/features/irt/)
+
+## セッション情報
+
+```{r}
+#| eval: true
+#| label: session-info
+sessionInfo()
+```
+
+```{r}
+#| eval: true
+#| label: irt-extension-package-versions
+#| message: false
+
+# 第 12 章で使用する主要パッケージのバージョン記録 (再現性のため)
+purrr::map_chr(
+  c("mirt", "TAM", "sirt", "mokken", "eRm", "difR", "equateIRT"),
+  ~ tryCatch(as.character(packageVersion(.x)),
+             error = function(e) "未インストール")
+) |>
+  setNames(c("mirt", "TAM", "sirt", "mokken", "eRm", "difR", "equateIRT")) |>
+  tibble::enframe(name = "Package", value = "Version") |>
+  knitr::kable(caption = "第 12 章 拡張ラッシュモデル関連パッケージのバージョン (論文 Method への記載推奨)")
+```
+
+::: {.callout-tip}
+#### `renv` による厳格な再現性管理
+
+特に Mokken の `aisp()` や `check.iio()` は version 間で出力構造が変わるため、**`renv::init()` + `renv::snapshot()` で `renv.lock` を生成し、GitHub/OSF に公開**することを推奨します。`renv::restore()` で他者が同一バージョンを復元でき、本章のすべての分析が完全再現可能になります。
+:::

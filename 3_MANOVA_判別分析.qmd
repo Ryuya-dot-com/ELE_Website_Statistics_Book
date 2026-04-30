@@ -20,7 +20,7 @@ required_packages <- c(
   "emmeans",
   "forcats",
   "heplots",
-  "pacman",
+  "MASS",
   "patchwork",
   "purrr",
   "rlang",
@@ -36,7 +36,7 @@ if (length(missing_packages) > 0) {
 ```
 
 
-## セットアップ
+## セットアップ {.unnumbered}
 
 ここでは、本章で必要なパッケージを一括で読み込みます。`heplots` はMANOVAのH行列とE行列を楕円として可視化するためのパッケージ、`candisc` は正準判別分析のプロットに使用します。`WebPower` はMANOVAの検定力分析に使います。
 
@@ -53,27 +53,36 @@ if (length(missing_packages) > 0) {
 #| message: false
 #| warning: false
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
 Sys.setenv(RGL_USE_NULL = TRUE)
 
-suppressWarnings(pacman::p_load(
-  tidyverse,
-  MASS,
-  MVN,
-  biotools,
-  effectsize,
-  emmeans,
-  GGally,
-  broom,
-  patchwork,
-  heplots,
-  candisc,
-  WebPower
-))
+packages_to_load <- c(
+  "tidyverse",
+  "MASS",
+  "MVN",
+  "biotools",
+  "effectsize",
+  "emmeans",
+  "GGally",
+  "broom",
+  "patchwork",
+  "heplots",
+  "candisc",
+  "WebPower"
+)
+
+missing_packages <- packages_to_load[!vapply(packages_to_load, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing_packages) > 0) {
+  stop(
+    "Install the following packages before rendering this chapter: ",
+    paste(missing_packages, collapse = ", ")
+  )
+}
+
+invisible(lapply(packages_to_load, library, character.only = TRUE))
 
 options(rgl.useNULL = TRUE)
 set.seed(2024)
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+theme_set(theme_bw(base_size = 12, base_family = "sans") +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -93,17 +102,20 @@ theme_update(legend.position = "bottom")
 
 ```
 
-## はじめに
+## はじめに {.unnumbered}
 
-本章は、**英語語彙学習研究**を想定して、2つの目的変数（MANOVA の文脈では従属変数 [DV] とも呼ばれます）（`Recall`, `Recognition`）を同時に扱う **MANOVA（多変量分散分析）** と、群の分離構造を評価する **判別分析（DDA / LDA / QDA）** を、「実装できる」だけでなく「論文結果節として説明できる」水準まで整理します。
+本章へようこそ。ここでは **英語語彙学習研究**を想定して、2つの目的変数（MANOVA の文脈では従属変数 [DV] とも呼ばれます）（`Recall`, `Recognition`）を同時に扱う **MANOVA（多変量分散分析）** と、群の分離構造を評価する **判別分析** を、「実装できる」だけでなく「論文結果節として説明できる」水準まで整理します。ここでの DDA（descriptive discriminant analysis）は追跡分析の**考え方**であり、実装としては主に LDA（linear discriminant analysis）を使い、QDA（quadratic discriminant analysis）は分類目的の感度分析として扱います。
 
 回帰分析の既習者向けに、以下の対応関係を明示して進めます。
 
 - **単回帰・重回帰**: 1つの目的変数に対する線形モデル
 - **MANOVA**: 複数の目的変数を**同時に**扱う多変量線形モデル
-- **判別分析（DDA）**: MANOVAの追跡法として、群分離の方向と構造を明らかにする
+- **DDA（記述的判別分析）**: MANOVAの追跡枠組みとして、群分離の方向と構造を明らかにする
+- **LDA / QDA**: DDAを実装するための分類モデル。LDAは共通共分散、QDAは群別共分散を仮定する
 
 ### この章の到達目標
+
+以下は **本章を一通り咀嚼したあとの最終ゴール**です。一読目では「**MANOVA は複数 DV の同時検定**」「**Pillai と DDA が主役**」の 2 点だけ掴めれば十分で、残りは必要に応じて戻ってくる読み方を推奨します。
 
 - MANOVAの前提を、設計上の論点と統計検定の論点に分けて説明できる。
 - H行列とE行列の意味を直感的に説明し、HEプロットを読むことができる。
@@ -117,7 +129,7 @@ theme_update(legend.position = "bottom")
 
 目的変数が複数ある場合、「DVごとにANOVAを繰り返す」アプローチは不適切です。このアプローチには2つの根本的な問題があります。
 
-1. **Type Iエラーの膨張**: DV が $p$ 個あれば、各 $\alpha = .05$ で検定を繰り返すと、族全体での偽陽性率は $1 - (1 - .05)^p$ に膨張します。$p = 2$ でも 9.75%、$p = 5$ なら 22.6% に達します。Smith et al. [-@smith2020] は英才教育研究の56本を体系的にレビューし、ほぼすべての論文がMANOVA後に単変量ANOVAのみで追跡しており、Type Iエラー率が最大76%に達しうるケースがあったと報告しています。
+1. **Type Iエラーの膨張**: DV が $p$ 個あれば、各 $\alpha = .05$ で検定を繰り返すと、族全体での偽陽性率の **上限**は $1 - (1 - .05)^p$ に達します(これは **DV 同士が独立な場合**の値で、$p = 2$ なら 9.75%、$p = 5$ なら 22.6%)。実際の偽陽性率は DV 間相関の構造に依存し、相関が高いほど低くなりますが、依然として無補正よりは膨張します。Smith et al. [-@smith2020] は英才教育研究の 56 本を体系的にレビューし、ほぼすべての論文が MANOVA 後に単変量 ANOVA のみで追跡しており、**最悪ケースでは Type I エラー率が 76% に達しうる**シミュレーション結果を報告しています(76% は特定条件下のシミュレーション値であり、すべての研究で観測される率ではない点に注意)。
 
 2. **DV間の相関構造の無視**: 個別ANOVAは各DVを独立に扱うため、DV間の共変動パターンに埋め込まれた群差を検出できません。MANOVAが有意でも、すべてのANOVAが非有意になるケースは珍しくありません。Warne [-@warne2014] はMANOVAの58本の実証論文をレビューし、「MANOVAを実施しながらも追跡分析で多変量構造を適切に考慮した論文はほとんどない」と指摘しています。
 
@@ -129,8 +141,8 @@ MANOVAは単にANOVAを同時に実行するものではありません。MANOVA
 
 | DV間相関の範囲 | MANOVAへの適合性 | 推奨 |
 |:---:|:---|:---|
-| .00 -- .30 | DVがほぼ独立。MANOVAの付加価値は小さい | 個別ANOVAでも可（Bonferroni補正付き） |
-| **.30 -- .70** | **理想的。MANOVAが最も有効に機能する** | **MANOVA推奨** |
+| .00 -- .30 | DVがほぼ独立。MANOVAの付加価値は小さい | 研究質問がDV別なら補正付き個別ANOVAも候補 |
+| **.30 -- .70** | **経験的に扱いやすい範囲。MANOVAの利点が出やすい** | **MANOVA推奨** |
 | .70 以上 | 多重共線性の懸念。推定が不安定になりうる | DVの統合・再検討を検討 |
 
 : DV間相関とMANOVAの適合性 {.striped}
@@ -143,24 +155,75 @@ $$
 \mathbf{Y} = \mathbf{X}\mathbf{B} + \mathbf{E}
 $$
 
-と書けます。ここで、$\mathbf{Y}$ は $n \times p$ の目的変数行列（$p$ 個のDVを列に持つ）、$\mathbf{X}$ は計画行列、$\mathbf{B}$ は係数行列、$\mathbf{E}$ は誤差行列です。つまり「回帰式を同時に推定し、**誤差の共分散構造も含めて**効果を検定する」という理解が、回帰既習者には最も自然です [@warne2014; @huberty2006]。R の公式 docs でも `manova()` は `aov()` を呼び出して `manova` クラスを付ける設計だと説明されており、**モデル適合そのものより、要約の読み方が多変量化されている**と捉えると理解しやすくなります [@r_manova_doc]。
+と書けます。ここで、$\mathbf{Y}$ は $n \times p$ の目的変数行列（$p$ 個のDVを列に持つ）、$\mathbf{X}$ は計画行列、$\mathbf{B}$ は係数行列、$\mathbf{E}$ は誤差行列です。つまり「回帰式を同時に推定し、**誤差の共分散構造も含めて**効果を検定する」という理解が、回帰既習者には最も自然です [@warne2014; @huberty2006]。R の公式ドキュメントでも `manova()` は `aov()` を呼び出して `manova` クラスを付ける設計だと説明されており、**モデル適合そのものより、要約の読み方が多変量化されている**と捉えると理解しやすくなります [@r_manova_doc]。
 
 ### MANOVAとSEMの接続
 
 ここで一歩進めて考えると、MANOVA は **SEM と対立する方法**というより、**観測変数ベースの簡潔な多変量モデル**として理解すると整理しやすくなります。Cole et al. [-@cole1993] は、群間比較の問題を「観測変数の平均ベクトルを比べるか」「潜在変数を含む変数システム全体を比べるか」という連続体として捉えています。Rosseel [-@rosseel2012] の `lavaan` 論文に沿って言えば、SEM はこの枠組みをさらに拡張して、**測定誤差・潜在変数・平均構造・群間等値制約**まで扱えるようにしたものです。
 
-実務的には、次のように考えると迷いにくくなります。
+#### MANOVA = 飽和(saturated)モデルとしての SEM
+
+実は MANOVA と多母集団 SEM は、**特殊条件下で数学的に等価**になります。具体的には:
+
+1. DV を**観測変数のまま**(潜在因子に置き換えない)
+2. 平均構造を含み(`meanstructure = TRUE`)、各群で平均ベクトルを自由推定
+3. 共分散行列を**全群等値**(または等値制約なし)に設定
+4. すべての観測変数間の共分散を**飽和**(saturated)に推定
+
+このとき、多母集団 SEM の **likelihood ratio test (LRT)** は MANOVA の **Wilks' Λ 検定**と漸近的に同じ p 値を返します [@cole1993]。つまり MANOVA は **「観測変数ベースの飽和多群 SEM」の特別な場合**として位置付けられます。
+
+#### `lavaan` で MANOVA と等価な多群 SEM を組む
+
+```r
+library(lavaan)
+
+# 平均構造を持つ飽和多群 SEM(MANOVA と等価)
+manova_as_sem <- '
+  Recall ~~ Recognition       # DV 間共分散
+  Recall ~ 1                  # Recall の平均
+  Recognition ~ 1             # Recognition の平均
+'
+
+fit_unconstrained <- sem(manova_as_sem, data = simulated,
+                         group = "Group", meanstructure = TRUE)
+
+# 群間で平均ベクトルを等値に制約 → 帰無仮説モデル
+fit_means_equal <- sem(manova_as_sem, data = simulated,
+                       group = "Group", meanstructure = TRUE,
+                       group.equal = "intercepts")
+
+# LRT は MANOVA の Wilks' Λ 検定と漸近的に同等
+anova(fit_means_equal, fit_unconstrained)
+```
+
+この等価性は理論的には重要ですが、**実用的には MANOVA の方がシンプル**です。SEM の本領は次のような状況で発揮されます。
+
+#### SEM が MANOVA を超える 4 つの場面
+
+1. **DV が複数項目の合成スコア**:`Recall` が 15 項目、`Recognition` が 20 項目の合計得点なら、各項目を指標として **潜在因子 (latent factor)** を作ると測定誤差を分離できます。MANOVA では合成スコアの信頼性を 1 と仮定しているのに対し、SEM では信頼性に応じた減衰補正(disattenuation)が入ります
+2. **測定不変性 (measurement invariance) の検証**:群間で「同じ構成概念を同じように測れているか」を `configural → metric → scalar` の順に検定。**スカラー不変性が成立しない限り、潜在平均の比較は意味を失います**[@vandenberg2000measurement]。MANOVA は測定不変性を仮定したまま走らせてしまう点に注意
+3. **媒介・調整変数を含む理論モデル**:「指導法 → 認知負荷 → テスト得点」のような媒介経路、または交互作用を含む構造モデル。MANOVA は単純な群差検定にとどまる
+4. **欠測 + ML 推定**:SEM は **完全情報最尤推定 (FIML)** で MAR(missing at random)欠測を扱えます。MANOVA はリストワイズ削除が基本なので、欠測が多い縦断データで力を発揮しにくい
+
+実務的な使い分けの目安は次の通りです。
 
 | 問い | MANOVA が向く場面 | SEM が向く場面 |
 |:---|:---|:---|
 | 目的変数は何か | 観測された得点そのものを比較したい | 潜在構成概念を比較したい |
 | 誤差の扱い | 測定誤差は明示的には分離しない | 測定誤差をモデル化できる |
+| 群間等値性 | 暗黙に仮定する | 段階的に検定する(measurement invariance) |
+| 欠測の扱い | リストワイズ削除が基本 | FIML で MAR 欠測に対応 |
 | 研究目的 | 群差の omnibus test と追跡 | 測定モデル・媒介・群間等値性まで含めた理論モデル |
 | 典型例 | `Recall` と `Recognition` の平均ベクトル差 | 「語彙知識」や「処理効率」などの潜在因子の群差 |
 
-この章のデータのように、**少数の観測得点をそのまま目的変数として比較する**なら MANOVA が自然です。一方、もし `Recall` と `Recognition` がそれぞれ複数項目から成る下位尺度で、測定不変性や潜在平均差まで問題にしたいなら、**多母集団 SEM** の方が適切です [@cole1993; @rosseel2012]。要するに、`観測得点の多変量比較` なら MANOVA、`潜在構成概念の比較` まで踏み込むなら SEM です。
+この章のデータのように、**少数の観測得点をそのまま目的変数として比較する**なら MANOVA が自然です。一方、もし `Recall` と `Recognition` がそれぞれ複数項目から成る下位尺度で、測定不変性や潜在平均差まで問題にしたいなら、**多母集団 SEM** の方が適切です [@cole1993; @rosseel2012; @vandenberg2000measurement]。詳細な SEM の扱いは第 9 章「潜在変数モデリングと次元縮約」を参照してください。
 
 ### H行列とE行列: MANOVAの核心
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本サブセクション(H/E 行列・4 つの多変量統計量・固有値分解)は MANOVA の数学的基盤ですが、**初読では「Pillai を読めば足りる」**だけ覚えれば、@sec-manova-execution(MANOVAの実行)以降を読み進められます。後で戻ってきても理解できる構成にしています。
+:::
 
 MANOVAを理解する鍵は、**H行列**（Hypothesis SSCP）と**E行列**（Error SSCP）の関係です [@huberty2006; @psu505_lesson08]。これは、単変量ANOVAにおける群間平方和（$SS_B$）と群内平方和（$SS_W$）の多変量版です。Warne [-@warne2014] はMANOVAの理解において「H行列とE行列の比が全統計量の基盤であることを把握することが最も重要」と述べています。
 
@@ -168,11 +231,11 @@ MANOVAを理解する鍵は、**H行列**（Hypothesis SSCP）と**E行列**（E
 |:---:|:---:|:---|
 | $SS_B$（群間平方和） | **H行列**（Hypothesis SSCP） | 群平均の散らばり（効果の大きさ） |
 | $SS_W$（群内平方和） | **E行列**（Error SSCP） | 群内のばらつき（ノイズ） |
-| $F = SS_B / SS_W$ | $\mathbf{H}\mathbf{E}^{-1}$ の固有値 | 効果がノイズに比べてどれだけ大きいか |
+| $F = MS_B / MS_W$ | $\mathbf{H}\mathbf{E}^{-1}$ の固有値 | 効果がノイズに比べてどれだけ大きいか |
 
 : ANOVAとMANOVAの対応関係 {.striped}
 
-単変量ANOVAでは $F$ 値が1つだけですが、MANOVAでは $\mathbf{H}\mathbf{E}^{-1}$ の**固有値**が $s = \min(p, k-1)$ 個（$p$ = DV数、$k$ = 群数）得られます。各固有値 $\lambda_i$ は、多変量空間における群分離の「次元」ごとの大きさを表します。
+単変量ANOVAでは $F$ 値が1つだけですが、MANOVAでは $\mathbf{H}\mathbf{E}^{-1}$ の**固有値**が $s = \min(p, h)$ 個($p$ = DV 数、$h$ = その効果の仮説自由度)得られます。1 要因 $k$ 群の主効果なら $h = k - 1$ なので $s = \min(p, k-1)$ になりますが、**交互作用や複雑な対比では $h$ がそのコントラストの自由度として変わる**ため、より一般的には $h$ で書きます。各固有値 $\lambda_i$ は、多変量空間における群分離の「次元」ごとの大きさを表します。
 
 #### 固有値の直感的理解
 
@@ -198,15 +261,15 @@ MANOVAを理解する鍵は、**H行列**（Hypothesis SSCP）と**E行列**（E
 Olson [-@olson1974] は6つの多変量検定統計量をモンテカルロ・シミュレーションで比較し、以下の実務的な結論を導いています。
 
 - **正規性違反のみ**の場合: すべての統計量が比較的頑健であり、結果は大きく変わらない。
-- **共分散行列の不等質性（等共分散の違反）**: Pillai のトレースが最も頑健。Wilks や Hotelling-Lawley は保守的になりすぎるか自由主義的になるリスクがある。
+- **共分散行列の不等質性（等共分散の違反）**: Pillai のトレースが最も頑健。Wilks や Hotelling-Lawley は保守的になりすぎるか、リベラル（第I種過誤率が高い状態）になるリスクがある。
 - **不等質性 + サンプルサイズの不均衡**: 最も実務的に危険な条件。このとき、Pillai のみが名義 $\alpha$ 水準を比較的よく維持する。
-- **Roy の最大根**: F近似が上界に過ぎないため、すべての条件で最も Type I エラー率が高く、群数が多い場合やDV数が多い場合に特に問題が大きい。
+- **Roy の最大根**: F 近似は **F 値の下限(p 値の上限)** を与える形になっており、実際の Type I エラー率は近似の良し悪しに依存します。一般にすべての条件で最も Type I エラー率が高く、群数や DV 数が多い場合に特に問題が大きくなります。
 
-Penn State STAT 505 [-@psu505_lesson08] も同様に、実務でまず確認すべきはPillaiであると明記しています。R の `summary.manova()` のデフォルトがPillaiであるのもこの根拠に基づいています [@r_summary_manova]。加えて公式 docs は、**目的変数が非常に高く相関するとランク判定が不安定になりうる**ため、`tol` で実効ランクを制御する設計になっていることも明記しています [@r_summary_manova]。これは、本章で DV 間相関を先に確認する理由とも整合しています。
+Penn State STAT 505 [-@psu505_lesson08] も同様に、実務でまず確認すべきはPillaiであると明記しています。R の `summary.manova()` のデフォルトがPillaiであるのもこの根拠に基づいています [@r_summary_manova]。加えて公式ドキュメントは、**目的変数が非常に高く相関するとランク判定が不安定になりうる**ため、`tol` で実効ランクを制御する設計になっていることも明記しています [@r_summary_manova]。これは、本章で DV 間相関を先に確認する理由とも整合しています。
 
 #### 実務上の結論: Roy's Largest Root は主報告にしない
 
-Roy の最大根は最大の固有値のみに基づくため、多変量的な群差の全体像を反映しません。さらに、F近似が上界に過ぎないため、Type Iエラーが膨張しやすいことが知られています。Olson [-@olson1974] のモンテカルロ研究では、正規性・等共分散の両方が違反し、かつ群サイズが不均衡な条件で、Roy のType Iエラー率が名義水準の2倍以上に達する場合があることが示されています。本章では **Pillai を主報告**とし、他の統計量は一貫性確認のために併記します。
+Roy の最大根は最大の固有値のみに基づくため、多変量的な群差の全体像を反映しません。さらに、F 近似が **F 値の下限**(p 値の上限)を与える形になっているため、実際の有意性に対して保守的にならず Type I エラーが膨張しやすいことが知られています。Olson [-@olson1974] のモンテカルロ研究では、正規性・等共分散の両方が違反し、かつ群サイズが不均衡な条件で、Roy のType Iエラー率が名義水準の2倍以上に達する場合があることが示されています。本章では **Pillai を主報告**とし、他の統計量は一貫性確認のために併記します。
 
 ### MANOVAとDDA（判別分析）の関係
 
@@ -235,7 +298,19 @@ MANOVAと判別分析は、同じ数学的構造の「表と裏」です [@finch
 - 同一参加者を複数時点で追跡したデータ（within-subjects）に、そのまま本章のMANOVA/判別分析を当てると、独立性仮定を損ねる可能性があります。
 - 反復測定デザインでは、反復測定MANOVAまたは混合効果モデルを優先してください。
 
+::: {.callout-important}
+### `Time` という変数名を使う場面
+
+`Time` は、同じ参加者を複数時点で測る場合や、系列上の観測位置を表す場合に使う方が混乱が少なくなります。本章のような between-subjects MANOVA では、直後/遅延テストのような時点名を群要因として置くのではなく、`LearningMode`、`PracticeFormat`、`FeedbackTiming` など、各参加者が1条件だけ経験する実験条件名を使います。
+:::
+
 ### 統計チュートリアル文献との接続
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本サブセクション以下の文献レビューは、本章の方針(Pillai 主、DDA 主、Sherry & Henson 構造係数 .30 基準など)が**現代の文献的合意**にどう支えられているかをまとめたものです。**初読では飛ばし**、論文を書くときに **どの文献を引用するか**を確認するために戻ってきてください。
+:::
+
 
 ### 主要ソースの要点
 
@@ -272,7 +347,7 @@ MANOVAと判別分析は、同じ数学的構造の「表と裏」です [@finch
 
 - **Tabachnick & Fidell [-@tabachnick2019]**: 各群のN > DV数が最低条件。構造係数 $|r_s| \geq .30$ を実質的寄与の閾値とする。DV間相関の適正範囲は .30-.70。
 - **Stevens [-@stevens2009]**: 社会科学向け。検定力の観点から、各群20名以上を推奨。効果量小（$f = .10$）の検出には各群50名以上が必要。
-- **Hahs-Vaughn [-@hahs2017]**: MANOVA の前提条件を段階的に解説。入門的な判断フローチャートを提供。
+- **Hahs-Vaughn [-@hahs2017]**: MANOVA の前提条件を段階的に解説。段階的な判断フローチャートを提供。
 
 ### 分析の全体像
 
@@ -286,23 +361,23 @@ MANOVAと判別分析は、同じ数学的構造の「表と裏」です [@finch
 
 この章で使う主要関数は、R の公式ドキュメントや各パッケージの公式マニュアルで次のように位置づけられています。ここを理解しておくと、「なぜこの関数をこの場面で使うのか」がかなり明確になります。
 
-| 関数 | 公式 docs で重要な点 | 本章での使い方 |
+| 関数 | 公式ドキュメントで重要な点 | 本章での使い方 |
 |:---|:---|:---|
 | `stats::manova()` | `aov()` を呼び出して `manova` クラスを付与し、**多変量用の要約メソッド**で読む設計 [@r_manova_doc] | 多変量線形モデルをまず適合する入口 |
 | `summary.manova()` | デフォルトは **Pillai**。さらに docs は**非常に高い残差相関**に注意し、`tol` で実効ランクを制御できると説明 [@r_summary_manova] | 4統計量を併記しつつ、Pillai を主報告とする根拠 |
 | `MASS::lda()` | 共通共分散を仮定し、`prior` が2群超では**判別軸の向きにも影響**する。`CV = TRUE` では LOOCV 分類を返す [@mass_lda_doc] | DDA の主追跡法として、構造係数と分類精度を確認 |
-| `MASS::qda()` | 群別共分散を許容するが、群内共分散が特異だと不安定・失敗しやすい [@mass_qda_doc] | Box's M が厳しいときの比較対象 |
+| `MASS::qda()` | 群別共分散を許容するが、群内共分散が特異だと不安定・失敗しやすい [@mass_qda_doc] | 分類目的の感度分析としてLDAと比較 |
 | `candisc::candisc()` | 多変量線形モデルを**正準判別空間**へ写して可視化する公式パッケージ docs を持つ [@friendly2021candisc] | 群分離の方向を図で読む |
 | `WebPower::wp.kanova()` | 近似的な power 計算ツールであり、複雑な factorial MANOVA の各効果別 power を厳密に与える関数ではない [@zhang2018] | omnibus な目安として使う |
 
-要するに、**`manova()` で適合し、`summary.manova()` で多変量検定を読み、`lda()` / `candisc()` で群分離の方向を解釈し、`qda()` は仮定違反時の比較候補、`wp.kanova()` は近似的な計画支援**という役割分担です。
+要するに、**`manova()` で適合し、`summary.manova()` で多変量検定を読み、`lda()` / `candisc()` で群分離の方向を解釈し、`qda()` は分類目的の感度分析、`wp.kanova()` は近似的な計画支援**という役割分担です。
 
 ## 分析課題とフロー
 
 想定する研究課題は次の2点です。
 
-1. `Treatment`（Glossing vs Writing）と`Time`（Immediate vs Delayed）は、`Recall`と`Recognition`の**組**に影響するか。
-2. 4群（Treatment×Time）は、`Recall`と`Recognition`でどの程度判別できるか。
+1. `Instruction`（Glossing vs Writing）と`LearningMode`（Individual vs Collaborative）は、`Recall`と`Recognition`の**組**に影響するか。
+2. 4群（Instruction×LearningMode）は、`Recall`と`Recognition`でどの程度判別できるか。
 
 分析フローは以下の順で進めます。
 
@@ -315,30 +390,33 @@ MANOVAと判別分析は、同じ数学的構造の「表と裏」です [@finch
 7. 検定力分析
 8. 論文結果節向けの要約
 
-### 最短ルート（20分）
+### 中核となる読み筋
 
-1. HEプロットで群分離の全体像を視覚的に把握する。
+論文・報告書で MANOVA の主要結果を提示する際の最低限の流れは以下です。
+
+1. 実行順は前提チェック→MANOVA→HEプロット。結果を読むときは、HEプロットで群分離の全体像を視覚的に把握する。
 2. MANOVA統計量表のPillai列だけを読む。
 3. DDAの構造係数で、どのDVが群分離に寄与しているかを確認する。
-4. 最後の結果記述テンプレートを自分のデータに置き換える。
+4. 最後の報告テンプレートを自分のデータに置き換える。
 
 ## データ作成（語彙学習研究を想定）
 
-ここでは、2（Treatment: Glossing vs Writing）× 2（Time: Immediate vs Delayed）の4群・各群45名のシミュレーションデータを作成します。`Recall` と `Recognition` には中程度の相関（$r \approx .40$）を持たせます。この相関水準は、MANOVAが最も有効に機能する範囲（.30-.70）内です。
+ここでは、2（Instruction: Glossing vs Writing）× 2（LearningMode: Individual vs Collaborative）の4群・各群45名のシミュレーションデータを作成します。`LearningMode` は「個人で語彙活動に取り組むか、ペア/小グループで協同的に取り組むか」を表す **参加者間要因** です。各学生は1つの学習モードだけに割り当てられるため、本章の「1参加者1行」の前提と整合します。`Recall` と `Recognition` には中程度の相関（$r \approx .40$）を持たせます。この相関水準では、MANOVAの利点が出やすくなります。
 
 ```{r}
+#| label: data-simulation
 #| eval: true
 n_per_group <- 45
 
 mu_tbl <- tibble(
   Group = c(
-    "Glossing_Immediate",
-    "Glossing_Delayed",
-    "Writing_Immediate",
-    "Writing_Delayed"
+    "Glossing_Individual",
+    "Glossing_Collaborative",
+    "Writing_Individual",
+    "Writing_Collaborative"
   ),
-  Recall_mu = c(12, 10, 16, 14),
-  Recognition_mu = c(18, 16, 23, 21)
+  Recall_mu = c(12.0, 13.5, 16.0, 17.5),
+  Recognition_mu = c(18.0, 19.5, 23.0, 24.5)
 )
 
 # 2つの従属変数の共分散（中程度の相関を想定）
@@ -366,17 +444,17 @@ simulated <- mu_tbl |>
   dplyr::select(Group, sim) |>
   tidyr::unnest(sim) |>
   mutate(
-    Treatment = if_else(str_detect(Group, "^Glossing"), "Glossing", "Writing"),
-    Time = if_else(str_detect(Group, "Immediate$"), "Immediate", "Delayed"),
+    Instruction = if_else(str_detect(Group, "^Glossing"), "Glossing", "Writing"),
+    LearningMode = if_else(str_detect(Group, "Individual$"), "Individual", "Collaborative"),
     ID = row_number(),
     Recall = pmin(pmax(Recall, 0), 30),
     Recognition = pmin(pmax(Recognition, 0), 30)
   ) |>
-  mutate(across(c(Treatment, Time, Group), as.factor)) |>
-  dplyr::select(ID, Treatment, Time, Group, Recall, Recognition)
+  mutate(across(c(Instruction, LearningMode, Group), as.factor)) |>
+  dplyr::select(ID, Instruction, LearningMode, Group, Recall, Recognition)
 
 simulated |>
-  group_by(Treatment, Time) |>
+  group_by(Instruction, LearningMode) |>
   summarise(
     n = n(),
     Recall_Mean = mean(Recall),
@@ -384,7 +462,7 @@ simulated |>
     .groups = "drop"
   ) |>
     mutate(across(where(is.numeric), ~ round(.x, 2))) |>
-  knitr::kable(caption = "Simulated Design Overview: sample size and means by Treatment × Time")
+  knitr::kable(caption = "シミュレーションデザインの概要（simulated design overview）: Instruction × LearningMode 別のサンプルサイズと平均")
 ```
 
 **出力の読み方**:
@@ -400,9 +478,10 @@ simulated |>
 ここでは、群ごとの記述統計量（平均・標準偏差）を算出し、プロファイルプロットで群パターンを視覚化します。
 
 ```{r}
+#| label: descriptives-profile
 #| eval: true
 desc_tbl <- simulated |>
-  group_by(Treatment, Time) |>
+  group_by(Instruction, LearningMode) |>
   summarise(
     n = n(),
     Recall_Mean = mean(Recall),
@@ -421,16 +500,16 @@ desc_tbl <- simulated |>
 profile_plot_tbl <- bind_rows(
   desc_tbl |>
     transmute(
-      Treatment,
-      Time,
+      Instruction,
+      LearningMode,
       Outcome = "Recall",
       Mean = Recall_Mean,
       CI = Recall_CI
     ),
   desc_tbl |>
     transmute(
-      Treatment,
-      Time,
+      Instruction,
+      LearningMode,
       Outcome = "Recognition",
       Mean = Recognition_Mean,
       CI = Recognition_CI
@@ -448,63 +527,70 @@ group_centers <- simulated |>
 
 desc_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 2))) |>
-  knitr::kable(caption = "Descriptive Statistics: dependent variables by group")
+  knitr::kable(caption = "記述統計（descriptive statistics）: 群別の目的変数（dependent variables）")
 
-p_recall <- ggplot(desc_tbl, aes(x = Time, y = Recall_Mean, group = Treatment, color = Treatment)) +
+p_recall <- ggplot(desc_tbl, aes(x = LearningMode, y = Recall_Mean, group = Instruction, color = Instruction)) +
   geom_errorbar(aes(ymin = Recall_Mean - Recall_CI, ymax = Recall_Mean + Recall_CI), width = 0.08) +
   geom_line(linewidth = 1.1) +
   geom_point(size = 2.8) +
-  labs(title = "Recall", y = "Mean score", x = "Time")
+  labs(title = "Recall（再生）", y = "平均得点", x = "LearningMode")
 
-p_recog <- ggplot(desc_tbl, aes(x = Time, y = Recognition_Mean, group = Treatment, color = Treatment)) +
+p_recog <- ggplot(desc_tbl, aes(x = LearningMode, y = Recognition_Mean, group = Instruction, color = Instruction)) +
   geom_errorbar(aes(ymin = Recognition_Mean - Recognition_CI, ymax = Recognition_Mean + Recognition_CI), width = 0.08) +
   geom_line(linewidth = 1.1) +
   geom_point(size = 2.8) +
-  labs(title = "Recognition", y = "Mean score", x = "Time")
+  labs(title = "Recognition（再認）", y = "平均得点", x = "LearningMode")
 
 p_recall + p_recog +
   plot_annotation(
-    title = "Profile of Group Means",
-    subtitle = "Treatment × Time patterns across two outcomes"
+    title = "群平均プロファイル",
+    subtitle = "Instruction × LearningMode のパターンを2つの目的変数で比較"
   )
 ```
 
 **プロファイルプロットの読み方**:
 
-- 2本の線（Treatment: Glossing vs Writing）がほぼ平行 → 交互作用は小さい
-- 線の上下差が大きい → Treatment 主効果が大きい
-- Immediate → Delayed の傾き → Time 主効果の方向
-- エラーバーは 95% 信頼区間であり、平均差の不確実性の大きさを示す
+- 2本の線（Instruction: Glossing vs Writing）がほぼ平行 → 交互作用は小さい
+- 線の上下差が大きい → Instruction 主効果が大きい
+- Individual → Collaborative の傾き → LearningMode 主効果の方向
+- エラーバーは各群平均の 95% 信頼区間であり、平均推定の不確実性を示す
 - 2つのDVで似た形が繰り返されていれば、多変量空間でも一貫した群差がありそうだと予想できる
 
 ### DV間相関の確認
 
-MANOVAを実施する前に、DV間の相関が適切な範囲（.30-.70）にあるかを確認します。Tabachnick & Fidell [-@tabachnick2019] は、DV間相関が .90 を超える場合は「深刻な多重共線性」と判断し、DVの統合または一方の除外を推奨しています。一方、相関が .30 未満の場合はDVがほぼ独立であるため、MANOVAの付加価値は小さく、個別ANOVAで十分な場合があります。
+MANOVAを実施する前に、DV間の相関が適切な範囲（.30-.70）にあるかを確認します。Tabachnick & Fidell [-@tabachnick2019] は、DV間相関が .90 を超える場合は「深刻な多重共線性」と判断し、DVの統合または一方の除外を推奨しています。一方、相関が .30 未満の場合はDVがほぼ独立であるため、MANOVAの付加価値は小さく、研究質問がDV別に定義されているなら補正付き個別ANOVAも候補になります。
+
+ここで注意すべきなのは、全体相関には群平均差による共変動が混ざることです。MANOVAの前提やDVの冗長性を判断するには、全体相関に加えて、群要因を取り除いた**残差相関**も確認します。
 
 ```{r}
+#| label: dv-correlation-check
 #| eval: true
-cor_dvs <- cor(simulated[, c("Recall", "Recognition")])
+cor_overall <- cor(simulated[, c("Recall", "Recognition")])
+resid_dvs <- residuals(lm(cbind(Recall, Recognition) ~ Instruction * LearningMode, data = simulated))
+cor_residual <- cor(resid_dvs)
 
 tibble(
+  Scope = c("Overall", "Residual after Instruction × LearningMode"),
   DV_Pair = "Recall -- Recognition",
-  Correlation = cor_dvs[1, 2],
+  Correlation = c(cor_overall[1, 2], cor_residual[1, 2]),
   Judgment = case_when(
-    abs(cor_dvs[1, 2]) < 0.30 ~ "低い: 個別ANOVAでも可",
-    abs(cor_dvs[1, 2]) <= 0.70 ~ "適切: MANOVA推奨",
+    abs(Correlation) < 0.30 ~ "低い: 補正付き個別ANOVAも候補",
+    abs(Correlation) <= 0.70 ~ "扱いやすい範囲: MANOVA推奨",
     TRUE ~ "高すぎる: 多重共線性の懸念"
   )
 ) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "DV Correlation Check: confirming suitability for MANOVA")
+  knitr::kable(caption = "DV間相関の確認（DV correlation check）: MANOVAに適した相関構造か")
 ```
 
 ```{r}
+#| label: bivariate-ggpairs
 #| eval: true
 GGally::ggpairs(
   simulated,
   columns = c("Recall", "Recognition"),
   mapping = aes(color = Group, alpha = 0.6),
-  title = "Bivariate Structure by Group"
+  title = "群別の2変量構造"
 )
 ```
 
@@ -519,7 +605,8 @@ GGally::ggpairs(
 #| label: bivariate-group-ellipses
 #| fig-width: 7.5
 #| fig-height: 6
-#| fig-cap: "Four-group structure in the raw two-DV space. Ellipses summarize within-group spread, and labeled centroids summarize group locations."
+#| fig-cap: "2つの目的変数空間（two-DV space）における4群構造。楕円（ellipse）は各群の中心付近の散らばり、ラベル付き点は群重心（centroid）を示す。"
+#| fig-alt: "Recallを横軸、Recognitionを縦軸にした散布図。4群の点、68%楕円、群重心が描かれており、Writing群がGlossing群より右上に位置する。"
 
 ggplot(simulated, aes(x = Recall, y = Recognition, color = Group)) +
   geom_point(alpha = 0.45, size = 1.8) +
@@ -539,23 +626,81 @@ ggplot(simulated, aes(x = Recall, y = Recognition, color = Group)) +
     color = "black",
     size = 3,
     alpha = 0.85,
-    label.size = 0.15,
+    linewidth = 0.15,
     show.legend = FALSE
   ) +
   labs(
-    title = "Group Ellipses and Centroids in the Raw DV Space",
-    subtitle = "A first visual check of multivariate group separation",
-    x = "Recall",
-    y = "Recognition"
+    title = "生得点空間における群楕円と群重心",
+    subtitle = "楕円は各群の中心付近の典型的な範囲を示す",
+    x = "Recall（再生得点）",
+    y = "Recognition（再認得点）"
   )
 ```
 
 **楕円と重心の読み方**:
 
-- 楕円は各群の「典型的な散らばり方」を示す。楕円が大きく重なるほど群分離は弱い
+- 楕円は各群の「中心付近の典型的な散らばり方」（ここでは68%楕円）を示す。楕円が大きく重なるほど群分離は弱い
 - 重心は各群の平均的位置であり、重心どうしが離れていれば群差の方向が明確である
 - 4群が主に右上がり方向で並ぶなら、2つのDVが同じ方向に群差を支えている
 - 楕円の向きが似ていれば、群内共分散の構造も大きくは異なっていない可能性がある
+
+### プロファイル・プロット:平行性・水準・平坦性の視覚化
+
+MANOVA を **profile analysis** の枠組みで読むと、群差は次の 3 つの観点に分解できます [@tabachnick2019]。SLA・教育研究の論文では、この 3 観点を一枚の図で示すことが一般的です。
+
+| 観点 | 帰無仮説 | 視覚的な見え方 |
+|:---|:---|:---|
+| **平行性 (parallelism)** | 群のプロファイル形状が同じ(交互作用なし) | 群間で線が平行 |
+| **水準 (level)** | 群間の全体平均が等しい | 群間で線の高さが揃う |
+| **平坦性 (flatness)** | DV の平均が等しい | 線が水平 |
+
+```{r}
+#| eval: true
+#| label: fig-profile-plot
+#| fig-width: 7.5
+#| fig-height: 5
+#| fig-cap: "プロファイル・プロット(profile plot):4 群の DV 別平均値と 95% 信頼区間。線が平行 = 平行性成立(交互作用弱)、線の高さが揃う = 水準性成立(群差弱)、線が水平 = 平坦性成立(DV 間差弱)。"
+#| fig-alt: "横軸に Recall と Recognition の 2 つの DV、縦軸に得点を取り、4 群(Glossing-Imm、Glossing-Del、Writing-Imm、Writing-Del)のプロファイルを線で示した図。各点には 95% CI のエラーバーが付いている。"
+
+profile_dat <- simulated |>
+  tidyr::pivot_longer(c(Recall, Recognition),
+                      names_to = "Outcome", values_to = "Score") |>
+  dplyr::group_by(Group, Outcome) |>
+  dplyr::summarise(
+    M  = mean(Score),
+    SE = sd(Score) / sqrt(dplyr::n()),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    Outcome = factor(Outcome, levels = c("Recall", "Recognition")),
+    LB = M - 1.96 * SE,
+    UB = M + 1.96 * SE
+  )
+
+ggplot(profile_dat,
+       aes(x = Outcome, y = M, color = Group, group = Group)) +
+  geom_line(linewidth = 1.0, alpha = 0.85) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = LB, ymax = UB), width = 0.08, linewidth = 0.6) +
+  labs(
+    title = "Group Profiles Across Outcomes",
+    subtitle = "Parallel lines = no Group × Outcome interaction; vertical gap = Group main effect; flat lines = Outcome main effect",
+    x = NULL,
+    y = "Mean Score (with 95% CI)"
+  )
+```
+
+**プロファイル・プロットの読み方**:
+
+- **線が平行に近いか?** → 平行なら「群と DV の交互作用は小さい」(**DV を共通尺度で読む前提のもと**、Pillai/Wilks の交互作用検定が非有意になりやすい。本章の Recall と Recognition は近い尺度ですが、厳密な解釈には z 標準化など共通尺度化が望ましい — Tabachnick & Fidell, 2019)
+- **線の高さが群間で揃っているか?** → 揃っていなければ「群主効果あり」(線が上下にずれている)
+- **線が水平か?** → 水平でなければ「DV 主効果あり」(`Recall` と `Recognition` の平均が異なる)
+- **線が交差しているか?** → 交差は強い交互作用を示唆。本章のように Group が複数水準なら、平行でない方向(prep/post 反転、強弱反転など)が DDA の構造係数で読み取れる方向と対応します
+
+::: {.callout-tip}
+#### Profile plot は MANOVA の最初の一枚に最適
+英語教育・SLA のメタ分析的レビュー(Plonsky 2014 系)でも、MANOVA を報告する論文の多くがこの形式を採用しています。HE プロットや正準判別プロットが「多変量空間での技術的解析」の図であるのに対し、profile plot は **「読者(査読者・実践者)に研究結果の構造を即座に伝える」** ための第一の図として機能します。論文では、最初の Results 図として profile plot、補足図として HE / 正準判別プロットを置く構成が王道です。
+:::
 
 ## MANOVAの前提
 
@@ -564,6 +709,7 @@ ggplot(simulated, aes(x = Recall, y = Recognition, color = Group)) +
 独立性は、検定結果だけで担保するよりも、**研究計画段階（割り付け・測定手順）で保証する**ことが原則です。ここでは「1参加者1行」であることをデータ構造から確認します。
 
 ```{r}
+#| label: independence-check
 #| eval: true
 id_check <- simulated |>
   count(ID, name = "rows_per_id")
@@ -577,13 +723,14 @@ table(id_check$rows_per_id)
 
 MANOVAで確認したいのは、**各群における目的変数ベクトルの多変量正規性**です。全体ではなく群ごとに検定することが重要です。なぜなら、MANOVAの仮定は「各群内の残差が多変量正規分布に従う」ことだからです。
 
-本章では Henze-Zirkler（HZ）検定を用います。HZ検定はアフィン変換に不変という望ましい性質を持ちます [@korkmaz2014]。
+本章では Henze-Zirkler（HZ）検定を用います。HZ 検定は **アフィン変換に不変**(affine invariant、つまり変数の線形変換 = 尺度変更や平行移動・回転を行っても結果が変わらない性質)という望ましい性質を持ちます [@korkmaz2014]。
 
 #### HZ検定をRで実施する最小コード
 
 まずは、全データを一括で検定する最小コードです（動作確認用）。
 
 ```{r}
+#| label: hz-overall-minimal
 #| eval: true
 hz_overall <- MVN::mvn(
   data = simulated |> dplyr::select(Recall, Recognition),
@@ -600,8 +747,24 @@ hz_overall$multivariate_normality |>
     Decision = if_else(p.value < 0.05, "MVNからの逸脱を示唆", "MVNを棄却せず")
   ) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Minimal HZ Test Example: single-step implementation in R")
+  knitr::kable(caption = "HZ検定（Henze-Zirkler test）の最小例: Rでの1ステップ実装")
 ```
+
+::: {.callout-tip}
+#### Mardia の歪度・尖度検定も併用すると診断的
+HZ 検定は単一の総合的な統計量ですが、**Mardia の歪度・尖度検定** [@mardia1970] を併用すると、**逸脱が「歪み由来」か「裾の重さ由来」か**を切り分けられます。`MVN::mvn(..., mvn_test = "mardia")` で得られ、SLA の小サンプル(n < 30/cell)での診断に有効です。なお `MVN` パッケージは v6.x 以降で API がやや再構成されているため、最新版での引数名は `?MVN::mvn` で確認してください。
+
+```r
+mardia <- MVN::mvn(
+  data = simulated |> dplyr::select(Recall, Recognition),
+  mvn_test = "mardia",
+  tidy = TRUE
+)
+mardia$multivariate_normality
+```
+
+歪度が問題なら変数変換、尖度が問題ならトリム平均ベースのロバスト法、というように対処方針が分かれます。
+:::
 
 **`MVN::mvn()` の読み方**:
 
@@ -616,6 +779,7 @@ hz_overall$multivariate_normality |>
 実務では「全体」より「群ごと」の確認が重要なので、再利用しやすい関数化を行います。
 
 ```{r}
+#| label: hz-by-group
 #| eval: true
 run_hz_test <- function(df, vars = c("Recall", "Recognition"), alpha = 0.05) {
   hz_out <- MVN::mvn(
@@ -643,10 +807,11 @@ mvn_tbl <- simulated |>
 
 mvn_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Multivariate Normality by Group: Henze-Zirkler test")
+  knitr::kable(caption = "群別の多変量正規性（multivariate normality）: Henze-Zirkler検定")
 ```
 
 ```{r}
+#| label: hz-action-table
 #| eval: true
 hz_action_tbl <- mvn_tbl |>
   mutate(
@@ -660,7 +825,7 @@ hz_action_tbl <- mvn_tbl |>
 
 hz_action_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "HZ Interpretation Guide: decision and recommended next action")
+  knitr::kable(caption = "HZ検定（Henze-Zirkler test）の解釈ガイド: 判定と次の対応")
 ```
 
 #### HZ検定の補助: マハラノビス距離による外れ値診断
@@ -668,6 +833,7 @@ hz_action_tbl |>
 HZ検定だけでは「どの群で逸脱が起きているか」が見えにくい場合があります。そこで、群ごとにマハラノビス距離を計算し、$\chi^2_{0.975, p}$ を超える比率を確認します。マハラノビス距離は、多変量空間における「中心からの距離」であり、単変量の外れ値検出では見逃す多変量的な外れ値を検出できます。
 
 ```{r}
+#| label: mahalanobis-outlier-screen
 #| eval: true
 summarise_mahal_outliers <- function(df, vars = c("Recall", "Recognition"), cutoff_prob = 0.975) {
   x <- df |> dplyr::select(all_of(vars)) |> as.matrix()
@@ -691,7 +857,7 @@ mahal_tbl <- simulated |>
 
 mahal_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Mahalanobis Outlier Screening: group-wise outlier rate with chi-square cutoff (97.5%)")
+  knitr::kable(caption = "マハラノビス距離（Mahalanobis distance）による外れ値確認: 群別外れ値率と97.5%カットオフ")
 ```
 
 **マハラノビス距離の読み方**:
@@ -705,7 +871,9 @@ mahal_tbl |>
 次に、$\chi^2$ Q-Qプロットで多変量正規性を視覚的に確認します。点が対角線に沿っていれば、マハラノビス距離が $\chi^2$ 分布に従っている（＝多変量正規性が妥当）ことを示します。
 
 ```{r}
+#| label: fig-mahalanobis-qq
 #| eval: true
+#| fig-cap: "群別のマハラノビス距離Q-Qプロット（Mahalanobis distance Q-Q plot）。点が破線に沿うほど多変量正規性（multivariate normality）の仮定を置きやすい。"
 mahal_qq_tbl <- simulated |>
   group_by(Group) |>
   group_modify(~ {
@@ -723,10 +891,10 @@ ggplot(mahal_qq_tbl, aes(x = theoretical, y = observed)) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
   facet_wrap(~ Group, scales = "free") +
   labs(
-    title = "Chi-square Q-Q Plot by Group",
-    subtitle = "Mahalanobis distances vs theoretical quantiles",
-    x = "Theoretical quantile",
-    y = "Observed Mahalanobis distance"
+    title = "群別のカイ二乗Q-Qプロット",
+    subtitle = "マハラノビス距離と理論分位点の比較",
+    x = "理論分位点",
+    y = "観測マハラノビス距離"
   )
 ```
 
@@ -748,6 +916,7 @@ ggplot(mahal_qq_tbl, aes(x = theoretical, y = observed)) +
 以下の関数は他章でも再利用できます。`dv` と `group` を変えるだけで同じ流れを適用できます。
 
 ```{r}
+#| label: manova-assumption-pipeline
 #| eval: true
 check_manova_assumptions <- function(
   data,
@@ -819,7 +988,7 @@ assump_obj <- check_manova_assumptions(
 
 assump_obj$summary |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Reusable Assumption Pipeline: single-call diagnostic summary")
+  knitr::kable(caption = "前提チェック（assumption checks）の一括診断: 1回の実行で得る要約")
 ```
 
 **一括チェック結果の読み方**:
@@ -835,11 +1004,12 @@ assump_obj$summary |>
 
 Box's M検定は「群間で共分散行列が等しい」という帰無仮説を検定します [@box1949]。MANOVAの検定統計量（特にWilks' $\Lambda$）は等共分散を仮定するため、この前提の確認が必要です。
 
-ただし、Box's M は標本サイズに対して過敏であり、大標本では実質的に無視できる程度の違いでも有意になることがあります。このため、Tabachnick & Fidell [-@tabachnick2019] および Huberty & Olejnik [-@huberty2006] は、$p < .05$ ではなく **$p < .001$ を実務的な基準**として採用することを推奨しています。
+ただし、Box's M は **(1) 多変量正規性を仮定する**ため、それ自体が MVN 違反に対して非頑健であり、**(2) 標本サイズに対しても過敏で**、大標本では実質的に無視できる程度の違いでも有意になることがあります。このため、Tabachnick & Fidell [-@tabachnick2019] および Huberty & Olejnik [-@huberty2006] は、$p < .05$ ではなく **$p < .001$ を実務的な基準**として採用することを推奨しています。Box's M は機械的な合否判定ではなく、**HE プロットによる群別共分散楕円の視覚的確認**と併せて判断するのが妥当です。
 
 さらに、Olson [-@olson1974] のモンテカルロ研究は、等共分散の違反があっても**群サイズが均衡していればPillaiのトレースは比較的頑健**であることを示しています。最も危険なのは「共分散不等質 + 群サイズ不均衡」の組み合わせであり、この条件ではすべての検定統計量が影響を受けますが、Pillaiが最も安定しています。
 
 ```{r}
+#| label: box-m-test
 #| eval: true
 box_m <- biotools::boxM(
   simulated |>
@@ -857,7 +1027,7 @@ box_tbl <- tibble(
 
 box_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Homogeneity of Covariance Matrices: Box's M test")
+  knitr::kable(caption = "共分散行列の等質性（homogeneity of covariance matrices）: Box's M検定")
 ```
 
 **`Box's M` の読み方**:
@@ -870,6 +1040,7 @@ box_tbl |>
 | `Decision` | 判定結果。注意の場合は Pillai を優先し、群サイズの均衡を確認 |
 
 ```{r}
+#| label: assumption-checklist
 #| eval: true
 assumption_summary <- tibble(
   Assumption = c(
@@ -891,46 +1062,115 @@ assumption_summary <- tibble(
 
 assumption_summary |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Assumption Checklist (Practical Summary): what to check before running MANOVA")
+  knitr::kable(caption = "前提チェックリスト（assumption checklist; 実務要約）: MANOVA前に確認する項目")
 ```
 
-## MANOVAの実行
+::: {.callout-tip}
+#### 前提が大きく崩れたときの代替手法
+HZ / Box's M で深刻な違反が確認され、Pillai の頑健性だけでは安心できない場合、次の代替手法が候補になります。
+
+| 手法 | パッケージ・関数 | 適する場面 |
+|---|---|---|
+| **順列 MANOVA(PERMANOVA)** [@anderson2001permanova] | `vegan::adonis2()` | MVN を仮定せず、距離行列から順列ベースで p 値算出。生態学起源だが SLA でも有用 |
+| **トリム平均ベースの頑健 MANOVA** | `WRS2::mulrank()` 等 | 重い裾、外れ値に頑健 |
+| **ノンパラメトリック MANOVA** | `npmv::nonpartest()` | 順位ベース、極端な非正規性に対応 |
+| **ベイズ多変量回帰** | `brms::brm(mvbind(Recall, Recognition) ~ ...)` | 複数 DV を同時にベイズ推定、残差相関も推定。詳細は第 7 章 |
+
+これらは本章の主軸ではありませんが、「HZ で逸脱が大きい」「Box's M で群サイズも不均衡」といった条件で **感度分析として並走させる**価値があります。
+:::
+
+::: {.callout-tip}
+#### PERMANOVA の companion viz:NMDS / PCoA 順序付け
+PERMANOVA を使う場合、結果を**距離ベースの 2 次元順序付け図** (`vegan::metaMDS()` または `cmdscale()`) と一緒に提示するのが標準です。生態学では `NMDS + PERMANOVA` が定番のセットで、SLA でも DV が多い高次元ケースでは群分離パターンを直感的に伝えられます。
+
+```{r}
+#| eval: false
+#| label: fig-nmds-permanova
+#| fig-cap: "NMDS 順序付け + PERMANOVA:DV を距離行列に変換し、2 次元に圧縮した群構造の可視化。点が色別に分離していれば、PERMANOVA の有意性と整合する群差が視覚化される。"
+
+library(vegan)
+
+# Bray-Curtis(または Euclidean)距離で順序付け
+dvs_mat <- as.matrix(simulated[, c("Recall", "Recognition")])
+nmds_fit <- vegan::metaMDS(dvs_mat, distance = "euclidean", k = 2, trace = 0)
+
+nmds_dat <- as.data.frame(vegan::scores(nmds_fit, display = "sites")) |>
+  dplyr::bind_cols(simulated[, c("Group", "Instruction", "LearningMode")])
+
+# PERMANOVA(同じ距離行列で)
+permanova_fit <- vegan::adonis2(dvs_mat ~ Instruction * LearningMode,
+                                 data = simulated, method = "euclidean",
+                                 permutations = 999)
+
+ggplot(nmds_dat, aes(x = NMDS1, y = NMDS2, color = Group)) +
+  geom_point(alpha = 0.7, size = 2.5) +
+  stat_ellipse(level = 0.68, linewidth = 0.8) +
+  labs(
+    title = "NMDS Ordination of Multivariate Data",
+    subtitle = paste0("PERMANOVA: F = ",
+                       round(permanova_fit$F[1], 2),
+                       ", p = ", format.pval(permanova_fit$`Pr(>F)`[1], digits = 3)),
+    x = "NMDS Axis 1",
+    y = "NMDS Axis 2"
+  )
+```
+
+**読み方**:NMDS は元の DV 距離をできるだけ忠実に 2 次元に圧縮した「形状」を示します。PERMANOVA の F 値・p 値は本章の Pillai/Wilks と同じ役割(群差の総合検定)ですが、**MVN を仮定しない**点が違います。点群が色別に固まっていれば、PERMANOVA で検出した群差がどんな形をしているかが一目でわかります。DV が 2 つ程度なら HE プロットで十分ですが、**DV が 5 個以上**(複数下位スコアや項目反応データ)の高次元ケースで NMDS が真価を発揮します。
+:::
+
+## MANOVAの実行 {#sec-manova-execution}
 
 ### 4つの統計量を併記して確認
 
-ここでは、`manova()` 関数を用いて多変量分散分析を実行します。`cbind(Recall, Recognition)` で2つの目的変数を同時に指定し、Treatment と Time の主効果および交互作用を検定します。R の公式 docs では `manova()` 自体はモデル適合の入口で、**多変量的な読みは `summary.manova()` 側で与えられる**と説明されています [@r_manova_doc; @r_summary_manova]。4つの検定統計量を併記しますが、**Pillai のトレースを主報告**とします [@olson1974; @r_summary_manova]。
+ここでは、`manova()` 関数を用いて多変量分散分析を実行します。`cbind(Recall, Recognition)` で2つの目的変数を同時に指定し、Instruction と LearningMode の主効果および交互作用を検定します。R の公式ドキュメントでは `manova()` 自体はモデル適合の入口で、**多変量的な読みは `summary.manova()` 側で与えられる**と説明されています [@r_manova_doc; @r_summary_manova]。4つの検定統計量を併記しますが、**Pillai のトレースを主報告**とします [@olson1974; @r_summary_manova]。
 
 ```{r}
+#| label: manova-four-tests
 #| eval: true
 fit_manova <- manova(
-  cbind(Recall, Recognition) ~ Treatment * Time,
+  cbind(Recall, Recognition) ~ Instruction * LearningMode,
   data = simulated
 )
 
 extract_manova <- function(test_name) {
   stats <- summary(fit_manova, test = test_name)$stats
+  statistic_col <- if (test_name %in% colnames(stats)) {
+    test_name
+  } else {
+    setdiff(colnames(stats), c("Df", "approx F", "num Df", "den Df", "Pr(>F)"))[[1]]
+  }
 
   tibble(
     Test = test_name,
     Effect = rownames(stats),
-    Statistic = stats[, 1],
-    Approx_F = stats[, 2],
-    df1 = stats[, 3],
-    df2 = stats[, 4],
-    p_value = stats[, 5]
+    Hypothesis_df = stats[, "Df"],
+    Statistic = stats[, statistic_col],
+    Approx_F = stats[, "approx F"],
+    df1 = stats[, "num Df"],
+    df2 = stats[, "den Df"],
+    p_value = stats[, "Pr(>F)"]
   ) |>
     dplyr::filter(Effect != "Residuals")
 }
 
-manova_tbl <- purrr::map_dfr(
+manova_tbl <- purrr::map(
   c("Pillai", "Wilks", "Hotelling-Lawley", "Roy"),
   extract_manova
-)
+) |>
+  purrr::list_rbind()
 
 manova_tbl |>
-  mutate(across(c(Statistic, Approx_F, p_value), ~ round(.x, 3))) |>
-  mutate(across(c(df1, df2), ~ round(.x, 0))) |>
-  knitr::kable(caption = "MANOVA Test Statistics: Treatment, Time, and interaction effects")
+  mutate(
+    p = if_else(
+      p_value < .001,
+      "< .001",
+      sub("^0", "", sprintf("%.3f", p_value))
+    )
+  ) |>
+  mutate(across(c(Statistic, Approx_F), ~ round(.x, 3))) |>
+  mutate(across(c(Hypothesis_df, df1, df2), ~ round(.x, 0))) |>
+  dplyr::select(Test, Effect, Hypothesis_df, Statistic, Approx_F, df1, df2, p) |>
+  knitr::kable(caption = "MANOVA検定統計量（MANOVA test statistics）: Instruction、LearningMode、交互作用")
 ```
 
 **MANOVA出力の読み方**:
@@ -938,27 +1178,34 @@ manova_tbl |>
 | 出力項目 | 読み方 |
 |:---|:---|
 | `Test` | 使用した検定統計量（Pillai を主報告） |
-| `Effect` | Treatment（主効果）、Time（主効果）、Treatment:Time（交互作用） |
-| `Statistic` | 検定統計量の値。Pillai は 0-1 の範囲で、1 に近いほど効果が大きい |
+| `Effect` | Instruction（主効果）、LearningMode（主効果）、Instruction:LearningMode（交互作用） |
+| `Hypothesis_df` | その効果の仮説自由度。2水準要因では通常1 |
+| `Statistic` | 検定統計量の値。Pillai は効果のランクに依存して最大値が決まる。本章の各効果では最大1 |
 | `Approx_F` | F 近似値。大きいほど効果が強い |
 | `df1, df2` | 仮説自由度と誤差自由度 |
-| `p_value` | $p < .05$ なら多変量的に有意（太字で強調） |
+| `p` | APA形式に整えたp値。$p < .05$ なら多変量的に有意 |
 
 ### 主報告（Pillai）を抽出
 
 ```{r}
+#| label: pillai-primary-table
 #| eval: true
 pillai_focus <- manova_tbl |>
   dplyr::filter(Test == "Pillai") |>
   mutate(
     Interpretation = if_else(p_value < 0.05, "有意", "非有意"),
-    Effect = factor(Effect, levels = c("Treatment", "Time", "Treatment:Time")),
-    p_label = if_else(p_value < .001, "p < .001", paste0("p = ", sprintf("%.3f", p_value)))
+    Effect = factor(Effect, levels = c("Instruction", "LearningMode", "Instruction:LearningMode")),
+    p_label = if_else(
+      p_value < .001,
+      "p < .001",
+      paste0("p = ", sub("^0", "", sprintf("%.3f", p_value)))
+    )
   )
 
 pillai_focus |>
-  mutate(across(c(Statistic, Approx_F, p_value), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Primary Inference (Pillai): Recommended primary multivariate test")
+  mutate(across(c(Statistic, Approx_F), ~ round(.x, 3))) |>
+  dplyr::select(Test, Effect, Hypothesis_df, Statistic, Approx_F, df1, df2, p_label, Interpretation) |>
+  knitr::kable(caption = "主推論（primary inference; Pillai's trace）: 推奨する多変量主検定")
 ```
 
 ```{r}
@@ -966,7 +1213,8 @@ pillai_focus |>
 #| label: pillai-effect-plot
 #| fig-width: 7
 #| fig-height: 4.8
-#| fig-cap: "Pillai's trace by effect. Longer segments indicate stronger multivariate signal."
+#| fig-cap: "効果ごとのPillaiのトレース（Pillai's trace）。線分が長いほど多変量的な信号（multivariate signal）が強い。"
+#| fig-alt: "Instruction、LearningMode、交互作用のPillai値を横棒状に示す図。Instructionが最も大きく、交互作用が最も小さい。"
 
 ggplot(pillai_focus, aes(x = Statistic, y = forcats::fct_rev(Effect), color = Interpretation)) +
   geom_segment(
@@ -979,8 +1227,8 @@ ggplot(pillai_focus, aes(x = Statistic, y = forcats::fct_rev(Effect), color = In
   scale_color_manual(values = c("有意" = "#1b7837", "非有意" = "#762a83")) +
   expand_limits(x = max(pillai_focus$Statistic) + 0.07) +
   labs(
-    title = "Primary MANOVA Result Using Pillai's Trace",
-    x = "Pillai's trace",
+    title = "Pillaiのトレースによる主検定",
+    x = "Pillaiのトレース",
     y = NULL
   )
 ```
@@ -988,48 +1236,111 @@ ggplot(pillai_focus, aes(x = Statistic, y = forcats::fct_rev(Effect), color = In
 **Pillaiプロットの読み方**:
 
 - 線分が長いほど、その効果が多変量空間で大きいことを示す
-- `Treatment` と `Time` の線分が長く、`Treatment:Time` が短ければ、「主効果が中心で交互作用は弱い」という図式になる
+- `Instruction` と `LearningMode` の線分が長く、`Instruction:LearningMode` が短ければ、「主効果が中心で交互作用は弱い」という図式になる
 - 色は有意性、長さは効果の大きさの目安なので、**有意かどうか**と**どれくらい大きいか**を分けて読める
 - 表を読む前にこの図を見ると、どの効果から解釈を始めるべきかが分かる
 
-### Pillai に基づく補助的な効果量指標
+### 多変量効果量
 
-Pillai のトレース自体は 0-1 の範囲をとるため、効果の大きさを直感的に把握しやすい指標です。ここでは **Pillai の値を補助的な effect-size index として整理**するため、$\text{Pillai} / s$（$s = \min(p, k-1)$）を参考値として示します [@tabachnick2019]。これは便利な要約ですが、**単変量 ANOVA の偏η²のように完全に標準化された唯一の指標ではない**ため、Pillai 本体と併記して読むのが安全です。
+MANOVA の効果量にはいくつかの正式な定義があります。本章で主報告する Pillai のトレースに加えて、研究間比較や多変量η²との対応で次の指標がよく用いられます [@kim2010multieta; @tatsuoka1988multivariate; @cohen1988]。
+
+| 指標 | 定義 | 由来 | 値域 |
+|:---|:---|:---|:---|
+| **Pillai η²** | $\eta^2_{\text{Pillai}} = V / s$($V$ = Pillai のトレース、$s = \min(p, h)$) | Pillai のトレースの正規化 | $[0, 1]$ |
+| **Wilks η²** | $\eta^2_{\text{Wilks}} = 1 - \Lambda^{1/s}$($\Lambda$ = Wilks の Λ) | Wilks のΛから派生する代表的な多変量η² | $[0, 1]$ |
+| **Hotelling η²** | $\eta^2_{HL} = (T/s)/(1 + T/s)$($T$ = Hotelling-Lawley トレース) | Hotelling のトレースから | $[0, 1]$ |
+| **Roy η²** | $\eta^2_{\text{Roy}} = \theta = \lambda_1 / (1 + \lambda_1)$($\lambda_1$ = 最大固有値) | 最大固有値方向の説明分散割合 | $[0, 1]$ |
+
+これらは正式な**多変量効果量**であり、単変量の偏η²の自然な多変量拡張に対応します(Kim & Olejnik, 2010; Tatsuoka, 1988)。本章では Pillai を主報告するため、$\eta^2_{\text{Pillai}} = V/s$ を補助的に提示します。
+
+::: {.callout-tip}
+#### Pillai η² と単変量偏η²の関係
+DV が 1 つ($p=1$)のとき、Pillai η² は単変量偏 η² と一致します。複数 DV のときは、**多変量空間での「説明分散割合」**を表す自然な拡張です。`effectsize::eta_squared(fit_manova)` でも計算できますが、ランク $s$ の扱いにより僅かに値が異なる場合があります。
+:::
+
+```{r}
+#| label: pillai-descriptive-index
+#| eval: true
+# Pillai η² = V/s の算出
+p_dvs <- 2  # DV数
+
+pillai_index_tbl <- pillai_focus |>
+  mutate(
+    s = pmin(p_dvs, Hypothesis_df),
+    Pillai_eta2 = Statistic / s,
+    Comment = "多変量η²(Pillai 由来)"
+  ) |>
+  dplyr::select(Effect, Hypothesis_df, Statistic, s, Pillai_eta2, Comment)
+
+pillai_index_tbl |>
+    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Pillai 由来の多変量 η²($\\eta^2_{\\text{Pillai}} = V/s$)")
+```
+
+**指標の読み方**:
+
+| 指標 | 読み方 |
+|:---|:---|
+| `Statistic` | Pillai のトレース本体 *V*。APA 報告ではこれを使う |
+| `s` | $s = \min(p, h)$。$p$ = DV 数、$h$ = その効果の仮説自由度 |
+| `Pillai_eta2` | Pillai η² = $V/s$。多変量空間での説明分散割合(0〜1) |
+
+`Pillai_eta2` は単変量の偏 η² と直接比較するものではありませんが、**効果間の相対比較**および**多変量効果の大きさの目安**として有用です。
+
+::: {.callout-warning}
+**多変量 η² に対する Cohen 慣例値の準用は推奨されません。** Cohen の小・中・大(.01 / .06 / .14)は**単変量分散説明割合**から導出された目安であり、$V/s$ や $1-\Lambda^{1/s}$ のような **多変量** η² 系列に直接適用できる根拠はありません。Pillai η² の解釈は **当該分野の先行研究の効果量レンジ**(SLA なら Plonsky & Oswald のメタ分析的基準を多変量に拡張するなど)を基準にしてください。
+:::
+
+#### 多変量効果量フォレストプロット
+
+`effectsize::eta_squared(fit_manova, ci = 0.95)` で各効果の Pillai η² と 95% CI を取得し、フォレストプロット形式で並べると効果サイズの相対比較が一目で分かります。これは Fernández-Castilla et al. [-@fernandezcastilla2021forest] らが推奨する **多変量フォレストプロットの応用形**で、複数効果を一枚で対比する際に有効です。
 
 ```{r}
 #| eval: true
-# 多変量効果量の算出
-p_dvs <- 2  # DV数
-k_groups <- 4  # 群数（Treatment × Time）
-s_value <- min(p_dvs, k_groups - 1)
+#| label: fig-multivariate-forest
+#| fig-width: 7.5
+#| fig-height: 4.2
+#| fig-cap: "多変量効果量フォレストプロット:各効果の Pillai η² と 95% 信頼区間。点は推定値、横棒は信頼区間、縦破線は「効果なし」基準(η² = 0)。"
+#| fig-alt: "Instruction、LearningMode、Instruction:LearningMode の 3 効果について、Pillai η² の点推定と 95% 信頼区間を横方向に並べたフォレストプロット。"
 
-multivariate_eta2 <- pillai_focus |>
-  mutate(
-    s = s_value,
-    Multivariate_eta2 = Statistic / s,
-    Size_label = case_when(
-      Multivariate_eta2 >= 0.14 ~ "大きい",
-      Multivariate_eta2 >= 0.06 ~ "中程度",
-      Multivariate_eta2 >= 0.01 ~ "小さい",
-      TRUE ~ "ほぼゼロ"
-    )
-  ) |>
-  dplyr::select(Effect, Statistic, s, Multivariate_eta2, Size_label)
+manova_eta <- effectsize::eta_squared(
+  fit_manova,
+  partial = TRUE,
+  ci = 0.95,
+  alternative = "two.sided",
+  generalized = FALSE
+)
 
-multivariate_eta2 |>
-    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Multivariate Effect Size: approximate multivariate eta-squared based on Pillai's trace")
+manova_eta_tbl <- as.data.frame(manova_eta) |>
+  dplyr::mutate(
+    Effect = factor(Parameter, levels = rev(Parameter)),
+    is_signif = CI_low > 0
+  )
+
+ggplot(manova_eta_tbl,
+       aes(x = Eta2_partial, y = Effect, color = is_signif)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_errorbarh(aes(xmin = CI_low, xmax = CI_high),
+                 height = 0.18, linewidth = 0.7) +
+  geom_point(size = 3.2) +
+  scale_color_manual(values = c(`TRUE` = "#1b7837", `FALSE` = "#762a83"),
+                     labels = c(`TRUE` = "CI が 0 を含まない", `FALSE` = "CI が 0 を含む"),
+                     name = NULL) +
+  labs(
+    title = "Multivariate Effect Sizes (Pillai η²) with 95% CI",
+    subtitle = "効果間の相対比較と推定の不確実性を同時に提示",
+    x = expression(Pillai~eta^2~(95*"%"~CI)),
+    y = NULL
+  ) +
+  theme(legend.position = "top")
 ```
 
-**補助指標の読み方**:
+**フォレストプロットの読み方**:
 
-| 指標値 | 目安 |
-|:---:|:---|
-| 小さい値 | 多変量的な群差は弱い |
-| 中程度の値 | 群差はあるが限定的 |
-| 大きい値 | 多変量空間で明瞭な群差がある |
-
-ここでは **厳密な cut-off としてではなく、効果どうしの相対比較**に使うのが実務的です。
+- **点**は Pillai η² の点推定値、**横棒**は 95% CI
+- **CI が 0 を含まなければ**、F 検定で有意と整合(両側 CI は η² が 0 で有界なため F 有意でも CI 下限が 0 に張り付くことがある — 片側 CI `alternative = "greater"` を併用すると非対称性が解消される)
+- **棒の長さ**は推定の不確実性。サンプルサイズが小さい効果や DV 数が多い効果では棒が長くなりやすい
+- 効果間の **相対比較**を一枚で示せるため、論文の Results セクションでは Pillai 表に加えてこの図を載せると視認性が大きく上がります
 
 #### MANOVAの有意性と追跡検定のType Iエラー
 
@@ -1045,8 +1356,8 @@ HEプロットの核心的な読み方は次のとおりです。
 
 - **E楕円**は群内変動（誤差）の大きさと方向を表す。E楕円は全効果で共通です。
 - **H楕円**は各効果の群間変動を表す。効果ごとに1つずつ描かれます。
-- **H楕円がE楕円からはみ出す方向**は、その効果が統計的に有意な方向を示す。Friendly [-@friendly2007] はこれが**Roy の最大根の検定で有意になる方向と幾何学的に対応する**ことを証明しています。
-- H楕円がE楕円に完全に収まる場合、その効果は（少なくともその2DV平面では）有意ではない。
+- **H楕円がE楕円からはみ出す方向**は、その効果が強く現れている方向を読むための視覚的手がかりです。Friendly [-@friendly2007] はこれが**Roy の最大根の検定方向と幾何学的に対応する**ことを示しています。
+- H楕円がE楕円に完全に収まる場合、その2DV平面では効果が小さいと読む。ただし最終的な有意性判断は、MANOVA表の検定結果と併せて行う。
 
 この幾何学的対応は、数値だけでは把握しにくい多変量的な群差のパターンを直感的に読み取ることを可能にします。
 
@@ -1055,23 +1366,24 @@ HEプロットの核心的な読み方は次のとおりです。
 まず、H行列とE行列を数値で確認します。
 
 ```{r}
+#| label: he-matrices
 #| eval: true
-# Treatment × Time の2要因MANOVAフィット（再利用）
+# Instruction × LearningMode の2要因MANOVAフィット（再利用）
 H_matrices <- summary(fit_manova)$SS
 E_matrix <- H_matrices$Residuals
-H_treatment <- H_matrices$Treatment
-H_time <- H_matrices$Time
-H_interaction <- H_matrices$`Treatment:Time`
+H_instruction <- H_matrices$Instruction
+H_mode <- H_matrices$LearningMode
+H_interaction <- H_matrices$`Instruction:LearningMode`
 
 # H行列の表示
 tibble(
-  Effect = c("Treatment", "Time", "Interaction"),
-  H_Recall_Recall = c(H_treatment[1,1], H_time[1,1], H_interaction[1,1]),
-  H_Recall_Recog = c(H_treatment[1,2], H_time[1,2], H_interaction[1,2]),
-  H_Recog_Recog = c(H_treatment[2,2], H_time[2,2], H_interaction[2,2])
+  Effect = c("Instruction", "LearningMode", "Interaction"),
+  H_Recall_Recall = c(H_instruction[1,1], H_mode[1,1], H_interaction[1,1]),
+  H_Recall_Recog = c(H_instruction[1,2], H_mode[1,2], H_interaction[1,2]),
+  H_Recog_Recog = c(H_instruction[2,2], H_mode[2,2], H_interaction[2,2])
 ) |>
     mutate(across(where(is.numeric), ~ round(.x, 2))) |>
-  knitr::kable(caption = "Hypothesis SSCP Matrices (H): between-group variation for each effect")
+  knitr::kable(caption = "仮説SSCP行列（hypothesis SSCP matrix; H）: 各効果における群間変動")
 ```
 
 **H行列の読み方**:
@@ -1087,18 +1399,21 @@ tibble(
 ここでは、`heplots::heplot()` を用いて各効果のH楕円とE楕円を重ねてプロットします。
 
 ```{r}
+#| label: fig-heplot-two-way
 #| eval: true
 #| fig-height: 6
 #| fig-width: 8
+#| fig-cap: "2要因MANOVAのHEプロット（HE plot）。E楕円（error ellipse）は群内変動、H楕円（hypothesis ellipse）は各効果の群間変動を示す。"
+#| fig-alt: "RecallとRecognitionの2次元平面上に、Instruction、LearningMode、交互作用のH楕円とE楕円が重ねて描かれている。"
 
 # lm() オブジェクトが必要（heplot は lm を受け付ける）
-fit_lm_mv <- lm(cbind(Recall, Recognition) ~ Treatment * Time, data = simulated)
+fit_lm_mv <- lm(cbind(Recall, Recognition) ~ Instruction * LearningMode, data = simulated)
 
 heplots::heplot(
   fit_lm_mv,
   fill = TRUE,
   fill.alpha = 0.1,
-  main = "HE Plot: Treatment × Time Effects on Recall and Recognition",
+  main = "HE Plot: Instruction × LearningMode Effects on Recall and Recognition",
   xlab = "Recall",
   ylab = "Recognition"
 )
@@ -1109,19 +1424,19 @@ heplots::heplot(
 | プロット要素 | 意味 |
 |:---|:---|
 | **E楕円**（最も大きい楕円） | 群内のばらつき（誤差）の大きさと形状 |
-| **H楕円**（効果ごとの小さい楕円） | 各効果（Treatment, Time, 交互作用）の群間変動 |
-| H楕円がE楕円を**超える方向** | その方向で群差が統計的に有意 |
-| H楕円がE楕円に**収まる** | その効果はその方向では非有意 |
+| **H楕円**（効果ごとの小さい楕円） | 各効果（Instruction, LearningMode, 交互作用）の群間変動 |
+| H楕円がE楕円を**超える方向** | その方向に群差の視覚的手がかりがある |
+| H楕円がE楕円に**収まる** | その2DV平面では効果が小さい可能性が高い |
 | 楕円の**傾き** | DV間の相関の方向（正の相関なら右上がり） |
 
 #### HEプロットの実務的な読み方
 
 HEプロットでは「H楕円がE楕円からはみ出す方向」に注目してください [@friendly2007]。
 
-1. **はみ出す方向**: H楕円がE楕円の外に出る方向が、統計的に有意な群差の方向です。これはRoyの最大根の検定方向と幾何学的に対応します。
+1. **はみ出す方向**: H楕円がE楕円の外に出る方向は、群差が強く現れている方向を読むための手がかりです。これはRoyの最大根の検定方向と幾何学的に対応しますが、図だけで有意性を判断せず、MANOVA表と併せて確認します。
 2. **楕円の大きさ**: H楕円が大きいほど群間変動が大きい。E楕円に完全に収まるH楕円は、その効果が（その平面では）小さいことを示します。
 3. **楕円の傾き**: DV間に正の相関がある場合、楕円は右上がりに傾きます。この傾きの方向は DV 間の共分散構造を反映しています。
-4. **複数の効果の比較**: Treatment のH楕円が大きく、Interaction のH楕円が小さければ、主効果が支配的で交互作用は弱いことが一目でわかります。
+4. **複数の効果の比較**: Instruction のH楕円が大きく、Interaction のH楕円が小さければ、主効果が支配的で交互作用は弱いことが一目でわかります。
 
 Friendly [-@friendly2007] は、HEプロットの最大の利点を「数表だけでは見えない多変量的パターンを、研究者が直感的に把握できること」と述べています。特に、MANOVAが有意なのに全ANOVAが非有意なケース（DVの組み合わせが群差を担う場合）では、HEプロットが唯一の視覚的手がかりを提供します。
 
@@ -1130,9 +1445,12 @@ Friendly [-@friendly2007] は、HEプロットの最大の利点を「数表だ�
 4群をまとめた1要因モデルでのHEプロットも確認します。
 
 ```{r}
+#| label: fig-heplot-one-way
 #| eval: true
 #| fig-height: 6
 #| fig-width: 8
+#| fig-cap: "4セルを1要因Groupとして見たHEプロット（HE plot）。4群全体の分離構造（group separation）を確認する。"
+#| fig-alt: "RecallとRecognitionの平面上に、Group効果のH楕円とE楕円が描かれている。"
 
 fit_lm_oneway <- lm(cbind(Recall, Recognition) ~ Group, data = simulated)
 
@@ -1151,9 +1469,12 @@ heplots::heplot(
 正準判別分析は、群分離を最大化する線形結合（正準判別関数）を求め、その空間にデータを射影します。`candisc` の公式マニュアルでも、これは多変量線形モデルを**canonical discriminant space** へ写して可視化する手順として説明されています [@friendly2021candisc]。
 
 ```{r}
+#| label: fig-canonical-discriminant-plot
 #| eval: true
 #| fig-height: 6
 #| fig-width: 8
+#| fig-cap: "4群全体の正準判別プロット（canonical discriminant plot）。群重心（centroid）と変数ベクトル（variable vectors）から分離方向を読む。"
+#| fig-alt: "正準判別空間に4群の位置とRecall、Recognitionの変数ベクトルが表示される。"
 
 can_fit <- candisc::candisc(fit_lm_oneway)
 plot(can_fit,
@@ -1169,16 +1490,18 @@ plot(can_fit,
 | 各群の点と楕円 | 群の分布。楕円が離れているほど群分離が大きい |
 | 矢印（ベクトル） | 各DVが正準空間でどの方向に寄与しているか |
 
-## 判別分析による追跡（DDA）: 主要追跡法
+## 判別分析による追跡（DDA）: 4セル全体の群分離
 
 MANOVAは「群間に多変量的な差があるか？」を検定しますが、**どのDVが、どの方向に群分離に寄与しているか**は明らかにしません。DDA（Descriptive Discriminant Analysis）は、MANOVAと同じ固有値分解を逆方向から解釈することで、この問いに答えます [@smith2020; @finch2013; @sherry2005]。
+
+ただし、本節の LDA は `Instruction`、`LearningMode`、交互作用を個別に追跡するものではなく、`Instruction × LearningMode` から作った**4セル全体**（`Group`）の分離を記述する分析です。主効果や交互作用ごとの正準方向を直接見たい場合は、`candisc()` でモデル項ごとに正準判別分析を行う必要があります。本章では、初心者にとって読みやすい「4群が2つのDV空間でどう分かれるか」を中心に説明します。
 
 Penn State STAT 505 [-@psu505_lesson10] は、判別分析を以下の7段階で体系化しています。本章もこの流れに沿って進めます。
 
 1. **前提の確認**: 多変量正規性、共分散行列の等質性（Box's M）
 2. **判別関数の推定**: $\mathbf{H}\mathbf{E}^{-1}$ の固有値分解から判別関数を導出
 3. **有意性の検定**: 各判別関数のWilks' $\Lambda$ 検定（MANOVAと等価）
-4. **構造係数の評価**: DVと判別関数の相関（$|r_s| \geq .30$ が実質的寄与の基準; @tabachnick2019）
+4. **構造係数の評価**: DVと判別関数の相関（$|r_s| \geq .30$ を実質的寄与の目安にする）
 5. **分類規則の構築**: 事前確率と誤分類コストに基づく判別境界
 6. **交差検証**: LOOCVによる分類精度の評価
 7. **結果の解釈**: 構造係数・分散説明割合・分類精度を統合的に報告
@@ -1187,18 +1510,21 @@ Penn State STAT 505 [-@psu505_lesson10] は、判別分析を以下の7段階で
 
 | 追跡法 | 利点 | 限界 |
 |:---|:---|:---|
-| **DDA（判別分析）** | 多変量構造を保持し、DV間の相関を考慮。MANOVAと数学的に整合 [@finch2013] | 英語教育研究では馴染みが薄い場合がある |
-| 個別ANOVA | 直感的に理解しやすい。個々のDVの効果量が明確 | DV間の相関を無視。Type Iエラー膨張（最大76%; @smith2020）。多変量パターンを見逃す |
+| **DDA（判別分析）** | 多変量構造を保持し、DV間の相関を考慮。4セル全体の群分離を説明しやすい [@finch2013] | 効果別の追跡とは区別が必要。英語教育研究では馴染みが薄い場合がある |
+| 個別ANOVA | 直感的に理解しやすい。個々のDVの効果量が明確 | DV間の相関を無視。Type Iエラー膨張のリスクがある。多変量パターンを見逃す |
 
-Warne [-@warne2014] のレビューでは、MANOVAを使った58本中DDAを適切に使った論文は0本でした。本章では **DDAを主要追跡法**とし、個別ANOVAは補助的な追跡法として後に報告します。
+構造係数の .30 基準は、もともと因子分析における loading の解釈基準として広く流通していた経験則を、Sherry & Henson [-@sherry2005] が判別関数の構造係数解釈に **適用・推奨**したものです。Tabachnick & Fidell [-@tabachnick2019] もこの基準を教科書的に採用しています(Sherry & Henson は一次出典ではなく、先行する経験則の判別分析への適用)。また Smith et al. [-@smith2020] は、無補正の単変量追跡では Type I エラー率が大きく膨張しうることを示しています。
+
+Warne [-@warne2014] のレビューでは、MANOVAを使った58本中DDAを適切に使った論文は0本でした。本章では **DDAを多変量構造の主要な記述的追跡法**とし、個別ANOVAは補助的な追跡法として後に報告します。
 
 ### LDAの推定と係数
 
-ここでは、`MASS::lda()` を用いて線形判別分析を実行します [@venables2002; @mass_lda_doc]。公式 docs に沿うと、`lda()` は**群ごとの平均と、全群で共通の within-class covariance** を使って判別軸を推定します。また `prior` は単に事前確率を変えるだけでなく、**2群を超える場合には判別軸の回転にも影響**します [@mass_lda_doc]。DDAとして使う場合、分類精度よりも**判別関数の係数**と**構造係数**に注目します。
+ここでは、`MASS::lda()` を用いて線形判別分析を実行します [@venables2002; @mass_lda_doc]。公式ドキュメントに沿うと、`lda()` は**群ごとの平均と、全群で共通の群内共分散（within-class covariance）**を使って判別軸を推定します。また `prior` は単に事前確率を変えるだけでなく、**2群を超える場合には判別軸の回転にも影響**します [@mass_lda_doc]。DDAとして使う場合、分類精度よりも**判別関数の係数**と**構造係数**に注目します。
 
 Finch & French [-@finch2013] が示したように、LDAの判別関数は $\mathbf{H}\mathbf{E}^{-1}$ の固有ベクトルに対応しており、MANOVAの固有値と同一の情報源です。つまり、LDAの結果を解釈することは、MANOVAの結果を「群分離の方向と構造」という観点から補完することに相当します。
 
 ```{r}
+#| label: lda-fit-coefficients
 #| eval: true
 lda_fit <- MASS::lda(
   Group ~ Recall + Recognition,
@@ -1211,12 +1537,12 @@ lda_coef <- as.data.frame(lda_fit$scaling) |>
 
 lda_coef |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA Coefficients: linear discriminant function loadings")
+  knitr::kable(caption = "LDA係数（LDA coefficients）: 元尺度の正準判別係数（raw canonical discriminant coefficients）")
 
 centroid_tbl <- as_tibble(lda_fit$means, rownames = "Group")
 centroid_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 2))) |>
-  knitr::kable(caption = "Group Centroids: means of predictors by group")
+  knitr::kable(caption = "群重心（group centroids）: 群別の予測変数平均")
 ```
 
 **LDA係数の読み方**:
@@ -1230,9 +1556,10 @@ centroid_tbl |>
 
 構造係数は、各DVと判別関数の相関であり、**各DVが判別関数にどれだけ寄与しているか**を示します。Sherry & Henson [-@sherry2005] は構造係数を「判別関数が捉える多変量的パターンの中で、各DVがどの程度そのパターンを共有しているか」と定義しています。
 
-標準化係数（LDA係数）は回帰分析の $\beta$ 係数と同様に多重共線性の影響を受けますが、構造係数は**DV間の相関に対してより安定**しています。Tabachnick & Fidell [-@tabachnick2019] は、DV間相関が .40 を超える場合、標準化係数と構造係数の乖離が大きくなりうることを示しており、そのような場合に構造係数の優先使用を推奨しています。
+`MASS::lda()` の係数は、ここでは元尺度上の正準判別係数です。変数を標準化していない限り「標準化係数」ではありません。これらの係数は回帰分析の $\beta$ 係数と同様にDV間相関の影響を受けますが、構造係数は**DVと判別関数スコアの相関**なので解釈が安定しやすいです。Tabachnick & Fidell [-@tabachnick2019] は、DV間相関が .40 を超える場合、係数と構造係数の乖離が大きくなりうることを示しており、そのような場合に構造係数の優先使用を推奨しています。
 
 ```{r}
+#| label: lda-structure-coefficients
 #| eval: true
 lda_pred <- predict(lda_fit, newdata = simulated)
 
@@ -1248,18 +1575,18 @@ structure_tbl <- as.data.frame(structure_coefs) |>
 
 structure_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Structure Coefficients: correlations between DVs and discriminant functions")
+  knitr::kable(caption = "構造係数（structure coefficients）: DVと判別関数（discriminant functions）の相関")
 
 coef_compare_plot_tbl <- bind_rows(
   lda_coef |>
     pivot_longer(-Variable, names_to = "Function", values_to = "Value") |>
-    mutate(Metric = "Standardized coefficient"),
+    mutate(Metric = "Raw canonical coefficient"),
   structure_tbl |>
     pivot_longer(-Variable, names_to = "Function", values_to = "Value") |>
     mutate(Metric = "Structure coefficient")
 ) |>
   mutate(
-    Metric = factor(Metric, levels = c("Standardized coefficient", "Structure coefficient"))
+    Metric = factor(Metric, levels = c("Raw canonical coefficient", "Structure coefficient"))
   )
 ```
 
@@ -1268,7 +1595,8 @@ coef_compare_plot_tbl <- bind_rows(
 #| label: dda-loading-heatmap
 #| fig-width: 7.5
 #| fig-height: 5.2
-#| fig-cap: "Standardized coefficients and structure coefficients shown together. The lower panel is usually more stable for interpretation."
+#| fig-cap: "元尺度の正準判別係数（raw canonical discriminant coefficients）と構造係数（structure coefficients）。解釈は通常、構造係数を優先する。"
+#| fig-alt: "2つの目的変数と判別関数の関係をヒートマップで示す図。元尺度係数と構造係数が別パネルで表示される。"
 
 ggplot(coef_compare_plot_tbl, aes(x = Function, y = Variable, fill = Value)) +
   geom_tile(color = "white", linewidth = 0.8) +
@@ -1278,18 +1606,17 @@ ggplot(coef_compare_plot_tbl, aes(x = Function, y = Variable, fill = Value)) +
     low = "#b2182b",
     mid = "white",
     high = "#2166ac",
-    midpoint = 0,
-    limits = c(-1, 1)
+    midpoint = 0
   ) +
   labs(
-    title = "Which Outcome Supports Each Discriminant Function?",
+    title = "どの目的変数が判別関数を支えているか",
     x = NULL,
     y = NULL,
     fill = "Value"
   )
 ```
 
-**構造係数の解釈基準** [@tabachnick2019]:
+**構造係数の解釈基準** [@sherry2005; @tabachnick2019]:
 
 | 構造係数の絶対値 | 解釈 |
 |:---:|:---|
@@ -1299,20 +1626,20 @@ ggplot(coef_compare_plot_tbl, aes(x = Function, y = Variable, fill = Value)) +
 
 **係数ヒートマップの読み方**:
 
-- 上段の標準化係数は「モデルがどの重みで線形結合を作ったか」を示す
+- 上段の元尺度係数は「モデルがどの重みで線形結合を作ったか」を示す
 - 下段の構造係数は「各DVがその判別関数とどれだけ強く相関しているか」を示す
 - 2つがほぼ同じなら、解釈は安定している
 - 2つがずれるなら、多重共線性や抑圧効果を疑い、**下段の構造係数を優先**して読む
 
-#### 標準化係数 vs 構造係数: どちらを報告すべきか
+#### 判別係数 vs 構造係数: どちらを報告すべきか
 
-LDA の標準化係数は回帰分析の $\beta$ と同様に、多重共線性の影響を受けます。DV間の相関が高い場合、一方のDVの係数が不安定になったり、符号が反転したりすることがあります。
+LDA の判別係数は回帰分析の係数と同様に、多重共線性の影響を受けます。DV間の相関が高い場合、一方のDVの係数が不安定になったり、符号が反転したりすることがあります。
 
 Sherry & Henson [-@sherry2005] は以下の指針を示しています。
 
 1. **構造係数を常に報告する**。標準化係数のみの報告は、多変量構造の解釈を歪める。
-2. **両者が一致する場合**: DV間の多重共線性が低い。標準化係数も信頼できる。
-3. **両者が乖離する場合**: DV間の多重共線性が高い。構造係数を優先し、標準化係数は参考として報告する。
+2. **両者が一致する場合**: DV間の多重共線性が低い。判別係数も参考にできる。
+3. **両者が乖離する場合**: DV間の多重共線性が高い。構造係数を優先し、判別係数は参考として報告する。
 4. **構造係数の符号が逆転する場合**: そのDVは他のDVを通じて間接的に判別関数に関与している（抑圧効果の可能性）。
 
 Tabachnick & Fidell [-@tabachnick2019] も同じ立場をとり、「構造係数 $\geq .30$ を実質的寄与の閾値とする」という基準を広く普及させています。
@@ -1322,6 +1649,7 @@ Tabachnick & Fidell [-@tabachnick2019] も同じ立場をとり、「構造係�
 各判別関数が群間分散のどれだけを説明するかを確認します。
 
 ```{r}
+#| label: lda-proportion-trace
 #| eval: true
 prop_trace <- lda_fit$svd^2 / sum(lda_fit$svd^2)
 
@@ -1338,7 +1666,7 @@ prop_trace_tbl |>
     Cumulative = scales::percent(Cumulative, accuracy = 0.1)
   ) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Proportion of Trace: variance explained by each discriminant function")
+  knitr::kable(caption = "Trace割合（proportion of trace）: 各判別関数が説明する群間分散")
 ```
 
 ```{r}
@@ -1346,7 +1674,7 @@ prop_trace_tbl |>
 #| label: proportion-trace-plot
 #| fig-width: 7
 #| fig-height: 4.8
-#| fig-cap: "Variance explained by each discriminant function. A dominant LD1 means the separation is mostly one-dimensional."
+#| fig-cap: "各判別関数（discriminant function）が説明する群間分散。LD1が支配的なら、群分離（group separation）はほぼ1次元で要約できる。"
 
 ggplot(prop_trace_tbl, aes(x = Function, y = Proportion)) +
   geom_col(fill = "#3182bd", width = 0.6) +
@@ -1355,9 +1683,9 @@ ggplot(prop_trace_tbl, aes(x = Function, y = Proportion)) +
   geom_point(aes(y = Cumulative), color = "#e6550d", size = 2.6) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1.05)) +
   labs(
-    title = "Proportion of Trace by Discriminant Function",
+    title = "判別関数ごとのTrace割合",
     x = NULL,
-    y = "Proportion of between-group variance"
+    y = "群間分散の割合"
   )
 ```
 
@@ -1369,11 +1697,12 @@ ggplot(prop_trace_tbl, aes(x = Function, y = Proportion)) +
 
 ### LOOCVによる分類精度
 
-DDAの分類性能を Leave-One-Out Cross-Validation（LOOCV）で評価します [@psu505_lesson10]。LOOCVは各観測を1つずつ除外して残りで判別関数を推定し、除外した観測の群を予測します。これにより、過学習を軽減した分類精度が得られます。`MASS::lda()` の公式 docs でも、`CV = TRUE` を指定すると交差検証ベースの `class` と posterior が返る設計になっています [@mass_lda_doc]。
+DDAの分類性能を Leave-One-Out Cross-Validation（LOOCV）で評価します [@psu505_lesson10]。LOOCVは各観測を1つずつ除外して残りで判別関数を推定し、除外した観測の群を予測します。これにより、過学習を軽減した分類精度が得られます。`MASS::lda()` の公式ドキュメントでも、`CV = TRUE` を指定すると交差検証ベースの `class` と posterior が返る設計になっています [@mass_lda_doc]。
 
-Penn State STAT 505 [-@psu505_lesson10] の7段階手順では、LOOCVは第6段階に位置づけられ、「判別関数の予測的妥当性を新データに対して検証する」ステップとして位置づけられています。再代入精度（学習データ自体での正解率）は過大評価されるため、LOOCVまたはk分割交差検証が標準的です。
+Penn State STAT 505 [-@psu505_lesson10] の7段階手順では、LOOCVは第6段階に位置づけられます。これは完全な外部検証ではなく、未知データでの性能を近似的に見積もる**内部交差検証**です。再代入精度（学習データ自体での正解率）は過大評価されるため、LOOCVまたはk分割交差検証を使います。
 
 ```{r}
+#| label: lda-loocv-metrics
 #| eval: true
 lda_cv <- MASS::lda(
   Group ~ Recall + Recognition,
@@ -1404,12 +1733,12 @@ cm_lda_plot_tbl <- as.data.frame(cm_lda) |>
 as.data.frame.matrix(cm_lda) |>
   rownames_to_column("Actual") |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA Confusion Matrix (LOOCV): rows = Actual, columns = Predicted")
+  knitr::kable(caption = "LDA混同行列（confusion matrix; LOOCV）: 行 = 実際の群、列 = 予測群")
 
 lda_metric_tbl |>
   mutate(Value = scales::percent(Value, accuracy = 0.1)) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA Classification Metrics: LOOCV-based performance")
+  knitr::kable(caption = "LDA分類指標（classification metrics）: LOOCVに基づく性能")
 ```
 
 ```{r}
@@ -1417,17 +1746,18 @@ lda_metric_tbl |>
 #| label: lda-confusion-heatmap
 #| fig-width: 6.8
 #| fig-height: 5.8
-#| fig-cap: "LDA confusion matrix as a heatmap. Dark diagonal cells indicate successful classification."
+#| fig-cap: "LDA混同行列（confusion matrix）のヒートマップ。対角セルが濃いほど分類が成功している。"
+#| fig-alt: "実際の群を縦軸、予測群を横軸にしたヒートマップ。対角セルは正分類、非対角セルは誤分類を表す。"
 
 ggplot(cm_lda_plot_tbl, aes(x = Predicted, y = Actual, fill = Freq)) +
   geom_tile(color = "white", linewidth = 0.8) +
   geom_text(aes(label = Freq), size = 4.1, color = "black") +
   scale_fill_gradient(low = "#f7fbff", high = "#2171b5") +
   labs(
-    title = "Where the LDA Model Classifies Correctly and Incorrectly",
-    x = "Predicted group",
-    y = "Actual group",
-    fill = "Count"
+    title = "LDAモデルはどこで正しく分類し、どこで誤分類するか",
+    x = "予測群",
+    y = "実際の群",
+    fill = "度数"
   )
 ```
 
@@ -1437,7 +1767,7 @@ ggplot(cm_lda_plot_tbl, aes(x = Predicted, y = Actual, fill = Freq)) +
 |:---|:---|
 | 対角線 | 正しく分類された数。大きいほど良い |
 | 非対角線 | 誤分類。どの群がどの群に間違われやすいかを示す |
-| Overall accuracy | 全体正解率。チャンス水準（25.0%、4群均等の場合）を大きく上回るか確認 |
+| Overall accuracy | 全体正解率。チャンス水準（25.0%、4群均等の場合）と置換チェックを併せて確認 |
 | Balanced accuracy | 群サイズの不均衡を補正した正解率 |
 
 **混同行列ヒートマップの読み方**:
@@ -1445,12 +1775,14 @@ ggplot(cm_lda_plot_tbl, aes(x = Predicted, y = Actual, fill = Freq)) +
 - 濃い対角線セルが多いほど、分類は安定している
 - 特定の2群の非対角セルだけが濃いなら、その2群は判別空間で混同されやすい
 - `Overall accuracy` が高くても、1群だけ極端に苦手なら balanced accuracy と群別指標も併せて見る
+- 二項信頼区間は全体正解率の不確実性を見る近似であり、LOOCV予測の完全な独立性を仮定しない置換チェックも併記する
 
-#### 群別指標（Precision / Recall / F1）
+#### 群別指標（Precision / Sensitivity / F1）
 
-分類精度は全体正解率だけでなく、**群ごとの再現率と適合率**も確認します。
+分類精度は全体正解率だけでなく、**群ごとの感度（classification recall）と適合率**も確認します。ここでの recall は分類指標名であり、語彙テストの `Recall` 得点とは別物です。混同を避けるため、表では `Sensitivity` と表記します。
 
 ```{r}
+#| label: lda-class-metrics-ci
 #| eval: true
 calc_class_metrics <- function(cm) {
   tp <- diag(cm)
@@ -1468,7 +1800,7 @@ calc_class_metrics <- function(cm) {
   tibble(
     Group = rownames(cm),
     Support = as.numeric(support),
-    Recall = as.numeric(recall),
+    Sensitivity = as.numeric(recall),
     Precision = as.numeric(precision),
     F1 = as.numeric(f1)
   )
@@ -1491,15 +1823,48 @@ calc_accuracy_ci <- function(cm, conf_level = 0.95) {
 lda_class_tbl <- calc_class_metrics(cm_lda)
 lda_acc_ci <- calc_accuracy_ci(cm_lda)
 
+set.seed(2025)
+n_perm <- 199
+perm_accuracy <- purrr::map_dbl(seq_len(n_perm), ~ {
+  perm_data <- simulated |>
+    mutate(Group_perm = sample(Group))
+  perm_cv <- MASS::lda(
+    Group_perm ~ Recall + Recognition,
+    data = perm_data,
+    CV = TRUE
+  )
+  mean(perm_cv$class == perm_data$Group_perm)
+})
+
+lda_perm_p <- (sum(perm_accuracy >= lda_overall) + 1) / (n_perm + 1)
+
+lda_chance_tbl <- tibble(
+  Observed_Accuracy = lda_overall,
+  Mean_Permuted_Accuracy = mean(perm_accuracy),
+  Permutation_p = lda_perm_p,
+  Permutations = n_perm
+)
+
 lda_class_tbl |>
-  mutate(across(c(Recall, Precision, F1), ~ scales::percent(.x, accuracy = 0.1))) |>
+  mutate(across(c(Sensitivity, Precision, F1), ~ scales::percent(.x, accuracy = 0.1))) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA Class-wise Performance: recall, precision, and F1 by group")
+  knitr::kable(caption = "LDAの群別性能（class-wise performance）: sensitivity、precision、F1")
 
 lda_acc_ci |>
   mutate(across(c(Accuracy, CI_low, CI_high), ~ scales::percent(.x, accuracy = 0.1))) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA Accuracy with 95% CI: exact binomial confidence interval")
+  knitr::kable(caption = "LDA正解率（accuracy）と95% CI: 二項信頼区間による近似")
+
+lda_chance_tbl |>
+  mutate(
+    across(c(Observed_Accuracy, Mean_Permuted_Accuracy), ~ scales::percent(.x, accuracy = 0.1)),
+    Permutation_p = if_else(
+      Permutation_p < .001,
+      "< .001",
+      sub("^0", "", sprintf("%.3f", Permutation_p))
+    )
+  ) |>
+  knitr::kable(caption = "LDA正解率（accuracy）と置換チャンス水準（permuted chance）: LOOCV置換チェック")
 ```
 
 ### LDA判別空間の可視化
@@ -1507,7 +1872,12 @@ lda_acc_ci |>
 判別関数スコアの散布図で、4群がどの程度分離しているかを視覚的に確認します。
 
 ```{r}
+#| label: fig-lda-discriminant-space
 #| eval: true
+#| fig-width: 7.2
+#| fig-height: 5.6
+#| fig-cap: "LDA判別空間（discriminant space）における4群の分布。軸ラベルの括弧内はtrace割合（proportion of trace）を示す。"
+#| fig-alt: "LD1とLD2の散布図。4群の点、95%楕円、群重心ラベルが表示される。"
 lda_scores <- as_tibble(lda_pred$x) |>
   mutate(Group = simulated$Group)
 
@@ -1516,14 +1886,31 @@ if (!"LD2" %in% colnames(lda_scores)) {
     mutate(LD2 = 0)
 }
 
+lda_centers <- lda_scores |>
+  group_by(Group) |>
+  summarise(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
+
+ld1_label <- paste0("LD1 (", scales::percent(prop_trace[1], accuracy = 0.1), ")")
+ld2_label <- if (length(prop_trace) >= 2) {
+  paste0("LD2 (", scales::percent(prop_trace[2], accuracy = 0.1), ")")
+} else {
+  "LD2"
+}
+
 ggplot(lda_scores, aes(x = LD1, y = LD2, color = Group)) +
   geom_point(alpha = 0.7, size = 2.5) +
   stat_ellipse(level = 0.95, linewidth = 0.7, linetype = "dashed") +
+  geom_label(
+    data = lda_centers,
+    aes(label = Group),
+    size = 3,
+    show.legend = FALSE
+  ) +
   labs(
-    title = "Discriminant Space",
-    subtitle = "LDA scores by group",
-    x = "LD1",
-    y = "LD2"
+    title = "LDA判別空間",
+    subtitle = "点は個人、ラベルは群重心、破線楕円は95%楕円",
+    x = ld1_label,
+    y = ld2_label
   )
 ```
 
@@ -1535,9 +1922,10 @@ ggplot(lda_scores, aes(x = LD1, y = LD2, color = Group)) +
 
 ### QDAとの比較
 
-LDAは**全群で共通の共分散行列を仮定**しますが、QDA（Quadratic Discriminant Analysis）は**群ごとに異なる共分散行列を許容**します [@venables2002; @mass_lda_doc; @mass_qda_doc]。Box's M検定が有意で、群間の共分散構造が異なる場合はQDAの方が適切な可能性があります。ただし、QDAはパラメータ数が多いため、各群に十分な標本サイズが必要です。公式 docs でも `qda()` は群別分散構造を推定するぶん、**within-group covariance が特異だと rank deficiency や小標本問題に弱い**ことが示唆されています [@mass_qda_doc]。
+LDAは**全群で共通の共分散行列を仮定**しますが、QDA（Quadratic Discriminant Analysis）は**群ごとに異なる共分散行列を許容**します [@venables2002; @mass_lda_doc; @mass_qda_doc]。ただし、QDAは分類器であり、Box's M 検定が有意なMANOVAを「修復する」方法ではありません。本章では、QDAを主推論ではなく、分類性能を見るための感度分析として扱います。公式ドキュメントでも `qda()` は群別分散構造を推定するぶん、**群内共分散が特異だとランク落ち（rank deficiency）や小標本問題に弱い**ことが示唆されています [@mass_qda_doc]。
 
 ```{r}
+#| label: qda-loocv-comparison
 #| eval: true
 qda_cv <- MASS::qda(
   Group ~ Recall + Recognition,
@@ -1562,10 +1950,11 @@ comparison_tbl <- tibble(
 comparison_tbl |>
   mutate(across(c(Overall_Accuracy, Balanced_Accuracy), ~ scales::percent(.x, accuracy = 0.1))) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA vs QDA: cross-validated classification performance")
+  knitr::kable(caption = "LDA vs QDA: 交差検証（cross-validation）に基づく分類性能")
 ```
 
 ```{r}
+#| label: qda-class-metrics
 #| eval: true
 qda_class_tbl <- calc_class_metrics(cm_qda)
 qda_acc_ci <- calc_accuracy_ci(cm_qda)
@@ -1574,10 +1963,10 @@ bind_rows(
   lda_class_tbl |> mutate(Method = "LDA"),
   qda_class_tbl |> mutate(Method = "QDA")
 ) |>
-  dplyr::select(Method, Group, Support, Recall, Precision, F1) |>
-  mutate(across(c(Recall, Precision, F1), ~ scales::percent(.x, accuracy = 0.1))) |>
+  dplyr::select(Method, Group, Support, Sensitivity, Precision, F1) |>
+  mutate(across(c(Sensitivity, Precision, F1), ~ scales::percent(.x, accuracy = 0.1))) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA/QDA Class-wise Comparison: per-group classification quality")
+  knitr::kable(caption = "LDA/QDAの群別比較（class-wise comparison）: 群ごとの分類品質")
 
 bind_rows(
   lda_acc_ci |> mutate(Method = "LDA"),
@@ -1586,7 +1975,7 @@ bind_rows(
   dplyr::select(Method, Correct, Total, Accuracy, CI_low, CI_high) |>
   mutate(across(c(Accuracy, CI_low, CI_high), ~ scales::percent(.x, accuracy = 0.1))) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "LDA/QDA Accuracy with 95% CI: overall uncertainty of classification accuracy")
+  knitr::kable(caption = "LDA/QDA正解率（accuracy）と95% CI: 全体正解率の不確実性")
 ```
 
 ```{r}
@@ -1594,7 +1983,8 @@ bind_rows(
 #| label: lda-qda-accuracy-plot
 #| fig-width: 6.8
 #| fig-height: 4.8
-#| fig-cap: "Overall accuracy with 95% CIs for LDA and QDA. The dashed line marks chance level."
+#| fig-cap: "LDAとQDAの全体正解率（overall accuracy）と95% CI。破線はチャンス水準（chance level）を表す。"
+#| fig-alt: "LDAとQDAの正解率を点と信頼区間で比較する図。横破線はチャンス水準、三角点はbalanced accuracyを示す。"
 
 accuracy_compare_plot_tbl <- bind_rows(
   lda_acc_ci |> mutate(Method = "LDA", Balanced_Accuracy = lda_balanced),
@@ -1609,10 +1999,10 @@ ggplot(accuracy_compare_plot_tbl, aes(x = Method, y = Accuracy, color = Method))
   annotate("text", x = 1.5, y = chance_level + 0.03, label = "Chance level", color = "gray35", size = 3.4) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
   labs(
-    title = "LDA and QDA Classification Accuracy",
-    subtitle = "Circles = overall accuracy, triangles = balanced accuracy",
+    title = "LDAとQDAの分類正解率",
+    subtitle = "丸 = overall accuracy、三角 = balanced accuracy",
     x = NULL,
-    y = "Accuracy"
+    y = "正解率"
   ) +
   theme(legend.position = "none")
 ```
@@ -1622,73 +2012,20 @@ ggplot(accuracy_compare_plot_tbl, aes(x = Method, y = Accuracy, color = Method))
 | 条件 | 推奨 |
 |:---|:---|
 | Box's M が非有意（$p > .001$） | LDA（よりパーシモニアス） |
-| Box's M が有意（$p < .001$）かつ各群のN > DV数 + 1 | QDA を検討 |
+| Box's M が有意（$p < .001$）かつ各群の $n \gg p+1$ | 予測目的の感度分析として QDA を検討(各群の共分散行列を独立に推定するため、ある程度の n が必要) |
+| 各群の $n$ が $p+1$ をかろうじて超える程度 | **正則化判別分析(`klaR::rda`)**を検討。LDA と QDA の中間で、各群共分散と共通共分散をシュリンクで混合するため、小サンプルで安定 |
 | LDA と QDA の精度がほぼ同じ | LDA を選択（より安定） |
-| QDA が明らかに優れる | QDA を報告（Box's M の有意性と合わせて根拠を明記） |
+| QDA が明らかに優れる | 分類目的に限ってQDAを報告。MANOVAの主推論とは分けて書く |
+
+::: {.callout-note}
+**$n > p + 1$ は QDA の必要条件であり、十分条件ではありません。** $n$ が $p+1$ ぎりぎりだと群別共分散の推定が不安定になります。実用上は $n \gtrsim 5(p+1)$ 程度が目安で、それを下回る場合は **正則化判別分析** [@friedman1989rda; `klaR::rda()` で実装] で LDA と QDA を λ パラメータで補間するのが現実的です。
+:::
 
 **精度比較プロットの読み方**:
 
 - 丸印は overall accuracy、三角は balanced accuracy を表す
 - 95% CI が大きく重なるなら、LDA と QDA の差は実務上かなり小さいと考えてよい
-- chance level を大きく超えているかどうかで、「統計的に分離可能」だけでなく「実際に使える程度に分離できるか」を判断する
-
-#### 判別分析を再利用する関数（汎用）
-
-```{r}
-#| eval: true
-run_discriminant_cv <- function(data, group, predictors, method = c("lda", "qda"), priors = NULL) {
-  method <- match.arg(method)
-  fml <- as.formula(paste(group, "~", paste(predictors, collapse = " + ")))
-
-  fit_args <- list(formula = fml, data = data, CV = TRUE)
-  if (!is.null(priors)) {
-    fit_args$prior <- priors
-  }
-
-  fit <- if (method == "lda") {
-    do.call(MASS::lda, fit_args)
-  } else {
-    do.call(MASS::qda, fit_args)
-  }
-
-  cm <- table(Actual = data[[group]], Predicted = fit$class)
-  overall <- sum(diag(cm)) / sum(cm)
-  balanced <- mean(diag(cm) / rowSums(cm))
-  chance <- max(prop.table(table(data[[group]])))
-
-  list(
-    fit = fit,
-    confusion = cm,
-    summary = tibble(
-      Method = toupper(method),
-      Overall_Accuracy = overall,
-      Balanced_Accuracy = balanced,
-      Chance_Level = chance
-    ),
-    class_metrics = calc_class_metrics(cm),
-    accuracy_ci = calc_accuracy_ci(cm)
-  )
-}
-
-demo_lda <- run_discriminant_cv(
-  data = simulated,
-  group = "Group",
-  predictors = c("Recall", "Recognition"),
-  method = "lda"
-)
-
-demo_qda <- run_discriminant_cv(
-  data = simulated,
-  group = "Group",
-  predictors = c("Recall", "Recognition"),
-  method = "qda"
-)
-
-bind_rows(demo_lda$summary, demo_qda$summary) |>
-  mutate(across(c(Overall_Accuracy, Balanced_Accuracy, Chance_Level), ~ scales::percent(.x, accuracy = 0.1))) |>
-    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Reusable DA Function Demo: single-call LDA/QDA cross-validated summaries")
-```
+- chance level を大きく超えているかどうかで、「統計的に分離可能」だけでなく「実際に使える程度に分離できるか」を判断する。ただし、チャンス超えを推論として主張する場合は置換チェックや外部検証も併記する
 
 ## 単変量追跡分析（Follow-up）: 補助的追跡法
 
@@ -1706,9 +2043,10 @@ Warne [-@warne2014] の58本レビューでは、ほぼすべてがANOVAのみ�
 MANOVAで有意な効果が見られた場合、どの目的変数が効果を担っているかを単変量で追跡します。ここでは6つの検定（2 DV × 3効果）に対して Holm 補正を適用します。
 
 ```{r}
+#| label: followup-anova-tests
 #| eval: true
-aov_recall <- aov(Recall ~ Treatment * Time, data = simulated)
-aov_recognition <- aov(Recognition ~ Treatment * Time, data = simulated)
+aov_recall <- aov(Recall ~ Instruction * LearningMode, data = simulated)
+aov_recognition <- aov(Recognition ~ Instruction * LearningMode, data = simulated)
 
 followup_tbl <- bind_rows(
   broom::tidy(aov_recall) |>
@@ -1723,9 +2061,14 @@ followup_tbl <- bind_rows(
   dplyr::select(Outcome, term, df, statistic, p.value, p_holm)
 
 followup_tbl |>
-  mutate(across(c(statistic, p.value, p_holm), ~ round(.x, 4))) |>
+  mutate(
+    p = if_else(p.value < .001, "< .001", sub("^0", "", sprintf("%.3f", p.value))),
+    p_Holm = if_else(p_holm < .001, "< .001", sub("^0", "", sprintf("%.3f", p_holm)))
+  ) |>
+  mutate(across(c(statistic), ~ round(.x, 3))) |>
   mutate(across(df, ~ round(.x, 0))) |>
-  knitr::kable(caption = "Univariate Follow-up Tests: ANOVA with Holm-adjusted p-values")
+  dplyr::select(Outcome, term, df, statistic, p, p_Holm) |>
+  knitr::kable(caption = "単変量追跡検定（univariate follow-up tests）: Holm補正つきANOVA")
 ```
 
 **追跡ANOVAの読み方**:
@@ -1733,26 +2076,27 @@ followup_tbl |>
 | 出力項目 | 読み方 |
 |:---|:---|
 | `Outcome` | どのDVの結果か |
-| `term` | 効果名（Treatment, Time, 交互作用） |
+| `term` | 効果名（Instruction, LearningMode, 交互作用） |
 | `statistic` | F値 |
-| `p.value` | 補正前のp値 |
-| `p_holm` | Holm補正後のp値。**こちらを報告に使用する** |
+| `p` | 補正前のp値 |
+| `p_Holm` | Holm補正後のp値。**こちらを報告に使用する** |
 
 ### 効果量（偏η²）
 
 ```{r}
+#| label: followup-effect-sizes
 #| eval: true
 eta_tbl <- bind_rows(
-  as.data.frame(effectsize::eta_squared(aov_recall, partial = TRUE)) |>
+  as.data.frame(effectsize::eta_squared(aov_recall, partial = TRUE, alternative = "two.sided")) |>
     mutate(Outcome = "Recall"),
-  as.data.frame(effectsize::eta_squared(aov_recognition, partial = TRUE)) |>
+  as.data.frame(effectsize::eta_squared(aov_recognition, partial = TRUE, alternative = "two.sided")) |>
     mutate(Outcome = "Recognition")
 ) |>
   dplyr::select(Outcome, Parameter, Eta2_partial, CI_low, CI_high)
 
 eta_tbl |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Effect Sizes: partial eta-squared for follow-up ANOVAs")
+  knitr::kable(caption = "効果量（effect size）: 追跡ANOVAの偏η²（partial eta-squared）")
 ```
 
 ```{r}
@@ -1760,7 +2104,8 @@ eta_tbl |>
 #| label: followup-effectsize-plot
 #| fig-width: 7.2
 #| fig-height: 5.2
-#| fig-cap: "Partial eta-squared with confidence intervals for the follow-up ANOVAs."
+#| fig-cap: "追跡ANOVAの偏η²（partial eta-squared）と信頼区間（confidence interval）。"
+#| fig-alt: "各目的変数と効果ごとの偏η²を点、信頼区間を横線で示す図。"
 
 eta_plot_tbl <- eta_tbl |>
   mutate(
@@ -1773,9 +2118,9 @@ ggplot(eta_plot_tbl, aes(x = Eta2_partial, y = Effect, color = Outcome)) +
   geom_segment(aes(x = CI_low, xend = CI_high, yend = Effect), linewidth = 0.9) +
   geom_point(size = 3) +
   labs(
-    title = "Which Univariate Effects Are Small, Medium, or Large?",
-    subtitle = "Reference lines mark .01, .06, and .14",
-    x = "Partial eta-squared",
+    title = "どの単変量効果が大きいか",
+    subtitle = ".01、.06、.14 の縦線は解釈の目安",
+    x = "偏η²",
     y = NULL
   )
 ```
@@ -1798,17 +2143,18 @@ ggplot(eta_plot_tbl, aes(x = Eta2_partial, y = Effect, color = Outcome)) +
 ### 事後比較（セル平均の比較）
 
 ```{r}
+#| label: followup-pairwise-tests
 #| eval: true
-lm_recall <- lm(Recall ~ Treatment * Time, data = simulated)
-lm_recognition <- lm(Recognition ~ Treatment * Time, data = simulated)
+lm_recall <- lm(Recall ~ Instruction * LearningMode, data = simulated)
+lm_recognition <- lm(Recognition ~ Instruction * LearningMode, data = simulated)
 
-pairs_recall <- emmeans::emmeans(lm_recall, ~ Treatment * Time) |>
+pairs_recall <- emmeans::emmeans(lm_recall, ~ Instruction * LearningMode) |>
   pairs(adjust = "holm") |>
   summary(infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
   mutate(Outcome = "Recall")
 
-pairs_recognition <- emmeans::emmeans(lm_recognition, ~ Treatment * Time) |>
+pairs_recognition <- emmeans::emmeans(lm_recognition, ~ Instruction * LearningMode) |>
   pairs(adjust = "holm") |>
   summary(infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
@@ -1823,10 +2169,11 @@ pairwise_tbl |>
     SE = round(SE, 4),
     df = round(df, 0),
     t.ratio = round(t.ratio, 4),
-    p.value = round(p.value, 4)
+    p = if_else(p.value < .001, "< .001", sub("^0", "", sprintf("%.3f", p.value)))
   ) |>
+  dplyr::select(-p.value) |>
   knitr::kable(
-    caption = "Post-hoc Pairwise Comparisons: Estimated marginal means (Holm-adjusted)"
+    caption = "Post hocペア比較（post hoc pairwise comparisons）: 推定周辺平均の差（estimated marginal mean differences; Holm補正）"
   )
 ```
 
@@ -1835,7 +2182,8 @@ pairwise_tbl |>
 #| label: followup-pairwise-plot
 #| fig-width: 8
 #| fig-height: 6.4
-#| fig-cap: "Pairwise mean differences with 95% confidence intervals for each outcome."
+#| fig-cap: "各アウトカムにおけるペア比較（pairwise comparisons）の平均差と95%信頼区間（95% confidence intervals）。"
+#| fig-alt: "RecallとRecognitionの2パネルで、条件ペアごとの平均差と95%信頼区間を横線で示す図。"
 
 pairwise_plot_tbl <- pairwise_tbl |>
   mutate(
@@ -1850,8 +2198,8 @@ ggplot(pairwise_plot_tbl, aes(x = estimate, y = contrast, color = Significant)) 
   facet_wrap(~ Outcome, scales = "free_y") +
   scale_color_manual(values = c("Holm-adjusted p < .05" = "#1b7837", "ns" = "#636363")) +
   labs(
-    title = "Which Cell Means Differ Within Each Outcome?",
-    x = "Estimated mean difference",
+    title = "各アウトカムでどのセル平均が異なるか",
+    x = "推定平均差",
     y = NULL,
     color = NULL
   )
@@ -1876,45 +2224,44 @@ $$
 
 ### 共変量つきデータの用意
 
-ここでは、各群の平均差はほぼ持たせずに、群内で `Recall` と `Recognition` にゆるやかに相関する事前能力指標 `Proficiency` を追加します。こうしておくと、「群差そのもの」ではなく「群内の個人差を調整する共変量」という MANCOVA の役割を見せやすくなります。
+ここでは、アウトカムとは別に観測された事前能力指標 `Proficiency` を想定します。教育研究で MANCOVA を使う場合、共変量は原則として介入後アウトカムから作るのではなく、介入前または独立した測定から得られる変数である必要があります。ここではまず外生的な `Proficiency` を生成し、その後で `Recall` と `Recognition` に弱く反映させます。
 
 ```{r}
+#| label: mancova-data-simulation
 #| eval: true
+set.seed(2026)
+
 simulated_cov <- simulated |>
-  group_by(Group) |>
   mutate(
-    Proficiency = round(
-      50 + 7 * as.numeric(scale(
-        0.45 * (Recall - mean(Recall)) +
-          0.30 * (Recognition - mean(Recognition)) +
-          rnorm(n(), sd = 2.5)
-      )),
-      1
-    )
+    Proficiency = round(rnorm(n(), mean = 50, sd = 7), 1),
+    Proficiency_c = Proficiency - mean(Proficiency),
+    Recall = pmin(pmax(Recall + 0.16 * Proficiency_c, 0), 30),
+    Recognition = pmin(pmax(Recognition + 0.14 * Proficiency_c, 0), 30)
   ) |>
-  ungroup()
+  dplyr::select(-Proficiency_c)
 
 simulated_cov |>
-  group_by(Treatment, Time) |>
+  group_by(Instruction, LearningMode) |>
   summarise(
     Proficiency_Mean = mean(Proficiency),
     Proficiency_SD = sd(Proficiency),
     .groups = "drop"
   ) |>
     mutate(across(where(is.numeric), ~ round(.x, 2))) |>
-  knitr::kable(caption = "Covariate Overview: proficiency by Treatment × Time")
+  knitr::kable(caption = "共変量の概要（covariate overview）: Instruction × LearningMode 別のProficiency")
 ```
 
 ### 傾きの等質性を図で確認する
 
-MANCOVA で最初に見るべきなのは、**共変量と各DVの関係が群ごとに大きく変わっていないか**です。もし群ごとに回帰線の傾きが大きく異なるなら、「全群で同じ調整をかける」という MANCOVA の考え方自体が怪しくなります。
+MANCOVA で最初に見るべきなのは、**共変量と各DVの関係が群ごとに大きく変わっていないか**です。もし群ごとに回帰線の傾きが大きく異なるなら、「全群で同じ調整をかける」という標準的な MANCOVA の前提が弱くなります。
 
 ```{r}
 #| eval: true
 #| label: covariate-slope-plot
 #| fig-width: 8
 #| fig-height: 5.8
-#| fig-cap: "Checking the homogeneity-of-slopes assumption. Roughly parallel lines support a standard MANCOVA."
+#| fig-cap: "共変量（covariate）と各アウトカムの関係を群別に確認する図。線が概ね平行なら傾きの等質性（homogeneity of slopes）を置きやすい。"
+#| fig-alt: "Proficiencyを横軸、得点を縦軸にした散布図。RecallとRecognitionの2パネルで群別の回帰線と信頼帯が表示される。"
 
 covariate_plot_tbl <- simulated_cov |>
   pivot_longer(
@@ -1925,13 +2272,13 @@ covariate_plot_tbl <- simulated_cov |>
 
 ggplot(covariate_plot_tbl, aes(x = Proficiency, y = Score, color = Group)) +
   geom_point(alpha = 0.35, size = 1.6) +
-  geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8, alpha = 0.12) +
   facet_wrap(~ Outcome, scales = "free_y") +
   labs(
-    title = "Do the Outcome-on-Covariate Slopes Look Similar Across Groups?",
-    subtitle = "Large differences in slope would argue against a simple MANCOVA adjustment",
+    title = "共変量スロープは群間で似ているか",
+    subtitle = "傾きが大きく異なる場合は単純な共変量調整を避ける",
     x = "Proficiency",
-    y = "Outcome score"
+    y = "アウトカム得点"
   )
 ```
 
@@ -1939,16 +2286,17 @@ ggplot(covariate_plot_tbl, aes(x = Proficiency, y = Score, color = Group)) +
 
 - 群ごとの回帰線がおおむね平行であれば、標準的な MANCOVA の前提は大きく崩れていない
 - 1群だけ極端に傾きが急なら、その群では共変量の作用が別物かもしれない
-- `Recall` と `Recognition` の両方で同じ傾向が出るかを見ると、共変量が多変量的にどう効いているかが掴みやすい
+- `Recall` と `Recognition` の両方で同じ傾向が出るかを見ると、共変量が多変量的にどう関連しているかが掴みやすい
 
 ### 傾きの等質性を多変量的に検定する
 
-図だけでなく、`Treatment:Proficiency` や `Time:Proficiency` の交互作用を含むモデルで、**共変量と群要因の交互作用が有意でないか**も確認します。ここが有意なら、「単純な MANCOVA ではなく、共変量効果の群差そのものをモデル化する」方向へ進むべきです。
+図だけでなく、`Instruction:Proficiency` や `LearningMode:Proficiency` の交互作用を含むモデルで、**共変量と群要因の交互作用が有意でないか**も確認します。ここが有意なら、「単純な MANCOVA ではなく、共変量効果の群差そのものをモデル化する」方向へ進むべきです。
 
 ```{r}
+#| label: mancova-slope-test
 #| eval: true
 mancova_slope_fit <- manova(
-  cbind(Recall, Recognition) ~ Treatment * Time * Proficiency,
+  cbind(Recall, Recognition) ~ Proficiency * Instruction * LearningMode,
   data = simulated_cov
 )
 
@@ -1956,31 +2304,54 @@ slope_stats <- summary(mancova_slope_fit, test = "Pillai")$stats
 
 slope_tbl <- tibble(
   Effect = rownames(slope_stats),
-  Statistic = slope_stats[, 1],
-  Approx_F = slope_stats[, 2],
-  df1 = slope_stats[, 3],
-  df2 = slope_stats[, 4],
-  p_value = slope_stats[, 5]
+  Hypothesis_df = slope_stats[, "Df"],
+  Statistic = slope_stats[, "Pillai"],
+  Approx_F = slope_stats[, "approx F"],
+  df1 = slope_stats[, "num Df"],
+  df2 = slope_stats[, "den Df"],
+  p_value = slope_stats[, "Pr(>F)"]
 ) |>
   dplyr::filter(str_detect(Effect, "Proficiency"), Effect != "Proficiency") |>
   mutate(
     across(c(Statistic, Approx_F, p_value), ~ round(.x, 3)),
-    across(c(df1, df2), ~ round(.x, 0))
+    across(c(Hypothesis_df, df1, df2), ~ round(.x, 0))
   )
 
 slope_tbl |>
-    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Homogeneity-of-Slopes Check: interactions involving the covariate")
+  mutate(
+    p = if_else(p_value < .001, "< .001", sub("^0", "", sprintf("%.3f", p_value)))
+  ) |>
+  mutate(
+    across(c(Statistic, Approx_F), ~ round(.x, 3)),
+    across(c(Hypothesis_df, df1, df2), ~ round(.x, 0))
+  ) |>
+  dplyr::select(Effect, Hypothesis_df, Statistic, Approx_F, df1, df2, p) |>
+  knitr::kable(caption = "傾きの等質性チェック（homogeneity-of-slopes check）: 共変量を含む交互作用")
 ```
 
 ### 共変量を調整した MANCOVA
 
-傾きが概ね平行と判断できたら、通常の MANCOVA を適用します。ここでは `Proficiency` を調整した上で、`Treatment`、`Time`、交互作用がなお `Recall` と `Recognition` の組に効いているかを見ます。
+傾きが概ね平行と判断できたら、通常の MANCOVA を適用します。R の `summary.manova()` は **逐次平方和(Type I SS)** に基づくため、項の順序が結果に影響します。ここでは `Proficiency` を式の先頭に置き、共変量を先に調整した後で `Instruction`、`LearningMode`、交互作用を評価します。
+
+::: {.callout-warning}
+**不均衡データや交互作用を含む MANCOVA では Type III SS を推奨**:項の順序に依存しない検定が必要な場合は、`car::Manova(model, type = "III")` を用いてください。第 2 章「不均衡デザインでの Type I / II / III SS」と同じ論点が多変量にも適用されます。Type III を使うときは Sum coding(`afex::set_sum_contrasts()` 等)とセットで使うのが原則です。
+:::
+
+```r
+# 不均衡データ + Type III SS の MANCOVA 例
+afex::set_sum_contrasts()
+mancova_lm <- lm(
+  cbind(Recall, Recognition) ~ Proficiency + Instruction * LearningMode,
+  data = simulated_cov
+)
+car::Manova(mancova_lm, type = "III", test.statistic = "Pillai")
+```
 
 ```{r}
+#| label: mancova-adjusted-test
 #| eval: true
 mancova_fit <- manova(
-  cbind(Recall, Recognition) ~ Treatment * Time + Proficiency,
+  cbind(Recall, Recognition) ~ Proficiency + Instruction * LearningMode,
   data = simulated_cov
 )
 
@@ -1988,21 +2359,29 @@ mancova_stats <- summary(mancova_fit, test = "Pillai")$stats
 
 mancova_tbl <- tibble(
   Effect = rownames(mancova_stats),
-  Statistic = mancova_stats[, 1],
-  Approx_F = mancova_stats[, 2],
-  df1 = mancova_stats[, 3],
-  df2 = mancova_stats[, 4],
-  p_value = mancova_stats[, 5]
+  Hypothesis_df = mancova_stats[, "Df"],
+  Statistic = mancova_stats[, "Pillai"],
+  Approx_F = mancova_stats[, "approx F"],
+  df1 = mancova_stats[, "num Df"],
+  df2 = mancova_stats[, "den Df"],
+  p_value = mancova_stats[, "Pr(>F)"]
 ) |>
   dplyr::filter(Effect != "Residuals") |>
   mutate(
     across(c(Statistic, Approx_F, p_value), ~ round(.x, 3)),
-    across(c(df1, df2), ~ round(.x, 0))
+    across(c(Hypothesis_df, df1, df2), ~ round(.x, 0))
   )
 
 mancova_tbl |>
-    mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "MANCOVA (Pillai): treatment, time, and proficiency-adjusted multivariate effects")
+  mutate(
+    p = if_else(p_value < .001, "< .001", sub("^0", "", sprintf("%.3f", p_value)))
+  ) |>
+  mutate(
+    across(c(Statistic, Approx_F), ~ round(.x, 3)),
+    across(c(Hypothesis_df, df1, df2), ~ round(.x, 0))
+  ) |>
+  dplyr::select(Effect, Hypothesis_df, Statistic, Approx_F, df1, df2, p) |>
+  knitr::kable(caption = "MANCOVA（Pillai's trace）: Proficiency調整後の多変量効果")
 ```
 
 ### 調整後平均を図で読む
@@ -2014,47 +2393,48 @@ MANCOVA の数表だけでは、「共変量を入れたことで何が変わっ
 #| label: adjusted-means-plot
 #| fig-width: 8
 #| fig-height: 5.6
-#| fig-cap: "Covariate-adjusted means at the average proficiency level. This is the univariate view of what MANCOVA is adjusting."
+#| fig-cap: "平均的なProficiency水準における調整後平均（adjusted means）。MANCOVAの調整を単変量的に確認する図。"
+#| fig-alt: "RecallとRecognitionの2パネルで、InstructionとLearningMode別の調整後平均と信頼区間を示す図。"
 
 adj_means_tbl <- bind_rows(
   as.data.frame(emmeans::emmeans(
-    lm(Recall ~ Treatment * Time + Proficiency, data = simulated_cov),
-    ~ Treatment * Time,
+    lm(Recall ~ Instruction * LearningMode + Proficiency, data = simulated_cov),
+    ~ Instruction * LearningMode,
     cov.reduce = mean
   )) |>
     transmute(
-      Treatment, Time,
+      Instruction, LearningMode,
       Outcome = "Recall",
       emmean, lower.CL, upper.CL
     ),
   as.data.frame(emmeans::emmeans(
-    lm(Recognition ~ Treatment * Time + Proficiency, data = simulated_cov),
-    ~ Treatment * Time,
+    lm(Recognition ~ Instruction * LearningMode + Proficiency, data = simulated_cov),
+    ~ Instruction * LearningMode,
     cov.reduce = mean
   )) |>
     transmute(
-      Treatment, Time,
+      Instruction, LearningMode,
       Outcome = "Recognition",
       emmean, lower.CL, upper.CL
     )
 )
 
-ggplot(adj_means_tbl, aes(x = Time, y = emmean, color = Treatment, group = Treatment)) +
+ggplot(adj_means_tbl, aes(x = LearningMode, y = emmean, color = Instruction, group = Instruction)) +
   geom_pointrange(aes(ymin = lower.CL, ymax = upper.CL), position = position_dodge(width = 0.15)) +
   geom_line(position = position_dodge(width = 0.15), linewidth = 0.9) +
   facet_wrap(~ Outcome, scales = "free_y") +
   labs(
-    title = "Adjusted Means After Controlling for Proficiency",
-    subtitle = "Estimated marginal means from the covariate-adjusted models",
-    x = "Time",
-    y = "Adjusted mean"
+    title = "Proficiency調整後の平均",
+    subtitle = "共変量調整モデルから得た推定周辺平均",
+    x = "LearningMode",
+    y = "調整後平均"
   )
 ```
 
 **MANCOVA をどう読むか**:
 
-- `Proficiency` の行は、「共変量自体が outcome の組に効いているか」を示す
-- `Treatment` や `Time` がなお有意なら、「事前能力を調整しても群差が残る」と解釈できる
+- `Proficiency` の行は、「共変量自体が outcome の組と関連しているか」を示す
+- `Instruction` や `LearningMode` がなお有意なら、「事前能力を調整しても群差が残る」と解釈できる
 - 逆に群効果が弱まるなら、「見えていた群差の一部は共変量と共有されていた」可能性がある
 - ただし、ここでの解釈はあくまで**線形調整後の条件付き比較**であり、因果的な統制が自動で保証されるわけではない
 
@@ -2068,7 +2448,7 @@ ggplot(adj_means_tbl, aes(x = Time, y = emmean, color = Treatment, group = Treat
 - **潜在因子 + 測定誤差 + 群間等値性**: 多母集団 SEM / latent mean analysis の方が自然
 - **共変量と群要因の交互作用が大きい**: 単純な MANCOVA ではなく、より一般的な多変量回帰や SEM を検討する
 
-## 検定力分析
+## 検定力分析 {#sec-manova-power}
 
 MANOVAは多変量検定であるため、推定すべきパラメータが単変量ANOVAよりも多くなります。十分な検定力（通常 $\geq .80$）を確保するには、サンプルサイズの事前計画が不可欠です。
 
@@ -2083,18 +2463,23 @@ Tabachnick & Fidell [-@tabachnick2019] は、MANOVAにおけるサンプルサ�
 
 : MANOVAのサンプルサイズに関する基本ルール {.striped}
 
-ここでは `WebPower` パッケージの `wp.kanova()` を用いて、**omnibus な多変量効果に対する近似的な検定力**を計算します [@zhang2018]。これは Treatment, Time, 交互作用の各効果ごとの厳密な power ではなく、4群・2DV の全体的な多変量信号に対するラフな目安です。MANOVAの場合、分子自由度は $\text{ndf} = p \times (k - 1)$（DV数 × 群の自由度）となります。4群・2DVの場合、$\text{ndf} = 2 \times 3 = 6$ です。
+ここでは `WebPower` パッケージの `wp.kanova()` を用いて、MANOVA効果に対する**近似的な事前検定力・感度分析**を行います [@zhang2018]。本章の2要因MANOVAでは、`Instruction`、`LearningMode`、`Instruction:LearningMode` の各効果は2水準要因に由来するため、Pillai表の分子自由度は概ね `ndf = 2` です。4セル全体を1要因として扱う omnibus 計画なら `ndf = 6` も考えられますが、ここでは本章の主検定に合わせて `ndf = 2` を使います。
 
-### 本データの検定力
+重要なのは、観測後に「本データの事後検定力」を結論の根拠にしないことです。非有意結果を解釈する場合は、事後検定力よりも、事前計画、最小検出可能効果、信頼区間の幅、または次回研究の必要サンプルサイズを報告します。
+
+### 現在の標本サイズで検出しやすい効果
 
 ```{r}
+#| label: power-current-design
 #| eval: true
-# MANOVA近似: ndf = p × (k-1) = 2 × 3 = 6
+ndf_effect <- 2
+ng_design <- 4
+
 wp_result <- WebPower::wp.kanova(
   n = nrow(simulated),
-  ndf = 6,
+  ndf = ndf_effect,
   f = 0.25,
-  ng = 4,
+  ng = ng_design,
   alpha = 0.05,
   power = NULL
 )
@@ -2111,7 +2496,7 @@ tibble(
   )
 ) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Power Analysis for Current Design: WebPower::wp.kanova() MANOVA approximation")
+  knitr::kable(caption = "現在の標本サイズでの検定力（statistical power）: WebPower::wp.kanova() によるMANOVA近似")
 ```
 
 **検定力分析の読み方**:
@@ -2120,32 +2505,34 @@ tibble(
 |:---|:---|
 | `n` | 総サンプルサイズ |
 | `ng` | 群数 |
-| `ndf` | 分子自由度（MANOVA: DV数 × 群の自由度） |
+| `ndf` | 分子自由度。本章の各2水準効果では概ね2 |
 | `f` | Cohen の f（中程度 = 0.25） |
-| `power` | 検定力。.80以上が望ましい |
+| `power` | 近似的な検定力。.80以上が計画上の目安 |
 
 ### サンプルサイズと検定力の関係
 
 ```{r}
+#| label: power-curve
 #| eval: true
 n_seq <- seq(40, 300, by = 20)
-power_curve <- purrr::map_dfr(n_seq, ~ {
+power_curve <- purrr::map(n_seq, \(n_total) {
   res <- WebPower::wp.kanova(
-    n = .x, ndf = 6, f = 0.25,
-    ng = 4, alpha = 0.05, power = NULL
+    n = n_total, ndf = ndf_effect, f = 0.25,
+    ng = ng_design, alpha = 0.05, power = NULL
   )
-  tibble(n = .x, power = res$power)
-})
+  tibble(n = n_total, power = res$power)
+}) |>
+  purrr::list_rbind()
 
 ggplot(power_curve, aes(x = n, y = power)) +
   geom_line(linewidth = 1.1, color = "#2c3e50") +
   geom_hline(yintercept = 0.80, linetype = "dashed", color = "red") +
   annotate("text", x = 250, y = 0.82, label = "Power = .80 threshold", color = "red") +
   labs(
-    title = "Power Curve for MANOVA",
-    subtitle = "4 groups, 2 DVs, Cohen's f = 0.25 (ndf = 6)",
-    x = "Total sample size",
-    y = "Statistical power"
+    title = "MANOVA効果に対する近似的な検定力曲線",
+    subtitle = "4 groups, Cohen's f = 0.25, ndf = 2",
+    x = "総サンプルサイズ",
+    y = "検定力"
   )
 ```
 
@@ -2154,12 +2541,13 @@ ggplot(power_curve, aes(x = n, y = power)) +
 目標検定力 .80 に必要な総サンプルサイズを逆算します。
 
 ```{r}
+#| label: required-sample-size
 #| eval: true
 wp_n <- WebPower::wp.kanova(
   n = NULL,
-  ndf = 6,
+  ndf = ndf_effect,
   f = 0.25,
-  ng = 4,
+  ng = ng_design,
   alpha = 0.05,
   power = 0.80
 )
@@ -2167,19 +2555,37 @@ wp_n <- WebPower::wp.kanova(
 tibble(
   Target_Power = 0.80,
   Required_N = ceiling(wp_n$n),
-  Per_Group = ceiling(wp_n$n / 4)
+  Per_Group = ceiling(wp_n$n / ng_design)
 ) |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Required Sample Size: for 4 groups, 2 DVs, f = 0.25, power = .80")
+  knitr::kable(caption = "必要サンプルサイズ（required sample size）: f = 0.25、power = .80 を目標にした近似計画")
 ```
 
 #### 英語教育研究における効果量の目安
 
-| 効果量 (f) | 英語教育研究での目安 | 必要N（4群, 2DV, power=.80） |
-|:---:|:---|:---:|
-| 0.10（小） | 語彙学習法間の微差 | 約800 |
-| 0.25（中） | 指導法間の一般的な差 | 約180 |
-| 0.40（大） | 介入の顕著な効果 | 約80 |
+```{r}
+#| label: power-effect-size-table
+#| eval: true
+effect_size_plan <- tibble(
+  f = c(0.10, 0.25, 0.40),
+  Interpretation = c("語彙学習法間の微差", "指導法間の一般的な差", "介入の顕著な効果")
+) |>
+  mutate(
+    Required_N = purrr::map_dbl(f, ~ WebPower::wp.kanova(
+      n = NULL,
+      ndf = ndf_effect,
+      f = .x,
+      ng = ng_design,
+      alpha = 0.05,
+      power = 0.80
+    )$n),
+    Required_N = ceiling(Required_N),
+    Per_Group = ceiling(Required_N / ng_design)
+  )
+
+effect_size_plan |>
+  knitr::kable(caption = "効果量別の感度分析（effect-size sensitivity）: 目標効果量ごとの近似必要N")
+```
 
 先行研究の効果量を参照してサンプルサイズを計画することが重要です。英語教育研究では $f = 0.25$ 前後が現実的な目安となることが多いです [@stevens2009; @hahs2017]。
 
@@ -2187,7 +2593,109 @@ tibble(
 
 - Stevens [-@stevens2009] は、効果量が小さい（$f = .10$）場合の検出には各群50名以上が必要であると指摘しており、教育研究で典型的な30名前後のクラスサイズでは検出が困難であることを示唆しています。
 - 英語教育研究では1クラス20-30名が現実的な制約であるため、**2-3クラスをまとめて1群40-60名**を確保するか、効果量が中程度以上の介入に焦点を絞る戦略が必要です。
-- Tabachnick & Fidell [-@tabachnick2019] は「各セルの $n >$ DV数」を最低条件としていますが、これはあくまり行列演算上の最低限であり、検定力の観点ではさらに大きなNが必要です。
+- Tabachnick & Fidell [-@tabachnick2019] は「各セルの $n >$ DV数」を最低条件としていますが、これはあくまで行列演算上の最低限であり、検定力の観点ではさらに大きなNが必要です。
+
+## 効果量・メタ分析との接続 {#sec-manova-meta}
+
+研究を **将来のメタ分析の素材として残す**ためには、MANOVA の結果を「再利用可能な形」で報告する必要があります。MANOVA は本質的に多変量ですが、メタ分析は伝統的に**単変量効果量**(Cohen's *d*、Hedges' *g*、Pearson の *r*、偏 η²)を主指標として蓄積してきました。両者を橋渡しする報告戦略を整理します。
+
+### 多変量効果量の選択肢
+
+MANOVA に対応する効果量には次の階層があります。
+
+| 効果量 | 計算 | 性質 | メタ分析での扱い |
+|---|---|---|---|
+| **Mahalanobis $D^2$** | $D^2 = (\bar{\mathbf{x}}_1 - \bar{\mathbf{x}}_2)' \mathbf{S}^{-1}_{\text{pooled}} (\bar{\mathbf{x}}_1 - \bar{\mathbf{x}}_2)$ | 2 群比較の多変量距離。単変量 Cohen's *d* の自然な拡張(Cohen, 1988, 第 11 章) | 多変量メタ分析の主指標 |
+| **Pillai η² = $V/s$** | Pillai のトレースを正規化 | 多変量説明分散割合。3 群以上にも対応 | $\eta^2_{\text{multi}}$ として報告 |
+| **Wilks η² = $1 - \Lambda^{1/s}$** | Wilks のΛから派生 | 同上(Wilks 経由) | 同上 |
+| **DV 別の Cohen's $d_j$ または偏 η²$_j$** | 各 DV を個別に計算 | 単変量。標準的なメタ分析に含めやすい | **単変量メタ分析の主指標** |
+
+```{r}
+#| eval: false
+# Mahalanobis D²(2 群比較版):群平均ベクトルの差をプール内共分散で標準化
+dvs <- c("Recall", "Recognition")
+diff_mean <- colMeans(subset(simulated_2groups, Group == "A")[, dvs]) -
+             colMeans(subset(simulated_2groups, Group == "B")[, dvs])
+
+# プール内共分散行列(各群の共分散をサンプルサイズで重み付け平均)
+n_a <- sum(simulated_2groups$Group == "A")
+n_b <- sum(simulated_2groups$Group == "B")
+S_a <- cov(subset(simulated_2groups, Group == "A")[, dvs])
+S_b <- cov(subset(simulated_2groups, Group == "B")[, dvs])
+pooled_S <- ((n_a - 1) * S_a + (n_b - 1) * S_b) / (n_a + n_b - 2)
+
+mahal_d2 <- as.numeric(t(diff_mean) %*% solve(pooled_S) %*% diff_mean)
+
+# 各 DV 別の Cohen's d(メタ分析投入用)
+library(effectsize)
+
+dv_effects <- simulated_2groups |>
+  tidyr::pivot_longer(c(Recall, Recognition), names_to = "DV") |>
+  dplyr::group_by(DV) |>
+  dplyr::group_modify(\(x, key) {
+    res <- effectsize::cohens_d(value ~ Group, data = x, ci = 0.95)
+    tibble::as_tibble(res)
+  })
+```
+
+### メタ分析投入のためのチェックリスト
+
+将来 **誰かがあなたの結果をメタ分析する**(あるいは自分で続報研究と統合する)とき、以下の情報がすべて揃っていると貢献度が大きく上がります。
+
+| 必要情報 | 形式 | 用途 |
+|---|---|---|
+| 群別 *M*, *SD*, *n*, DV 間相関 | 表(本文または付表) | 任意の効果量を再計算可能にする最重要情報 |
+| 多変量検定統計量(Pillai または Wilks)+ F + df + p | APA 報告 | 多変量メタ分析の入力 |
+| **DV 別の Cohen's *d* / 偏 η² + 95% CI** | DV ごと一行 | 単変量メタ分析の入力 |
+| Mahalanobis $D^2$ または Pillai η² | 数値 + 信頼区間 | 多変量効果量メタ分析の入力 |
+| サンプリング設計(クラスタ・無作為割付・除外基準) | 方法節 | 異質性評価とサブグループ分析 |
+| 共変量の有無 + 調整前/調整後の効果量 | 補足 | MANCOVA 含む研究の比較 |
+
+### 多変量メタ分析(MVMA)へのパス
+
+**多変量メタ分析(multivariate meta-analysis、MVMA)** は、複数の関連する DV の効果量を**同時に**統合する手法で、単変量メタ分析を独立に走らせるより**統計的精度と一貫性が高い**ことが知られています [@berkey1998multivariate; @riley2017]。
+
+```{r}
+#| eval: false
+# metafor::rma.mv() による MVMA の最小例
+library(metafor)
+
+# 複数研究から各研究の Cohen's d(Recall, Recognition)を抽出した想定
+meta_dat <- tibble(
+  study   = rep(1:5, each = 2),
+  outcome = rep(c("Recall", "Recognition"), 5),
+  yi = c(0.45, 0.38, 0.52, 0.41, 0.38, 0.30, 0.61, 0.55, 0.42, 0.36),  # 各研究×DV の効果量
+  vi = c(0.04, 0.04, 0.05, 0.05, 0.06, 0.06, 0.04, 0.04, 0.05, 0.05)   # サンプリング分散
+)
+
+# DV 内・DV 間の相関構造を含めた多変量メタ分析
+mvma_fit <- rma.mv(
+  yi, vi,
+  mods   = ~ outcome - 1,                  # DV 別の平均効果量
+  random = ~ outcome | study,              # 研究内 DV 相関
+  struct = "UN",                           # 非構造的(自由推定)
+  data   = meta_dat
+)
+summary(mvma_fit)
+```
+
+この手法は研究内の DV 間相関構造を尊重するため、**「Recall は強い効果、Recognition は弱い効果」のような DV 間の効果プロファイル**を保ったまま統合できます。詳細は第 17 章「メタ分析」を参照してください。
+
+### 検定力分析と先行効果量の循環
+
+新規研究の検定力分析(@sec-manova-power 相当)は、**先行研究のメタ分析結果**を入力に使うのが現代的です。
+
+1. **既存メタ分析を引く**:Plonsky & Oswald [-@plonsky2014] のような分野メタ分析から、典型的な効果量レンジを取得
+2. **保守的な値で検定力分析**:メタ分析の効果量が中央値で $d = 0.5$ ないし $f = 0.25$ なら、それを下回る `f = 0.20` 程度で `WebPower::wp.kanova()` を回す
+3. **自分の研究を投稿** → 結果を**メタ分析に再利用可能な形で報告**(上記チェックリスト)
+4. **次世代の検定力分析の入力**になる
+
+この **「メタ分析 → 検定力分析 → 新規研究 → メタ分析」のサイクル**が、再現可能な研究プログラムの基盤です。
+
+::: {.callout-tip}
+#### 単一研究で必ず報告すべき最小セット
+仮にメタ分析を意図しない場合でも、上の表のうち **群別 *M*, *SD*, *n*** と **DV 別の Cohen's *d* + CI** は**必ず報告**してください。これだけで誰でも独立に効果量を再計算でき、研究の透明性が大きく上がります。多変量検定だけ報告して終わると、後の系統的レビューで貴方の研究は**含めにくくなります**。
+:::
 
 ## よくある誤解
 
@@ -2199,7 +2707,7 @@ Smith et al. [-@smith2020] は英才教育研究の56論文を体系的にレビ
 
 ### 誤解2: 「MANOVAが非有意なら群差はない」
 
-**事実**: 非有意の結果は「差がない」ことの証拠ではなく、「差を検出できなかった」可能性があります。検定力が不足している場合（N不足、効果量が小さい場合）、真の差があっても検出できません。必ず検定力分析で確認し、「power = XX であった」と報告してください [@stevens2009]。
+**事実**: 非有意の結果は「差がない」ことの証拠ではなく、「差を検出できなかった」可能性があります。検定力が不足している場合（N不足、効果量が小さい場合）、真の差があっても検出できません。ただし、観測後の事後検定力を結論の根拠にするのではなく、効果量推定値と信頼区間、事前の検定力計画、または次回研究に必要なサンプルサイズを報告します [@stevens2009]。
 
 ### 誤解3: 「追跡ANOVAのみで十分」
 
@@ -2215,7 +2723,9 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 
 ## トラブルシューティング（実務で詰まりやすい点）
 
-### 多変量正規性（MVN）の逸脱
+MANOVA / 判別分析で実際に解析を進めるとき、誰もが一度は遭遇しやすい 8 つのつまずきポイントを取り上げます。該当する項目だけ参照する形でも構いません。
+
+### 多変量正規性（MVN）が逸脱したときは?
 
 **症状**: HZ検定で $p < .05$。Q-Qプロットが対角線から乖離。
 
@@ -2229,7 +2739,7 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 4. 大標本（各群 $n > 30$）であれば中心極限定理により頑健性が高まる [@tabachnick2019]。
 5. 論文には「HZ検定の結果と対応策」を明記する。
 
-### Box's M検定の有意
+### Box's M 検定が有意になってしまったら?
 
 **症状**: Box's M が $p < .001$。
 
@@ -2240,9 +2750,9 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 1. 群サイズがバランスしていれば、Pillai統計量は比較的頑健。Olson [-@olson1974] はこの条件でPillaiが名義 $\alpha$ 水準を維持することを示している。
 2. 群サイズが不均衡なら、最も危険な条件（共分散不等質 + 不均衡N）に該当するため、結果の解釈に特に慎重になる。
 3. 群ごとの共分散楕円を可視化し（HEプロットで確認可能）、逸脱の程度を確認する。
-4. QDAの使用を検討する（群別共分散を許容）。ただし各群の $n >$ DV数 + 1 が必要 [@tabachnick2019]。
+4. 予測目的の感度分析としてQDAを検討する（群別共分散を許容）。ただし各群の $n >$ DV数 + 1 が必要で、MANOVAの主推論とは分けて扱う [@tabachnick2019]。
 
-### DV間の多重共線性
+### DV 間に強い多重共線性があるときは?
 
 **症状**: DV間相関が .70 を超える。判別関数の係数が不安定。Tabachnick & Fidell [-@tabachnick2019] は .90 以上を「深刻な多重共線性」として警告している。
 
@@ -2253,9 +2763,9 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 1. 一方のDVを除外するか、複合スコアに統合することを検討。
 2. 構造係数を優先して解釈する。Sherry & Henson [-@sherry2005] は、DV間相関が高い場合に標準化係数が不安定になることを示しており、構造係数のみでの解釈を推奨している。
 3. 理論的にDVが異なる構成概念であることを再確認する。
-4. DV間相関が .30-.70 の「理想的な範囲」に収まるようDVの選択を見直す。
+4. DV間相関が .30-.70 程度の「扱いやすい範囲」に収まるようDVの選択を見直す。
 
-### サンプルサイズの不足
+### サンプルサイズが不足しているときは?
 
 **症状**: MANOVAが非有意だが、記述統計では明らかな群差がある。
 
@@ -2263,11 +2773,11 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 
 **修正**:
 
-1. `WebPower::wp.kanova()` で事後検定力を計算する。
-2. power < .80 の場合、「検定力不足の可能性」を明記する。
-3. 次回研究のために必要サンプルサイズを報告する。
+1. 効果量推定値と信頼区間を確認し、推定の不確実性を明記する。
+2. `WebPower::wp.kanova()` などで、次回研究に必要なサンプルサイズや最小検出可能効果を計画する。
+3. 事後検定力ではなく、「検出力不足の可能性」と「次回研究の設計案」を報告する。
 
-### MANOVAは有意だが全てのANOVAが非有意
+### MANOVA は有意だが全ての追跡 ANOVA が非有意のときは?
 
 **症状**: Pillai が $p < .05$ だが、追跡ANOVAでは全DVが $p > .05$。
 
@@ -2279,7 +2789,7 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 2. HEプロットで視覚的にパターンを確認する。Friendly [-@friendly2007] のHEプロットでは、H楕円がE楕円からはみ出す方向がDV軸と斜めになる場合、個別のDVでは検出できない「斜め方向」の群差が存在していることを示します。
 3. 論文には「多変量検定は有意であったが、単変量では個別に有意な変数は見られなかった。DDAにより、DVの組み合わせとして群分離が確認された」と報告する [@smith2020; @finch2013]。
 
-### 外れ値による結果の不安定化
+### 外れ値で結果が不安定になったときは?
 
 **症状**: マハラノビス距離がカットオフを大きく超える観測がある。外れ値の除外前後で結果が変わる。
 
@@ -2291,7 +2801,7 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 2. 除外する場合は、理論的根拠（タスク不理解の記録など）を明記する。
 3. 「統計的にだけ外れ値」という理由での除外は避ける。
 
-### QDAが収束しない（rank deficiency）
+### QDA が収束しない（rank deficiency）ときは?
 
 **症状**: `MASS::qda()` で "some group is too small" や "rank deficiency" エラー。
 
@@ -2303,7 +2813,19 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 2. LDAに切り替える（共通共分散を仮定するため、少数サンプルに対応しやすい）。
 3. DV数を減らすか、正則化判別分析を検討する。
 
-## 結果記述テンプレート（論文の結果節向け）
+## 報告テンプレート（論文の結果節向け）
+
+この節は、分析結果を論文の Method / Results に移すための最終確認である。MANOVA では「多変量検定が有意だった」だけでは情報が不足するため、**設計、前提、主検定、追跡法、分類精度、検定力**を一組で報告する。本節のテンプレートは APA 第 7 版と *Language Learning* の Open Methods ガイドライン [@norris2015] を主な参照枠としており、後者は記述統計、多変量および単変量効果量、CI、検定力、再現に必要な分析手続きの開示を必須項目に挙げています。
+
+| 報告要素 | 本章で確認した出力 | 本文での役割 |
+|:---|:---|:---|
+| 設計 | `Instruction × LearningMode`、1参加者1行 | between-subjects MANOVA であることを明示する |
+| 前提 | HZ検定、Box's M、外れ値診断 | Pillai を主報告にする根拠と、解釈上の制約を示す |
+| 主検定 | Pillai's trace | 多変量的な群差の有無を示す |
+| 多変量追跡 | DDA、構造係数、trace割合 | どのDVの組み合わせが群分離を作ったかを説明する |
+| 補助追跡 | Holm補正つき単変量ANOVA | 個別DVの方向を補足する |
+| 実務的分離 | LOOCV分類精度、チャンス水準 | 群がどの程度識別可能かを示す |
+| 設計評価 | 検定力、必要サンプルサイズ | 非有意結果や今後の研究計画を解釈する |
 
 ::: {.panel-tabset}
 
@@ -2311,17 +2833,153 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 
 以下は、本章のデータに基づいた Method セクションの記述例です。自分のデータに置き換えて使用してください。
 
-> We examined the effects of Treatment (Glossing vs. Writing) and Time (Immediate vs. Delayed) on two vocabulary outcomes (Recall and Recognition) using a two-way multivariate analysis of variance (MANOVA). Assumptions of multivariate normality were evaluated using the Henze-Zirkler test (Korkmaz et al., 2014) applied group-wise, and homogeneity of covariance matrices was assessed with Box's M test. Pillai's trace was used as the primary test statistic due to its robustness to assumption violations (Olson, 1974). Descriptive discriminant analysis (DDA) served as the primary multivariate follow-up, with univariate ANOVAs as supplementary analyses (Holm-adjusted). Classification accuracy was evaluated using leave-one-out cross-validation. Analyses were conducted in R using the MASS, heplots, MVN, and effectsize packages.
+> We examined the effects of Instruction (Glossing vs. Writing) and LearningMode (Individual vs. Collaborative) on two vocabulary outcomes (Recall and Recognition) using a two-way multivariate analysis of variance (MANOVA). Assumptions of multivariate normality were evaluated using the Henze-Zirkler test (Korkmaz et al., 2014) applied group-wise, and homogeneity of covariance matrices was assessed with Box's M test. Pillai's trace was used as the primary test statistic due to its robustness to assumption violations (Olson, 1974). Descriptive discriminant analysis (DDA) was used to summarize the four-cell group separation, with univariate ANOVAs as supplementary analyses (Holm-adjusted). Classification accuracy was evaluated using leave-one-out cross-validation and a permutation check against chance. Analyses were conducted in R using the MASS, MVN, biotools, heplots, candisc, emmeans, effectsize, and WebPower packages.
 
 ### Results（MANOVA + DDA）
 
-> Pillai's trace indicated a significant main effect of Treatment, *V* = X.XX, *F*(2, 173) = XX.XX, *p* < .001. The Time main effect was also significant, *V* = X.XX, *F*(2, 173) = XX.XX, *p* = .0XX. The Treatment × Time interaction was non-significant, *V* = X.XX, *F*(2, 173) = X.XX, *p* = .XXX.
->
-> Descriptive discriminant analysis revealed that the first discriminant function (LD1) accounted for XX% of the between-group variance. Structure coefficients indicated that both Recall ($r_s$ = .XX) and Recognition ($r_s$ = .XX) contributed substantially to group separation (criterion: $|r_s| \geq .30$; Tabachnick & Fidell, 2019). LOOCV classification accuracy was XX.X% (balanced = XX.X%), exceeding the chance level of 25.0%, 95% CI [XX.X%, XX.X%].
+まず、Pillaiのトレースに基づく主検定をAPA形式で整理します。ここでは `pillai_focus` から自由度、F値、p値を取り出すため、固定値を手入力しません。
+
+```{r}
+#| label: apa-manova-results
+#| eval: true
+apa_manova_tbl <- pillai_focus |>
+  mutate(
+    V = sub("^0", "", sprintf("%.2f", Statistic)),
+    F_value = sprintf("%.2f", Approx_F),
+    p_APA = if_else(
+      p_value < .001,
+      "< .001",
+      paste0("= ", sub("^0", "", sprintf("%.3f", p_value)))
+    ),
+    APA_Result = paste0(
+      Effect,
+      ": *V* = ", V,
+      ", *F*(", df1, ", ", df2, ") = ", F_value,
+      ", *p* ", p_APA
+    )
+  ) |>
+  dplyr::select(Effect, V, df1, df2, F_value, p_APA, Interpretation, APA_Result)
+
+apa_manova_tbl |>
+  knitr::kable(caption = "APA形式に整えたMANOVA結果（APA-ready MANOVA results）: Pillaiのトレース")
+```
+
+次に、DDA（4セル全体の分離）と分類精度を報告用にまとめます。
+
+```{r}
+#| label: apa-dda-results
+#| eval: true
+structure_ld1_tbl <- structure_tbl |>
+  dplyr::select(Variable, LD1) |>
+  mutate(
+    r_s = gsub("^-0\\.", "-.", sub("^0\\.", ".", sprintf("%.2f", LD1))),
+    Report = paste0(Variable, " *r_s* = ", r_s)
+  )
+
+dda_report_tbl <- tibble(
+  Item = c(
+    "LD1 proportion of trace",
+    "LD1 structure coefficients",
+    "LOOCV overall accuracy",
+    "LOOCV balanced accuracy",
+    "Permutation check"
+  ),
+  Value = c(
+    scales::percent(prop_trace_tbl$Proportion[1], accuracy = 0.1),
+    paste(structure_ld1_tbl$Report, collapse = "; "),
+    paste0(
+      scales::percent(lda_acc_ci$Accuracy[1], accuracy = 0.1),
+      ", 95% CI [",
+      scales::percent(lda_acc_ci$CI_low[1], accuracy = 0.1),
+      ", ",
+      scales::percent(lda_acc_ci$CI_high[1], accuracy = 0.1),
+      "]"
+    ),
+    scales::percent(lda_balanced, accuracy = 0.1),
+    if_else(
+      lda_perm_p < .001,
+      "p < .001",
+      paste0("p = ", sub("^0", "", sprintf("%.3f", lda_perm_p)))
+    )
+  )
+)
+
+dda_report_tbl |>
+  knitr::kable(caption = "APA形式に整えたDDA・分類性能の要約（APA-ready DDA and classification summary）")
+```
+
+本文に移すと、次のようになります。
+
+```{r}
+#| label: apa-results-text
+#| eval: true
+#| results: asis
+cat("> Pillai's trace was used to evaluate the multivariate effects. ")
+cat(paste(apa_manova_tbl$APA_Result, collapse = "; "))
+cat(".\n>\n")
+cat(
+  "> Descriptive discriminant analysis of the four-cell grouping showed that LD1 accounted for ",
+  scales::percent(prop_trace_tbl$Proportion[1], accuracy = 0.1),
+  " of the between-group variance. Structure coefficients for LD1 were ",
+  paste(structure_ld1_tbl$Report, collapse = "; "),
+  ". Overall LOOCV classification accuracy was ",
+  scales::percent(lda_acc_ci$Accuracy[1], accuracy = 0.1),
+  ", 95% CI [",
+  scales::percent(lda_acc_ci$CI_low[1], accuracy = 0.1),
+  ", ",
+  scales::percent(lda_acc_ci$CI_high[1], accuracy = 0.1),
+  "], balanced accuracy was ",
+  scales::percent(lda_balanced, accuracy = 0.1),
+  ", and the permutation check yielded ",
+  if_else(lda_perm_p < .001, "p < .001", paste0("p = ", sub("^0", "", sprintf("%.3f", lda_perm_p)))),
+  ".",
+  sep = ""
+)
+```
 
 ### Results（単変量追跡）
 
-> Supplementary univariate ANOVAs (Holm-adjusted) indicated that the Treatment effect was significant for both Recall, *F*(1, 176) = XX.XX, *p* < .001, $\eta^2_p$ = .XXX, and Recognition, *F*(1, 176) = XX.XX, *p* < .001, $\eta^2_p$ = .XXX.
+単変量追跡は補助的な位置づけです。Holm補正後のp値と偏η²の95% CIを併記します。
+
+```{r}
+#| label: apa-univariate-results
+#| eval: true
+apa_univariate_tbl <- followup_tbl |>
+  mutate(
+    Residual_df = if_else(Outcome == "Recall", df.residual(aov_recall), df.residual(aov_recognition))
+  ) |>
+  left_join(
+    eta_tbl,
+    by = c("Outcome", "term" = "Parameter")
+  ) |>
+  mutate(
+    F_value = sprintf("%.2f", statistic),
+    p_Holm_APA = if_else(
+      p_holm < .001,
+      "< .001",
+      paste0("= ", sub("^0", "", sprintf("%.3f", p_holm)))
+    ),
+    eta_APA = sub("^0", "", sprintf("%.3f", Eta2_partial)),
+    CI_APA = paste0(
+      "[",
+      sub("^0", "", sprintf("%.3f", CI_low)),
+      ", ",
+      sub("^0", "", sprintf("%.3f", CI_high)),
+      "]"
+    ),
+    APA_Result = paste0(
+      Outcome, " / ", term,
+      ": *F*(", df, ", ", Residual_df, ") = ", F_value,
+      ", Holm-adjusted *p* ", p_Holm_APA,
+      ", eta_p2 = ", eta_APA,
+      ", 95% CI ", CI_APA
+    )
+  ) |>
+  dplyr::select(Outcome, term, df, Residual_df, F_value, p_Holm_APA, eta_APA, CI_APA, APA_Result)
+
+apa_univariate_tbl |>
+  knitr::kable(caption = "APA形式に整えた単変量追跡結果（APA-ready univariate follow-up results）")
+```
 
 ### 査読者チェックリスト
 
@@ -2332,7 +2990,7 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 5. **効果量**: 偏η² を 95% CI 付きで報告したか
 6. **多重性調整**: 追跡ANOVAに Holm 補正を適用し、補正前後の p 値を併記したか
 7. **HEプロット**: 視覚的に群分離を示したか
-8. **検定力**: 事後検定力または事前のサンプルサイズ計画を記載したか
+8. **検定力**: 事前のサンプルサイズ計画、感度分析、または次回研究の必要Nを記載したか
 9. **ソフトウェア**: 使用したR パッケージとバージョンを明記したか
 
 :::
@@ -2340,18 +2998,35 @@ Warne [-@warne2014] は58本のMANOVA論文をレビューし、DDAを適切に�
 ### APA 7 最低限の表記ルール
 
 - 統計記号はイタリック: *V*, *F*, *p*, $\eta^2_p$
-- Pillai's trace は *V* = .XXX と表記
+- Pillai's trace は *V* = .41 のように先頭ゼロなしで表記
 - *p* 値は `p = .032`、非常に小さい場合は `p < .001`
-- 効果量は $\eta^2_p$ = .XXX, 95% CI [LL, UL]
+- 効果量は $\eta^2_p$ = .326, 95% CI [.220, .425] のようにCI付きで表記
 - 分類精度は % で報告し、チャンス水準と比較
 
-### コピペ用 1 文テンプレート
+### コピペ用の実データ連動文
 
-**Method**: "A two-way MANOVA was conducted with Treatment and Time as independent variables and Recall and Recognition as dependent variables. Pillai's trace was the primary test statistic. DDA served as the multivariate follow-up."
-
-**Results**: "Pillai's trace indicated a significant Treatment effect, *V* = .XX, *F*(2, 173) = XX.XX, *p* < .001. DDA structure coefficients indicated both DVs contributed to group separation (Recall $r_s$ = .XX; Recognition $r_s$ = .XX)."
+**Method**: "A two-way MANOVA was conducted with Instruction and LearningMode as independent variables and Recall and Recognition as dependent variables. Pillai's trace was the primary test statistic. DDA was used to summarize four-cell group separation."
 
 ```{r}
+#| label: copy-ready-results-sentence
+#| eval: true
+#| results: asis
+instruction_sentence <- apa_manova_tbl |>
+  dplyr::filter(Effect == "Instruction") |>
+  dplyr::pull(APA_Result)
+
+cat(
+  '**Results**: "',
+  instruction_sentence,
+  '. DDA structure coefficients indicated how each DV contributed to four-cell group separation (',
+  paste(structure_ld1_tbl$Report, collapse = "; "),
+  ')."',
+  sep = ""
+)
+```
+
+```{r}
+#| label: chapter-summary-table
 #| eval: true
 largest_eta <- eta_tbl |>
   slice_max(Eta2_partial, n = 1, with_ties = FALSE)
@@ -2368,11 +3043,11 @@ summary_tbl <- tibble(
   Result = c(
     {
       tr_row <- pillai_focus |>
-        dplyr::filter(Effect == "Treatment")
+        dplyr::filter(Effect == "Instruction")
       if (nrow(tr_row) == 1) {
-        paste0("Treatment: F=", round(tr_row$Approx_F, 2), ", p=", round(tr_row$p_value, 4))
+        paste0("Instruction: F=", round(tr_row$Approx_F, 2), ", ", tr_row$p_label)
       } else {
-        "Treatment row not found"
+        "Instruction row not found"
       }
     },
     paste0(
@@ -2388,25 +3063,37 @@ summary_tbl <- tibble(
 
 summary_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 3))) |>
-  knitr::kable(caption = "Chapter Summary: key numbers to report")
+  knitr::kable(caption = "章の要約（chapter summary）: 報告に使う主要数値")
 ```
 
 ## まとめ
 
 
-1. **MANOVAは、複数DVを同時に扱う**ことで、単変量ANOVAの反復より整合的な推論を提供する [@warne2014]。DV間の相関構造（理想的には .30-.70 の範囲; @tabachnick2019）を考慮できることが本質的な強みである。
+1. **MANOVAは、複数DVを同時に扱う**ことで、単変量ANOVAの反復より整合的な推論を提供する [@warne2014]。DV間の相関構造を考慮できることが本質的な強みであり、.30-.70 程度は扱いやすい経験的範囲として考える [@tabachnick2019]。
 
 2. **H行列とE行列**がMANOVAの基盤であり、HEプロット [@friendly2007] によりその関係を直感的に把握できる。H楕円がE楕円を超える方向が、有意な群差の方向を示す（Royの最大根と幾何学的に対応）。
 
 3. **Pillai のトレース**を主報告とする。Olson [-@olson1974] のモンテカルロ研究で、正規性違反・共分散不等質性・群サイズ不均衡の全条件を通じて最も頑健であることが確認されている。
 
-4. **DDA（判別分析）はMANOVAの主要追跡法**である。構造係数（$|r_s| \geq .30$ を基準; @tabachnick2019; @sherry2005）により、各DVの群分離への寄与を安定的に評価できる。Warne [-@warne2014] の58本レビューおよびSmith et al. [-@smith2020] の56本レビューが示すように、DDAの使用率は極めて低いのが現状であるが、理論的にはMANOVAの最も自然な追跡法である [@finch2013]。
+4. **DDA（判別分析）はMANOVAの多変量構造を説明する追跡法**である。構造係数（$|r_s| \geq .30$ を基準; @tabachnick2019; @sherry2005）により、各DVの群分離への寄与を安定的に評価できる。本章のLDAは4セル全体の分離を記述する分析であり、各主効果・交互作用の追跡とは区別する。
 
-5. **分類精度**（LOOCV; @psu505_lesson10）をチャンス水準と比較することで、「統計的に有意かどうか」だけでなく「実務的にどの程度群を分離できるか」を示す。
+5. **分類精度**（LOOCV; @psu505_lesson10）をチャンス水準や置換チェックと比較することで、「統計的に有意かどうか」だけでなく「実務的にどの程度群を分離できるか」を補助的に示す。
 
-6. **検定力分析** [@zhang2018] により、研究の事前計画（必要サンプルサイズ）および事後評価（実際の検定力）を定量化する。Tabachnick & Fidell [-@tabachnick2019] の「各セルの $n >$ DV数」を最低条件とし、Stevens [-@stevens2009] の「各群20名以上」を推奨条件とする。
+6. **検定力分析** [@zhang2018] は、研究の事前計画、感度分析、次回研究の必要サンプルサイズを定量化するために使う。観測後の事後検定力を結論の根拠にしない。
 
-7. **報告では**、p値だけでなく多変量効果量（Pillai のトレースに基づく $\eta^2$）・構造係数・分類精度（チャンス比較）・検定力を併記する。
+7. **報告では**、p値だけでなく Pillai のトレース、構造係数、分類精度（チャンス比較）、単変量効果量とその信頼区間、研究計画上の検定力を併記する。
+
+## 次に読む章
+
+ここまでお疲れさまでした。本章では複数 DV を同時に扱う MANOVA、判別分析(LDA / QDA)、構造係数、HE プロット、検定力分析、報告テンプレートまで一通り辿ってきました。**「DV 間の共分散構造を考慮した群差推論」**という発想は、後続の混合効果モデル(第6章)・SEM(第9章)・予測モデル(第8章)にも繋がります。
+
+研究質問に応じて、次のステップとしては以下の章が候補になります。
+
+- **単一DVに戻して予測変数・交互作用を深く読む場合**: 第4章の重回帰分析と交互作用で、係数、単純傾斜、可視化を確認する。
+- **同じ参加者・同じ項目を繰り返し測っている場合**: 本章の between-subjects MANOVA ではなく、第6章の混合効果モデルで参加者・項目の依存性を明示する。
+- **複数DVの背後に潜在構成概念を想定する場合**: 第9章の因子分析・SEMで、観測変数のまとまりを測定モデルとして確認する。
+- **群差ではなく予測性能を主目的にする場合**: 第8章で ROC-AUC、PR-AUC、閾値、キャリブレーションを確認する。
+- **指導法の効果を因果的に主張したい場合**: 第18章で estimand、DAG、識別仮定、感度分析を整理する。
 
 ## 参考Webリソース（再学習用）
 
@@ -2440,7 +3127,7 @@ summary_tbl |>
 
 :::
 
-## 参考文献
+## 参考文献 {.unnumbered}
 
 ::: {#refs}
 :::

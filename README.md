@@ -13,8 +13,19 @@
 - 第VII部：ネットワーク分析
 - 第VIII部：メタ分析
 - 第IX部：因果推論とクラスタリング
+- 第X部：欠測データ解析とロバスト統計
 
 トップページと全章は `_quarto.yml` の `book.chapters` に基づいてレンダリングされます。
+
+### 実験・生理計測データの扱い
+
+本書は R による統計モデリングを主軸にしていますが、SLA・心理言語学で頻出する音声、eye-tracking、EEG/ERP などは、前処理を専用ツールで行い、整形済みデータを R に渡す運用を推奨します。
+
+- 音声: Praat / rPraat / speakr で注釈・特徴量抽出を行い、R で LMM / GLMM / GAMM を適用します。
+- EEG/ERP: MNE-Python または EEGLAB でフィルタリング、エポック化、アーティファクト処理を行い、R で time-window 分析や cluster permutation を行います。
+- Eye-tracking: 専用ソフトまたは Python/R パッケージで fixation / AOI / time-bin table を作り、R で GLMM / GAMM / growth curve analysis を行います。
+
+参考になる公式・準公式リソースとして、[Praat](https://www.fon.hum.uva.nl/praat/)、[MNE-Python](https://mne.tools/stable/index.html)、[EEGLAB](https://sccn.ucsd.edu/eeglab/)、[eyetrackingR](https://www.eyetracking-r.com/)、[eegUtils](https://craddm.github.io/eegUtils/) があります。
 
 ## 必要環境
 

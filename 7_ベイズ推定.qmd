@@ -22,7 +22,6 @@ required_packages <- c(
   "knitr",
   "lme4",
   "loo",
-  "pacman",
   "performance",
   "posterior",
   "priorsense",
@@ -46,9 +45,11 @@ if (length(missing_packages) > 0) {
 
 ## はじめに
 
+**本章へようこそ**。本章では、SLA・心理言語学・教育研究で頻出する「小サンプル（n = 15-30）」「リッカートスケール」「ゼロ過剰なエラー数」「先行研究のメタ分析知見を活かしたい」といった場面で、頻度論的アプローチの限界を超える**ベイズ推定**（Bayesian estimation）を、`brms` パッケージで実装する方法を学びます。第 5 章 GLM・第 6 章 GLMM とほぼ同じ文法でモデルを書け、第 10 章 G theory の分散成分にも事後分布を伝搬できる柔軟性が魅力です。本章を読み終えると、ポアソン回帰・順序ロジスティック回帰の 2 つのケーススタディを通じて、事前分布の選択 → MCMC 診断 → 事後分布の解釈 → 感度分析 → 学術論文への報告までを一貫して実行できるようになります。
+
 5章では一般化線形モデル（GLM）を、6章では一般化線形混合効果モデル（GLMM）を扱いました。これらはいずれも**頻度論**（frequentist）に基づく推定方法です。本章では、もう一つの統計推論の枠組みである**ベイズ推定**（Bayesian estimation）を紹介します。ベイズ推定は、先行研究の知見やドメイン知識を事前分布として明示的にモデルに組み込み、データに基づいて確率分布を更新するという推論方法です[@norouzian2018]。
 
-SLA・心理言語学・英語教育・教育学では、少人数の教室実験、participant × item の交差分類、順序尺度（リッカートスケール）の評定データ、多値カテゴリカル変数、ゼロが多い回数データなど、頻度論的なアプローチでは扱いにくいデータに遭遇することが少なくありません。R の `brms` パッケージ[@burkner2017]を用いると、5章・6章で学んだ `glm()` や `glmer()` とほぼ同じ文法でベイズモデルを構築でき、これらの問題を統一的に解決することができます。
+SLA・心理言語学・英語教育・教育学では、少人数の教室実験、participant × item の交差分類、順序尺度（リッカートスケール）の評定データ、多値カテゴリカル変数、ゼロが多い回数データなど、頻度論的なアプローチでは扱いにくいデータに遭遇することが少なくありません。R の `brms` パッケージ[@burkner2017]を用いると、5章・6章で学んだ `glm()` や `glmer()` とほぼ同じ文法でベイズモデルを構築でき、これらの問題を統一的に解決することができます。音声学・心理言語学分野でのベイズ推定の入門的チュートリアルとしては @vasishth2018 が定評ある邦語以外の参考文献です。
 
 ### この章の到達目標
 
@@ -68,8 +69,8 @@ SLA・心理言語学・英語教育・教育学では、少人数の教室実�
 | **チェーン（chain）** | MCMC の独立した探索経路。通常 4 本走らせる |
 | **ウォームアップ（warmup）** | MCMC の初期段階。推定が安定するまでの試行期間で、結果には使わない |
 | **ドロー（draw）** | MCMC で得られた事後分布の 1 サンプル |
-| **Rhat** | 収束の指標。1.01 未満なら OK |
-| **ESS** | 有効サンプルサイズ。自己相関を考慮した「実質的なサンプル数」 |
+| **Rhat** | 収束の指標（rank-normalized split-Rhat; @vehtari2021）。1.01 未満なら OK |
+| **ESS** | 有効サンプルサイズ。**Bulk-ESS**（事後平均/中央値の精度）と **Tail-ESS**（CrI 端の精度）の両方が 400 以上を目安に |
 | **CrI** | 信用区間。パラメータがこの範囲にある確率（例: 95%） |
 | **pd** | Probability of Direction。効果が正（または負）である事後確率 |
 | **BF** | ベイズファクター。2 つの仮説の相対的支持度 |
@@ -84,48 +85,181 @@ SLA・心理言語学・英語教育・教育学では、少人数の教室実�
 
 多くの読者は、まず**弱情報事前分布**（weakly informative prior）を明示したモデル適合から始めることになります。`brms` のデフォルト設定では、固定効果（class = "b"）は flat prior、切片や分散成分には弱情報事前分布が入るため、研究報告では `get_prior()` の結果と実際に指定した `prior` を併記するのが安全です。MCMC 診断で問題がなければ事後分布の解釈に進み、最後に感度分析で結論の頑健性を確認するという流れが実践的です。
 
-### ファストトラック {.unnumbered}
+### 中核となる読み筋 {.unnumbered}
 
-## この章は5,100行以上あります。以下の順で読むと70分で主要ワークフローを習得できます。
+本章は包括的なチュートリアルです。**以下の順序で読むと、ベイズ推定の主要ワークフローが順序立てて把握できます。**
 
-| 順序 | セクション | 所要時間 | 内容 |
-|:---:|---|:---:|---|
-| 1 | なぜベイズ推定なのか | 5分 | 頻度論との違い、brms を使うタイミング |
-| 2 | ベイズの定理（語彙テスト例） | 10分 | 事前→尤度→事後の流れを具体例で |
-| 3 | 事前分布の選び方 | 5分 | 弱情報 vs 情報的、SLA メタ分析活用 |
-| 4 | 10ステップワークフロー | 5分 | 分析手順の全体像 |
-| 5 | ケース1: ポアソン回帰（推定〜解釈） | 20分 | データ→モデル推定→tab_model→emmeans |
-| 6 | MCMC診断（Rhat, ESS, trace） | 10分 | 収束確認の最低限 |
-| 7 | 事後予測チェック | 5分 | pp_check でモデル妥当性を確認 |
-| 8 | 報告テンプレート | 10分 | 論文の Method/Results に直接使える |
+| 順序 | セクション | 内容 |
+|:---:|---|---|
+| 1 | なぜベイズ推定なのか | 頻度論との違い、brms を使うタイミング |
+| 2 | ベイズの定理（語彙テスト例） | 事前→尤度→事後の流れを具体例で |
+| 3 | 事前分布の選び方 | 弱情報 vs 情報的、SLA メタ分析活用 |
+| 4 | 10ステップワークフロー | 分析手順の全体像 |
+| 5 | ケース1: ポアソン回帰（推定〜解釈） | データ→モデル推定→tab_model→emmeans |
+| 6 | MCMC診断（Rhat, ESS, trace） | 収束確認の最低限 |
+| 7 | 事後予測チェック | pp_check でモデル妥当性を確認 |
+| 8 | 報告テンプレート | 論文の Method/Results に直接使える |
 
-**2回目以降に読む**: 感度分析、LOO/WAIC モデル比較、ROPE/BF の詳細、順序回帰（ケース2）、発展トピック
+**応用編**: 感度分析、LOO/WAIC モデル比較、ROPE/BF の詳細、順序回帰（ケース2）、発展トピック
 
 ## なぜベイズ推定なのか
+
+ベイズ推定を学ぶ動機を、**哲学的基礎・統計学的限界の克服・実務的利点・SLA 分野固有のニーズ**の四つの視点から整理します。単に「頻度論より優れている」という雑な主張ではなく、各場面でベイズ推定が**何を解決し、何を解決しないか**を明確にすることで、頻度論との適切な使い分けができるようになります。
+
+### 哲学的基礎: 「確率」の二つの異なる解釈
+
+ベイズ推定と頻度論的推定の根本的な違いは、「**確率とは何か**」という哲学的立場の違いに帰着します[@lindley2000; @jaynes2003]。
+
+| 立場 | 確率の定義 | 代表的論者 | 例 |
+|:---|:---|:---|:---|
+| **頻度論 (frequentist)** | 同じ実験を**無限回繰り返した**ときの相対頻度 | Neyman, Pearson, Fisher | 「コインを 1000 回投げて 500 回表が出れば、表の確率 = 0.5」 |
+| **ベイズ (Bayesian)** | **信念の度合い** (degree of belief) を数値化したもの。情報が増えれば更新される | de Finetti, Jeffreys, Jaynes, Lindley | 「明日雨が降る確率 = 0.7」「この患者がガンである確率 = 0.05」(無限回繰り返せない一回限りの事象にも適用可) |
+
+注: 厳密には Fisher と Neyman-Pearson は検定の解釈で対立する哲学的立場（前者は p 値の連続的証拠、後者は意思決定的有意性検定）を持ちますが、本書では確率の頻度論的解釈を共有するという広い意味で「頻度論派」として一括します。
+
+**重要な含意**: 頻度論の枠組みでは「**仮説の確率**」は意味をなしません（仮説は真か偽かのどちらか、無限回繰り返せない）。ベイズの枠組みでは、仮説に確率を与えることが自然です。研究者が「介入が効いた確率は何 % か」と問いたい場面では、ベイズ的解釈が直接的な答えを与えます。
+
+::: {.callout-tip}
+#### de Finetti の「主観確率」の意味
+
+de Finetti (1974) は「**確率は実在しない**」(Probability does not exist) という挑発的な主張で知られます。これは「客観的に定まった『真の確率』なるものはなく、確率はあくまで観察者の信念の度合いを表す」という意味です[@deFinetti1974]。一見極端ですが、現代の Stan/brms ベース のベイズ推定の操作的基盤は、まさに「研究者の事前信念をデータで更新する」という de Finetti 的枠組みに沿っています。「事前分布をどう正当化するか」が議論の中心になるのは、この哲学的立場の必然です。
+:::
+
+### 「研究者が本当に知りたいこと」の問題: $P(D | H)$ vs $P(H | D)$
+
+頻度論的推定の最大の限界は、「**研究者が知りたい問い**」と「**統計が答える問い**」の根本的な乖離にあります[@kruschke2018; @cohen1994]。
+
+| 研究者が知りたいこと | 頻度論が答えること | ベイズが答えること |
+|:---|:---|:---|
+| 「介入が効いた**確率**は?」 | 「効果がないという仮定の下で、これだけ極端な結果が得られる確率」(p 値) | 「介入が正の効果を持つ事後確率」(pd, $P(\beta > 0 \mid D)$) |
+| 「効果サイズはどの範囲にある?」 | 「同じ実験を無限回繰り返したとき、95% の区間が真値を含む」(信頼区間) | 「効果サイズが 95% の確率でこの範囲にある」(信用区間 CrI) |
+| 「データはどちらの仮説をどれだけ支持する?」 | 「帰無仮説の下での極端さ」(p 値、相対比較不可) | 「両仮説の相対的支持度」(Bayes Factor) |
+| 「予測値の不確実性は?」 | 「点予測 + 標準誤差」(漸近正規) | 「予測分布全体」(posterior predictive distribution) |
+
+@cohen1994 は影響力ある論文 "**The Earth is Round (p < .05)**" で、頻度論的推論の中心的概念である p 値が研究者の直感と乖離していることを徹底的に批判しました。多くの研究者・教科書・論文で「p 値 = 帰無仮説が真である確率」「95% CI = パラメータがこの区間にある確率」という**誤解**が広く流通しているのは、人間が本来求める「$P(H | D)$」の方が直感的だからです。ベイズ推定は、研究者の自然な直感に沿った推論を提供します。
 
 ### 頻度論的アプローチの限界
 
 5章・6章で学んだ頻度論的アプローチは、英語教育研究で広く用いられてきました。しかし、いくつかの限界が指摘されています[@kruschke2018; @norouzian2018]。
 
-**p値の問題**: p値は「帰無仮説が正しいと仮定した場合に、手元のデータ以上に極端な結果が得られる確率」です。しかし、多くの研究者が知りたいのは「データが得られたとき、仮説が正しい確率」であり、これは p 値が直接答える問いではありません。つまり、$P(D|H_0)$（p値）と $P(H_1|D)$（研究者が知りたい確率）は異なるものです。SLA 研究では、例えば「フィードバック介入がライティングの正確性を改善した確率は何%か？」という問いに答えたいのですが、p 値はこの問いに直接答えることができません。
+**p 値の問題**: p 値は「帰無仮説が正しいと仮定した場合に、手元のデータ以上に極端な結果が得られる確率」です。しかし、多くの研究者が知りたいのは「データが得られたとき、仮説が正しい確率」であり、これは p 値が直接答える問いではありません。つまり、$P(D|H_0)$（p 値）と $P(H_1|D)$（研究者が知りたい確率）は異なるものです。
 
-**95% 信頼区間の解釈**: 頻度論の 95% 信頼区間（CI）は「同じ実験を無限に繰り返したとき、95% の区間が真のパラメータを含む」という意味です。特定の区間に対して「95% の確率でパラメータがここにある」とは言えません。
+**ASA の p 値声明とその後の議論**: 米国統計学会 (ASA) は 2016 年に "Statement on Statistical Significance and P-Values"[@wasserstein2016] を発表し、6 つの原則として「(1) p 値は仮説が真である確率ではない、(2) 仮説の真偽の決定にだけ使うべきでない、(3) 科学的結論は p < 0.05 だけで決めるべきでない…」と明文化しました。さらに 2019 年には Wasserstein, Schirm, & Lazar が "Moving to a World Beyond p < 0.05"[@wasserstein2019] で **「statistical significance」の語の使用停止**を提案するに至っています。これらの議論は、頻度論的有意性検定への過度な依存への学界全体の反省を示しています。
 
-**小サンプルの不安定さ**: 英語教育研究では、授業単位の実験（1クラス 20〜30 名）やケーススタディなど、サンプルサイズが限られることが一般的です。頻度論的推定は大標本を前提とした漸近理論に依存するため、小サンプルでは推定が不安定になりやすいです。特に、交差ランダム効果（学習者 × 評価者 × 課題）を含む複雑なモデルでは、最尤推定が収束しない問題が頻発します。
+**95% 信頼区間の解釈**: 頻度論の 95% 信頼区間（CI）は「同じ実験を無限に繰り返したとき、95% の区間が真のパラメータを含む」という意味です。特定の区間に対して「95% の確率でパラメータがここにある」とは言えません。多くの研究者・教科書がこの誤解を継承しており、ベイズの信用区間 (CrI) との混同が常態化しています。
 
-**SLA における効果量の蓄積**: @plonsky2014 は、346の一次研究と91のメタ分析を統合した結果、SLA 研究における効果量の基準値として $d = 0.40$（小）、$d = 0.70$（中）、$d = 1.00$（大）を提案しました。これは Cohen の一般的基準（$d = 0.20 / 0.50 / 0.80$）よりも大きく、SLA 分野ではより大きな効果が観測される傾向があることを示しています。こうしたメタ分析の知見は、ベイズ推定における情報的事前分布の設定根拠として直接活用できます。
+**小サンプルの不安定さ**: 英語教育研究では、授業単位の実験（1 クラス 20〜30 名）やケーススタディなど、サンプルサイズが限られることが一般的です。頻度論的推定は大標本を前提とした漸近理論に依存するため、小サンプルでは推定が不安定になりやすいです。特に、交差ランダム効果（学習者 × 評価者 × 課題）を含む複雑なモデルでは、最尤推定が収束しない問題が頻発します（第 6 章 GLMM の特異適合 (singular fit) 議論参照）。
 
-### ベイズ推定が答える問い
+**SLA における効果量の蓄積**: @plonsky2014 は、346 の一次研究と 91 のメタ分析を統合した結果、SLA 研究における効果量の基準値として $d = 0.40$（小）、$d = 0.70$（中）、$d = 1.00$（大）を提案しました。これは Cohen の一般的基準（$d = 0.20 / 0.50 / 0.80$）よりも大きく、SLA 分野ではより大きな効果が観測される傾向があることを示しています。こうしたメタ分析の知見は、ベイズ推定における情報的事前分布の設定根拠として直接活用できます。
 
-ベイズ推定は、上記の限界に対して以下のような回答を提供します[@norouzian2018; @verissimo2025]。
+### 再現性危機とベイズ推定の役割
 
-**直接的な確率**: 「ライティングの訂正フィードバックが正確性を向上させる確率は 97% である」「B2 レベルの学習者が A2 よりもエラーが少ない確率は 99.8% である」のように、研究者が知りたい問いに直接答えることができます。
+2010 年代以降、心理学・社会科学・SLA を含む多くの分野で**再現性危機**（replication crisis）が認識されてきました[@osc2015; @marsden2018]。Open Science Collaboration (2015) は心理学の 100 件の実験を再分析し、有意な結果が得られた 97 件のうち再現に成功したのは 39 件 (約 40%)、効果量は平均で約半減したと報告しました。この衝撃は SLA 分野でも反響を呼びました。
 
-**95% 信用区間**: ベイズの 95% 信用区間（Credible Interval, CrI）は「パラメータがこの範囲内にある確率が 95% である」という、直感的に理解しやすい解釈が可能です。例えば、「熟達度効果の IRR は 95% の確率で 0.45〜0.60 の範囲にある」と主張できます。
+再現性危機の主因として指摘されているもの:
 
-**事前知識の活用**: SLA 分野ではメタ分析が豊富に蓄積されています。例えば、@li2010 は訂正フィードバックの全体的効果量を $d = 0.61$（95% CI [0.51, 0.71]）と報告し、@kang2015 はライティングの訂正フィードバックの効果を $g = 0.68$ と報告しています。こうしたメタ分析の知見を事前分布として明示的に組み込むことで、限られたデータからでも安定した推定を行えます。これはベイズ推定の最大の強みの一つであり、累積的知見の構築（cumulative science）に直結します[@norouzian2018]。
+1. **p-hacking / HARKing**: 有意な p 値を得るための事後的な分析変更
+2. **publication bias**: 有意でない結果が発表されにくい
+3. **statistical significance filter** [@vasishth2018filter]: 有意性を要件とすると効果サイズが過大推定される
+4. **小サンプルでの過信**: 漸近理論が成立しない領域での推論
 
-**小サンプルへの対応**: 事前分布による正則化（regularization）が働くことで、小サンプルでも極端な推定値に陥りにくくなります。例えば、15名の学習者を対象とした教室実験では頻度論的な混合モデルが収束しないことがありますが、弱情報事前分布を用いたベイズモデルでは安定した推定が得られます。
+ベイズ推定は再現性危機への以下の応答を提供します:
+
+| 再現性危機の問題 | ベイズ推定の応答 |
+|:---|:---|
+| p-hacking | 事後分布全体を報告するため、「有意 / 非有意」の二値判定の誘惑が低い |
+| publication bias | 効果サイズの不確実性 (CrI/HDI) を直接議論できる。「null 結果」も等価性検定 (ROPE) で報告可能 |
+| significance filter | 弱情報事前分布が極端な推定値を縮小し、効果サイズの過大推定を防ぐ[@vasishth2018filter] |
+| 小サンプル | 事前分布による正則化で安定推定 (前述) |
+| 累積科学の困難 | メタ分析の事後を次の研究の事前として使う「Bayesian updating」で累積知見を構築[@norouzian2018] |
+
+### ベイズ推定が提供する 7 つの利点
+
+ベイズ推定は、上記の限界に対して以下のような回答を提供します[@norouzian2018; @verissimo2025; @kruschke2021barg]。
+
+**1. 直接的な確率による答え**: 「ライティングの訂正フィードバックが正確性を向上させる確率は 97% である」「B2 レベルの学習者が A2 よりもエラーが少ない確率は 99.8% である」のように、研究者が知りたい問いに直接答えることができます。
+
+**2. 直感的な信用区間**: ベイズの 95% CrI は「パラメータがこの範囲内にある確率が 95% である」という、直感的に理解しやすい解釈が可能です（CrI = 信用区間 / Credible Interval、用語表 L64-81 参照）。例えば、「熟達度効果の IRR は 95% の確率で 0.45〜0.60 の範囲にある」と主張できます。
+
+**3. 事前知識の活用と累積科学**: SLA 分野ではメタ分析が豊富に蓄積されています。例えば、@li2010 は訂正フィードバックの全体的効果量を $d = 0.61$（95% CI [0.51, 0.71]）と報告し、@kang2015 はライティングの訂正フィードバックの効果を $g = 0.68$ と報告しています。こうしたメタ分析の知見を事前分布として明示的に組み込むことで、限られたデータからでも安定した推定を行えます。これはベイズ推定の最大の強みの一つであり、**累積科学** (cumulative science; 「ある研究の事後分布を次の研究の事前分布として使うことで知見を蓄積する」というベイズ更新ベースの研究哲学) に直結します[@norouzian2018]。本章では「累積科学」「ベイズ更新 (Bayesian updating)」「累積的ベイズ」という用語を扱いますが、いずれも同じ概念の異なる側面 (前者は科学観、中者は技術用語、後者は本書 §10「累積的ベイズ: Study 1 の事後を Study 2 の事前に」で示す具体的実装) を指します。
+
+**4. 小サンプルへの頑健性**: 事前分布による正則化（regularization）が働くことで、小サンプルでも極端な推定値に陥りにくくなります。例えば、15 名の学習者を対象とした教室実験では頻度論的な混合モデルが収束しないことがありますが、弱情報事前分布を用いたベイズモデルでは安定した推定が得られます。
+
+**5. 階層モデルの自然な拡張**: 「ランダム効果の分散成分が 0 に張り付く」境界推定問題が、弱情報事前分布で自然に回避されます[@sorensen2016]。第 6 章で扱った特異適合 (singular fit) の問題は、ベイズ的階層モデルでは滅多に発生しません。
+
+**6. 等価性検定 (equivalence testing) と「効果がない」の積極的主張**: 頻度論では「p > 0.05 = 効果がない」とは言えません (帰無仮説の不採択 ≠ 採択)。ベイズの ROPE (Region of Practical Equivalence) を使えば、「効果が実質的にゼロである確率は 95% である」のように「**ゼロ効果を積極的に主張**」できます[@kruschke2018]。SLA で「介入の効果が小さすぎて実用的に意味がない」と結論する場面で本質的に重要です。
+
+**7. 予測分布全体の活用**: ベイズの **posterior predictive distribution** は、点予測ではなく予測値の不確実性も含めた分布を返します。教育測定 (例: 個別学習者の到達度予測の不確実性) や決定理論的応用 (cut score の最適化) で重要です。
+
+### よくある反論への回答
+
+ベイズ推定への一般的な反論と応答を整理します。
+
+::: {.callout-tip collapse="true"}
+#### 反論 1: 「事前分布は主観的ではないか」
+
+**応答**: すべての統計モデルは主観的選択を含んでいます (尤度族の選択、リンク関数の選択、変数の標準化、外れ値の扱いなど)。**頻度論モデルもこれらの主観性を持ちますが、それを暗黙のうちにしている**のに対し、ベイズ推定は**事前分布を明示的に書き出す**ことで主観性を透明化します。
+
+さらに、**弱情報事前分布** (例: `Normal(0, 1)` on logit scale) は無情報に近く、十分なサンプルサイズがあればデータが事後を支配します。priorsense による感度分析 (前述) で「事前分布が結論を変えていないこと」を実証することも可能です。BARG ガイドラインは事前分布の選択と感度分析の報告を義務化しています。
+
+要するに、「主観性」はベイズの欠点ではなく、**他の手法に隠されていた主観性を可視化する利点**として捉えるべきです[@kruschke2021barg; @gelman2017prior]。
+:::
+
+::: {.callout-tip collapse="true"}
+#### 反論 2: 「計算コストが高すぎる」
+
+**応答**: 1990 年代の Gibbs sampler の時代は確かに計算コストが障害でした。しかし現在は:
+
+- **HMC/NUTS** (Hamiltonian Monte Carlo / No-U-Turn Sampler) により、複雑な事後分布を効率的に探索可能
+- **Stan / cmdstanr** が最新のコンパイラ最適化と並列化に対応
+- **典型的な GLMM** (本書ケース 1, 2 のような数百〜数千観測) は数十秒〜数分で fit
+- **`file_refit = "on_change"`** によるキャッシュで再実行コストを最小化
+- **クラウド計算** (Stan を AWS / GCP で並列実行) も研究室レベルで利用可能
+
+「複雑な階層モデル + 1 万観測」のような大規模ケースでも、数時間で fit が完了します。**計算コストはもはや実務的障害ではない**というのが 2020 年代の共通認識です[@burkner2017]。
+:::
+
+::: {.callout-tip collapse="true"}
+#### 反論 3: 「査読者がベイズを理解しない」
+
+**応答**: SLA・心理言語学のトップジャーナル (*Studies in Second Language Acquisition*, *Language Learning*, *Journal of Memory and Language*, *Cognition*) は近年ベイズ論文を多数掲載しており、査読者の理解度は急速に向上しています。
+
+具体的な対処法:
+
+- **BARG ガイドライン** [@kruschke2021barg] に沿った報告を行えば、査読者は標準的な手順でレビューできる
+- **頻度論との並列報告**: 頻度論 (lme4) とベイズ (brms) の両方を fit し、結果を並列表示することで「ベイズが特殊な結論ではない」ことを示せる
+- **MAP 推定**: 査読者が「点推定」を求める場合、事後中央値や MAP を「frequentist-equivalent」として報告
+- **メタ分析の引用**: 「SLA 分野で確立された $d = 0.4$ などのメタ分析を事前分布の根拠として使用」と明記すれば、主観性への懸念を緩和
+
+@verissimo2025 の SLA 向けベイズチュートリアルなど、邦書・英書ともに整備が進んでおり、査読者が理解できる教材は十分にあります。
+:::
+
+::: {.callout-warning collapse="true"}
+#### いつベイズを避けるべきか: 頻度論が適切な場面
+
+ベイズ推定は万能ではありません。以下の場面では頻度論的アプローチを優先すべきです:
+
+- **十分大きなサンプル + 標準的線形モデル**: $N > 数千$ で `lm()`, `glm()`, `lmer()` が安定して収束する場合、ベイズ事後と頻度論推定はほぼ一致します。計算コストの観点から頻度論が効率的
+- **規制当局・制度的手続き**: 製薬・医療機器・教育測定の標準化テストなど、**NHST (Null Hypothesis Significance Testing) が制度的に必須**の場面。新しい枠組みの導入には組織的合意が必要
+- **メタ分析の事後比較として**: 既に頻度論メタ分析が広く確立している場合、ベイズ的再分析は補助的価値しかない場合がある
+- **教育・指導の初期段階**: 学部生・修士新入生に統計の基礎を教える文脈では、まず頻度論の枠組みを習得する方が他分野との接続上有利
+- **計算リソースが極端に乏しい場面**: ノートパソコン 1 台で数万件のデータを即時処理する必要がある場合（例: A/B テストのリアルタイム解析）
+
+これらの場面では、頻度論手法が選択肢として**より優れているか、少なくとも同等**です。後述の「頻度論かベイズかの二択ではない」節も参照してください。
+:::
+
+::: {.callout-tip collapse="true"}
+#### 反論 4: 「サンプルサイズを増やせば頻度論で十分では?」
+
+**応答**: 部分的に正しいです。N が十分大きければ (数千〜数万)、頻度論の推定値とベイズの事後中央値はほぼ一致します。しかし、SLA・教育研究では以下の理由で**「サンプルを増やす」が現実的でない**ケースが多数あります:
+
+- **倫理的制約**: 介入研究で対照群を多くしたくない
+- **コスト制約**: 1 人あたりの評価コストが高い (スピーキング評定、アイトラッキング)
+- **被験者プールの制約**: 特定言語の母語話者、特定年齢の学習者など、母集団自体が小さい
+- **縦断研究**: ドロップアウトで N が減るが繰り返しは難しい
+
+これらの場面で、**事前分布による情報の活用**は単なる「計算上の便利さ」ではなく、**統計推論の質を本質的に高める**手段になります[@norouzian2018]。
+:::
 
 ```{r}
 #| eval: true
@@ -147,13 +281,49 @@ if (!requireNamespace("cmdstanr", quietly = TRUE)) {
   )
 }
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
-
-
-pacman::p_load(
-  brms, tidyverse, tidybayes, bayesplot, posterior,
-  sjPlot, performance, gt, loo, emmeans, bayestestR, ggridges, priorsense, DT
+required_runtime_packages <- c(
+  # Bayesian core
+  "brms", "tidybayes", "bayesplot", "posterior", "loo",
+  "bayestestR", "priorsense", "marginaleffects",
+  # Tidyverse + 個別呼び出しで使用するパッケージ
+  "tidyverse", "dplyr", "purrr", "stringr", "tidyr", "tibble",
+  "ggplot2", "scales", "forcats", "ggridges",
+  # Modeling / output
+  "sjPlot", "performance", "emmeans", "lme4",
+  # Tables / docs
+  "gt", "DT", "knitr"
 )
+
+missing_runtime_packages <- required_runtime_packages[
+  !vapply(required_runtime_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_runtime_packages) > 0) {
+  stop(
+    paste(
+      "Required packages are not installed:",
+      paste(missing_runtime_packages, collapse = ", "),
+      "Install them first, then render this chapter again.",
+      sep = "\n"
+    ),
+    call. = FALSE
+  )
+}
+
+library(brms)
+library(tidyverse)
+library(tidybayes)
+library(bayesplot)
+library(posterior)
+library(sjPlot)
+library(performance)
+library(gt)
+library(loo)
+library(emmeans)
+library(bayestestR)
+library(ggridges)
+library(priorsense)
+library(DT)
 
 if (!requireNamespace("cmdstanr", quietly = TRUE)) {
   stop(
@@ -181,7 +351,7 @@ if (is.null(tryCatch(cmdstanr::cmdstan_version(), error = function(e) NULL))) {
 options(brms.backend = "cmdstanr")
 
 # プロットのテーマ設定
-base_font <- "HiraginoSans-W3"
+base_font <- if (Sys.info()[["sysname"]] == "Darwin") "HiraginoSans-W3" else "sans"
 theme_set(theme_bw(base_size = 12, base_family = base_font) +
   theme(
     plot.title.position = "plot",
@@ -201,7 +371,12 @@ theme_set(theme_bw(base_size = 12, base_family = base_font) +
 theme_update(legend.position = "bottom")
 
 set.seed(2024)
-options(mc.cores = parallel::detectCores())
+# mc.cores: brms/Stan の chains を並列実行する CPU コア数を一括設定。
+# brms::brm() は内部で getOption("mc.cores") を参照するため、本書のコードでは
+# brm() ごとに cores 引数を明示せず、ここで一括制御する。
+# CI など制限環境では detectCores() が 1 を返すことがあるので、
+# 並列化が効かない場合はこの行を確認してください。
+options(mc.cores = min(4, parallel::detectCores()))
 dir.create("models", showWarnings = FALSE, recursive = TRUE)
 
 # stancode() から読み取り対象の代表行を抽出
@@ -276,27 +451,27 @@ HDSR の @lin2024 は、「頻度論かベイズか」を二者択一の対立�
 
 ベイズ分析に入るときは、まず次の4つの問いを順番に確認すると迷いにくくなります。
 
-1. **目的変数は何か**  
+1. **目的変数は何か**
    連続値なのか、正誤なのか、回数なのか、順序尺度なのかを先に決めます。ベイズでは「まず family を決める」ことが出発点です。
 
-2. **データはどの単位で繰り返されているか**  
+2. **データはどの単位で繰り返されているか**
    learner の繰り返し、item の繰り返し、rater の繰り返しがあるなら、階層モデルや交差分類を検討します。心理言語学の participant × item、英語教育の learner × rater は典型です。
 
-3. **分析前にどの程度の知識があるか**  
+3. **分析前にどの程度の知識があるか**
    先行研究、メタ分析、授業実践の蓄積、機器精度などを、弱情報事前分布か情報的事前分布かの判断材料にします。SLA では訂正フィードバックや TBLT のメタ分析が使いやすいです。
 
-4. **最終的にどの量を図で示したいか**  
+4. **最終的にどの量を図で示したいか**
    回帰係数そのものを見せたいのか、予測確率、期待値、カテゴリ確率、事後予測分布を見せたいのかを決めます。教育学や英語教育では、係数よりも**応答尺度での予測**を示した方が伝わりやすいことが多いです。
 
 この4ステップで考えると、SLA の「WCF はライティング正確性を改善するか」は「エラー数または正確性指標を目的変数にした階層モデル」、心理言語学の「語頻度は lexical decision accuracy を上げるか」は「participant × item を含む 2値または RT モデル」、英語教育の「自己効力感評定は授業法で変わるか」は「順序ロジスティック回帰」、教育学の「学級差を考慮した介入効果はどの程度か」は「多層モデル」という形で自然に整理できます。
 
 #### 最初に確認すべき実務上の指針
 
-- **最初から複雑な事前分布を作ろうとしない**  
+- **最初から複雑な事前分布を作ろうとしない**
   まずは弱情報事前分布でモデルを安定させ、次にメタ分析や先行研究を使った情報的事前分布へ進みます。
-- **係数だけで終わらず、予測図まで作る**  
+- **係数だけで終わらず、予測図まで作る**
   SLA や教育研究では、`β = -0.45` よりも「介入群の予測エラー数は対照群より何個少ないか」「正答確率は何ポイント上がるか」の方がはるかに伝わります。
-- **ベイズ推定は万能ではない**  
+- **ベイズ推定は万能ではない**
   事前分布の根拠が薄いまま強い prior を入れると結論が prior に引っ張られます。だからこそ、事前予測チェックと感度分析が必要です。
 
 #### SLA 分野のメタ分析：ベイズ推定の事前分布に活用できる知見
@@ -324,7 +499,7 @@ Note. これらの効果量は情報的事前分布を設定する際の根拠�
 
 ### ベイズの定理
 
-ベイズ推定の核となるのは**ベイズの定理**（Bayes' theorem）です[@kruschke2018; @mcelreath2020]。数式で表すと以下のようになります。
+ベイズ推定の核となるのは**ベイズの定理**（Bayes' theorem）です[@kruschke2018; @mcelreath2020; @gelman2013]。数式で表すと以下のようになります。
 
 $$
 P(\theta|D) = \frac{P(D|\theta) \cdot P(\theta)}{P(D)}
@@ -374,7 +549,7 @@ $$
 ```{r}
 #| eval: true
 #| label: fig-bayes-update
-#| fig-cap: "Bayesian updating: prior to posterior"
+#| fig-cap: "ベイズ更新（Bayesian updating）：事前分布（prior）から事後分布（posterior）へ"
 
 # ベイズ更新の可視化（Beta分布の例）
 theta <- seq(0, 1, length.out = 200)
@@ -400,7 +575,7 @@ tibble(
   mutate(type = factor(type, levels = c("Prior", "Likelihood", "Posterior"))) |>
   ggplot(aes(x = theta, y = density, color = type, linetype = type)) +
   geom_line(linewidth = 1.2) +
-  scale_color_manual(values = c("Prior" = "#2196F3", "Likelihood" = "#FF9800", "Posterior" = "#4CAF50")) +
+  scale_color_manual(values = c("Prior" = "#56B4E9", "Likelihood" = "#E69F00", "Posterior" = "#009E73")) +
   labs(
     x = expression(theta ~ "(Probability of correct answer)"),
     y = "Scaled density",
@@ -421,7 +596,7 @@ tibble(
 ```{r}
 #| eval: true
 #| label: fig-priors
-#| fig-cap: "Three types of prior distributions"
+#| fig-cap: "3種類の事前分布（prior distributions）：無情報・弱情報・情報的事前分布"
 
 theta <- seq(-5, 5, length.out = 300)
 
@@ -441,7 +616,7 @@ tidyr::crossing(prior_specs, theta = theta) |>
   ggplot(aes(x = theta, y = density, color = type)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(~type, scales = "free_y", ncol = 1) +
-  scale_color_manual(values = c("#9E9E9E", "#2196F3", "#E91E63")) +
+  scale_color_manual(values = c("#999999", "#56B4E9", "#CC79A7")) +
   labs(x = expression(theta), y = "Density",
        title = "Three Types of Prior Distributions") +
   theme(legend.position = "none")
@@ -461,13 +636,13 @@ SLA 分野の主要なメタ分析から得られた効果量を、情報的事�
 
 - @kang2015 のメタ分析：ライティング訂正フィードバックの全体的効果 $g = 0.68$
 - @li2010 のメタ分析：訂正フィードバックの全体的効果 $d = 0.61$（95% CI [0.51, 0.71]）
-- これらに基づき、フィードバック効果の回帰係数に `Normal(0.65, 0.30)` を設定する根拠がある
+- これらは**標準化平均差**（standardized mean difference）なので、`brms` の係数事前分布へそのまま代入しません。ガウスモデルの標準化済み応答なら $d$ に近い尺度で使えますが、ポアソンモデルでは `log(IRR)`、ロジスティックモデルでは `log(OR)` の尺度に変換してから使います。
 
 **スピーキング研究の場合:**
 
 - @lyster2010 のメタ分析：教室での口頭フィードバックの効果（プロンプト＝大、リキャスト＝中）
 - @bryfonski2019 のメタ分析：タスクベース教授法の全体的効果 $d = 0.93$
-- スピーキング熟達度の効果に `Normal(0.80, 0.40)` を設定する根拠がある
+- 順序ロジスティック回帰では、評定が高いカテゴリに入る累積オッズ比（cumulative odds ratio）を想定し、その対数を事前分布の中心に置きます。
 
 **SLA 分野全般:**
 
@@ -477,18 +652,36 @@ SLA 分野の主要なメタ分析から得られた効果量を、情報的事�
 実際の設定例（`brms` のコード）:
 
 ```r
-# メタ分析に基づく情報的事前分布
+# メタ分析と研究デザインからリンク関数スケールへ翻訳した情報的事前分布
+# 例: 直接フィードバックでエラー率が約 40% 低いと想定する場合
+# IRR = 0.60 なので log(IRR) = log(0.60) ≈ -0.51
 prior_meta <- c(
-  set_prior("normal(-0.65, 0.30)", class = "b", coef = "feedbackdirect"),
+  set_prior("normal(-0.51, 0.30)", class = "b", coef = "feedbackdirect"),
   set_prior("normal(0, 0.50)", class = "b")  # その他の効果には弱情報
 )
 ```
 
-なお、@brown2023 はライティングの訂正フィードバックに関する**ベイズメタ分析**を実施し、事後分布と信用区間を用いた効果の評価を行っています。このようなベイズメタ分析の結果は、後続研究の事前分布として直接利用できるため、累積的な知見の構築に特に有効です[@norouzian2018]。
+なお、@brown2023 はライティングの訂正フィードバックに関する**ベイズメタ分析**を実施し、事後分布と信用区間を用いた効果の評価を行っています。このようなベイズメタ分析の結果は、後続研究の事前分布として利用できます。ただし、アウトカム、リンク関数、コーディング、母集団が異なる場合は、効果量を分析モデルの係数スケールに翻訳してから指定します[@norouzian2018]。
 
 #### 運用判断：事前分布の選び方
 
 初めてベイズ分析を行う場合は、`brms` のデフォルト事前分布（固定効果は flat、切片・分散成分は弱情報）を出発点にし、`get_prior()` で内容を確認するのが安全です。十分なサンプルサイズがあればデータが事後分布を強く規定しますが、固定効果にも弱情報事前分布を与えたい場合は `class = "b"` を明示指定してください。デフォルトでない事前分布を使用する場合は、その根拠を Method セクションに必ず記述してください。メタ分析の結果は最も客観的な根拠ですが、メタ分析の対象研究と自身の研究デザインの類似性を慎重に検討する必要があります。
+
+::: {.callout-tip}
+#### `set_prior()` の `class` 引数: 何にどう指定するか
+
+`brms` の `set_prior()` は `class` 引数で**どのパラメータ群に事前分布を割り当てるか**を指定します。初学者がよく混乱する 3 つの主要 class を以下にまとめます。
+
+| class | 対象 | 典型的な事前分布 | 例 |
+|:---|:---|:---|:---|
+| `"b"` | **回帰係数（固定効果）**。treatment / sum / contrast コーディング後の各水準差 | `Normal(0, 0.5-1.0)` (リンクスケール) | `set_prior("normal(0, 0.7)", class = "b")` |
+| `"Intercept"` | **切片**。treatment コーディングでは「参照水準のリンクスケール期待値」 | `Normal(平均, SD)` (応答尺度の平均値を逆リンク変換) | `set_prior("normal(2.3, 0.7)", class = "Intercept")` |
+| `"sd"` | **ランダム効果の標準偏差**（`(1|group)` の SD）。常に正の値 | `Student-t(3, 0, 1-2.5)` または `Half-Normal(0, 1)` | `set_prior("student_t(3, 0, 1)", class = "sd")` |
+| `"sigma"` | **残差 SD**（gaussian family のみ） | `Student-t(3, 0, SD_y)` | `set_prior("student_t(3, 0, 2.5)", class = "sigma")` |
+| `"cor"` | **ランダム傾きの相関行列** | `lkj(2)` | `set_prior("lkj(2)", class = "cor")` |
+
+`coef = "..."` を追加すると特定の係数だけに別の事前分布を当てられます（例: `set_prior("normal(-0.5, 0.3)", class = "b", coef = "feedbackdirect")`）。`class` を指定せずに `set_prior("normal(0, 1)")` と書くと、すべての class に同じ事前分布が当てられて意図しない動作になりかねないため、**必ず `class` を明示**してください。
+:::
 
 ::: {.callout-warning}
 #### コントラストコーディングと事前分布の相互作用
@@ -594,9 +787,18 @@ pd の解釈は以下の通りです：
 - **pd = 0.50**: 効果の方向が全く不明（事後分布が 0 を中心に対称）
 - **pd = 0.95**: 効果がある方向に存在する確率が 95%
 - **pd = 0.975**: 両側 p = 0.05 に概ね対応
-- **pd = 0.999**: 効果の方向がほぼ確実
+- **pd = 0.999**: 効果の方向に関する事後確率が非常に高い
 
-**SLA での具体例**: ライティングの修正フィードバック研究で、B2 学習者のエラー数に対する効果の pd = 0.998 であれば、「B2 学習者がA2 学習者よりエラーが少ない確率が 99.8%」と解釈します。頻度論の p 値との概ね対応は pd = 1 - p/2 です（pd = 0.975 ≈ p = 0.05）。ただし、この対応は対称的・単峰の事後分布でのみ成立する近似です。
+**SLA での具体例**: ライティングの修正フィードバック研究で、B2 学習者のエラー数に対する効果の pd = 0.998 であれば、「B2 学習者が A2 学習者よりエラーが少ない確率が 99.8%」と解釈します。頻度論の両側 p 値との対応は **両側 p ≈ 2 × (1 − pd)**、すなわち **pd ≈ 1 − p/2** です[@makowski2019]。具体例:
+
+| pd | 対応する両側 p ≈ |
+|:---:|:---:|
+| 0.95 | 0.10 |
+| 0.975 | 0.05 |
+| 0.99 | 0.02 |
+| 0.999 | 0.002 |
+
+ただし、この対応は対称的・単峰の事後分布でのみ成立する近似です[@greenland2020]。歪んだ事後（特にロジット/対数スケールでの事後）では乖離します。
 
 pd は p 値と概念的に近い解釈が可能ですが、重要な違いがあります。p 値は「帰無仮説のもとでデータが得られる確率」であるのに対し、pd は「データが得られたもとで効果がある方向に存在する確率」です。つまり、pd は研究者が本当に知りたい問いに直接答えています。
 
@@ -605,10 +807,12 @@ pd は p 値と概念的に近い解釈が可能ですが、重要な違いが�
 **ベイズファクター**（Bayes Factor, BF）は、2つの仮説（あるいはモデル）の相対的な支持度を数値化したものです[@kruschke2018]。
 
 $$
-\text{BF}_{10} = \frac{P(D | H_1)}{P(D | H_0)} = \frac{\text{対立仮説のもとでのデータの尤度}}{\text{帰無仮説のもとでのデータの尤度}}
+\text{BF}_{10} = \frac{P(D | H_1)}{P(D | H_0)} = \frac{\int P(D | \theta) \pi(\theta | H_1) \, d\theta}{\int P(D | \theta) \pi(\theta | H_0) \, d\theta}
 $$
 
-BF は「データが帰無仮説の何倍、対立仮説を支持するか」を表しています。例えば、$\text{BF}_{10} = 8$ であれば、データは帰無仮説の 8 倍、対立仮説を支持していることを意味します。
+ここで $\pi(\theta | H_k)$ は仮説 $H_k$ のもとでの事前分布、$P(D | \theta)$ は尤度です。**BF の分子・分母は、事前分布で平均化した周辺尤度（marginal likelihood / prior predictive density）の比**であり、単純な「尤度比」とは異なる点に注意してください[@kruschke2018]。事前分布が組み込まれているため、BF の値は事前分布の選択に強く依存します。
+
+直感的には、BF は「観測データが仮説 $H_1$ の事前分布で平均化した予測密度のもとで、$H_0$ のもとよりどれだけ予測されやすいか」を表します。例えば、$\text{BF}_{10} = 8$ であれば、観測データは $H_0$ より $H_1$ の周辺尤度のもとで 8 倍予測されやすい、という意味です。
 
 BF の解釈基準としては、以下の分類が広く用いられています：
 
@@ -628,7 +832,7 @@ Note. Jeffreys (1961), Kruschke (2018) に基づく。
 ::: {.callout-important}
 ### BF の注意点
 
-BF は事前分布の選択に敏感です[@kruschke2018]。特に無情報事前分布（flat prior）を使用すると、事前分布の裾が広すぎるために BF が過小評価されることがあります（Lindley のパラドックス）。BF を報告する場合は、使用した事前分布を明記し、感度分析で BF が事前分布に対して頑健であることを確認してください。なお、`brms::hypothesis()` 関数は Savage–Dickey density ratio 法を用いて BF を算出します。この方法は事前分布と事後分布の密度比からBFを近似するため、事前分布の設定が結果に直接影響します。
+BF は事前分布の選択に敏感です[@kruschke2018]。特に無情報事前分布（flat prior）や裾の広い事前分布を使用すると、$H_1$ のもとでの周辺尤度が事前分布全体に薄く広がるため、**BF は帰無仮説 $H_0$ を不当に支持する方向にバイアスされます**（Jeffreys-Lindley のパラドックス[@jeffreys1961]）。これは「広い prior ほど $H_0$ が優位になる」ため、頻度論の p 値が小さくても BF は $H_0$ を支持する逆説的状況を生じます。BF を報告する場合は、使用した事前分布を明記し、感度分析（例: `BayesFactor::ttestBF` の `rscale` を `c("medium", "wide", "ultrawide")` で変動）で BF が事前分布に対して頑健であることを確認してください[@vandoorn2021]。なお、`brms::hypothesis()` 関数は Savage–Dickey density ratio 法を用いて BF を算出します。この方法は事前分布と事後分布の密度比から BF を近似するため、事前分布の設定が結果に直接影響します。ネストされていないモデル比較には `bridgesampling::bridge_sampler()`（`brms::bayes_factor()` から呼び出し可能）を用いた周辺尤度ベースの BF が標準です。
 :::
 
 #### pd と BF の使い分け
@@ -651,6 +855,12 @@ BF は事前分布の選択に敏感です[@kruschke2018]。特に無情報事�
 
 **ROPE（Region of Practical Equivalence）** は、「実質的に効果がないとみなせるパラメータの範囲」を研究者が事前に設定するものです[@kruschke2018]。例えば、対数スケールで $[-0.1, 0.1]$ という ROPE は、「IRR が 0.90〜1.10 の範囲であれば実質的に差がないとみなす」という判断基準に対応します。
 
+::: {.callout-warning}
+#### ROPE は SESOI として理論的に正当化されるべき
+
+@kruschke2018 が ROPE の標準として提案したのは**標準化効果量で d = ±0.1**（負の効果なし、正の効果なしの境界）です。本書のように対数スケール（IRR/OR）に直接 ±0.1 を当てる方法は、便宜的な慣習であり、本来は **SESOI（Smallest Effect Size of Interest; 関心がある最小効果量）** として理論的・実務的に正当化される必要があります。SLA 分野では @plonsky2014 の効果量基準（small d = 0.40）から逆算し、対数オッズスケールで $\pm 0.18$ 程度を「実務上の小効果未満」とする慣習がありますが、これも分野固有の合意であり、研究目的に応じて調整すべきです。設定根拠を Method セクションに明記し、感度分析で複数の ROPE 幅で結論が一致することを確認してください。
+:::
+
 HDI と ROPE の関係から、以下のように判断します：
 
 | 判定 | 条件 | 解釈 |
@@ -666,7 +876,7 @@ HDI と ROPE の関係から、以下のように判断します：
 ```{r}
 #| eval: true
 #| label: fig-hdi-rope-concept
-#| fig-cap: "HDI + ROPE: Three possible outcomes"
+#| fig-cap: "HDI + ROPE による3つの判定：効果あり・実質的等価・判断保留"
 
 # HDI + ROPE の概念図
 theta <- seq(-1.5, 1.5, length.out = 500)
@@ -687,14 +897,14 @@ scenarios <- tidyr::crossing(scenario_specs, theta = theta) |>
   mutate(scenario = factor(scenario, levels = unique(scenario)))
 
 ggplot(scenarios, aes(x = theta, y = density)) +
-  geom_area(fill = "#81C784", alpha = 0.4) +
-  geom_line(linewidth = 0.8) +
   geom_rect(aes(xmin = -0.1, xmax = 0.1, ymin = 0, ymax = Inf),
-            fill = "#FFCDD2", alpha = 0.01) +
+            fill = "#CC79A7", alpha = 0.25, inherit.aes = FALSE) +
+  geom_area(fill = "#009E73", alpha = 0.4) +
+  geom_line(linewidth = 0.8) +
   geom_vline(xintercept = c(-0.1, 0.1), linetype = "dashed",
-             color = "#E53935", linewidth = 0.6) +
+             color = "#D55E00", linewidth = 0.6) +
   facet_wrap(~scenario, ncol = 1, scales = "free_y") +
-  annotate("text", x = 0, y = 0, label = "ROPE", color = "#E53935",
+  annotate("text", x = 0, y = 0, label = "ROPE", color = "#D55E00",
            vjust = -0.5, size = 3.5) +
   labs(x = expression(theta), y = "Posterior density",
        title = "HDI + ROPE Decision Framework") +
@@ -729,7 +939,7 @@ ROPE の設定根拠は論文の Method セクションに明記してくださ�
 | 95% CrI | パラメータはどの範囲にあるか？ | 間接的（事後分布を介して） | 95% CI に概ね対応 |
 | pd | 効果はどちらの方向か？ | 間接的（事後分布を介して） | p 値に概ね対応 |
 | BF | データは H0 と H1 のどちらを支持するか？ | 強い | NHST の検定統計量に概ね対応 |
-| HDI + ROPE | 効果は実質的に 0 と等しいか？ | 弱い | 等価性検定（TOST）に概ね対応 |
+| HDI + ROPE | 効果は実質的に 0 と等しいか？ | 事後分布と ROPE 設定に依存 | 等価性検定（TOST）に概ね対応 |
 
 : ベイズ的仮説評価の指標まとめ
 
@@ -742,7 +952,7 @@ ROPE（HDI + ROPE）とベイズファクター（BF）は**異なる問いに�
 |---|---|---|
 | **答える問い** | 「効果は実質的にゼロか？」 | 「データは H₀ と H₁ のどちらを支持するか？」 |
 | **必要な設定** | ROPE の範囲（研究者が決定） | 事前分布（H₁ のパラメータ空間を定義） |
-| **事前分布への感度** | 弱い（事後分布のみ使用） | **強い**（事前分布の形状が BF を大きく左右） |
+| **事前分布への感度** | 事後分布を通じて影響する。さらに ROPE 幅の設定にも依存 | **強い**（事前分布の形状が BF を大きく左右） |
 | **「差がない」の主張** | ✅ 可能（HDI が ROPE 内 → "Accepted"） | ✅ 可能（BF₀₁ > 3 → H₀ 支持） |
 | **結果の種類** | 3値（Rejected / Accepted / Undecided） | 連続値（証拠の強さ） |
 | **注意点** | ROPE の幅が恣意的になりうる | flat prior で Lindley のパラドックス |
@@ -803,6 +1013,27 @@ MCMCが適切に動作しているかを確認するための診断指標は、�
 9. **モデル比較**：LOO-CV や WAIC を用いて複数モデルを比較する
 10. **報告**：Method と Results セクションに必要な情報を記載する
 
+#### 分析方針の意思決定表
+
+実際の分析では、「どのモデルを使うか」より先に、目的変数・研究目的・汎化したい対象を整理します。以下の表を上から順に確認すると、モデル族、主要診断、報告指標まで一貫して決められます。
+
+| 判断する問い | 代表的な選択肢 | 推奨されるモデル・関数 | 重点的に確認すること | 報告・可視化 |
+|:--|:--|:--|:--|:--|
+| 目的変数は何か | 連続値 | `family = gaussian()` / `student()` | 残差分布、外れ値、事前予測 | 平均差、95% CrI、予測平均 |
+| 目的変数は何か | カウント | `poisson()` / `negbinomial()` / zero-inflated family | 過分散、ゼロ過剰、rootogram | IRR、PPC、予測カウント |
+| 目的変数は何か | 正誤・合否 | `bernoulli()` / `binomial()` | 試行数、完全分離、logit prior | OR、予測確率、pd |
+| 目的変数は何か | 順序評定 | `cumulative()` / `acat()` | 比例オッズ仮定、カテゴリ別 PPC | 累積 OR、カテゴリ確率 |
+| データに階層性があるか | 学習者・項目・評価者・学校 | `(1|student)`、`(1|item)`、交差ランダム効果 | ランダム効果 SD、divergence、ESS | 個人差・項目差の可視化 |
+| 事前知識を使うか | メタ分析・先行研究あり | `set_prior()` で情報的事前分布 | リンク関数スケールへの変換、感度分析 | prior の根拠、prior predictive check |
+| 「差がない」と言いたいか | 実質的等価性が関心 | HDI + ROPE / `equivalence_test()` | ROPE 幅の根拠、HDI との関係 | ROPE 図、Accepted / Rejected / Undecided |
+| モデルを比較したいか | 予測性能が関心 | `loo()` / `loo_compare()` / `waic()` | Pareto k、比較単位、SE | ELPD 差、LOOIC、PPC |
+| 何に汎化したいか | 新しい観測値・学習者・学校 | 通常 LOO / grouped K-fold / MRP | 除外単位、母集団セル、重み | grouped CV、事後層化推定 |
+| 論文で何を主指標にするか | 効果量・方向・予測 | CrI + pd を基本、BF は補足 | BF の prior 感度、Evid.Ratio との区別 | APA 形式の推定値 + CrI |
+
+: ベイズ分析における意思決定表
+
+この表は「迷ったときの入口」です。最終判断は、研究質問、データ構造、理論的仮説、測定尺度に基づいて行います。特に階層モデルでは、**新しい観測値を予測したいのか、新しい学習者・学校へ汎化したいのか**で、LOO や K-fold の単位が変わる点に注意してください。
+
 
 ## セットアップ
 
@@ -830,11 +1061,12 @@ MCMCが適切に動作しているかを確認するための診断指標は、�
 | `priorsense` | `powerscale_sensitivity()` | power scaling による prior / likelihood 感度診断 |
 | `priorsense` | `Selecting priors and quantities` | `prior_selection`・`variable` の指定方法 |
 | Stan User's Guide | `Simulation-Based Calibration` | rank histogram の読み方と異常パターン |
+| Stan User's Guide | `Poststratification` | MRP と事後層化推定量の実装 |
 | `bayesplot` | `MCMC-recover` | 真値と CrI の回収可視化 |
 
 : 本章で参照する公式ドキュメント
 
-参照文献: @brmsBrmDoc; @brmsThreadingDoc; @brmsPpCheckDoc; @cmdstanrGettingStarted; @cmdstanrFitDocs; @looParetoDoc; @priorsenseSensitivityRef; @priorsenseSelectingDoc; @stanSBCDoc; @bayesplotRecoverDoc
+参照文献: @brmsBrmDoc; @brmsThreadingDoc; @brmsPpCheckDoc; @cmdstanrGettingStarted; @cmdstanrFitDocs; @looParetoDoc; @priorsenseSensitivityRef; @priorsenseSelectingDoc; @stanSBCDoc; @stanPoststratificationDoc; @bayesplotRecoverDoc
 
 ### cmdstanr バックエンドの設定
 
@@ -1075,6 +1307,146 @@ fit_thin2 <- brm(
 - `file` でモデルを保存する（計算結果の保存と再利用）
 - R・brms・Stan backend（`rstan` または `cmdstanr`）のバージョンを `sessionInfo()` で記録する
 
+### ハイパーパラメータの設定: 現代的ベストプラクティス {#sec-hyperparameters}
+
+`brm()` には MCMC サンプリング・事前分布・Stan 実装に関する多数のハイパーパラメータがあります。多くは適切なデフォルトが設定されていますが、**いつ・なぜ調整すべきか**を理解しておくと、収束問題の診断と対処が確実になります。本節は Stan 公式ドキュメント、@gelman2020workflow、@vehtari2021、@betancourt2017、Bürkner の brms vignette などに基づく現代的推奨をまとめます。
+
+::: {.callout-tip collapse="true"}
+#### 完全な推奨設定の一覧（クイックリファレンス）
+
+以下のテンプレートは、本書で扱う標準的な階層モデル（GLMM, 順序回帰, 多項回帰, 多変量モデル）に対して安全に動作する推奨デフォルトです。
+
+```r
+brm(
+  formula  = y ~ x + (1|group),
+  data     = dat,
+  family   = poisson(),                    # または cumulative(), categorical(), bernoulli() etc.
+
+  # === 事前分布: 弱情報事前分布を必ず明示 ===
+  prior    = c(
+    set_prior("normal(0, 1)",         class = "b"),         # 固定効果
+    set_prior("normal(2.5, 2.5)",     class = "Intercept"), # 切片: 応答スケールに合わせて中心値を調整
+    set_prior("student_t(3, 0, 1)",   class = "sd"),        # ランダム効果 SD
+    set_prior("lkj(2)",               class = "cor")        # ランダム傾きの相関（必要なら）
+  ),
+
+  # === MCMC サンプリング ===
+  chains     = 4,                     # 4 chains が事実上の標準
+  iter       = 2000,                  # post-warmup = 1000 × 4 = 4000 draws
+  warmup     = 1000,                  # iter の 50% (短縮しない)
+  control    = list(
+    adapt_delta   = 0.95,             # brms デフォルト。divergence なら 0.99 へ
+    max_treedepth = 12                # 警告時のみ 15 へ
+  ),
+
+  # === Stan 実装 ===
+  backend    = "cmdstanr",            # rstan より高速・最新版追従
+  seed       = 20260221,              # 再現性の鍵
+
+  # === キャッシュ ===
+  file       = "models/fit_template",
+  file_refit = "on_change",
+
+  # === LOO 用に必須 ===
+  save_pars  = save_pars(all = TRUE)
+)
+```
+
+各パラメータの理論的根拠は以下の小節で詳説します。
+:::
+
+#### MCMC サンプリングのハイパーパラメータ
+
+| 設定 | 推奨値 | いつ・なぜ |
+|:---|:---|:---|
+| `chains` | **4** | @vehtari2021 の split-Rhat と Bulk/Tail-ESS は複数 chain 前提。少なすぎ (1–2) は Rhat 検出力低下、多すぎ (8+) は CPU 効率が頭打ち。GPU 環境での "many-short-chains" (Margossian-Vehtari 2024) も登場したが古典設定では 4 が最適 |
+| `iter / warmup` | **2000 / 1000 (50%)** | warmup で dual averaging により step size と質量行列 (mass matrix) が学習されるため**短縮しない**。ESS < 400 なら iter を倍に |
+| `adapt_delta` | **Stan/brms 共にデフォルト 0.8**。本書では推奨値として **0.95** をテンプレ化。divergence が出たら **0.99** へ。0.999 で解決しない場合は再パラメータ化 | step size を絞り、leapfrog 数を増やして曲率の急な領域に追従。1.0 にすると step size が 0 へ収束し永久に進まない。Vehtari の助言: ">0.99 はモデルの問題のサイン" |
+| `max_treedepth` | **10** (デフォルト)、警告時は **12**、15 以上は稀 | 効率の問題であって妥当性の問題ではない。Rhat/ESS が良ければ警告は無視可。根本対処はモデル単純化・予測子標準化 |
+| `init` | デフォルト `"random"` (区間 ±2)。divergence/初期エラー時は **`init = 0.1`** | `init = 0` はリンクスケールで合理的だが正値パラメータ (sd, sigma) で病理的になり得る。Stan Forums 推奨は `init = 0.1` で安全側 |
+| `metric` | **`diag_e`** (デフォルト)、強相関事後では **`dense_e`** | `dense_e` はパラメータ数 D に対し $O(D^2)$ のコスト、通常 $D < 50$ で有効。階層モデルで treedepth 飽和が消えないとき試す |
+| `stepsize` | **手動指定不要** | warmup 中の dual averaging (Hoffman & Gelman 2014) で自動調整 |
+
+::: {.callout-tip}
+#### Warmup 中に何が起きているか: 三段階適応
+
+`brms` の warmup は単なる「捨てる期間」ではなく、HMC の挙動を最適化する**三段階の適応**を行います[@betancourt2017]。
+
+1. **Phase I (init_buffer ≈ 75 iter)**: 初期値からモデルの典型集合 (typical set) へ移動。step size の粗い推定。
+2. **Phase II (windowed adaptation)**: 質量行列 (mass matrix) を 6 段階で更新しつつ step size を学習。これがメインの適応期間。
+3. **Phase III (term_buffer ≈ 50 iter)**: 最終 step size の固定値での確認。
+
+このため **warmup を短縮 (例: 200 iter) すると、step size と mass matrix の適応が不十分**になり、本サンプリングが非効率化します。「warmup = iter / 2」を維持するのが原則です。長時間モデルでは iter を増やすときに warmup も比例して増やしてください。
+:::
+
+::: {.callout-warning}
+#### `adapt_delta` を 0.99 超に上げる前に: Non-centered parameterization
+
+階層モデルで divergence が出た場合、まず **`adapt_delta` 引き上げよりも再パラメータ化**を試してください[@betancourt2017]。`adapt_delta` を上げすぎると step size が極端に小さくなり、MCMC が非効率化するだけで根本解決にならないことが多いです。
+
+優先順位:
+
+1. **(階層モデルなら) Non-centered parameterization**: `brms` の `(1|group)` 構文では自動適用済み。自前 Stan コードを書く場合は `z ~ N(0,1); theta = mu + sigma * z` の形で定式化
+2. **事前分布の見直し**: 特に `class = "sd"` の事前分布が広すぎないか
+3. **adapt_delta = 0.99**
+4. **モデル簡略化**: ランダム傾きを切片のみに、相関項を削除など
+
+`adapt_delta = 0.999` でも divergence が残る場合、Vehtari は「モデルの問題のサイン」と警告しています。
+:::
+
+#### 事前分布のハイパーパラメータ: scale の決め方
+
+| 事前分布 | 推奨される scale | 適する場面 |
+|:---|:---|:---|
+| `Normal(0, 1)` | 標準 | 弱情報事前。リンクスケール (logit/log) で「効果サイズが ±2 以内」 |
+| `Normal(0, 2.5)` | やや広め | 効果サイズの不確実性が大きい場合 |
+| `Normal(0, 0.5)` | やや情報的 | 先行研究のメタ分析がある場合 |
+| `Student-t(3, 0, 1)` (ランダム効果 SD) | **半 Student-t (現代の標準)** | half-Cauchy(0, 5) は重い裾で divergence の温床のため非推奨 |
+| `half-Normal(0, 1)` (ランダム効果 SD) | 代替 | より縮小を強くしたい場合 |
+| `LKJ(2)` (相関行列) | 標準 | $\eta=1$ は一様、$\eta>1$ は対角寄り正則化 |
+| `horseshoe(1)` (高次元回帰) | 説明変数 ≫ サンプル | LASSO / Ridge より理論的根拠が強い[@piironen2017] |
+
+::: {.callout-important}
+#### 事前分布の歴史的変遷: half-Cauchy から half-Normal/Student-t へ
+
+ランダム効果 SD への事前分布は、過去 15 年で大きく変化しました。
+
+- **2006 年頃**: Gelman の **half-Cauchy(0, 5)** が標準だった (Gelman 2006 "Prior distributions for variance parameters")
+- **2013 年頃**: Polson & Scott (2012) などが、half-Cauchy の重い裾が小サンプル時に divergence を引き起こすことを指摘
+- **2020 年代の現在**: Stan team の wiki は **half-Normal(0, 1)** または **Student-t(3, 0, 2.5)** を推奨。`brms` のデフォルトは応答変数のスケールに基づく **`student_t(3, 0, sd_y)`**（自動スケーリング）が採用されており、これは `get_prior(formula, data, family)` で実際の値を確認できる
+
+本章のコード例で **`student_t(3, 0, 1)`** を使っているのは、この最新推奨に従ったものです。古い文献で `cauchy(0, 5)` や `cauchy(0, 2.5)` を見かけても、新しいコードではそのまま使わず Student-t / half-Normal に置き換えてください。
+:::
+
+::: {.callout-tip collapse="true"}
+#### Penalized Complexity (PC) priors の概念
+
+@piironen2017 や Simpson et al. (2017) が提唱する **PC priors** は、「単純なベースモデル ($\sigma = 0$ など) からの逸脱を指数分布で罰則化する」原理に基づく事前分布です。理論的根拠が強く、INLA パッケージでは標準ですが、`brms` ではユーザが直接指定する必要は通常ありません。負の二項回帰の shape パラメータには `inv_gamma(0.4, 0.3)` が PC(1) 近似として既に組み込まれており、`get_prior()` で確認できます。発展トピックとして覚えておくと、複雑な階層モデルや空間モデルで威力を発揮します。
+:::
+
+#### Stan / cmdstanr 固有の設定
+
+1. **`backend = "cmdstanr"` を既定に**: rstan より高速 (~20–40%)、Stan 最新版に追従、コンパイラ分離でエラーが読みやすい
+2. **`threads_per_chain` (within-chain parallel)**: $N > $ 数千 かつ尤度評価がボトルネックの時のみ有効。総スレッド数 ≤ CPU コア数を厳守。「2 chains × 2 threads」は「4 chains × 1」より遅いことが多い (Bürkner threading vignette)
+3. **`save_warmup = FALSE`** が原則: warmup の詳細を診断したい場合のみ TRUE
+4. **`refresh = 0`** (本番) / `200` (開発): 進捗ログを抑制。`knitr` で出力をクリーンに保つ
+
+#### brms 固有の設定
+
+1. **`save_pars(all = TRUE)`**: `loo(moment_match = TRUE)` や `reloo()` を使う前提なら**フィット時に必ず**指定。後付け不可。Pareto k > 0.7 観測が出てから指定し忘れに気づくのが典型的な落とし穴
+2. **`file = "..."` + `file_refit = "on_change"`**: 長時間 fit のキャッシュ。ただし `iter`/`init`/`control` 変更では再フィットされない罠あり (前述)
+3. **`control = list(adapt_delta = 0.95, max_treedepth = 12)` をテンプレ化**: brms デフォルトで多くの階層モデルに足りる
+
+#### 現代的推奨の参考資料
+
+- [Stan Prior Choice Recommendations Wiki (公式・最新)](https://github.com/stan-dev/stan/wiki/prior-choice-recommendations)
+- [Stan: Runtime Warnings and Convergence Problems](https://mc-stan.org/misc/warnings.html)
+- [Stan Reference: HMC Algorithm Parameters (dual averaging)](https://mc-stan.org/docs/reference-manual/mcmc.html)
+- [Bürkner: brms threading vignette](https://paulbuerkner.com/brms/articles/brms_threading.html)
+- [Vehtari et al. (2021) Rank-normalized R-hat and ESS](https://avehtari.github.io/rhat_ess/rhat_ess.html)
+- [Betancourt: Diagnosing Biased Inference with Divergences](https://betanalpha.github.io/assets/case_studies/divergences_and_bias.html)
+- [Modrák: Taming Divergences in Stan Models](https://www.martinmodrak.cz/2018/02/19/taming-divergences-in-stan-models/)
+
 ### brms で利用可能な分布族（family）
 
 `brms` は `lme4` よりも幅広い分布族をサポートしています[@burkner2017; @burkner2018]。本章のケーススタディでは `poisson()` と `cumulative()` を扱いますが、brms は 16 以上の分布族に対応しています。全分布族の一覧と SLA での用途は**付録の「分布カタログ」**を参照してください。
@@ -1143,9 +1515,134 @@ code_stan_demo <- stancode(
 | `parameters` ブロック | `r pick_stan_line(code_stan_demo, c("^\\s*parameters\\s*\\{"))` | 回帰係数やランダム効果 SD など、MCMC で推定する対象。 |
 | `model` ブロック | `r pick_stan_line(code_stan_demo, c("^\\s*model\\s*\\{"))` | 観測データの生成分布（ここでは Poisson）を定義する部分。 |
 | prior 行 | `r pick_stan_line(code_stan_demo, c("lprior \\+=", "student_t_lpdf", "normal_lpdf"))` | `set_prior()` で指定した事前分布が加算ログ密度として実装される。 |
-| `generated quantities` | `r pick_stan_line(code_stan_demo, c("^\\s*generated quantities\\s*\\{"))` | 対数尤度・予測値など、診断やモデル比較で使う派生量。 |
+| `generated quantities` | `r pick_stan_line(code_stan_demo, c("^\\s*generated quantities\\s*\\{"))` | 事前分布の合計 `lprior` など、サンプリング後に計算する派生量。 |
 
 : stancode() の読み方（最小モデル例）
+
+#### Stan コードを主要ブロックに分けて読む
+
+Stan コードは長く見えますが、最初は以下の主要ブロックだけを押さえれば十分です[@carpenter2017; @brmsBrmDoc]。
+
+| Stan ブロック | 初心者向けの意味 | `brms` との対応 |
+|:--|:--|:--|
+| `data` | R から Stan に渡すもの | `data = ...` とモデル式から作られる `Y`, `X`, グループIDなど |
+| `parameters` | MCMC で推定する未知量 | 固定効果 `b`、切片、ランダム効果 SD、標準化ランダム効果など |
+| `transformed parameters` | 推定量から作る中間量 | 非中心化パラメータ化されたランダム効果など |
+| `model` | 事前分布と尤度を足し合わせる場所 | `prior = ...` と `family = ...` が `target +=` として実装される |
+| `generated quantities` | 推定後に計算する量 | `lprior` など。LOO/WAIC 用の対数尤度は `brms::log_lik()` から取り出して使う |
+
+: Stan の主要ブロックと brms の対応
+
+Stan では、確率密度をそのまま掛け算するのではなく、**対数密度を `target` に足し上げる**形でモデルを書きます。したがって、`target += ...` は「この分布をモデルに入れる」という意味です。`brms` が生成するコードでは、事前分布の対数密度をいったん `lprior` に集め、最後に `target += lprior;` のように加算します。これは `set_prior()` で指定した事前分布が Stan 上で実際に使われているかを確認する重要な手がかりです。
+
+`brms` の formula と Stan オブジェクトの対応は、おおまかに以下のように読めます。
+
+| R / brms の指定 | Stan 側でよく出る名前 | 読み方 |
+|:--|:--|:--|
+| 目的変数 `y` | `Y` | 観測された応答値 |
+| 固定効果の設計行列 | `X` または `Xc` | ダミー変数化・中心化された説明変数行列 |
+| 固定効果係数 | `b` | `summary()` の `b_*` と対応する回帰係数 |
+| ランダム効果のグループID | `J_1`, `J_2` | 各観測がどの学習者・評価者に属するか |
+| ランダム効果の設計行列 | `Z_1_*`, `Z_2_*` | ランダム切片・ランダム傾きの設計情報 |
+| ランダム効果 SD | `sd_1`, `sd_2` | グループ間ばらつき |
+| 標準化ランダム効果 | `z_1`, `z_2` | 非中心化パラメータ化で使う標準正規スケールの効果 |
+
+: brms formula から Stan オブジェクトへの対応
+
+この対応表は、Stan コードを全部読むためではなく、**意図したモデル式が本当に Stan に渡っているかを点検するため**に使います。特に、固定効果の数 `K`、グループ数 `N_1` / `N_2`、尤度関数、事前分布の行を確認すると、モデル指定の誤りを早期に発見できます。
+
+#### 注釈付き Stan コード抜粋
+
+`brms` が生成する Stan コードは最適化のために長くなります。ここでは、読者が構造を理解しやすいように、ポアソン混合モデルの本質だけを抜き出した注釈付きコードを示します。実際の `brms` 出力と完全に同じではありませんが、どの部分が何をしているかを読む練習になります。
+
+```stan
+data {
+  int<lower=1> N;                  // 観測数
+  array[N] int<lower=0> Y;         // エラー数
+  int<lower=1> K;                  // 固定効果の数
+  matrix[N, K] X;                  // 固定効果の設計行列
+  int<lower=1> J_student;          // 学習者数
+  array[N] int<lower=1, upper=J_student> student_id;
+}
+parameters {
+  real alpha;                      // 切片
+  vector[K] b;                     // 固定効果
+  real<lower=0> sigma_student;     // 学習者ランダム切片のSD
+  vector[J_student] z_student;     // 標準化ランダム効果
+}
+transformed parameters {
+  vector[J_student] u_student;
+  u_student = sigma_student * z_student;  // 非中心化パラメータ化
+}
+model {
+  z_student ~ normal(0, 1);
+  b ~ normal(0, 0.7);
+  sigma_student ~ student_t(3, 0, 1);
+
+  for (n in 1:N) {
+    real eta = alpha + X[n] * b + u_student[student_id[n]];
+    Y[n] ~ poisson_log(eta);       // log(lambda) = eta
+  }
+}
+generated quantities {
+  vector[N] log_lik;
+  for (n in 1:N) {
+    real eta = alpha + X[n] * b + u_student[student_id[n]];
+    log_lik[n] = poisson_log_lpmf(Y[n] | eta);
+  }
+}
+```
+
+この抜粋で重要なのは、`parameters` に未知量、`model` に事前分布と尤度、`generated quantities` に後処理用の量が置かれている点です。`log_lik` は LOO/WAIC の計算に使う点別対数尤度です。`brms` では通常、ユーザーがこのコードを書く必要はありませんが、`log_lik()` や `loo()` が何を利用しているかを理解する助けになります。
+
+#### Stan の結果を可視化する
+
+`brms` モデルであれば、これまで示した `bayesplot`、`tidybayes`、`sjPlot` をそのまま使えます。Stan を直接 `cmdstanr` で実行した場合も、事後ドローを `posterior` 形式に変換すれば同じ考え方で可視化できます[@cmdstanrFitDocs; @gabry2019]。
+
+```r
+# cmdstanr で推定したモデル fit_custom があると仮定
+draws_array <- fit_custom$draws(
+  variables = c("alpha", "b[1]", "b[2]", "sigma_student"),
+  format = "draws_array"
+)
+
+# 収束診断: trace plot
+bayesplot::mcmc_trace(
+  draws_array,
+  pars = c("alpha", "b[1]", "b[2]")
+)
+
+# 事後分布: interval / area plot
+bayesplot::mcmc_areas(
+  draws_array,
+  pars = c("b[1]", "b[2]", "sigma_student"),
+  prob = 0.66,
+  prob_outer = 0.95
+)
+
+# 表形式の要約
+draws_df <- fit_custom$draws(format = "draws_df")
+posterior::summarise_draws(draws_df)
+```
+
+`generated quantities` で `theta_population` や `log_lik` のような量を作っておくと、その量自体も事後分布として可視化できます。
+
+```r
+mrp_draws <- fit_mrp_stan$draws(
+  variables = "theta_population",
+  format = "draws_df"
+)
+
+ggplot(mrp_draws, aes(x = theta_population)) +
+  tidybayes::stat_halfeye(.width = c(0.66, 0.95)) +
+  labs(
+    x = "Poststratified population estimate",
+    y = NULL,
+    title = "Posterior Distribution of the MRP Estimate"
+  )
+```
+
+Stan を直接使う場合でも、最終的な報告の考え方は `brms` と同じです。パラメータの事後分布、予測値、診断量、研究質問に直接対応する派生量を可視化し、Rhat・ESS・divergence・PPC を確認してから解釈します。
 
 以下の場面では Stan コードの直接編集が有用です：
 
@@ -1249,7 +1746,7 @@ pp_check(fit_prior_only, ndraws = 100) +
 本章では**既知のパラメータで生成したシミュレーションデータ**を使います。これには重要な教育的理由があります：
 
 1. **正解がわかる**: β = -0.7 と設定してデータを生成するので、モデルが β ≈ -0.7 を回復できるかを検証できる
-2. **再現可能**: `set.seed()` で同じデータが誰でも再現できる
+2. **再現可能**: `set.seed()` で同じデータを再現できる
 3. **理想的な状況を学ぶ**: まず「うまくいくケース」でワークフローを身につけ、その後で実データの困難さに対処する
 
 実データでの分析は、ここで学んだワークフローをそのまま適用できます。データ読み込みを `read_csv()` に変えるだけです。
@@ -1312,12 +1809,13 @@ dat_essay |>
 ```{r}
 #| eval: true
 #| label: eda-poisson
+#| fig-cap: "熟達度別のエラー数分布（error count distribution by proficiency）"
 
 # エラー数の分布（熟達度別）
 ggplot(dat_essay, aes(x = error_count, fill = proficiency)) +
   geom_histogram(binwidth = 1, alpha = 0.7, position = "identity") +
   facet_wrap(~proficiency, ncol = 3) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = c("A2" = "#56B4E9", "B1" = "#E69F00", "B2" = "#009E73")) +
   labs(x = "Error count", y = "Frequency",
        title = "Distribution of Error Counts by Proficiency Level") +
   theme(legend.position = "none")
@@ -1326,11 +1824,12 @@ ggplot(dat_essay, aes(x = error_count, fill = proficiency)) +
 ```{r}
 #| eval: true
 #| label: eda-poisson-box
+#| fig-cap: "熟達度と課題タイプ別のエラー数（error counts by proficiency and task type）"
 
 # エラー数の箱ひげ図（熟達度 × 課題タイプ）
 ggplot(dat_essay, aes(x = proficiency, y = error_count, fill = task_type)) +
   geom_boxplot(alpha = 0.7) +
-  scale_fill_brewer(palette = "Pastel1") +
+  scale_fill_manual(values = c("#0072B2", "#D55E00")) +
   labs(x = "Proficiency", y = "Error count", fill = "Task type",
        title = "Error Counts by Proficiency and Task Type")
 ```
@@ -1387,6 +1886,7 @@ prior_pois_default |>
 #| label: prior-predictive-poisson
 #| cache: true
 #| message: false
+#| fig-cap: "事前予測チェック（prior predictive check）：ポアソンモデルの妥当性確認"
 
 prior_pois_ppc <- c(
   set_prior("normal(0, 0.7)", class = "b"),
@@ -1493,8 +1993,9 @@ summary(fit_pois, prob = 0.95)
 - **Estimate**: パラメータの事後平均（対数スケール）
 - **Est.Error**: 事後標準偏差
 - **l-95% CI / u-95% CI**: 95% 信用区間の下限・上限
-- **Rhat**: 収束診断指標。1.01 未満であれば問題なし
-- **Bulk_ESS / Tail_ESS**: MCMCサンプルの有効サンプルサイズ。400 以上が目安
+- **Rhat**: 収束診断指標（rank-normalized split-Rhat; @vehtari2021）。1.01 未満であれば問題なし
+- **Bulk_ESS**: 事後分布の**中央付近（平均・中央値）の精度**を担う ESS。400 以上が目安
+- **Tail_ESS**: 事後分布の**裾（CrI 端 = 2.5%・97.5% 分位点）の精度**を担う ESS。400 以上が目安。**信用区間を強調する報告では Tail_ESS をより重視**する
 
 Estimate は対数スケールのため、指数変換すると Incidence Rate Ratio（IRR）として解釈できます。
 
@@ -1519,7 +2020,7 @@ worked_interpretation_poisson <- c(
     exp(fe_pois_b2["Estimate"]), (1 - exp(fe_pois_b2["Estimate"])) * 100
   ),
   sprintf(
-    "- **95%% CrI** [%.2f, %.2f]: 区間が 1 をまたがない → 効果はゼロでない確信が高い。\n",
+    "- **95%% CrI** [%.2f, %.2f]: 区間が 1 をまたがなければ、効果の方向は比較的明確です。1 をまたぐ場合は、方向や大きさに不確実性が残ります。\n",
     exp(fe_pois_b2["Q2.5"]), exp(fe_pois_b2["Q97.5"])
   ),
   "- **Rhat** < 1.01、**ESS** > 400 → 収束に問題なし。\n"
@@ -1541,13 +2042,14 @@ tab_model(fit_pois)
 - **IRR = 1.00**: 基準カテゴリーと差がない
 - **IRR < 1.00**: 基準カテゴリーよりもエラーが少ない
 - **IRR > 1.00**: 基準カテゴリーよりもエラーが多い
-- **95% CrI に 1 が含まれる**: 実質的な差が見られない
+- **95% CrI に 1 が含まれる**: 効果の方向や大きさが不確実。実質的に差がないかは ROPE で別途判断する
 
 #### conditional_effects()
 
 ```{r}
 #| eval: true
 #| label: ce-poisson
+#| fig-cap: "条件付き効果（conditional effects）：ポアソンモデルの予測エラー数"
 
 plot(conditional_effects(fit_pois), ask = FALSE)
 ```
@@ -1572,6 +2074,7 @@ plot(conditional_effects(fit_pois), ask = FALSE)
 #| label: layered-cri-poisson
 #| fig-height: 4
 #| fig-width: 8
+#| fig-cap: "固定効果の事後推定（posterior estimates）：66%/95% 信用区間（credible intervals）"
 
 # 固定効果の事後分布（切片を除く）
 draws_pois <- as_draws_df(fit_pois)
@@ -1589,13 +2092,14 @@ ggplot(long_pois, aes(x = value, y = reorder(param, value))) +
        x = "Estimate (log scale)", y = NULL)
 ```
 
-**この図の読み方**: 太い線が 66% CrI（「ほぼ確実」な範囲）、細い線が 95% CrI（「ほぼ全て」の範囲）。点はメディアン。0 の破線と CrI が重ならなければ効果は明確。
+**この図の読み方**: 太い線が 66% CrI（事後分布の中心的な範囲）、細い線が 95% CrI（より広い不確実性の範囲）です。点はメディアンです。0 の破線と 95% CrI が重ならなければ、効果の方向は比較的明確です。
 
 ```{r}
 #| eval: true
 #| label: ridge-plot-poisson
 #| fig-height: 4.5
 #| fig-width: 8
+#| fig-cap: "固定効果のリッジプロット（ridge plot）：事後分布の形状"
 
 # リッジプロット: 事後分布の形状をより詳しく表示
 ggplot(long_pois, aes(x = value, y = reorder(param, value))) +
@@ -1662,9 +2166,9 @@ brms には 4 つの予測関数があり、それぞれ含む不確実性が異
 - **順序モデルのカテゴリ確率**: `posterior_epred()` はカテゴリごとの確率行列を返す（`predict()` はカテゴリ番号を返す）
 
 
-#### hypothesis() と ベイズファクター
+#### hypothesis() による方向仮説の評価
 
-`hypothesis()` 関数は、特定の仮説に対する**事後確率**と**ベイズファクター**を同時に算出します[@kruschke2018]。
+`hypothesis()` 関数は、特定の仮説に対する**事後確率**を確認するために使えます。以下のような方向仮説（`< 0` や `> 0`）では、出力の `Evid.Ratio` はベイズファクターではなく、指定した方向と反対方向の**事後オッズ**として解釈します[@brmsHypothesisDoc]。
 
 ```{r}
 #| eval: true
@@ -1684,11 +2188,11 @@ h2
 - **Estimate**: 仮説に関するパラメータの事後平均
 - **Est.Error**: 事後標準偏差
 - **CI.Lower / CI.Upper**: 95% CrI
-- **Evid.Ratio**: **エビデンス比**（Evidence Ratio）。方向仮説（`< 0` や `> 0`）の場合は**事後オッズ**（Post.Prob / (1 - Post.Prob)）であり、厳密にはベイズファクターとは異なります。点仮説（`= 0`）の場合は Savage-Dickey ベイズファクターとなります[@brmsHypothesisDoc]。例えば Evid.Ratio = 99 であれば、帰無仮説の 99 倍、指定した仮説を支持する証拠があることを意味します。
+- **Evid.Ratio**: **エビデンス比**（Evidence Ratio）。方向仮説（`< 0` や `> 0`）の場合は**事後オッズ**（Post.Prob / (1 - Post.Prob)）であり、厳密にはベイズファクターとは異なります。例えば Evid.Ratio = 99 であれば、「指定した方向の仮説」は「反対方向の仮説」より事後的に 99 倍起こりやすい、という意味です。
 - **Post.Prob**: 仮説が成立する**事後確率**（$= \frac{\text{Evid.Ratio}}{1 + \text{Evid.Ratio}}$）
 
 ::: {.callout-important}
-`brms::hypothesis()` の公式ドキュメントでは、点仮説の Bayes factor を解釈する際に **proper prior** が必要である点が明示されています[@brmsHypothesisDoc]。`sample_prior = "yes"` を使って事前サンプルを保存しておくと、境界仮説（`<`, `>`）だけでなく点仮説（`=`）にも一貫した形で対応できます。
+点仮説（`= 0`）の Bayes factor を `brms::hypothesis()` で解釈するには、対象パラメータに **proper prior** が必要です。また、点仮説の Bayes factor を安定して確認したい場合は、モデル適合時に `sample_prior = "yes"` を指定し、事前分布からのサンプルも保存してください[@brmsHypothesisDoc]。方向仮説だけを報告する場合は、Bayes factor ではなく `Post.Prob` と `Evid.Ratio` を報告するのが安全です。
 :::
 
 #### `emmeans` によるペアワイズ比較
@@ -1777,11 +2281,12 @@ hypothesis(fit_pois_int, "proficiencyB2:task_typenarrative > 0")
 
 #### 交互作用の報告テンプレート
 
-> The interaction between proficiency and task type was [significant / non-significant] (β = X.XX, 95% CrI [X.XX, X.XX], pd = X.XX). Simple effects analysis via emmeans indicated that the proficiency effect was [larger / similar] for narrative tasks (A2/B2 ratio = X.XX) compared to argumentative tasks (A2/B2 ratio = X.XX).
+> The posterior distribution [supported / did not clearly support] an interaction between proficiency and task type (β = X.XX, 95% CrI [X.XX, X.XX], pd = X.XX). Simple effects analysis via emmeans indicated that the proficiency effect was [larger / similar] for narrative tasks (A2/B2 ratio = X.XX) compared to argumentative tasks (A2/B2 ratio = X.XX).
 
 ```{r}
 #| eval: true
 #| label: hypothesis-plot-poisson
+#| fig-cap: "方向仮説の事後分布（posterior distribution for directional hypothesis）"
 
 # hypothesis() のプロット
 plot(h1) +
@@ -1806,22 +2311,23 @@ pd_result
 ```{r}
 #| eval: true
 #| label: pd-plot-poisson
+#| fig-cap: "効果方向の事後確率（probability of direction, pd）：ポアソンモデル"
 
 # pd の可視化
 plot(pd_result) +
   labs(title = "Probability of Direction: All Fixed Effects")
 ```
 
-pd は事後分布のうち、最も確率の高い方向（正または負）の割合を表します。pd = 1.00 であれば効果の方向が確実、pd = 0.50 であれば方向が全く不明です。pd は BF より解釈が直感的ですが、事後分布の指標である以上、事前分布の設定から完全に独立ではありません[@kruschke2018]。
+pd は事後分布のうち、最も確率の高い方向（正または負）の割合を表します。pd = 1.00 に近いほど効果の方向に関する事後確率が高く、pd = 0.50 であれば方向が全く不明です。pd は BF より解釈が直感的ですが、事後分布の指標である以上、事前分布の設定から完全に独立ではありません[@kruschke2018]。
 
-| pd | 解釈 | 両側 p 値との近似対応 |
+| pd | 解釈 | 両側 p ≈ 2(1−pd) |
 |:--|:--|:--|
-| `> 0.975` | 効果の方向がほぼ確実 | `p < 0.05` |
-| `0.95 - 0.975` | 効果の方向が非常に高い確率で存在 | `p = 0.05 - 0.10` |
-| `0.90 - 0.95` | 効果の方向が高い確率で存在 | `p = 0.10 - 0.20` |
-| `0.50 - 0.90` | 効果の方向が不確実 | `p > 0.20` |
+| `> 0.975` | 効果の方向に関する事後確率が高い | `< 0.05` |
+| `0.95 - 0.975` | 効果の方向が非常に高い確率で存在 | `0.05 - 0.10` |
+| `0.90 - 0.95` | 効果の方向が高い確率で存在 | `0.10 - 0.20` |
+| `0.50 - 0.90` | 効果の方向が不確実 | `> 0.20` |
 
-: Probability of Direction (pd) の解釈基準
+: Probability of Direction (pd) の解釈基準。両側 p との対応式 **pd ≈ 1 − p/2**（同値: **両側 p ≈ 2(1 − pd)**）は @makowski2019 に基づく。対称・単峰の事後分布でのみ成立する近似であり、歪んだ事後（特にロジット/対数スケール）では乖離する点に注意[@greenland2020]。
 
 Note. `pd` と p 値の対応はあくまで近似です。概念的な基盤は異なります。
 
@@ -1853,6 +2359,7 @@ rope_result
 ```{r}
 #| eval: true
 #| label: rope-plot-poisson
+#| fig-cap: "HDI + ROPE 分析：ポアソンモデルの実質的等価性（practical equivalence）"
 
 # ROPE の可視化
 plot(rope_result) +
@@ -1873,6 +2380,7 @@ equiv_test
 ```{r}
 #| eval: true
 #| label: equivalence-plot-poisson
+#| fig-cap: "等価性検定（equivalence test）：ROPE に基づく判定"
 
 # 等価性検定の可視化
 plot(equiv_test) +
@@ -1942,8 +2450,19 @@ dplyr::bind_rows(
 #### HDI と ETI の使い分け
 
 - **HDI**: 最も確率密度が高い領域。非対称な事後分布（ポアソンの対数スケールなど）で推奨。論文で最も頻繁に報告される[@kruschke2018]。
-- **ETI**: 2.5% / 97.5% の分位点。brms の `summary()` はこちらを表示。`exp(ETI)` で IRR/OR の区間に変換する場合は ETI が数学的に正確（HDI の変換は区間の意味が変わる）。
+- **ETI**: 2.5% / 97.5% の分位点。brms の `summary()` はこちらを表示。
 - **報告時**: HDI を報告する場合は「95% HDI」と明記。`summary()` の区間を使う場合は「95% CrI」で OK。
+
+::: {.callout-important}
+#### 変換不変性: ETI は不変、HDI は不変でない
+
+リンクスケール（log/logit）から応答スケール（IRR/OR/確率）への変換時に重要な性質:
+
+- **ETI（quantile-based interval）は単調変換に対して不変**: $\exp(\text{ETI on log scale})$ がそのまま IRR の ETI になる。これは分位点の単調変換不変性に基づく数学的事実です[@kruschke2014]。
+- **HDI は単調変換に対して不変ではない**: 単調変換でも最大密度位置がずれるため、$\exp(\text{HDI on log scale})$ は IRR の HDI と一致しません。応答スケールでの HDI が必要なら、応答スケールでの事後ドローから直接計算します（例: `exp(posterior_samples) |> bayestestR::hdi()`）。
+
+**実務的指針**: 推定値を **HDI で対数スケール報告** + **点推定値を `exp(median)` で応答スケール変換**、もしくは **ETI で両スケール報告** のどちらかに統一すると一貫します。HDI と「`exp()` した CrI」を混在させて報告すると区間の意味が変わってしまうので避けてください。
+:::
 
 #### 適用された事前分布の確認（`prior_summary`）
 
@@ -1987,17 +2506,85 @@ invisible(NULL)
 | ランダム効果 SD | `r pick_stan_line(code_pois, c("sd_1", "vector<lower=0>\\[M_1\\]"))` | `sd_1` は `student_id` 切片の群間ばらつき。 |
 | 尤度（Poisson） | `r pick_stan_line(code_pois, c("poisson_log", "poisson_lpmf"))` | 尤度の行で目的変数の分布族とリンクの実装を確認する。 |
 | 事前分布の加算 | `r pick_stan_line(code_pois, c("lprior \\+=", "student_t_lpdf", "normal_lpdf"))` | `set_prior()` で指定した事前分布が `lprior` に積み上げられる。 |
-| `generated quantities` | `r pick_stan_line(code_pois, c("^\\s*generated quantities\\s*\\{"))` | 対数尤度や予測量が保存され、`loo()` や `pp_check()` で利用される。 |
+| `generated quantities` | `r pick_stan_line(code_pois, c("^\\s*generated quantities\\s*\\{"))` | `lprior` などの派生量を計算する。LOO/WAIC で使う点別対数尤度は `brms::log_lik()` から取得する。 |
 
 : Poisson モデル: Stan 出力の読み取りポイント
 
 この表で `Stan の代表行` が想定とずれている場合は、`formula`、`family`、`prior` の指定を見直してください。特に尤度行（`poisson_*`）と事前分布行（`lprior += ...`）は、モデル定義の誤りを早期に発見するための確認点です。
+
+ポアソン回帰の Stan コードは、数式としては次の構造に対応します。
+
+$$
+\begin{aligned}
+\eta_i &= \alpha + \mathbf{x}_i^\top \boldsymbol{\beta} + u_{\text{student}[i]},\\
+Y_i &\sim \text{Poisson}(\exp(\eta_i)).
+\end{aligned}
+$$
+
+Stan の `poisson_log_*` は、$\lambda_i$ ではなく $\eta_i = \log(\lambda_i)$ を直接受け取る実装です。つまり、`summary()` の固定効果はすべて log rate スケールで推定され、指数変換すると IRR になります。`brms` が `poisson_log_glm_lpmf()` のような関数を使う場合がありますが、これは設計行列 `X` と係数 `b` を効率よくまとめて計算するための実装であり、統計モデルとしては上の式と同じです[@brmsFamilyDoc; @carpenter2017]。
+
+`(1|student_id)` は、Stan では `student_id` ごとのランダム切片として実装されます。多くの場合、`z_1` のような標準正規スケールのパラメータと `sd_1` を掛け合わせる**非中心化パラメータ化**（non-centered parameterization）が使われます。これは階層モデルのサンプリングを安定させるための実装上の工夫であり、ユーザーが解釈するのは最終的なランダム効果 SD（例: `sd(student_id__Intercept)`）です。
 
 :::
 
 ### 事後分布の可視化
 
 ベイズ分析の強みの一つは、パラメータの不確実性を豊かに可視化できることです。ここでは `bayesplot`、`tidybayes`、`ggridges`、`sjPlot` を使った可視化手法を紹介します[@gabry2019]。
+
+#### Prior vs posterior overlay: ベイズ更新の可視化
+
+ベイズ推定の本質は「事前分布をデータで更新して事後分布を得る」ことです。このプロセスを直接可視化する **prior vs posterior overlay plot** は、@kruschke2021barg の BARG ガイドラインで「事前分布の影響を読者に示す標準的な可視化」として推奨されています。事後分布が事前分布より顕著に狭く・シフトしていれば、データが情報をもたらしたことが視覚的に伝わります。
+
+```{r}
+#| eval: true
+#| label: fig-prior-posterior-overlay
+#| fig-width: 9
+#| fig-height: 5
+#| fig-cap: "Prior vs posterior overlay: 事前分布（薄い青）と事後分布（濃い橙）を重ねて、ベイズ更新の度合いを視覚化。事後分布が事前分布より狭く・シフトしているほど、データが多くの情報をもたらしたことを示す。"
+
+# 事後ドローを抽出
+post_draws <- as_draws_df(fit_pois) |>
+  dplyr::select(starts_with("b_proficiency")) |>
+  tidyr::pivot_longer(everything(), names_to = "Parameter", values_to = "Value") |>
+  dplyr::mutate(Source = "Posterior")
+
+# 事前分布から同数のドローを生成（fit_pois の prior は normal(0, 0.7)）
+n_draws <- as.integer(nrow(post_draws) / dplyr::n_distinct(post_draws$Parameter))
+set.seed(20260221)
+prior_draws <- post_draws |>
+  dplyr::distinct(Parameter) |>
+  dplyr::mutate(
+    draws = list(rnorm(n_draws, mean = 0, sd = 0.7))
+  ) |>
+  tidyr::unnest(draws) |>
+  dplyr::rename(Value = draws) |>
+  dplyr::mutate(Source = "Prior")
+
+prior_post_df <- dplyr::bind_rows(prior_draws, post_draws) |>
+  dplyr::mutate(Source = factor(Source, levels = c("Prior", "Posterior")))
+
+ggplot(prior_post_df, aes(x = Value, fill = Source, color = Source)) +
+  geom_density(alpha = 0.5, linewidth = 0.6) +
+  facet_wrap(~ Parameter, scales = "free", ncol = 2) +
+  scale_fill_manual(values = c(Prior = "#56B4E9", Posterior = "#D55E00")) +
+  scale_color_manual(values = c(Prior = "#56B4E9", Posterior = "#D55E00")) +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "grey40") +
+  labs(
+    title = "Prior vs posterior overlay (log-rate scale)",
+    subtitle = "Posterior が Prior より狭く・シフトしているほど、データが情報をもたらしたことを示す",
+    x = "Coefficient (log scale)", y = "Density"
+  ) +
+  theme(legend.position = "top")
+```
+
+**この図の読み方**:
+
+- **事後分布が事前分布より大幅に狭い**: データが強い情報をもたらした（一般的に望ましい）
+- **事後分布が事前分布とほぼ重なる**: データが情報をもたらしていない or 事前分布が支配的（小サンプル時に多い）
+- **事後分布の中心が事前分布の中心からシフト**: データが事前の予想と異なる方向に強く更新した
+- **事後分布の中心が 0 から離れている**: 効果の方向に関する事後確率が高い
+
+論文の Methods/Results セクションには、主要な係数についてこの overlay を 1-2 枚示すことで、読者が事前分布の影響を判断できるようになります[@kruschke2021barg]。
 
 ::: {.panel-tabset}
 
@@ -2008,6 +2595,7 @@ invisible(NULL)
 ```{r}
 #| eval: true
 #| label: mcmc-areas-poisson
+#| fig-cap: "事後分布の面積図（MCMC areas）：66%/95% 信用区間"
 
 # 固定効果の事後分布（66% CrI を内側に表示）
 mcmc_areas(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2",
@@ -2026,6 +2614,7 @@ mcmc_areas(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2",
 ```{r}
 #| eval: true
 #| label: mcmc-intervals-poisson
+#| fig-cap: "事後区間プロット（MCMC intervals）：固定効果の比較"
 
 # フォレストプロット（内側: 66% CrI、外側: 95% CrI）
 mcmc_intervals(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2",
@@ -2047,6 +2636,7 @@ mcmc_intervals(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2",
 ```{r}
 #| eval: true
 #| label: tidybayes-poisson
+#| fig-cap: "ハーフアイプロット（half-eye plot）：事後密度と信用区間"
 
 # 事後分布を tidy 形式で抽出
 fit_pois |>
@@ -2070,6 +2660,7 @@ fit_pois |>
 ```{r}
 #| eval: true
 #| label: ridge-poisson
+#| fig-cap: "リッジプロット（ridge plot）：ポアソンモデルの固定効果"
 
 fit_pois |>
   gather_draws(
@@ -2079,7 +2670,7 @@ fit_pois |>
   mutate(param = forcats::fct_rev(.variable)) |>
   ggplot(aes(x = .value, y = param)) +
   ggridges::geom_density_ridges(
-    fill = "#90CAF9", color = "white",
+    fill = "#56B4E9", color = "white",
     alpha = 0.85, scale = 1.1, rel_min_height = 0.01
   ) +
   geom_vline(xintercept = 0, linetype = "dashed", color = "gray40") +
@@ -2097,6 +2688,7 @@ fit_pois |>
 ```{r}
 #| eval: true
 #| label: plot-model-poisson
+#| fig-cap: "固定効果のフォレストプロット（forest plot）：IRR スケール"
 
 # フォレストプロット（IRR スケール）
 plot_model(fit_pois, type = "est",
@@ -2113,6 +2705,7 @@ plot_model(fit_pois, type = "est",
 ```{r}
 #| eval: true
 #| label: plot-model-pred-poisson
+#| fig-cap: "予測エラー数（predicted error counts）：熟達度と課題タイプ別"
 
 # 予測プロット（応答スケール）
 plot_model(fit_pois, type = "pred",
@@ -2198,6 +2791,7 @@ pred_summary |>
 ```{r}
 #| eval: true
 #| label: trace-poisson
+#| fig-cap: "トレースプロット（trace plot）：MCMC チェーンの混合"
 
 plot(fit_pois, combo = c("trace", "dens_overlay"), ask = FALSE)
 ```
@@ -2214,6 +2808,7 @@ plot(fit_pois, combo = c("trace", "dens_overlay"), ask = FALSE)
 ```{r}
 #| eval: true
 #| label: trace-bayesplot-poisson
+#| fig-cap: "トレースプロット（bayesplot trace plot）：固定効果の収束診断"
 
 # 固定効果のみのトレースプロット（bayesplot）
 mcmc_trace(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2",
@@ -2226,14 +2821,25 @@ mcmc_trace(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2",
 
 ```{r}
 #| eval: true
-#| label: rank-overlay-poisson
+#| label: fig-rank-overlay-poisson
+#| fig-width: 9
+#| fig-height: 4
+#| fig-cap: "ランクプロット（rank overlay; @vehtari2021 推奨）: 収束良好なら全チェーンが均一分布、特定チェーンが偏れば収束不良の警告。トレースプロットより収束問題を検出しやすい。"
 
-# ランクオーバーレイ：収束の代替可視化
+# ランクオーバーレイ: Vehtari et al. (2021) が推奨する収束診断
 mcmc_rank_overlay(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2")) +
-  labs(title = "Rank Overlay Plot")
+  labs(title = "Rank Overlay Plot (Vehtari et al. 2021)")
 ```
 
-`mcmc_rank_overlay()` は、各チェーンの MCMC サンプルのランク（順位）をヒストグラムとして表示します。収束が良好であれば、すべてのチェーンのランクヒストグラムが均一（一様分布に近い形）になります[@vehtari2017]。トレースプロットよりも収束の問題を検出しやすい場合があります。
+`mcmc_rank_overlay()` は、各チェーンの MCMC サンプルのランク（順位）をヒストグラムとして表示します。@vehtari2021 が新版 rank-normalized split-Rhat とともに提唱した可視化で、現代的な MCMC 収束診断の**第一選択**です。
+
+**読み方**:
+
+- **すべてのチェーンが均一**（一様分布に近い形状）→ 収束良好。すべてのチェーンが事後分布の同じ領域を探索している
+- **特定のチェーンが特定のランク帯に偏る**（例: chain 1 がランク 0-1000 に集中） → そのチェーンが他チェーンと異なる領域に取り残されている可能性。Rhat が 1.01 を超えていなくても、rank plot で偏りが見えれば warmup を増やすか初期値を見直す
+- **チェーン間の凸凹が極端** → 自己相関が強く、ESS が過剰に低い可能性
+
+トレースプロットは時系列的に「混ざっているか」を見る古典的方法ですが、長いチェーンでは視覚的に判別困難です。Rank plot は**順位の分布**で評価するため、チェーン長に依存せず、特に長いチェーンでも収束問題を検出しやすい利点があります[@vehtari2021]。論文には「Rhat + Rank plot」の両方を Supplementary に載せるのが現代的な標準です。
 
 #### Rhat と ESS の判断基準
 
@@ -2248,6 +2854,7 @@ mcmc_rank_overlay(fit_pois, pars = c("b_proficiencyB1", "b_proficiencyB2")) +
 ```{r}
 #| eval: true
 #| label: rhat-plot-poisson
+#| fig-cap: "Rhat 診断プロット（Rhat diagnostic plot）：収束指標の確認"
 
 # Rhat の可視化
 mcmc_rhat(rhat(fit_pois)) +
@@ -2258,6 +2865,7 @@ mcmc_rhat(rhat(fit_pois)) +
 ```{r}
 #| eval: true
 #| label: neff-plot-poisson
+#| fig-cap: "有効サンプルサイズ比（effective sample size ratio）：MCMC 効率の確認"
 
 # 有効サンプルサイズの比率
 mcmc_neff(neff_ratio(fit_pois)) +
@@ -2301,6 +2909,7 @@ ebfmi_by_chain <- round(ebfmi$ebfmi, 3)
 ```{r}
 #| eval: true
 #| label: nuts-plots-poisson
+#| fig-cap: "NUTS 診断（NUTS diagnostics）：ステップサイズとエネルギーの確認"
 #| fig-height: 4
 #| fig-width: 9
 
@@ -2309,12 +2918,32 @@ lp_pois <- log_posterior(fit_pois)
 bayesplot::mcmc_nuts_divergence(np_pois, lp_pois)
 ```
 
-問題が出た場合の優先対応は次の順です。
+問題が出た場合の優先対応は次の順です。Stan 公式と Betancourt (2017) の推奨[@betancourt2017]に従い、**`adapt_delta` の引き上げは対症療法**であり、本質的解決は **再パラメータ化（特に non-centered parameterization）** であることに注意してください。
 
-1. divergence がある: `adapt_delta` を上げる（例: 0.95 → 0.99）
-2. 最大木深度に達する: `max_treedepth` を上げる
-3. E-BFMI が低い: 初期値・パラメータ化・事前分布を見直す
-4. 警告が残る: モデル式そのものを簡略化または再定式化する
+1. **divergence がある**:
+   1. **階層モデルなら non-centered parameterization を最優先**で試す（`brms` の `(1|group)` はデフォルトで non-centered だが、自前 Stan コードを書く場合は明示）。Neal's funnel 問題が divergence の主因の場合、これで解決する
+   2. 事前分布が広すぎる/狭すぎる場合は調整（特に `sd` クラスの事前分布）
+   3. 上記でも残る場合のみ `adapt_delta` を上げる（例: 0.95 → 0.99）
+2. **最大木深度に達する**: `max_treedepth` を上げる（13-15 程度まで）。同時にモデルの再パラメータ化も検討
+3. **E-BFMI が低い**: 初期値・パラメータ化・事前分布を見直す
+4. **警告が残る**: モデル式そのものを簡略化または再定式化する
+
+::: {.callout-tip collapse="true"}
+#### Non-centered parameterization とは何か
+
+階層モデル `theta[i] ~ normal(mu, sigma)` の事後分布は、`sigma` が小さい領域で「漏斗（funnel）」状になり、HMC が効率的に探索できなくなります（Neal's funnel）。これに対し、**non-centered parameterization** では:
+
+```stan
+// Centered (problematic when sigma is small)
+theta ~ normal(mu, sigma);
+
+// Non-centered (recommended)
+z ~ normal(0, 1);
+theta = mu + sigma * z;
+```
+
+と書き直すことで、`z` の事後分布が常に標準正規となり、漏斗が解消されます。`brms` は `(1|group)` 構文でこれを自動的に適用するため、通常は意識する必要はありません。自前 Stan コードを書く際の必須技法です[@betancourt2017]。
+:::
 
 #### 事後予測チェック（pp_check）
 
@@ -2325,6 +2954,7 @@ bayesplot::mcmc_nuts_divergence(np_pois, lp_pois)
 ```{r}
 #| eval: true
 #| label: ppcheck-poisson
+#| fig-cap: "事後予測チェック（posterior predictive check）：密度オーバーレイ"
 
 pp_check(fit_pois, ndraws = 100, type = "dens_overlay") +
   labs(title = "PPC: Density Overlay (y vs y_rep)")
@@ -2337,6 +2967,7 @@ pp_check(fit_pois, ndraws = 100, type = "dens_overlay") +
 ```{r}
 #| eval: true
 #| label: ppcheck-poisson-stat
+#| fig-cap: "事後予測チェック（posterior predictive check）：平均の再現性"
 
 pp_check(fit_pois, ndraws = 1000, type = "stat", stat = "mean") +
   labs(title = "PPC: Mean Statistic", y = "Frequency")
@@ -2349,6 +2980,7 @@ pp_check(fit_pois, ndraws = 1000, type = "stat", stat = "mean") +
 ```{r}
 #| eval: true
 #| label: ppcheck-poisson-stat2d
+#| fig-cap: "事後予測チェック（posterior predictive check）：平均と標準偏差の同時再現性"
 
 pp_check(fit_pois, ndraws = 1000, type = "stat_2d",
          stat = c("mean", "sd")) +
@@ -2362,6 +2994,7 @@ pp_check(fit_pois, ndraws = 1000, type = "stat_2d",
 ```{r}
 #| eval: true
 #| label: ppcheck-poisson-grouped
+#| fig-cap: "グループ別事後予測チェック（grouped posterior predictive check）：熟達度別"
 
 pp_check(fit_pois, ndraws = 100, type = "dens_overlay_grouped",
          group = "proficiency") +
@@ -2397,6 +3030,7 @@ pp_check(fit_pois, ndraws = 100, type = "dens_overlay_grouped",
 #| label: ppcheck-rootogram-poisson
 #| fig-height: 4
 #| fig-width: 8
+#| fig-cap: "ルートグラム（rootogram）：カウントデータの頻度診断"
 
 pp_check(fit_pois, type = "rootogram", style = "hanging", ndraws = 100) +
   labs(title = "Rootogram: Poisson Model (hanging style)")
@@ -2412,17 +3046,18 @@ pp_check(fit_pois, type = "rootogram", style = "hanging", ndraws = 100) +
 
 #### ELPD を直感的に理解する
 
-ELPD（Expected Log Predictive Density）は「**1人ずつ抜き出して予測テストをした総合成績**」と考えてください。
+ELPD（Expected Log Predictive Density）は「**データの一部を隠して、その値をどれだけうまく予測できるかを合計した成績**」と考えてください。`loo()` が標準で計算するのは、PSIS-LOO（Pareto smoothed importance sampling leave-one-out）という近似的な LOO-CV です[@vehtari2017]。
 
-1. 240人の学習者データから学習者 $i$ を1人抜く
-2. 残り239人でモデルを推定する
-3. 抜いた学習者 $i$ のエラー数を予測する
-4. 実際のエラー数と予測のズレを「驚き度」（対数予測密度）として計算する
-5. これを240人全員について繰り返し、合計する
+通常の `loo()` の直感的な流れは次の通りです。
 
-**「驚き」が少ないモデル = ELPD が高い = 予測性能が良い**。新しい学習者のデータに対しても適切に予測できるモデルを選ぶための指標です[@vehtari2017]。
+1. 観測値 $i$ を1つ隠します。
+2. その観測値を除いたデータで推定した場合の予測を近似します。
+3. 隠した観測値をどれだけ高い確率で予測できるかを、対数予測密度として計算します。
+4. これを全観測値について合計します。
 
-**なぜ AIC ではなく LOO-CV か？**: AIC は「パラメータ数でペナルティ」という近似を使いますが、ベイズモデルではパラメータの「有効数」が事前分布によって変わるため、AIC の前提が成り立ちません。LOO-CV は近似なしに予測性能を直接評価します。
+**「驚き」が少ないモデル = ELPD が高い = 予測性能が良い**、という関係です。ただし、階層モデルでは「どの単位を新しいデータとみなすか」を明確にする必要があります。本章の通常の `loo()` は観測値単位の予測性能を評価します。同一学習者から複数観測がある場合、「まったく新しい学習者」を予測したいなら、学習者単位で除外する K-fold cross-validation などを別途設計します。
+
+**なぜ AIC ではなく LOO-CV か？**: AIC は「パラメータ数でペナルティ」という近似を使いますが、ベイズモデルではパラメータの「有効数」が事前分布や階層構造によって変わります。PSIS-LOO は事後分布から予測性能を評価するため、ベイズモデルの比較に適しています。ただし、PSIS-LOO も近似です。Pareto $k$ が大きい観測値がある場合は、`moment_match = TRUE`、`reloo()`、または K-fold CV を検討します。
 
 #### ELPD・LOOIC・WAIC の概念
 
@@ -2521,15 +3156,70 @@ loo_full
 pareto_k_table(loo_full)
 ```
 
+**PSIS-LOO の正確な意味**: PSIS-LOO は**重要度サンプリング（Pareto-smoothed importance sampling）**で leave-one-out 交差検証を近似する手法です[@vehtari2017]。事後分布から直接予測性能を計算するわけではなく、「各観測 $y_i$ を 1 つだけ除いた事後分布」を再フィットせずに重要度重みで近似します。
+
 **Pareto k の読み方**: 各観測値に対して Pareto k 値が計算されます。k が高い観測値は**影響力の大きい外れ値**——その観測を除くとモデルの推定が大きく変わることを意味します。
+
+**Pareto k の閾値はサンプルサイズに依存**します。`loo` パッケージ ≥ 2.7.0 では Vehtari et al. (2024) [@vehtari2024] の更新版閾値が使われ、$k_{\text{threshold}} = \min(1 - 1/\log_{10}(S), 0.7)$（$S$ = MCMC サンプル数）で計算されます。本書のデフォルト設定（4 chains × 1000 post-warmup = 4000 サンプル）では $k_{\text{threshold}} \approx 0.7$ となるため、下表の慣用的閾値が当てはまります。
 
 | Pareto k | 状態 | 対処 |
 |---|---|---|
 | k < 0.5 | 良好 | 問題なし |
-| 0.5 ≤ k < 0.7 | 注意 | LOO 推定はまだ信頼できるが、要注目 |
-| k ≥ 0.7 | 問題あり | `moment_match = TRUE` または `reloo()` で再評価 |
+| 0.5 ≤ k < $k_{\text{threshold}}$（≈ 0.7） | 注意 | LOO 推定はまだ信頼できるが、要注目 |
+| k ≥ $k_{\text{threshold}}$ | 問題あり | `moment_match = TRUE` または `reloo()` で再評価 |
 
-**SLA での具体例**: k が高い学習者は「他の学習者と大きく異なるパターン」を示しています。例えば、B2 なのに A2 レベルのエラー数を出した学習者。この学習者のデータを確認し、（a）データ入力ミスがないか、（b）モデルの仮定（ポアソン分布）が不適切でないかを検討します。
+**SLA での具体例**: k が高い観測値は「モデルにとって予測しにくいエッセイや発話」を示しています。例えば、B2 学習者のエッセイなのに A2 レベルのエラー数が出ている観測値です。同じ学習者の複数観測に高い k が集中する場合は、学習者単位の個人差、入力ミス、またはポアソン分布の仮定（過分散やゼロ過剰）の不適合を確認します。
+
+#### Pareto k 診断プロット: 影響力の大きい観測を視覚的に特定
+
+`pareto_k_table()` は集計表を返しますが、**個々の観測の Pareto k 値を可視化**することで、外れ値や影響力の大きい観測を特定し、データセットの該当行と照合できます。`loo` パッケージの `plot()` メソッドが標準的な診断プロットを提供します。
+
+```{r}
+#| eval: true
+#| label: fig-pareto-k-poisson
+#| fig-width: 9
+#| fig-height: 4
+#| fig-cap: "Pareto k 診断プロット: 各観測（横軸）の Pareto k 値（縦軸）。破線（k = 0.5, 0.7）を超える観測は影響力が大きく、LOO 推定が不安定になる可能性。該当する観測のインデックスを `loo_full$diagnostics$pareto_k` で取得し、データセットと照合する。"
+
+# loo$diagnostics から Pareto k 値を抽出して ggplot で描画
+# (本書全体のテーマと配色 Okabe-Ito を統一するため、base R の plot.loo() ではなく ggplot を使用)
+pareto_k_df <- tibble(
+  obs_id = seq_along(loo_full$diagnostics$pareto_k),
+  pareto_k = loo_full$diagnostics$pareto_k
+)
+
+ggplot(pareto_k_df, aes(x = obs_id, y = pareto_k)) +
+  geom_hline(yintercept = c(0.5, 0.7), linetype = "dashed",
+             color = c("#E69F00", "#D55E00"), linewidth = 0.6) +
+  geom_point(aes(color = pareto_k), size = 2, alpha = 0.7) +
+  scale_color_gradient2(low = "#0072B2", mid = "#999999", high = "#D55E00",
+                        midpoint = 0.5, name = "Pareto k") +
+  annotate("text", x = max(pareto_k_df$obs_id) * 0.02, y = 0.51,
+           label = "k = 0.5", color = "#E69F00", hjust = 0, size = 3) +
+  annotate("text", x = max(pareto_k_df$obs_id) * 0.02, y = 0.71,
+           label = "k = 0.7", color = "#D55E00", hjust = 0, size = 3) +
+  labs(
+    title    = "Pareto k diagnostic for PSIS-LOO",
+    subtitle = "Points above k = 0.7 indicate high-influence observations requiring moment_match or reloo",
+    x = "Observation index",
+    y = expression(paste("Pareto ", hat(k), " value"))
+  )
+```
+
+**この図の読み方**:
+
+- **横軸**: 観測のインデックス（データセット行番号）
+- **縦軸**: 各観測の Pareto k 値
+- **点線**: $k = 0.5$（注意ライン）、$k = 0.7$（問題ライン）
+- **点線を超える点**: 影響力の大きい観測。`label_points = TRUE` で観測番号がラベル表示される
+- **k 値が高い観測の特定方法**: `which(loo_full$diagnostics$pareto_k > 0.7)` でインデックス取得 → `dat_essay[該当行, ]` でデータ行を確認
+
+問題のある観測が見つかった場合の対処:
+
+1. **データ確認**: 入力ミス、外れ値、典型からかけ離れた観測でないか
+2. **`moment_match = TRUE`**: `loo(fit, moment_match = TRUE)` で IWMM 補正を適用（`save_pars(all = TRUE)` を `brm()` で指定しておく必要あり）
+3. **`reloo()`**: 影響の大きい観測のみを実際に再フィットして LOO を再計算（最も正確だが計算コスト大）
+4. **K-fold CV へ切替**: `kfold(fit, K = 10)` で LOO の代替として K-fold 交差検証を使用
 
 ```{r}
 #| eval: true
@@ -2547,7 +3237,62 @@ loo_compare(loo_full, loo_null)
 4. **判断基準**: |elpd_diff| > 2 × se_diff なら予測性能に**意味のある差**がある
 5. **判断基準に満たない場合**: モデル間の予測性能はほぼ同等。よりシンプルなモデルを選択するか、理論的根拠で判断
 
-**SLA での解釈**: 「フルモデル（熟達度 + タスク + L1）がヌルモデル（切片のみ）より予測性能が高い」ということは、これらの予測子が新しい学習者のエラー数を予測する上で有用であることを意味します。
+**SLA での解釈**: 「フルモデル（熟達度 + タスク + L1）が、熟達度を除いた比較モデルより予測性能が高い」ということは、熟達度がエラー数の予測に有用であることを意味します。通常の `loo()` では観測値単位の予測性能を評価しているため、新しい学習者への汎化を主張したい場合は学習者単位の検証を追加します。
+
+#### grouped K-fold：新しい学習者への汎化を評価する
+
+階層モデルでは、予測したい対象が「既存学習者の新しい観測」なのか、「完全に新しい学習者」なのかで検証単位が変わります。通常の `loo()` は観測値単位の PSIS-LOO なので、同じ学習者の別観測が訓練データ側に残ります。新しい学習者への汎化を主張するなら、学習者 ID ごとに fold を分ける **grouped K-fold cross-validation** を使います[@brmsKfoldDoc; @looKfoldHelpersDoc]。
+
+| 目的 | 除外単位 | 推奨手法 | 解釈 |
+|:--|:--|:--|:--|
+| 既存学習者の別エッセイを予測 | 観測値 | `loo(fit)` | 個人差を部分的に学習したうえでの予測性能 |
+| 新しい学習者を予測 | 学習者 ID | `kfold(fit, folds = "grouped", group = "student_id")` | 未知の学習者に対する汎化性能 |
+| 新しい教室・学校を予測 | クラス ID / 学校 ID | grouped K-fold | クラス差・学校差を含めた汎化性能 |
+| カテゴリ比率を保ちたい | 熟達度カテゴリなど | stratified K-fold | fold 間でカテゴリ構成を揃えた予測性能 |
+
+: 階層データにおける LOO / K-fold の使い分け
+
+```r
+# 学習者単位で fold を分ける grouped K-fold
+# 計算量が大きいため、実データでは K = 5 から始めると実用的です。
+
+kfold_student <- kfold(
+  fit_pois,
+  K      = 5,
+  folds  = "grouped",
+  group  = "student_id",
+  chains = 2,
+  cores  = 2
+)
+
+kfold_student_null <- kfold(
+  fit_pois_null,
+  K      = 5,
+  folds  = "grouped",
+  group  = "student_id",
+  chains = 2,
+  cores  = 2
+)
+
+loo_compare(kfold_student, kfold_student_null)
+```
+
+`loo::kfold_split_grouped()` で fold ID を明示的に作る方法もあります。この方法は、複数モデルで完全に同じ fold 分割を使いたい場合に便利です。
+
+```r
+set.seed(20260221)
+fold_id_student <- loo::kfold_split_grouped(K = 5, x = dat_essay$student_id)
+
+kfold_student <- kfold(
+  fit_pois,
+  K      = 5,
+  folds  = fold_id_student,
+  chains = 2,
+  cores  = 2
+)
+```
+
+grouped K-fold の ELPD が通常の `loo()` よりかなり低い場合、そのモデルは「既存学習者の個人差」にはよく合っているものの、「未知の学習者」への汎化は弱い可能性があります。この場合、ランダム効果構造、事前分布、サンプルの代表性を再検討します。
 
 ```{r}
 #| eval: true
@@ -2671,12 +3416,13 @@ dat_speaking |>
 ```{r}
 #| eval: true
 #| label: eda-ordinal
+#| fig-cap: "評定分布（rating distribution）：熟達度と課題タイプ別"
 
 # 評定の分布（熟達度別）
 ggplot(dat_speaking, aes(x = rating, fill = proficiency)) +
   geom_bar(position = "dodge", alpha = 0.8) +
   facet_wrap(~task_type) +
-  scale_fill_brewer(palette = "Set2") +
+  scale_fill_manual(values = c("A2" = "#56B4E9", "B1" = "#E69F00", "B2" = "#009E73")) +
   labs(x = "Rating", y = "Count", fill = "Proficiency",
        title = "Rating Distribution by Proficiency and Task Type")
 ```
@@ -2704,25 +3450,63 @@ dat_speaking |>
 
 ### 累積ロジスティック回帰とは
 
-#### 累積ロジスティック回帰 vs 隣接ロジスティック回帰
+#### 順序回帰モデルの三大族
 
-順序ロジスティック回帰には主に2種類のモデルがあります。
+順序ロジスティック回帰には主に3種類のモデルがあります[@burkner2019]。`brms` ではすべて実装されており、`family` 引数で切り替えます。
 
-**累積ロジスティック回帰**（cumulative logistic regression）: 5件法の場合、以下の4つの比較を同時に行います。
+| モデル族 | brms family | 比較するカテゴリ | 適する場面 |
+|:---|:---|:---|:---|
+| **累積（cumulative）** | `cumulative("logit")` | 累積確率 P(Y≤k) を比較 | リッカート評定、評定スケール一般。最も汎用 |
+| **隣接カテゴリ（adjacent-category）** | `acat("logit")` | 隣り合うカテゴリ間で比較 | 各境界を独立に解釈したい場合（例: 順序の弱い分類） |
+| **逐次（sequential / stopping ratio）** | `sratio("logit")` または `cratio("logit")` | 段階的決定 P(Y=k | Y≥k) を比較 | テスト合格段階、survival 型データ、「完答に至るプロセス」など段階的決定構造を持つデータ |
 
-- 1 の確率 vs 2以上 の確率
-- 2以下 の確率 vs 3以上 の確率
-- 3以下 の確率 vs 4以上 の確率
-- 4以下 の確率 vs 5 の確率
+**累積ロジスティック回帰**（5 件法の例）: 以下の 4 つの比較を同時に行います。
 
-**隣接カテゴリ回帰**（adjacent category regression）: 隣り合うカテゴリの比較を行います。
+- 1 の確率 vs 2 以上 の確率
+- 2 以下 の確率 vs 3 以上 の確率
+- 3 以下 の確率 vs 4 以上 の確率
+- 4 以下 の確率 vs 5 の確率
 
-- 1 の確率 vs 2 の確率
-- 2 の確率 vs 3 の確率
-- 3 の確率 vs 4 の確率
-- 4 の確率 vs 5 の確率
+評定データの分析では累積モデルが最も一般的であり、本章ではこちらを使用します（`family = cumulative()`）。逐次モデル（`sratio`/`cratio`）はスピーキング評定の「合格→次のレベルへ」のような段階的判断には適しますが、本章のスピーキング評定データのように同時評定の場合は累積モデルが標準です。モデル選択は LOO で `cumulative` vs `acat` vs `sratio` を並べ、データに最も適合する族を選ぶのが理想です。
 
-評定データの分析では累積モデルが最も一般的であり、本章ではこちらを使用します（`family = cumulative()`）。
+#### 比例オッズ仮定と `cs()`（partial proportional odds）
+
+累積モデルは、固定効果がすべての閾値で同じ方向・同じ大きさで働くという**比例オッズ仮定**（proportional odds assumption）を置きます。例えば、熟達度の効果が「1 以下 vs 2 以上」でも「4 以下 vs 5」でも同じ係数で表される、という仮定です。
+
+この仮定が不自然な場合の対処として、`brms` は **`cs()`（category-specific effect）** を提供します。`cs(proficiency)` と書くと、proficiency の効果が**閾値ごとに別係数 $\beta_k$** となり、比例オッズ仮定を局所的に緩めた **partial proportional odds model**[@peterson1990; @burkner2019]になります。
+
+```r
+# 通常の比例オッズモデル
+brm(rating ~ proficiency + task_type + (1|student_id),
+    family = cumulative("logit"), ...)
+
+# proficiency のみ閾値ごとに係数を変える partial PO モデル
+brm(rating ~ cs(proficiency) + task_type + (1|student_id),
+    family = cumulative("logit"), ...)
+```
+
+LOO で両者を比較し、`cs()` を入れたモデルが elpd_diff > 2 × se_diff で優位であれば、その変数は比例オッズ仮定を破っていると判断します。`acat()` 全体に切り替える前の中間策として有用です。
+
+#### 閾値の制約: flexible / equidistant / sum_to_zero
+
+`brms` は閾値（threshold）パラメータの構造を `threshold` 引数で制御できます。
+
+| 制約 | 意味 | 適する場面 |
+|:---|:---|:---|
+| `"flexible"` (default) | 各閾値を自由に推定 | 一般的なリッカート、データが十分 |
+| `"equidistant"` | 閾値間隔を等しいと仮定 | データ少数時、識別性向上、カテゴリ間隔が等しいと仮定できる場合 |
+| `"sum_to_zero"` | 閾値の和を 0 に制約 | 切片との識別性確保、ランダム切片との競合を回避 |
+
+```r
+# 閾値を等間隔に制約（パラメータ削減）
+brm(rating ~ proficiency, family = cumulative(threshold = "equidistant"), ...)
+```
+
+::: {.callout-warning}
+#### リッカートを連続変数として扱う危険性
+
+EDA で `as.numeric(rating)` の平均や SD を計算するのは便宜上の記述統計に限定し、**推測統計（モデル推定）には必ず順序モデル（`cumulative`/`acat`/`sratio`）を使う**べきです。@liddell2018 は、リッカートデータを metric (gaussian) 扱いすると、効果の符号反転を含む偽効果率（Type I + S 型誤差）が**最大 ~50%** に達すると警告しました。特に天井/床効果が強い場合、metric 扱いの誤差は深刻です。本書のケース 2 では平均値を EDA の補助情報として表示していますが、推定は必ず `cumulative()` family で行います。
+:::
 
 ### 事前分布の確認
 
@@ -2741,7 +3525,7 @@ prior_ord_default |>
   knitr::kable(caption = "Ordinal モデルのデフォルト事前分布（get_prior）")
 ```
 
-順序ロジスティック回帰では、固定効果に加えて**閾値パラメータ**（`class = "Intercept"` の複数行）が表示されます。これらは隣接カテゴリ間の境界を表します。`class = "b"` の空欄 `prior` は固定効果の flat prior、`class = "sd"` はランダム効果 SD の既定事前分布です。
+順序ロジスティック回帰では、固定効果に加えて**閾値パラメータ**（`class = "Intercept"` の複数行）が表示されます。これらは累積確率を区切る境界を表します。`class = "b"` の空欄 `prior` は固定効果の flat prior、`class = "sd"` はランダム効果 SD の既定事前分布です。
 
 ### 事前予測チェック
 
@@ -2752,6 +3536,7 @@ prior_ord_default |>
 #| label: prior-predictive-ordinal
 #| cache: true
 #| message: false
+#| fig-cap: "事前予測チェック（prior predictive check）：順序ロジスティックモデル"
 
 prior_ord_ppc <- c(
   set_prior("normal(0, 1)", class = "b"),
@@ -2858,7 +3643,7 @@ summary(fit_ord, prob = 0.95)
 - **Intercept[3]**: 評定が 3以下 と 4以上 の境界
 - **Intercept[4]**: 評定が 4以下 と 5 の境界
 
-固定効果の Estimate は**累積ログオッズ**（cumulative log-odds）スケールの値です。`exp(Estimate)` でオッズ比に変換できます。正の値は、より高い評定カテゴリに移動する確率が高いことを示します。
+固定効果の Estimate は**累積ログオッズ**（cumulative log-odds）スケールの値です。`exp(Estimate)` で累積オッズ比（cumulative odds ratio）に変換できます。正の値は、各閾値を超えてより高い評定カテゴリ側に入る累積オッズが高いことを示します。
 
 #### tab_model()（OR）
 
@@ -2872,22 +3657,23 @@ tab_model(fit_ord)
 `tab_model()` の出力は指数変換されたオッズ比（OR）を表示します。OR の解釈は以下の通りです：
 
 - **OR = 1.00**: 基準カテゴリーと差がない
-- **OR > 1.00**: より高い評定カテゴリに入りやすい
-- **OR < 1.00**: より低い評定カテゴリに入りやすい
-- **95% CrI に 1 が含まれる**: 実質的な差が見られない
+- **OR > 1.00**: より高い評定カテゴリ側に入る累積オッズが高い
+- **OR < 1.00**: より低い評定カテゴリ側に入りやすい
+- **95% CrI に 1 が含まれる**: 効果の方向や大きさが不確実。実質的に差がないかは ROPE で別途判断する
 
 #### conditional_effects()
 
 ```{r}
 #| eval: true
 #| label: ce-ordinal
+#| fig-cap: "条件付き効果（conditional effects）：評定カテゴリ確率"
 
 plot(conditional_effects(fit_ord, categorical = TRUE), ask = FALSE)
 ```
 
 `categorical = TRUE` を指定すると、各説明変数の水準における評定カテゴリの確率分布が積み上げプロットで表示されます。熟達度が上がるにつれて、高い評定（4, 5）の占める割合が増加していることが視覚的に確認できます。
 
-#### hypothesis() と ベイズファクター
+#### hypothesis() による方向仮説の評価
 
 ```{r}
 #| eval: true
@@ -2900,7 +3686,7 @@ hypothesis(fit_ord, "proficiencyB2 > proficiencyB1")
 hypothesis(fit_ord, "proficiencyB2 > 0")
 ```
 
-ケース1と同様に、Evid.Ratio（エビデンス比; 方向仮説では事後オッズ）と Post.Prob（事後確率）を確認します。
+ケース1と同様に、Evid.Ratio（エビデンス比; 方向仮説では事後オッズ）と Post.Prob（事後確率）を確認します。ここでの Evid.Ratio は点仮説の Bayes factor ではないため、報告時には「方向仮説の事後オッズ」と明記してください。
 
 #### Probability of Direction（pd）
 
@@ -2916,12 +3702,13 @@ pd_ord
 ```{r}
 #| eval: true
 #| label: pd-plot-ordinal
+#| fig-cap: "効果方向の事後確率（probability of direction, pd）：順序モデル"
 
 plot(pd_ord) +
   labs(title = "Probability of Direction: Ordinal Model")
 ```
 
-**読み方**: 各パラメータの pd 値が 1.00 に近いほど、効果の方向（正または負）がほぼ確実。proficiency の効果は pd ≈ 1.00 が期待され、task_type は pd がやや低い可能性がある（ケース 1 の pd 解釈を参照）。
+**読み方**: 各パラメータの pd 値が 1.00 に近いほど、効果の方向（正または負）に関する事後確率が高いことを示します。proficiency の効果は pd ≈ 1.00 が期待され、task_type は pd がやや低い可能性があります（ケース 1 の pd 解釈を参照）。
 
 #### HDI + ROPE
 
@@ -2948,6 +3735,7 @@ rope_ord
 ```{r}
 #| eval: true
 #| label: rope-plot-ordinal
+#| fig-cap: "HDI + ROPE 分析：順序モデルの実質的等価性（practical equivalence）"
 
 plot(rope_ord) +
   labs(title = "HDI + ROPE Analysis: Ordinal Model")
@@ -2967,12 +3755,13 @@ equiv_ord
 ```{r}
 #| eval: true
 #| label: equivalence-plot-ordinal
+#| fig-cap: "等価性検定（equivalence test）：順序モデルの ROPE 判定"
 
 plot(equiv_ord) +
   labs(title = "Equivalence Test: Ordinal Model")
 ```
 
-順序ロジスティック回帰では、ROPE の設定に対数オッズスケールを使用します。$[-0.18, 0.18]$ は OR に変換すると約 $[0.84, 1.20]$ に対応し、「評価が1カテゴリ上がるオッズが 0.84〜1.20 倍であれば実質的に差なし」という判断基準です。
+順序ロジスティック回帰では、ROPE の設定に対数オッズスケールを使用します。$[-0.18, 0.18]$ は OR に変換すると約 $[0.84, 1.20]$ に対応し、「高い評定カテゴリ側に入る累積オッズが 0.84〜1.20 倍の範囲であれば実質的に差なし」という判断基準です。
 
 #### Stan コードの確認
 
@@ -3009,11 +3798,68 @@ invisible(NULL)
 
 特に順序モデルでは、`ordered[...] Intercept` の行があるかを確認してください。これが欠けている場合、想定した累積モデルではない可能性があります。
 
+順序ロジスティック回帰の Stan コードは、概念的には次の構造に対応します。
+
+$$
+\begin{aligned}
+\eta_i &= \alpha_{\text{fixed},i} + u_{\text{student}[i]} + v_{\text{rater}[i]},\\
+P(Y_i \le k) &= \text{logit}^{-1}(\tau_k - \eta_i), \quad k = 1,\ldots,K-1.
+\end{aligned}
+$$
+
+ここで $\tau_k$ は閾値（threshold）です。Stan では閾値が `ordered[...] Intercept` として宣言されるため、$\tau_1 < \tau_2 < \cdots < \tau_{K-1}$ という順序制約が自動的に守られます。`ordered_logistic_*` の行は、この累積ロジット尤度が使われていることを示します[@brmsFamilyDoc; @carpenter2017]。
+
+`brms` の `cumulative(link = "logit")` では、正の固定効果は高いカテゴリ側に入る累積オッズが高いことを意味します。ただし、この解釈は比例オッズ仮定に基づきます。Stan コード上では、同じ係数ベクトル `b` がすべての閾値に共通して使われているかを確認することで、この仮定がモデルに組み込まれていることを理解できます。カテゴリごとに効果が異なると考える場合は、`brms` のカテゴリ別効果や別の順序 family を検討します。
+
 :::
 
 ### 事後分布の可視化
 
 ケース1と同様に、複数のパッケージを使って事後分布を可視化します[@gabry2019]。
+
+#### ランダム効果のキャタピラープロット（評価者・学習者個別の事後区間）
+
+順序モデルには評価者（rater）と学習者（student）の交差ランダム効果が含まれます。**個々の評価者・学習者の事後区間**を可視化することで、「どの評価者が厳しい/甘いか」「どの学習者が標準より高い/低い評定を受けやすいか」を視覚的に診断できます。`tidybayes::stat_pointinterval()` は事後ドローから直接 95% / 66% の二重区間を描く現代的な実装で、Bayesian caterpillar plot の標準ツールです[@kay2023tidybayes]。
+
+```{r}
+#| eval: true
+#| label: fig-caterpillar-rater-ordinal
+#| fig-width: 9
+#| fig-height: 5
+#| fig-cap: "評価者ランダム効果の Bayesian caterpillar plot。点は事後中央値、太いバーは 66% CrI、細いバーは 95% CrI。0 を含まない評価者は、平均的評価者から有意に厳しい/甘い傾向を持つ。"
+
+# 評価者ランダム効果の事後ドローを抽出
+# 注: 評価者数が多い (≥30) 場合は dplyr::slice_sample(n = 30) などで一部抽出し、
+#     全体表示は Supplementary に回すと図が読みやすくなります。
+rater_draws <- tidybayes::spread_draws(fit_ord, r_rater_id[rater_id, term]) |>
+  dplyr::filter(term == "Intercept") |>
+  dplyr::mutate(rater_id = forcats::fct_reorder(factor(rater_id), r_rater_id))
+
+ggplot(rater_draws, aes(x = r_rater_id, y = rater_id)) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  tidybayes::stat_pointinterval(.width = c(0.66, 0.95),
+                                 point_size = 2,
+                                 color = "#0072B2") +
+  labs(
+    title    = "Rater random intercepts: posterior distributions",
+    subtitle = "0 を含まない評価者 = 平均から有意に逸脱（厳しい/甘い）。バー: 内 66% / 外 95% CrI",
+    x = "Rater random effect (cumulative log-odds scale)",
+    y = "Rater ID (ordered by posterior median)"
+  )
+```
+
+**この図の読み方**:
+
+- **点が右側（正の領域）**: 平均より高い評定をつける傾向の評価者（甘い評価者）
+- **点が左側（負の領域）**: 平均より低い評定をつける傾向の評価者（厳しい評価者）
+- **CrI が 0 をまたがない**: その評価者が平均から統計的に有意に逸脱している
+- **CrI が広い**: その評価者の観測数が少なく、推定が不確実
+
+実務的応用:
+
+- **評価者訓練の標的化**: CrI が 0 から大きく離れている評価者は再訓練の対象候補
+- **評価者の入れ替え**: 極端な評価者を体系的に排除すべきか、ランダム効果で補正すれば運用上問題ないか判断
+- **G theory との接続**: 第 10 章の G theory では「評価者分散 $\sigma^2_r$」が集計指標として現れますが、本図はその個人レベル分解を提供します。両者を併用することで、設計改善（評価者数の追加）と個別介入（特定評価者の再訓練）の両方の判断材料が揃います
 
 ::: {.panel-tabset}
 
@@ -3022,6 +3868,7 @@ invisible(NULL)
 ```{r}
 #| eval: true
 #| label: mcmc-areas-ordinal
+#| fig-cap: "事後分布の面積図（MCMC areas）：順序モデルの固定効果"
 
 # 固定効果の事後分布（66% CrI を内側に表示）
 mcmc_areas(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2",
@@ -3037,6 +3884,7 @@ mcmc_areas(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2",
 ```{r}
 #| eval: true
 #| label: mcmc-intervals-ordinal
+#| fig-cap: "事後区間プロット（MCMC intervals）：累積オッズ比の比較"
 
 # フォレストプロット（内側: 66% CrI、外側: 95% CrI）
 mcmc_intervals(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2",
@@ -3056,6 +3904,7 @@ mcmc_intervals(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2",
 ```{r}
 #| eval: true
 #| label: ridge-ordinal
+#| fig-cap: "リッジプロット（ridge plot）：順序モデルの固定効果"
 
 fit_ord |>
   gather_draws(b_proficiencyB1, b_proficiencyB2, b_task_typeopinion) |>
@@ -3073,13 +3922,14 @@ fit_ord |>
   )
 ```
 
-**読み方**: 各リッジが 1 つの固定効果の完全な事後分布を示す。密度が 0 の右側に集中 → 正の効果（高評定への移行確率が高い）。分布の広がりが不確実性を反映。
+**読み方**: 各リッジが 1 つの固定効果の完全な事後分布を示します。密度が 0 の右側に集中していれば、より高い評定カテゴリ側に入る累積オッズが高いことを示します。分布の広がりは不確実性を反映します。
 
 #### sjPlot：plot_model()
 
 ```{r}
 #| eval: true
 #| label: plot-model-ordinal
+#| fig-cap: "固定効果のフォレストプロット（forest plot）：OR スケール"
 
 # フォレストプロット（OR スケール）
 plot_model(fit_ord, type = "est",
@@ -3091,11 +3941,12 @@ plot_model(fit_ord, type = "est",
   )
 ```
 
-`sjPlot::plot_model()` は自動的に指数変換を行い、x 軸に OR（順序ロジスティック回帰の場合）を表示します。OR が 1 を超える効果は、より高い評定カテゴリに移動しやすいことを意味します。
+`sjPlot::plot_model()` は自動的に指数変換を行い、x 軸に OR（順序ロジスティック回帰の場合）を表示します。OR が 1 を超える効果は、より高い評定カテゴリ側に入る累積オッズが高いことを意味します。
 
 ```{r}
 #| eval: true
 #| label: plot-model-pred-ordinal
+#| fig-cap: "予測評定確率（predicted rating probabilities）：熟達度と課題タイプ別"
 
 # 予測プロット（評定確率）
 plot_model(fit_ord, type = "pred",
@@ -3168,6 +4019,7 @@ pred_ord_high |>
 ```{r}
 #| eval: true
 #| label: trace-ordinal
+#| fig-cap: "トレースプロット（trace plot）：順序モデルの MCMC チェーン"
 
 plot(fit_ord, combo = c("trace", "dens_overlay"), ask = FALSE)
 ```
@@ -3179,6 +4031,7 @@ plot(fit_ord, combo = c("trace", "dens_overlay"), ask = FALSE)
 ```{r}
 #| eval: true
 #| label: trace-bayesplot-ordinal
+#| fig-cap: "トレースプロット（bayesplot trace plot）：順序モデルの収束診断"
 
 # 固定効果のみのトレースプロット
 mcmc_trace(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2",
@@ -3192,6 +4045,7 @@ mcmc_trace(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2",
 ```{r}
 #| eval: true
 #| label: rank-overlay-ordinal
+#| fig-cap: "ランクプロット（rank overlay）：順序モデルのチェーン診断"
 
 # ランクオーバーレイ：収束の代替可視化
 mcmc_rank_overlay(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2")) +
@@ -3205,6 +4059,7 @@ mcmc_rank_overlay(fit_ord, pars = c("b_proficiencyB1", "b_proficiencyB2")) +
 ```{r}
 #| eval: true
 #| label: rhat-plot-ordinal
+#| fig-cap: "Rhat 診断プロット（Rhat diagnostic plot）：順序モデル"
 
 # Rhat の可視化
 mcmc_rhat(rhat(fit_ord)) +
@@ -3215,6 +4070,7 @@ mcmc_rhat(rhat(fit_ord)) +
 ```{r}
 #| eval: true
 #| label: neff-plot-ordinal
+#| fig-cap: "有効サンプルサイズ比（effective sample size ratio）：順序モデル"
 
 # 有効サンプルサイズの比率
 mcmc_neff(neff_ratio(fit_ord)) +
@@ -3240,6 +4096,7 @@ max_td_ord <- max(np_ord$Value[np_ord$Parameter == "treedepth__"])
 ```{r}
 #| eval: true
 #| label: nuts-plots-ordinal
+#| fig-cap: "NUTS 診断（NUTS diagnostics）：順序モデル"
 #| fig-height: 4
 #| fig-width: 9
 
@@ -3254,6 +4111,7 @@ bayesplot::mcmc_nuts_divergence(np_ord, lp_ord)
 ```{r}
 #| eval: true
 #| label: ppcheck-ordinal
+#| fig-cap: "事後予測チェック（posterior predictive check）：順序評定の再現性"
 
 pp_check(fit_ord, ndraws = 100) +
   labs(title = "Posterior Predictive Check: Ordinal Model")
@@ -3264,6 +4122,7 @@ pp_check(fit_ord, ndraws = 100) +
 ```{r}
 #| eval: true
 #| label: ppcheck-ordinal-stat
+#| fig-cap: "事後予測チェック（posterior predictive check）：平均評定の再現性"
 
 pp_check(fit_ord, ndraws = 1000, type = "stat", stat = "mean") +
   labs(title = "Posterior Predictive Check: Mean Statistic",
@@ -3275,6 +4134,7 @@ pp_check(fit_ord, ndraws = 1000, type = "stat", stat = "mean") +
 ```{r}
 #| eval: true
 #| label: ppcheck-ordinal-grouped
+#| fig-cap: "グループ別事後予測チェック（grouped posterior predictive check）：熟達度別"
 
 pp_check(fit_ord, ndraws = 100, type = "dens_overlay_grouped",
          group = "proficiency") +
@@ -3290,6 +4150,7 @@ pp_check(fit_ord, ndraws = 100, type = "dens_overlay_grouped",
 ```{r}
 #| eval: true
 #| label: ppcheck-bars-grouped-ordinal
+#| fig-cap: "棒グラフによる事後予測チェック（PPC bars）：評定カテゴリの頻度"
 #| fig-height: 5
 #| fig-width: 9
 
@@ -3311,12 +4172,9 @@ pp_check(fit_ord, type = "bars_grouped", group = "proficiency", ndraws = 100) +
 #| cache: true
 #| message: false
 
-# 比較用：課題タイプなしのモデル（同一事前分布で公正な比較）
-prior_ord_null <- c(
-  set_prior("normal(0, 1)", class = "b"),
-  set_prior("student_t(3, 0, 2)", class = "Intercept"),
-  set_prior("student_t(3, 0, 1)", class = "sd")
-)
+# 比較用：課題タイプなしのモデル
+# 共通パラメータにはメインモデルと同じ事前分布を使う
+prior_ord_null <- prior_ord
 fit_ord_null <- brm(
   rating ~ proficiency + (1|student_id) + (1|rater_id),
   data       = dat_speaking,
@@ -3483,7 +4341,7 @@ priorsense::powerscale_plot_quantities(ps_ord_seq, variable = "b_proficiencyB2")
 
 ベイズ推定の結果は事前分布の選択に影響を受ける可能性があります。特に小サンプルの場合、事前分布の影響が大きくなります[@kruschke2018; @nicenboim2025]。そのため、異なる事前分布を設定してモデルを再度フィットし、結論が事前分布の選択に頑健であるかを確認することが推奨されます。
 
-SLA 研究における感度分析は特に重要です。なぜなら、英語教育の教室実験では1クラス 20〜30 名の小サンプルが一般的であり、事前分布がデータと同程度の影響力を持つ可能性があるからです[@norouzian2018]。感度分析では、異なる幅の事前分布を比較します。本章では（1）中程度の弱情報事前分布（Normal(0, 0.7)）、（2）広い弱情報事前分布（Normal(0, 1)）、（3）メタ分析に基づく情報的事前分布の3種類を比較します。事前分布の幅を段階的に変えることで、結論がどの程度事前分布に依存するかを評価できます。
+SLA 研究における感度分析は特に重要です。なぜなら、英語教育の教室実験では1クラス 20〜30 名の小サンプルが一般的であり、事前分布がデータと同程度の影響力を持つ可能性があるからです[@norouzian2018]。感度分析では、注目する固定効果の事前分布を段階的に変えます。本章では（1）中程度の弱情報事前分布（Normal(0, 0.7)）、（2）広い弱情報事前分布（Normal(0, 1)）、（3）メタ分析に基づく情報的事前分布の3種類を比較します。比較の焦点を固定効果に絞るため、切片とランダム効果 SD の事前分布はメインモデルと揃えます。
 
 ここではケース1のポアソン回帰モデルを用いて、3種類の事前分布で結果を比較します。
 
@@ -3501,7 +4359,9 @@ SLA 研究における感度分析は特に重要です。なぜなら、英語�
 # 2. 広い弱情報事前分布（Normal(0, 1) for b）
 #    → "wide weakly informative"
 prior_weak <- c(
-  set_prior("normal(0, 1)", class = "b")
+  set_prior("normal(0, 1)", class = "b"),
+  set_prior("normal(2.3, 0.7)", class = "Intercept"),
+  set_prior("student_t(3, 0, 1)", class = "sd")
 )
 
 fit_pois_weak <- brm(
@@ -3513,21 +4373,25 @@ fit_pois_weak <- brm(
   chains     = 4,
   iter       = 2000,
   warmup     = 1000,
+  backend    = "cmdstanr",
   seed       = 20260221,
   file       = "models/fit_pois_weak",
   file_refit = "on_change"
 )
 
-# 3. 情報的事前分布（SLA メタ分析に基づく）
-# 根拠: Plonsky & Oswald (2014) の SLA 効果量基準
-#   - 群間比較で d = 0.40（小）/ 0.70（中）/ 1.00（大）
-#   - B2 vs A2 は大きい効果を想定: 対数スケールで -0.5, SD = 0.3
-#   - B1 vs A2 は中程度の効果を想定: 対数スケールで -0.3, SD = 0.3
-# Kang & Han (2015) のメタ分析: WCF 効果 g = 0.68 も参考値
+# 3. 情報的事前分布（SLA メタ分析を参考に、ポアソンの log(IRR) 尺度へ翻訳）
+# 根拠: Plonsky & Oswald (2014) の SLA 効果量基準を参考に、
+#       本章のエラー数アウトカムでは「エラー率が何倍か」という IRR に置き換える。
+#   - B2 vs A2 はエラー率が約 40% 低いと想定: IRR ≈ 0.60, log(IRR) ≈ -0.5
+#   - B1 vs A2 はエラー率が約 25% 低いと想定: IRR ≈ 0.74, log(IRR) ≈ -0.3
+# Kang & Han (2015) の WCF 効果 g = 0.68 は方向と大きさの参考値であり、
+# d/g をポアソン係数に直接代入しているわけではありません。
 prior_inform <- c(
   set_prior("normal(-0.5, 0.3)", class = "b", coef = "proficiencyB2"),
   set_prior("normal(-0.3, 0.3)", class = "b", coef = "proficiencyB1"),
-  set_prior("normal(0, 0.5)",    class = "b")
+  set_prior("normal(0, 0.5)",    class = "b"),
+  set_prior("normal(2.3, 0.7)", class = "Intercept"),
+  set_prior("student_t(3, 0, 1)", class = "sd")
 )
 
 fit_pois_inform <- brm(
@@ -3539,6 +4403,7 @@ fit_pois_inform <- brm(
   chains     = 4,
   iter       = 2000,
   warmup     = 1000,
+  backend    = "cmdstanr",
   seed       = 20260221,
   file       = "models/fit_pois_inform",
   file_refit = "on_change"
@@ -3567,7 +4432,7 @@ draws_inform <- as_draws_df(fit_pois_inform) |>
 bind_rows(draws_default, draws_weak, draws_inform) |>
   ggplot(aes(x = b_proficiencyB2, fill = prior_type)) +
   geom_density(alpha = 0.5) +
-  scale_fill_brewer(palette = "Set1") +
+  scale_fill_manual(values = c("#0072B2", "#E69F00", "#009E73")) +
   labs(
     x = "Posterior estimate: proficiency B2 (log scale)",
     y = "Density",
@@ -3613,9 +4478,33 @@ tibble::tribble(
 
 ### Power scaling による感度診断（priorsense）
 
-上の「複数事前分布の再フィット」は分かりやすい感度分析ですが、`priorsense` の power scaling を併用すると、事前分布と尤度のどちらに結果がどれだけ敏感かを連続的に診断できます[@kallioinen2024; @priorsensePkgDoc; @priorsensePowerDoc]。
+上の「複数事前分布の再フィット」は分かりやすい感度分析ですが、`priorsense` の power scaling を併用すると、**事前分布と尤度のどちらに結果がどれだけ敏感か**を連続的に診断できます[@kallioinen2024; @priorsensePkgDoc; @priorsensePowerDoc]。@kruschke2021barg の BARG 項目 8「Prior sensitivity analysis」を**自動化する公式推奨手段**として位置づけられています。
 
-power scaling では事前分布と尤度に指数 $\alpha$ を掛け、$\alpha$ の変化に対する事後の変化量を調べます。`powerscale_sensitivity()` は $\alpha \approx 1$ 近傍の局所感度を返し、`sensitivity_threshold = 0.05` を超えるかどうかで注意対象を判定します[@priorsenseSensitivityRef]。
+#### 理論的基礎: なぜ power scaling か
+
+Power scaling は、事前分布または尤度に指数 $\alpha$ を掛けた**摂動された事後分布**を比較します:
+
+$$
+p_\alpha(\theta | y) \propto p(\theta)^\alpha \, p(y | \theta) \quad \text{（事前分布の摂動）}
+$$
+
+$$
+p_\alpha(\theta | y) \propto p(\theta) \, p(y | \theta)^\alpha \quad \text{（尤度の摂動）}
+$$
+
+$\alpha = 1$ が元の事後分布、$\alpha < 1$ で当該成分の影響を弱め、$\alpha > 1$ で強めます。$\alpha \approx 1$ 近傍での事後分布の変化率（**勾配**）が、その成分への局所感度を表します。
+
+::: {.callout-tip collapse="true"}
+#### priorsense の三つの計算的工夫
+
+1. **再フィット回避（importance weighting）**: 各 $\alpha$ で MCMC を再実行する代わりに、元の事後ドローに重み $w_i = p(\theta_i)^{\alpha-1}$ を掛け直して摂動事後を近似します。これにより数十～数百の $\alpha$ 値を**一度の MCMC** で評価可能。
+
+2. **PSIS（Pareto-smoothed importance sampling）**: 重みの高分散テールを一般化パレート分布で平滑化します。この時の **Pareto $\hat k$** が信頼性指標となり、$\hat k < 0.7$ なら推定信頼可、超えれば後述の **IWMM**（moment matching; @kallioinen2024）で補正。
+
+3. **Cumulative Jensen-Shannon Distance (CJS)**: 事後分布間の距離尺度として CJS を採用する理由は、(a) 対称化版が **1 に上界をもつ**（$\text{CJS}_{sym} \in [0, 1]$）ため解釈が容易、(b) PDF ではなく **CDF を比較**するため Monte Carlo ドローから安定推定が可能。Sensitivity 値は基底事後と摂動事後間の CJS を $\log\alpha$ で微分した勾配です。
+:::
+
+`powerscale_sensitivity()` は $\alpha \approx 1$ 近傍の局所感度を返し、`sensitivity_threshold = 0.05` を超えるかどうかで注意対象を判定します[@priorsenseSensitivityRef]。**0.05 という閾値は @kallioinen2024 で提案された経験則**であり、これを超える値は「事前分布または尤度の僅かな変化が事後分布を顕著に変えている」サインです。
 
 ::: {.panel-tabset}
 
@@ -3657,6 +4546,30 @@ as_tibble(ps_pois) |>
 ```
 
 `diagnosis` 列には、感度が小さい場合の通常表示に加えて、`priorsense` が示す「prior-data conflict の可能性」や「likelihood が弱い可能性」などの注意シグナルが出ます。従来の再フィット比較と合わせて読むことで、どの結論が不安定かを特定しやすくなります[@priorsensePkgDoc; @kallioinen2024]。
+
+::: {.callout-important}
+#### `diagnosis` 4 パターンの判別ロジック
+
+`powerscale_sensitivity()` の `diagnosis` 列は、prior 感度と likelihood 感度の組み合わせから 4 パターンに判別されます[@kallioinen2024]。閾値 0.05 を基準とした 2×2 表で整理:
+
+|  | **likelihood 感度 ≤ 0.05** | **likelihood 感度 > 0.05** |
+|:---|:---|:---|
+| **prior 感度 ≤ 0.05** | ✅ **頑健（公式ラベル "-"）**: 事前分布も尤度も摂動に頑健。結論は安定 | ⭕ **prior dominated**（解釈ラベル; 公式の `diagnosis` は "-"）: 望ましい状態。データが事後を主に決定し、事前分布の影響は小さい |
+| **prior 感度 > 0.05** | ⚠️ **weak likelihood**: 尤度が弱く、データが少ない or 情報量が乏しい。事前分布が事後を支配している可能性 | 🚨 **prior-data conflict**: 事前分布とデータが矛盾。事前分布の正当化を再考すべき |
+
+**注**: `priorsense::powerscale_sensitivity()` の `diagnosis` 列が返す**公式ラベル**は実際には 3 値（`"-"` / `"weak likelihood"` / `"prior-data conflict"`）で、「prior dominated」は本書独自の解釈ラベルです。likelihood 感度のみが高く prior 感度が低いケースは公式には `"-"` で出力されますが、解釈上は「データ駆動の理想状態」として positive な評価をすべき場面なので、本書では明示的に区別しています。
+
+**各パターンへの実務的対処**:
+
+| パターン | 推奨アクション |
+|:---|:---|
+| **頑健 ("-")** | そのまま結論を報告。Methods に「prior sensitivity = X.XXX, likelihood sensitivity = X.XXX, both below 0.05 threshold」と明記 |
+| **prior dominated** | 望ましい結果。データが情報を持っていることの裏付け。そのまま報告 |
+| **weak likelihood** | (a) サンプルサイズの増加を検討、(b) 事前分布の正当化を強化（メタ分析の引用など）、(c) 「事前分布の影響が大きい」ことを Limitations に明記 |
+| **prior-data conflict** | (1) モデル構造の再考（リンク関数・スケーリング・脱落変数）、(2) 事前分布の正当化を強化、(3) 別事前分布での再フィットで頑健性確認、(4) それでも残るなら本文で明示し限界として論じる |
+
+特に **prior-data conflict** が検出された場合は、`brms::pp_check()` や事前予測チェックと突き合わせて「事前分布が極端」か「モデルが misspecified」かを切り分けます。多くの場合、事前分布の SD を狭めすぎたか、または応答スケールに合わない切片事前分布が原因です。
+:::
 
 #### 可視化
 
@@ -3746,6 +4659,52 @@ if (!requireNamespace("iwmm", quietly = TRUE)) {
 3. `pareto_k` が高ければ `moment_match = TRUE` で再評価する
 4. 既存の「3種類の事前分布比較」と結論が一致するかを最終確認する
 
+#### BARG 項目 8「Prior Sensitivity Analysis」への対応
+
+@kruschke2021barg の BARG ガイドラインは、論文で報告すべき感度分析の要素を以下のように定めています。`priorsense` の出力をこのチェックリストにマッピングして報告します:
+
+| BARG 報告項目 | priorsense の対応出力 | 報告例 |
+|:---|:---|:---|
+| **どの事前分布を摂動したか** | `variable` 引数 | "Prior sensitivity was assessed for fixed-effect coefficients (b_proficiencyB1, b_proficiencyB2)" |
+| **α の摂動範囲** | `lower_alpha`, `upper_alpha`, `alpha_step` | "Power-scaling perturbation was applied with α ∈ [0.99, 1.01], step = 0.005" |
+| **判定閾値** | `sensitivity_threshold` (既定 0.05) | "Following Kallioinen et al. (2024), we used the 0.05 threshold for both prior and likelihood sensitivity" |
+| **計算信頼性** | `pareto_k` 列 | "All Pareto $\hat k$ values were below 0.7, indicating reliable importance sampling estimates" |
+| **IWMM 適用有無** | `moment_match = TRUE` の使用 | "Moment matching (IWMM; Paananen et al. 2021) was applied for parameters with $\hat k$ > 0.7" |
+| **`diagnosis` 結果** | `diagnosis` 列の 4 パターン | "No prior-data conflict was detected; all parameters fell within the 'robust' or 'prior-dominated' categories" |
+| **可視化の補足** | `powerscale_plot_*()` 出力 | "Density plots across α (Figure S1) confirmed posterior shape stability" |
+
+#### 三角形の診断ワークフロー: priorsense + LOO + SBC
+
+現代のベイズ推論では、**三つの異なる側面**を並行して検証することが推奨されています[@gelman2020workflow; @schad2021]:
+
+```{mermaid}
+%%| label: fig-bayesian-diagnostic-triangle
+%%| fig-cap: "ベイズ推論の三角形診断: priorsense (推論頑健性) + LOO (観測影響度) + SBC (計算正しさ) を併用することで、結論の信頼性を多角的に検証する。"
+flowchart TD
+    A["**priorsense**<br/>推論頑健性<br/>(事前分布への感度)"] -.->|"両方とも PSIS 基盤<br/>Pareto k 診断を共有"| B["**LOO-CV**<br/>観測影響度<br/>(各観測の予測寄与)"]
+    A -.->|"事前分布の妥当性<br/>vs 計算の正しさ"| C["**SBC**<br/>計算正しさ<br/>(rank histogram の一様性)"]
+    B -.->|"観測ごとの<br/>影響度評価"| C
+    style A fill:#cfe2ff,stroke:#0d6efd
+    style B fill:#d1e7dd,stroke:#198754
+    style C fill:#fff3cd,stroke:#f28e2b
+```
+
+**三つの違いと併用の意義**:
+
+| 診断 | 検証対象 | 主な道具 | 同じ Pareto k でも対象が違う |
+|:---|:---|:---|:---|
+| **priorsense** | 推論頑健性: 事前分布の摂動に対する事後の安定性 | `powerscale_sensitivity()` | 重み変換の安定性（事前分布操作） |
+| **LOO-CV** | 観測影響度: 各観測がモデル推定にどれだけ影響するか | `loo()`, `pareto_k_table()` | 重み変換の安定性（観測除去） |
+| **SBC** | 計算正しさ: 事前 + 計算アルゴリズム全体が正しく動作しているか | `SBC` パッケージ, rank histogram | 関係なし（別軸の診断） |
+
+**実務的な順序**:
+
+1. **SBC**: モデルを実装した直後、観測データなしで Stan/brms が正しく動くか検証（事前 → サンプリング → 事後の整合性、@talts2018; @schad2021）。最新の改良 SBC として importance-weighted SBC（@modrak2023）も rank-based 診断の標準ツールとして登場している
+2. **LOO**: 観測データに対するモデルの予測性能と、影響力の大きい観測の特定
+3. **priorsense**: 事前分布の選択が結論を左右していないかの最終確認（BARG 項目 8）
+
+これら三つは**補完関係**にあり、どれか一つだけでは結論の信頼性を完全には主張できません。論文の Methods/Supplementary には SBC（実装段階）と LOO + priorsense（推論段階）の両方を報告することが推奨されます。
+
 ### 事前分布選択の報告義務
 
 ベイズ分析を論文で報告する際には、使用した事前分布を必ず明記してください。デフォルト以外の事前分布を使用した場合はその根拠を述べ、感度分析の結果も Methods セクションに含めることが推奨されます[@kruschke2018; @nicenboim2025]。SLA 研究では、@plonsky2014 や各領域のメタ分析（@li2010; @kang2015; @lyster2010 など）が事前分布設定の客観的根拠として特に有用です。メタ分析の結果を事前分布に反映させる場合は、メタ分析の対象研究数（$k$）、効果量の信頼区間、および自身の研究との類似性を報告してください。
@@ -3807,13 +4766,52 @@ tibble::tribble(
 
 ## 報告テンプレート
 
-ベイズ分析の結果を学術論文に報告する際のテンプレートを以下に示します[@kruschke2018; @norouzian2018]。
+ベイズ分析の結果を学術論文に報告する際のテンプレートを以下に示します[@kruschke2018; @kruschke2021barg; @norouzian2018; @vandoorn2021]。
+
+### BARG（Bayesian Analysis Reporting Guidelines）チェックリスト
+
+@kruschke2021barg が *Nature Human Behaviour* で提示した **BARG** は、ベイズ分析を論文に報告する際の標準的なチェックリストです。BARG はベイズワークフロー全般を体系化した @gelman2020workflow と @schad2021 の議論に基づき、認知科学・心理学分野での実装可能な報告基準として提案されました。階層モデルでの収束問題と頻度論最尤推定との比較は @sorensen2016 が SLA・心理言語学向けに丁寧に解説しており、本章のケース 2（リッカート + 評価者×学習者交差ランダム効果）の実装指針として参照価値が高いです。@vasishth2018filter は「有意性フィルタ」が SLA 効果量推定をどう歪めるかを示し、ベイズ推定が再現可能性危機への応答となる根拠を提供しています。本章の各セクションが BARG のどの項目に対応するかを以下にマッピングします。
+
+| BARG セクション | 報告すべき内容 | 本章の対応箇所 |
+|:---|:---|:---|
+| **1. Model description** | 尤度族・リンク関数・予測子・ランダム効果構造 | ケース 1 (L1624 周辺), ケース 2 (L3060 周辺) のモデル式 |
+| **2. Prior specification** | 各事前分布の指定値・分布族・正当化 | 事前分布の確認節 (`get_prior` + `set_prior`)、付録 A の prior レシピ |
+| **3. Computation** | バックエンド (Stan/cmdstanr)、chains, iter, warmup, adapt_delta, seed | 「再現性チェックリスト」(L1130 周辺) と各 `brm()` 呼び出し |
+| **4. Posterior summary** | 事後平均/中央値、CrI/HDI、変換尺度（IRR/OR）、`pd` | `summary()`, `fixef()`, `tab_model()`, `bayestestR::describe_posterior()` 出力 |
+| **5. Convergence diagnostics** | $\hat{R}$ (rank-normalized split-Rhat), Bulk/Tail ESS, divergent transitions, trace plot | MCMC 診断節 |
+| **6. Posterior predictive checks** | `pp_check` の type と読み取った所見 | 事後予測チェック節 |
+| **7. Model comparison** | LOO/WAIC/elpd_diff/se_diff、Pareto k 診断 | モデル比較節 |
+| **8. Prior sensitivity analysis** | 事前分布幅の変動 + power-scaling sensitivity (`priorsense`) | 事前分布の感度分析節 |
+| **9. Decision rule** | ROPE/HDI/BF のうち何を判定基準としたか、ROPE 幅の根拠 | ROPE 設定根拠の callout |
+| **10. Reproducibility** | seed, package version, sessionInfo, データ・コード公開先 | 再現性チェックリスト + セッション情報 |
+
+論文投稿時はこの 10 項目を Method/Results/Supplementary に分散して書き、Supplementary に上の対応表を入れると査読者が確認しやすくなります。
+
+### オープンサイエンスと事前登録（preregistration）
+
+ベイズ分析は事前分布の選択や ROPE の幅など研究者の判断が結果に影響するため、**事前登録（preregistration）** が再現性確保に特に重要です[@marsden2018; @vandoorn2021]。SLA 分野では以下のプラットフォームが標準的です:
+
+- **OSF (Open Science Framework)**: 事前登録、データ・コード・モデル fit (`.rds`) の公開
+- **AsPredicted**: 簡易な事前登録テンプレート
+- **IRIS Database** (@marsden2018): SLA 研究の刺激材料・データ・スクリプトの専用リポジトリ
+
+事前登録すべき項目:
+
+1. **モデル仕様**: 尤度族、固定効果、ランダム効果構造を事前に固定
+2. **事前分布**: 各パラメータの事前分布（例: `b ~ Normal(0, 0.7)`）と根拠（先行研究のメタ分析、弱情報事前分布の選択基準）
+3. **MCMC 設定**: chains, iter, warmup, adapt_delta, seed
+4. **判定基準**: ROPE の幅（例: 対数オッズ ±0.18）、評価指標（HDI/pd/BF のうちどれを主指標とするか）
+5. **感度分析**: どの事前分布幅で頑健性を確認するか
+
+`brm()` の `file = "models/..."` で生成された `.rds` ファイルは、Stan コード・事後ドロー・事前分布・seed をすべて含むため、この 1 ファイルを GitHub LFS / OSF にアップロードすれば**完全な再現性**が確保されます。論文の Method セクションには「Model fit, Stan code, R scripts, and data are available at OSF [URL]」を明記してください。
 
 ### Method セクション
 
-> **Statistical analysis.** All analyses were conducted in R (version X.X.X) using the brms package [@burkner2017], which implements Bayesian regression models via Stan. For the Poisson regression, we modeled error counts with proficiency (A2, B1, B2), L1 background, task type, and standardized essay length as fixed effects, and a random intercept for students. For the ordinal regression, we modeled speaking ratings (1–5) with proficiency and task type as fixed effects, and crossed random intercepts for students and raters. Priors were specified after inspecting `get_prior()`, with weakly informative priors for key fixed effects and default priors for other parameters. Four Markov chains were run for 2,000 iterations each (1,000 warmup). Convergence was assessed via $\hat{R}$ (< 1.01), effective sample size (> 400), trace plots, and posterior predictive checks. Prior sensitivity analyses combined refitting under flat/weakly informative/informative priors and power-scaling diagnostics via priorsense. For equivalence testing, we defined the ROPE as [−0.1, 0.1] on the log scale for the Poisson model and [−0.18, 0.18] on the log-odds scale for the ordinal model, and evaluated the proportion of the 95% HDI falling within the ROPE [@kruschke2018].
+本テンプレートは BARG [@kruschke2021barg] に加えて、L2 研究の透明性ガイドラインである *Language Learning* の Open Methods 標準 [@norris2015] に準拠することを想定しています。検定力・サンプルサイズの正当化には @lakens2022sample の SESOI 枠組みを併用すると、ベイズ的事前分布の選択と整合させやすくなります。
 
-### Results セクション（ポアソン回帰 — 本章の実データ値）
+> **Statistical analysis.** All analyses were conducted in R (version X.X.X) using the brms package [@burkner2017], which implements Bayesian regression models via Stan. For the Poisson regression, we modeled error counts with proficiency (A2, B1, B2), L1 background, task type, and standardized essay length as fixed effects, and a random intercept for students. For the ordinal regression, we modeled speaking ratings (1–5) with proficiency and task type as fixed effects, and crossed random intercepts for students and raters. Priors were specified after inspecting `get_prior()`. For the Poisson model, fixed effects used Normal(0, 0.7) priors on the log-rate scale, the intercept used Normal(2.3, 0.7), and group-level SDs used Student-t(3, 0, 1). For the ordinal model, fixed effects used Normal(0, 1) priors on the cumulative log-odds scale, thresholds used Normal(0, 2.5), and group-level SDs used Student-t(3, 0, 1). Four Markov chains were run for 2,000 iterations each (1,000 warmup; 4,000 post-warmup draws in total), with `adapt_delta = 0.95` and `max_treedepth = 12`. Convergence was assessed via $\hat{R}$ (maximum < 1.01), effective sample size (minimum bulk and tail ESS > 400), trace plots, NUTS diagnostics including divergent transitions, and posterior predictive checks. Prior sensitivity analyses compared moderate weakly informative, wider weakly informative, and informative priors, and also used power-scaling diagnostics via priorsense. For equivalence testing, we defined the ROPE as [−0.1, 0.1] on the log scale for the Poisson model and [−0.18, 0.18] on the log-odds scale for the ordinal model, and evaluated the proportion of the 95% HDI falling within the ROPE [@kruschke2018].
+
+### Results セクション（ポアソン回帰 — 本章のシミュレーション結果）
 
 ```{r}
 #| eval: true
@@ -3823,14 +4821,14 @@ tibble::tribble(
 
 fe_p <- fixef(fit_pois)
 knitr::asis_output(sprintf(
-  "> B2 proficiency learners produced fewer errors than A2 learners (IRR = %.2f, 95%% CrI [%.2f, %.2f]). B1 learners also produced fewer errors (IRR = %.2f, 95%% CrI [%.2f, %.2f]). The narrative task was associated with slightly fewer errors (IRR = %.2f, 95%% CrI [%.2f, %.2f]). All Rhat values were below 1.01, and posterior predictive checks indicated adequate model fit. Prior sensitivity analyses indicated that the main conclusions were robust.\n",
+  "> Learners at the B2 proficiency level produced fewer errors than learners at the A2 level (IRR = %.2f, 95%% CrI [%.2f, %.2f]). Learners at the B1 level also produced fewer errors (IRR = %.2f, 95%% CrI [%.2f, %.2f]). The narrative task was associated with slightly fewer errors (IRR = %.2f, 95%% CrI [%.2f, %.2f]). All Rhat values were below 1.01, and posterior predictive checks indicated adequate model fit. Prior sensitivity analyses indicated that the main conclusions were robust.\n",
   exp(fe_p["proficiencyB2","Estimate"]), exp(fe_p["proficiencyB2","Q2.5"]), exp(fe_p["proficiencyB2","Q97.5"]),
   exp(fe_p["proficiencyB1","Estimate"]), exp(fe_p["proficiencyB1","Q2.5"]), exp(fe_p["proficiencyB1","Q97.5"]),
   exp(fe_p["task_typenarrative","Estimate"]), exp(fe_p["task_typenarrative","Q2.5"]), exp(fe_p["task_typenarrative","Q97.5"])
 ))
 ```
 
-### Results セクション（順序ロジスティック回帰 — 本章の実データ値）
+### Results セクション（順序ロジスティック回帰 — 本章のシミュレーション結果）
 
 ```{r}
 #| eval: true
@@ -3852,14 +4850,16 @@ knitr::asis_output(sprintf(
 
 - **最小限の報告**: 推定値 + 95% CrI（例：IRR = 0.50, 95% CrI [0.38, 0.65]）
 - **推奨される報告**: 推定値 + 95% CrI + pd（例：IRR = 0.50, 95% CrI [0.38, 0.65], pd = 1.00）
-- **詳細な報告**: 推定値 + 95% CrI + pd + BF（例：IRR = 0.50, 95% CrI [0.38, 0.65], pd = 1.00, BF = 152.3）
+- **詳細な報告**: 推定値 + 95% CrI + pd + 追加指標（例：IRR = 0.50, 95% CrI [0.38, 0.65], pd = 1.00）。BF は点仮説またはモデル比較を明示し、proper prior と感度分析を示せる場合に限って補足的に報告する。
 - **等価性検定を含む報告**: 推定値 + 95% HDI + ROPE 判定（例：IRR = 1.05, 95% HDI [0.92, 1.18], ROPE [-0.1, 0.1]: Accepted）
 
-BF は事前分布の選択に敏感であるため、感度分析を実施したうえで報告してください。HDI + ROPE を使用する場合は ROPE の設定根拠を Method セクションに明記してください[@kruschke2018]。
+BF は事前分布の選択に敏感であり、`hypothesis()` の方向仮説で得られる Evid.Ratio とも異なります。報告する場合は、何に対する BF なのか、どの事前分布で計算したのか、感度分析で結論が保たれるのかを明記してください。HDI + ROPE を使用する場合は ROPE の設定根拠を Method セクションに明記してください[@kruschke2018]。
 
 ## 累積的ベイズ: Study 1 の事後を Study 2 の事前に
 
 ベイズ推定の最大の強みの一つは、**先行研究の結果を事前分布として次の研究に引き継げる**ことです[@norouzian2018]。これにより知見が蓄積され、サンプルサイズの小さい研究でも精度の高い推定が可能になります。
+
+以下は教育用の簡略例です。実務では、Study 1 の事後分布全体、係数間の相関、アウトカムの尺度、リンク関数、コーディング、母集団の違いを確認します。単一係数の事後平均と SD だけを Normal 事前分布にする方法は、事後分布がほぼ正規で、Study 2 が同じ係数スケールで設計されている場合の近似です。
 
 ```r
 # ── Study 1 の事後分布を取得 ──
@@ -3889,10 +4889,11 @@ prior_from_study1 <- c(
 
 #### 累積的ベイズの実務ガイドライン
 
-1. **事後分布の SD をそのまま使う**: Study 1 の事後 SD が Study 2 の事前 SD になる。サンプルサイズが増えるにつれ SD は自然に小さくなる。
-2. **デザインの類似性を確認**: 異なる母集団（例: EFL vs ESL）に無批判に引き継がない。
-3. **報告**: Method セクションに「事前分布は [先行研究] の事後分布に基づく」と明記する。
-4. **感度分析と併用**: 先行研究の事後を使った場合でも、flat prior との比較で結論の頑健性を確認する。
+1. **同じ係数スケールか確認する**: ポアソンの `log(IRR)`、ロジスティックの `log(OR)`、ガウスモデルの平均差を混同しません。
+2. **事後分布の形状を確認する**: 事後分布が歪んでいる場合、平均と SD だけの Normal 近似では不十分です。
+3. **デザインの類似性を確認する**: 異なる母集団（例: EFL vs ESL）や異なるアウトカムに無批判に引き継ぎません。
+4. **報告**: Method セクションに「事前分布は [先行研究] の事後分布に基づく」と明記します。
+5. **感度分析と併用**: 先行研究の事後を使った場合でも、弱情報事前分布との比較で結論の頑健性を確認します。
 
 ## 小サンプル（n = 15-30）での注意点
 
@@ -3900,7 +4901,7 @@ SLA 研究では参加者数が 15-30 人程度の研究が頻繁にあります
 
 | 指標 | 小サンプルで起こりやすいこと | 実務上の対処 |
 |:--|:--|:--|
-| `Rhat` | 収束が遅くなりやすい（事後分布が平坦なため） | `iter` を `4000+` に増やす。`warmup` を十分に取る |
+| `Rhat` | 収束が遅くなりやすい（順序ロジット cumulative model では**端カテゴリの観測が少ないと閾値パラメータの identifiability が弱くなる**ため、閾値と切片の sum-to-zero 制約周辺で事後分布の幾何が長くなりがち） | `iter` を `4000+` に増やす。`warmup` を十分に取る。端カテゴリの統合（例: 5/4 を統合して 4 段階にする）も検討 |
 | `ESS` | 低くなりやすい（事後の幾何学が複雑） | `iter` 増加。`adapt_delta` を `0.95+` に |
 | `BF` | 事前分布に強く依存（データが不足して事前を上書きできない） | BF に頼らず CrI + pd で報告。感度分析必須 |
 | `CrI` 幅 | 広くなる（不確実性が大きい） | CrI の幅自体が情報。狭い CrI を無理に求めない |
@@ -3921,36 +4922,112 @@ SLA 研究では参加者数が 15-30 人程度の研究が頻繁にあります
 
 ベイズ分析でよく遭遇する問題とその対処法を以下にまとめます。
 
-- **Rhat > 1.01 で収束しない**: `iter` を 4000 以上に増やす、`warmup` を十分に長く取る、事前分布をより情報的にして推定を安定させる。モデルの定式化に問題がないか（データに対して複雑すぎないか）も確認します。
+| 症状 | 確認する指標・出力 | 主な原因 | 優先対応 | 報告・再確認 |
+|:--|:--|:--|:--|:--|
+| `Rhat > 1.01` | `summary(fit)`、`posterior::summarise_draws()` | チェーンが同じ事後分布に混ざっていない | `iter` と `warmup` を増やす。トレースプロットでチェーンの混合を確認する。モデルが複雑すぎる場合は簡略化します | 最大 Rhat と対応パラメータを確認し、再推定後に全パラメータが基準内か確認します |
+| Bulk_ESS / Tail_ESS が低い | `Bulk_ESS`, `Tail_ESS` | 事後分布の探索効率が悪い、裾の推定が不安定 | `iter` を増やす。事前分布を少し情報的にする。強い相関や階層構造を見直します | 主要パラメータの ESS が十分かを報告前に確認します |
+| Divergent transitions | `nuts_params()`、`mcmc_nuts_divergence()` | NUTS が事後分布の幾何をうまく探索できていない | まず `adapt_delta = 0.99`。残る場合は非中心化、ランダム効果構造、事前分布を見直します | divergence が 0 になったこと、または残る場合は影響範囲を明記します |
+| 最大 treedepth 到達 | `treedepth__`、Stan 警告 | 探索木が上限に達している | `max_treedepth = 12` から 15 程度へ上げます。頻発する場合は再定式化します | 単に上限を上げただけでなく、Rhat・ESS・divergence も再確認します |
+| E-BFMI が低い | chain 別 E-BFMI | エネルギー探索が不十分 | パラメータ化、事前分布、スケーリングを見直します。極端な外れ値も確認します | E-BFMI は NUTS 診断として補足的に記録します |
+| 事前予測が非現実的 | `sample_prior = "only"`、`pp_check()` | prior が広すぎる、切片 prior が応答尺度に合っていない | 係数 prior だけでなく切片 prior を調整します。ポアソンならベースレートの log、ロジットなら基準確率の logit を使います | prior の根拠と事前予測チェックの結果を Methods に書きます |
+| PPC が合わない | `pp_check()`、rootogram、grouped PPC | family や階層構造が合っていない | カウントなら negative binomial / zero-inflated / hurdle、RT なら lognormal / exgaussian、順序なら `cumulative()` を検討します | モデル変更後も同じ PPC を再実行して比較します |
+| LOO の Pareto $k$ 警告 | `pareto_k_table()` | 影響力の大きい観測値、近似 LOO の不安定性 | `loo(fit, moment_match = TRUE)`、`reloo()`、または K-fold CV を使います[@looParetoDoc] | 高い k の観測が特定の学習者・項目に集中していないかを確認します |
+| 新しい学習者への汎化が不明 | 通常の `loo()` のみ | 観測値単位の LOO では同一学習者の別観測が残る | `kfold(..., folds = "grouped", group = "student_id")` を追加します[@brmsKfoldDoc] | 「観測値単位」か「学習者単位」かを結果で明記します |
+| 欠測値の扱いが曖昧 | 欠測率、欠測パターン | 完全ケース分析で偏りが出る可能性 | 欠測した予測子・目的変数を `mi()` で同時モデル化します[@brmsMissingDataDoc; @brmsMiDoc] | 欠測率、MAR 仮定、感度分析を報告します |
+| 測定誤差を無視している | SEM、機器誤差、評価尺度の信頼性 | 説明変数の測定誤差で係数が過小推定される | 現在は `mi(sdy = se)` による潜在真値モデルを優先します。古い `me()` は soft deprecated です[@brmsMeDoc] | 観測値ではなく潜在真値に対する効果として解釈します |
+| RT モデルの外れ値・右裾が合わない | RT のヒストグラム、PPC の尾部 | 正規分布が正の歪みを表現できない | `lognormal()`、`Gamma(link = "log")`、`exgaussian()`、`shifted_lognormal()` を比較します[@brmsFamilyDoc] | RT の尺度、除外基準、分布族の選択理由を明記します |
+| 計算時間が長い | 実行時間、メモリ、chain 数 | モデルが複雑、K-fold で再推定が多い | `backend = "cmdstanr"`、チェーン並列化、`threads = threading(2)`、Quarto `cache: true` を使います[@brmsBrmDoc; @brmsThreadingDoc] | 再現性のため seed、chain、iter、backend を書きます |
+| 95% CrI と 95% CI の混同 | 結果記述 | 頻度論とベイズの区間解釈の混同 | CrI は「事後分布におけるパラメータの確率区間」と説明します | 論文では CrI（credible interval）と明記します |
+| IRR/OR の判断基準の誤り | `summary()` と `tab_model()` | 対数スケールと指数変換後スケールの混同 | `summary()` では 0、指数変換後は 1 を基準にします。実質的等価性は ROPE で判断します | IRR/OR と log 係数を混在させないよう表注を付けます |
+| Stan コンパイルエラー | backend のエラー | C++ toolchain や CmdStan の設定 | `cmdstanr::check_cmdstan_toolchain()` と `cmdstanr::set_cmdstan_path()` を確認します[@cmdstanrGettingStarted] | 環境依存の問題とモデル式の問題を切り分けます |
 
-- **Bulk_ESS / Tail_ESS が低い**: `iter` を増やすか、`control = list(adapt_delta = 0.95)` を設定します。`adapt_delta` はサンプリングの精度を高めるパラメータです。
+: ベイズ分析の診断・原因・優先対応の対応表
 
-- **Divergent transitions の警告**: `control = list(adapt_delta = 0.99, max_treedepth = 15)` を試します。それでも解消しない場合は、モデルの再定式化（例：ランダム効果構造の簡略化）を検討します。
+トラブル対応の基本順序は、(1) データと尺度の確認、(2) 事前予測チェック、(3) MCMC 診断、(4) 事後予測チェック、(5) 予測比較、です。MCMC の警告だけを消すのではなく、研究上の問いに対してモデルが適切なデータ生成過程を表しているかを確認してください。
 
-- **計算時間が長い**: `options(mc.cores = parallel::detectCores())` でチェーン並列化を有効にし、必要に応じて `backend = "cmdstanr"` と `threads = threading(2)` を併用します[@brmsBrmDoc; @brmsThreadingDoc]。Quarto では `cache: true` チャンクオプションで再レンダリング時の再計算を省略できます。
+## 他章との接続
 
-- **95% CrI と 95% CI の混同**: ベイズの 95% CrI は「パラメータが 95% の確率でこの区間にある」であり、頻度論の 95% CI（「同じ実験を繰り返したとき 95% の区間が真値を含む」）とは解釈が異なります。論文では CrI（Credible Interval）と明記してください。
+本章のベイズ推定は、本書の他章で扱う頻度論的手法群と**統一的な数学基盤**を共有しつつ、推論の枠組みだけが異なります。各章の手法を「ベイズで再実装すると何が変わるか」を整理しておくと、ベイズ推定をいつ採用すべきかが明確になります。
 
-- **IRR/OR の判断基準の誤り**: `tab_model()` の出力は指数変換済みです。実質的な差がないかの判断は CrI に **1** が含まれるかどうかで行います（対数スケールの summary では **0**）。
+### 統合的位置づけ: 本書全体での本章の役割
 
-- **LOO で Pareto $k$ 警告**: しきい値は固定 0.7 ではなくサンプルサイズ依存（$k < \min(1 - 1/\log_{10}(S), 0.7)$）です[@looParetoDoc]。問題が出た観測値は `pareto_k_table()` で確認し、`loo(fit, moment_match = TRUE)` や `reloo()` で再評価してください。
+```{mermaid}
+%%| label: fig-bayes-method-hierarchy
+%%| fig-cap: "本書全体での第7章（ベイズ推定）の位置づけ。GLM/GLMM/G theory の延長として、推論の枠組み（事前分布の活用・事後分布の確率的解釈）を切り替えた拡張として読む。"
+flowchart TD
+    A["第2章 ANOVA<br/>群間/群内 SS の分解"] --> B["第5章 GLM<br/>family + link で拡張"]
+    A --> C["第3章 MANOVA<br/>多変量応答"]
+    B --> D["第6章 GLMM<br/>+ ランダム効果"]
+    D --> E["第10章 G Theory<br/>分散成分推定"]
+    C --> F["第10章 多変量G<br/>合成信頼性"]
+    B -.->|"事前分布 + MCMC<br/>事後分布の確率的解釈"| G["第7章 ベイズ推定<br/>brms による統一実装"]
+    D -.->|"同上"| G
+    E -.->|"分散成分の事後分布<br/>= 不確実性の正しい伝搬"| G
 
-- **Stan コンパイルエラー**: backend に応じて確認項目を分けます。`rstan` 利用時は R/RStan/C++ toolchain の互換性、`cmdstanr` 利用時は `check_cmdstan_toolchain()` と `set_cmdstan_path()` の設定を確認してください[@cmdstanrGettingStarted]。
+    style G fill:#d1e7dd,stroke:#198754,stroke-width:3px
+    style B fill:#cfe2ff,stroke:#0d6efd
+    style D fill:#cfe2ff,stroke:#0d6efd
+    style E fill:#cfe2ff,stroke:#0d6efd
+```
 
-## 第5章・第6章からの接続
+ベイズ推定は「新しいモデル族」ではなく、**頻度論で扱ったモデル群を別の推論枠組みで再実装する技術**です。`brm()` の `family` と `(1|group)` 構文は `glm()`/`glmer()` と同一であり、変わるのは「事前分布を与えて事後分布を得る」という推論プロセスだけです。
 
-本章のベイズ推定は、5章（GLM）と6章（GLMM）の自然な拡張として位置づけられます。
+### 第 5 章（GLM）からの拡張
 
-**5章（GLM）からの拡張**: ポアソン回帰や順序ロジスティック回帰の尤度関数は GLM と共通です。ベイズ推定では、この尤度に事前分布を掛け合わせて事後分布を得るという点が異なります。`brm()` の `family` 引数は `glm()` と同じ指定方法です。
+ポアソン回帰や順序ロジスティック回帰の**尤度関数は GLM と完全に共通**です。ベイズ推定では、この尤度に事前分布を掛け合わせて事後分布を得る点だけが異なります。
 
-**6章（GLMM）からの拡張**: ランダム効果の構造（`(1|student_id)` など）は `lme4::glmer()` と同一の構文で `brm()` に指定できます。ケース2のスピーキング評価データでは、6章で学んだ交差ランダム効果（学習者 × 評価者）をそのまま適用しています。
+| 観点 | 第 5 章 GLM (`glm`) | 第 7 章 Bayesian GLM (`brm`) |
+|:---|:---|:---|
+| 構文 | `glm(y ~ x, family = poisson, data = ...)` | `brm(y ~ x, family = poisson, data = ..., prior = ...)` |
+| 推定 | 最尤法 (MLE) | MCMC (HMC/NUTS) で事後分布を近似 |
+| 出力 | 点推定 + Wald CI | 事後分布全体（中央値・HDI・密度） |
+| 不確実性 | 漸近的（大標本前提） | 厳密（小サンプルでも有効） |
+| 報告 | $\hat{\beta}, SE, p$ | $\hat{\beta}, 95\%$ HDI, pd, ROPE |
 
-**いつ brms に切り替えるべきか**: 以下の条件のいずれかに該当する場合、`brms` によるベイズ推定が有力な選択肢です。
+### 第 6 章（GLMM）からの拡張
+
+ランダム効果の構造（`(1|student_id)` など）は `lme4::glmer()` と**同一の構文**で `brm()` に指定できます。ケース 2 のスピーキング評価データでは、第 6 章で学んだ**交差ランダム効果**（学習者 × 評価者）をそのまま適用しています。
+
+ベイズ実装の主な利点:
+
+1. **小サンプル時の特異適合（singular fit）回避**: `lme4` では分散成分が 0 に張り付く境界推定がベイズでは弱情報事前分布で正則化される
+2. **複雑なランダム効果構造の安定推定**: maximal random effects (Barr et al. 2013) や parsimonious models (Bates et al. 2015) の論争にベイズ正則化が中間解を提供[@sorensen2016]
+3. **ランダム効果の事後分布**: `tidybayes::spread_draws(fit, r_group[id, term])` で個人レベル BLUP の事後分布が得られる（@fig-caterpillar-rater-ordinal 参照）
+
+### 第 10 章（G Theory）との接続: 分散成分の事後分布
+
+第 10 章の G theory は分散成分 $\sigma^2_p$, $\sigma^2_t$, $\sigma^2_r$ などを REML で点推定し、profile likelihood / parametric bootstrap で CI を構成します。**ベイズ推定はこれをさらに自然に拡張**します:
+
+```r
+# 頻度論 G theory (第10章)
+g_model <- lmer(Score ~ 1 + (1|Person) + (1|Task) + (1|Rater) + (1|Person:Task),
+                data = ..., REML = TRUE)
+confint(g_model, method = "profile")  # SD スケールの CI
+
+# Bayesian G theory (本章の応用)
+g_brm <- brm(Score ~ 1 + (1|Person) + (1|Task) + (1|Rater) + (1|Person:Task),
+             data = ..., family = gaussian(),
+             prior = c(prior(student_t(3, 0, 2.5), class = "sd")))
+posterior_summary(g_brm, variable = "sd_")  # 分散成分の事後分布
+```
+
+ベイズ G theory の利点:
+
+1. **負の分散成分の自動回避**: REML でも非負制約はあるが、半正規/半 Cauchy 事前分布でより滑らかに 0 を回避[@lopilato2015]
+2. **D study への事後分布の伝搬**: G study の分散成分の事後分布全体を D study に伝搬させ、「タスク 4・評価者 3 で $G \geq 0.80$ となる事後確率」を直接計算可能（**posterior predictive D study**; @lopilato2015; @jiang2018）
+3. **多変量 G theory と MANOVA**: 第 10 章で示した「多変量 G theory ↔ MANOVA の数学的同型性」も、`brms::bf(score1) + bf(score2) + ... + set_rescor(TRUE)` で誤差相関を含む完全な多変量モデルとして実装可能
+
+これら 3 つの接続は本章後半の @sec-distributional-regression（分布回帰）と @sec-beyond-brms（brms を超えて: 潜在変数モデリングと Stan）で深く扱っています。第 10 章を読んだ後に第 10 章 §「ベイズ推定による G 理論（発展）」の callout（L4055 付近）に戻ると、頻度論と確率論の橋渡しが完結します。
+
+### いつ brms に切り替えるべきか
+
+以下の条件のいずれかに該当する場合、`brms` によるベイズ推定が有力な選択肢です。
 
 1. **モデル族の制約**: 順序データ（リッカートスケールのアンケート、スピーキング評定）、多項カテゴリカルデータ（語彙連想の分類）、多変量データ（読解速度と正答率の同時分析）など、`lme4` では対応できないモデルが必要な場合。
 2. **事前知識の活用**: SLA 分野のメタ分析（例：@li2010 の訂正フィードバック効果 $d = 0.61$、@kang2015 のライティング WCF 効果 $g = 0.68$、@plonsky2014 の SLA 効果量基準）を事前分布として明示的にモデルに組み込みたい場合。累積的知見の構築に直結するアプローチです[@norouzian2018]。
-3. **小サンプルの安定性**: 参加者数が少なく（例：1クラス 20 名の教室実験）、頻度論的推定では収束しない・不安定になる場合。ランダム効果の分散成分が 0 に推定される boundary effect を回避できます。
+3. **小サンプルの安定性**: 参加者数が少なく（例：1クラス 20 名の教室実験）、頻度論的推定では収束しない・不安定になる場合。ランダム効果の分散成分が 0 に推定される boundary effect を回避できます[@sorensen2016]。
 4. **確率的な仮説評価**: 「処置群が統制群より効果的である**確率**は何%か」「熟達度 B2 の効果が B1 より大きい確率は何%か」といった、研究者が本当に知りたい問いに直接答えたい場合。
+5. **G theory での D study の不確実性伝搬**: 第 10 章で学んだ G study の分散成分推定の不確実性を D study の予測に正しく伝搬させたい場合（posterior predictive D study）。
 
 ## 発展トピック
 
@@ -4125,6 +5202,86 @@ dat_laplace <- tibble(
   x3 = rnorm(320)
 ) |>
   mutate(y = 0.9 * x1 + 0.0 * x2 - 0.7 * x3 + rnorm(n(), 0, 1.0))
+
+# ------------------------------------------------------------
+# 6) 欠測値・測定誤差・反応時間用 (mi/me/se の発展例で使用)
+# ------------------------------------------------------------
+# 6a. 欠測ありデータ (fit_mi 用)
+n_miss <- 200
+dat_with_missing <- tibble(
+  learner_id = factor(sample(sprintf("L%03d", 1:50), n_miss, replace = TRUE)),
+  proficiency = factor(sample(c("A2", "B1", "B2"), n_miss, replace = TRUE),
+                       levels = c("A2", "B1", "B2")),
+  vocab_size = rnorm(n_miss, mean = 4500, sd = 1200)
+) |>
+  mutate(
+    score = 50 + 8 * (proficiency == "B1") + 18 * (proficiency == "B2") +
+            0.005 * vocab_size + rnorm(n_miss, 0, 6),
+    # 約 20% を MAR 的に欠損化
+    vocab_size = if_else(runif(n_miss) < 0.20, NA_real_, vocab_size)
+  )
+
+# 6b. 測定誤差つき予測子データ (fit_me 用)
+n_me <- 240
+dat_vocab_error <- tibble(
+  class_id = factor(sample(sprintf("C%02d", 1:24), n_me, replace = TRUE)),
+  proficiency = factor(sample(c("A2", "B1", "B2"), n_me, replace = TRUE),
+                       levels = c("A2", "B1", "B2")),
+  l1_background = factor(sample(c("Japanese", "Other"), n_me, replace = TRUE)),
+  condition = factor(sample(c("control", "treatment"), n_me, replace = TRUE),
+                     levels = c("control", "treatment")),
+  vocab_obs = rnorm(n_me, mean = 4500, sd = 1200),
+  vocab_se  = runif(n_me, min = 80, max = 220) # SEM の典型範囲
+) |>
+  mutate(
+    score = 50 + 0.005 * vocab_obs + 6 * (condition == "treatment") +
+            8 * (proficiency == "B1") + 18 * (proficiency == "B2") +
+            rnorm(n_me, 0, 6)
+  )
+
+# 6c. 応答変数に既知 SE がある場合 (fit_response_se 用)
+n_ab <- 150
+dat_ability <- tibble(
+  class_id = factor(sample(sprintf("C%02d", 1:15), n_ab, replace = TRUE)),
+  proficiency = factor(sample(c("A2", "B1", "B2"), n_ab, replace = TRUE),
+                       levels = c("A2", "B1", "B2")),
+  condition = factor(sample(c("control", "treatment"), n_ab, replace = TRUE),
+                     levels = c("control", "treatment")),
+  ability_estimate = rnorm(n_ab, 0, 1),
+  ability_se = runif(n_ab, 0.15, 0.45)
+)
+
+# ------------------------------------------------------------
+# 7) Horseshoe 用ワイドデータ (fit_hs 用)
+# ------------------------------------------------------------
+# 30 個の予測子のうち、本当に効くのは 5 個と仮定
+n_wide <- 250
+n_predictors <- 30
+true_betas <- c(0.8, -0.6, 0.5, -0.4, 0.3, rep(0, n_predictors - 5))
+X_wide <- matrix(rnorm(n_wide * n_predictors), nrow = n_wide)
+colnames(X_wide) <- sprintf("x%02d", 1:n_predictors)
+
+dat_essay_wide <- as_tibble(X_wide) |>
+  mutate(
+    student_id = factor(sample(sprintf("S%03d", 1:50), n_wide, replace = TRUE)),
+    eta = as.vector(X_wide %*% true_betas) + 1.5,  # log-rate scale
+    error_count = rpois(n_wide, lambda = exp(eta + rnorm(n_wide, 0, 0.3)))
+  ) |>
+  dplyr::select(error_count, student_id, everything(), -eta)
+
+# ------------------------------------------------------------
+# 8) Beta-Binomial 累積ベイズ更新例 (Study 2 の事前分布として Study 1 事後を使う場合)
+# ------------------------------------------------------------
+n_vocab <- 100
+dat_vocab_sample <- tibble(
+  learner_id = factor(sprintf("L%03d", 1:n_vocab)),
+  proficiency = factor(sample(c("A2", "B1", "B2"), n_vocab, replace = TRUE),
+                       levels = c("A2", "B1", "B2"))
+) |>
+  mutate(
+    correct = rbinom(n_vocab, size = 1,
+                     prob = plogis(-0.5 + 1.0 * (proficiency == "B1") + 1.8 * (proficiency == "B2")))
+  )
 ```
 
 ### 妥当性チェックの発展: SBC と parameter recovery
@@ -4191,7 +5348,7 @@ bins <- 20
 sbc_res |>
   ggplot(aes(x = rank)) +
   geom_histogram(bins = bins, boundary = 0, closed = "left",
-                 fill = "#90CAF9", color = "white") +
+                 fill = "#56B4E9", color = "white") +
   geom_hline(yintercept = S / bins, linetype = "dashed", color = "gray40") +
   facet_wrap(~ parameter, scales = "free_y") +
   labs(
@@ -4288,65 +5445,217 @@ recovery_tbl |>
 
 #### 多項ロジスティック回帰（multinomial logistic regression）
 
-目的変数が**3カテゴリ以上の名義カテゴリ**である場合、`family = categorical()` を使用します。英語教育研究では、例えば以下のような場面で必要になります。
+目的変数が**3 カテゴリ以上の名義カテゴリ**である場合、`family = categorical()` を使用します。英語教育研究での典型例:
 
-- **語彙連想テストの応答分類**: 刺激語に対する反応を「音韻的連想」「統語的連想」「意味的連想」の3カテゴリに分類し、熟達度による分布の違いを検討する
+- **語彙連想テストの応答分類**: 刺激語に対する反応を「音韻的連想」「統語的連想」「意味的連想」の 3 カテゴリに分類し、熟達度による分布の違いを検討する
 - **学習ストラテジーの選択**: 読解中に使用したストラテジーを「推測」「辞書参照」「文脈利用」「スキップ」に分類する
 - **誤りの種類の分析**: ライティングのエラーを「文法」「語彙」「語用論」に分類し、L1 背景による分布の違いを検討する
 
+頻度論側の選択肢として `nnet::multinom()` や `VGAM::vglm()` がありますが、いずれも**ランダム効果に対応していません**。`brms` の `family = categorical()` は受験者の繰り返し反応をランダム切片で扱える点が独壇場です[@burkner2018]。
+
+##### モデルの定式化と事前分布
+
+カテゴリ数を $K$ とすると、`brms` は基準カテゴリ（デフォルトは因子の第 1 水準）に対する $(K-1)$ 本の log-odds 線形予測子を同時に推定します。本例では `response_type` の水準が `c("phonological", "syntactic", "semantic")` なので、`phonological` を基準として **2 本の対数オッズ式**（syntactic vs phonological、semantic vs phonological）を同時に推定します。
+
+事前分布は各カテゴリの式について `class = "b"` を指定します。3 カテゴリ程度なら `Normal(0, 1)` の弱情報事前で十分安定します。
+
 ```{r}
-#| label: multinomial-example
-#| eval: false
+#| eval: true
+#| label: multinomial-priors
 
-# 多項ロジスティック回帰の例
-fit_multi <- brm(
-  response_type ~ proficiency + l1_background + (1|participant_id),
-  data   = dat_association,
-  family = categorical(),   # 3カテゴリ以上の名義データ
-  chains = 4,
-  iter   = 2000,
-  seed   = 20260221,
-  file   = "models/fit_multinomial"
+prior_multi <- c(
+  set_prior("normal(0, 1)",         class = "b", dpar = "musyntactic"),
+  set_prior("normal(0, 1)",         class = "b", dpar = "musemantic"),
+  set_prior("student_t(3, 0, 2.5)", class = "Intercept", dpar = "musyntactic"),
+  set_prior("student_t(3, 0, 2.5)", class = "Intercept", dpar = "musemantic"),
+  set_prior("student_t(3, 0, 1)",   class = "sd", dpar = "musyntactic"),
+  set_prior("student_t(3, 0, 1)",   class = "sd", dpar = "musemantic")
 )
-
-# 結果の確認：各カテゴリの予測確率
-conditional_effects(fit_multi, categorical = TRUE)
 ```
 
-多項モデルでは、基準カテゴリに対する各カテゴリの対数オッズが推定されます。`lme4` では多項ロジスティック混合モデルを扱えないため、`brms` の独壇場となる分析です[@burkner2018]。
+##### モデルの実行
+
+```{r}
+#| eval: true
+#| label: multinomial-fit
+#| message: false
+#| warning: false
+#| cache: true
+
+fit_multi <- brm(
+  response_type ~ proficiency + l1_background + (1|participant_id),
+  data       = dat_association,
+  family     = categorical(),
+  prior      = prior_multi,
+  chains     = 4,
+  iter       = 2000,
+  warmup     = 1000,
+  backend    = "cmdstanr",
+  control    = list(adapt_delta = 0.95, max_treedepth = 12),
+  seed       = 20260221,
+  file       = "models/fit_multinomial",
+  file_refit = "on_change"
+)
+```
+
+##### 結果の確認
+
+```{r}
+#| eval: true
+#| label: multinomial-summary
+
+summary(fit_multi)
+```
+
+**読み方**: `mu<カテゴリ名>_` の接頭辞で**式ごとに**係数が並びます。例えば `mu_syntactic_proficiencyB2` は「B2 の学習者は A2 と比較して、phonological（基準）よりも syntactic を選ぶ対数オッズが何だけ変化するか」を示します。`exp()` すれば**カテゴリ間の相対オッズ比**になります。
+
+##### 予測カテゴリ確率の可視化
+
+```{r}
+#| eval: true
+#| label: fig-multinomial-conditional
+#| fig-width: 9
+#| fig-height: 4
+#| fig-cap: "多項ロジスティック回帰: 熟達度別の予測カテゴリ確率。`categorical = TRUE` で各水準のカテゴリ分布が積み上げ表示される。"
+
+plot(conditional_effects(fit_multi, effects = "proficiency", categorical = TRUE),
+     ask = FALSE)
+```
+
+**読み方**: 各 proficiency 水準ごとに 3 カテゴリの予測確率が積み上げで表示されます。熟達度が上がるにつれ semantic 連想の確率が増加し、phonological 連想の確率が減少していれば、典型的な「lexico-semantic 発達パターン」と整合します。
+
+##### MCMC 診断
+
+多項モデルは式の数が増えるため、divergent transitions や ESS 低下が起きやすい傾向があります。Rank plot で式ごとの収束を確認します。
+
+```{r}
+#| eval: true
+#| label: fig-multinomial-rank
+#| fig-width: 9
+#| fig-height: 4
+#| fig-cap: "多項モデルの rank plot: 各式の主要係数について 4 chains が均一に分布していれば収束良好。"
+
+mcmc_rank_overlay(
+  fit_multi,
+  regex_pars = "^b_mu(syntactic|semantic)_proficiency"
+) + labs(title = "Rank Overlay: Multinomial coefficients (all proficiency contrasts)")
+```
+
+##### 頻度論との対応
+
+ランダム効果なしの単純な多項回帰は `nnet::multinom()` で実装可能で、係数の解釈はベイズ版と同じ「基準カテゴリに対する log-odds」です。両者の係数を比べると、ベイズ版は弱情報事前による軽い縮小が入るため、`nnet::multinom()` の係数より僅かに 0 に近づきますが、結論の方向は通常一致します。**ランダム効果を含む混合多項モデル**は頻度論側に標準実装がなく、`brms` でしか手軽に実装できません[@burkner2018]。
 
 #### 多変量モデル（multivariate models）
 
-**複数の目的変数を同時にモデリング**する場合、`brms` の多変量モデル構文（`mvbind()` または `bf()` の組み合わせ）を使用します。英語教育研究では、以下のような場面で特に有用です。
+**複数の目的変数を同時にモデリング**する場合、`brms` の多変量モデル構文（`mvbind()` または `bf()` の組み合わせ）を使用します。英語教育研究での典型例:
 
 - **CAF（Complexity, Accuracy, Fluency）の同時分析**: ライティングの複雑性・正確性・流暢性は互いに相関する構成概念であり、これらを同時にモデリングすることで trade-off 関係を直接検討できる
-- **4技能の同時評価**: リーディング・ライティング・リスニング・スピーキングのスコアを同時にモデリングし、技能間の相関構造を推定する
+- **4 技能の同時評価**: リーディング・ライティング・リスニング・スピーキングのスコアを同時にモデリングし、技能間の相関構造を推定する
 - **正答と反応時間の同時分析**: 語彙テストにおいて、正答（bernoulli）と反応時間（lognormal）を同時にモデリングする
 
-```{r}
-#| label: multivariate-example
-#| eval: false
+##### 二つの多変量モデリング戦略
 
-# 多変量モデルの例：正答（2値）と反応時間（正の連続）を同時にモデリング
+`brms` の多変量モデルには 2 つのアプローチがあります。
+
+| 戦略 | 構文 | family | 残差相関 | 適する場面 |
+|:---|:---|:---|:---|:---|
+| **同一 family の `mvbind()`** | `bf(mvbind(y1, y2) ~ x)` | 共通（例: gaussian） | `set_rescor(TRUE)` で誤差相関を直接推定 | 4 技能スコアなど同尺度の連続変数 |
+| **異種 family の `bf() + bf()`** | `bf(y1 ~ x) + bf(y2 ~ x)` | 別々（例: bernoulli + lognormal） | `set_rescor(FALSE)`、共有 ID `(1|p|id)` でランダム効果を介した相関 | 正答 + 反応時間など異尺度 |
+
+**第 10 章「多変量 G theory ↔ MANOVA」との関係**: 同一 family + `set_rescor(TRUE)` の構文は、第 10 章で示した「universe score 共分散行列 $\Sigma_p$ と誤差共分散行列 $\Sigma_\delta$ の同時推定」を**正式に実装する手段**です。第 10 章本文の「単変量並列 + BLUP 相関による近似」の限界を、ベイズ多変量モデルが解消します。
+
+##### モデルの実行（正答 + 反応時間の同時モデリング）
+
+語彙テストにおいて、正答（2 値）と反応時間（正の連続）を同じ熟達度・語頻度の影響下で同時にモデリングします。`(1|p|participant_id)` の `|p|` という ID は、**両式のランダム効果が共有される**ことを示し、学習者レベルでの「正答しやすさ ↔ 反応速度」の相関を推定します。
+
+```{r}
+#| eval: true
+#| label: multivariate-fit
+#| message: false
+#| warning: false
+#| cache: true
+
 bf_acc <- bf(correct ~ proficiency + word_freq + (1|p|participant_id),
              family = bernoulli())
 bf_rt  <- bf(rt ~ proficiency + word_freq + (1|p|participant_id),
              family = lognormal())
 
-fit_mv <- brm(
-  bf_acc + bf_rt + set_rescor(FALSE), # 混合 family では残差相関を推定しない
-  data   = dat_lexical,
-  chains = 4,
-  iter   = 2000,
-  seed   = 20260221,
-  file   = "models/fit_multivariate"
+prior_mv <- c(
+  set_prior("normal(0, 1)",       class = "b",  resp = "correct"),
+  set_prior("normal(0, 0.5)",     class = "b",  resp = "rt"),
+  # brms では `class = "sd"` も `resp` ごとに別パラメータとして扱われるため、両 resp で個別指定する
+  set_prior("student_t(3, 0, 1)", class = "sd", resp = "correct"),
+  set_prior("student_t(3, 0, 1)", class = "sd", resp = "rt")
 )
 
-# 共有ID (|p|) を介したランダム効果相関を確認
-VarCorr(fit_mv)
+fit_mv <- brm(
+  bf_acc + bf_rt + set_rescor(FALSE),  # 混合 family では残差相関は不可
+  data       = dat_lexical,
+  prior      = prior_mv,
+  chains     = 4,
+  iter       = 2000,
+  warmup     = 1000,
+  backend    = "cmdstanr",
+  control    = list(adapt_delta = 0.95, max_treedepth = 12),
+  seed       = 20260221,
+  file       = "models/fit_multivariate",
+  file_refit = "on_change"
+)
 ```
 
-混合 family（ここでは Bernoulli + lognormal）では残差相関ではなく、`(1|p|participant_id)` の共有IDを通じて目的変数間のランダム効果相関を推定します。これにより、学習者ごとの「正答しやすさ」と「反応速度」の関連を同時に捉えられます[@burkner2018]。
+##### 結果の確認
+
+```{r}
+#| eval: true
+#| label: multivariate-summary
+
+summary(fit_mv)
+```
+
+**読み方**:
+
+- `correct_*` の係数は **logit スケール**で、正答確率への効果（`exp()` でオッズ比）
+- `rt_*` の係数は **対数スケール**で、反応時間への効果（`exp()` で倍率）
+- `cor(correct_..., rt_...)` の行が**学習者レベルでの正答しやすさ ↔ 反応速度の相関**。負の相関なら「能力が高い学習者は速く正確」、正の相関なら「能力差が速度と正確性で逆方向」を示唆
+
+##### 共分散構造の可視化
+
+```{r}
+#| eval: true
+#| label: fig-multivariate-correlation
+#| fig-width: 8
+#| fig-height: 4
+#| fig-cap: "多変量モデルから推定された学習者レベルのランダム効果相関の事後分布。負の相関は「能力が高い学習者ほど速く正確」を示唆。"
+
+# 共有ID (|p|) を介したランダム効果相関の事後分布
+mcmc_areas(
+  fit_mv,
+  pars     = "cor_participant_id__correct_Intercept__rt_Intercept",
+  prob     = 0.95
+) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  labs(
+    title = "Posterior of person-level correlation: accuracy ↔ RT",
+    x = "Correlation between random intercepts"
+  )
+```
+
+**この相関の解釈**:
+
+- **負の方向に振れる**: 「正答率が高い学習者は反応も速い」（能力の高低が両指標で一貫）
+- **0 周辺に分布**: 正確性と速度が独立 — speed-accuracy trade-off が個人差を打ち消している可能性
+- **正の方向に振れる**: speed-accuracy trade-off（正確な学習者は遅い、速い学習者は不正確）
+
+##### 同時モデリングの利点 vs 別個分析
+
+`brm(correct ~ x)` と `brm(rt ~ x)` を別々に走らせる代わりに同時モデリングする利点:
+
+1. **個人レベルの相関構造を直接推定**: 正答しやすさと反応速度の関連が定量化される
+2. **欠測への頑健性**: どちらか片方の値が欠測でも、もう片方の情報が保たれる
+3. **共通効果の効率的推定**: `proficiency` の影響を同時に見ることで、技能間の波及効果を捉える
+4. **第 3 章 MANOVA・第 10 章多変量 G theory との接続**: 同一 family + `set_rescor(TRUE)` で MANOVA 相当の多変量検定を Bayesian に実装可能
+
+頻度論側の多変量手法 (`MANOVA::car`, `lavaan` の SEM, MASS::lda) は等共分散・正規性の仮定が強く、混合 family（bernoulli + lognormal など）には対応しません。`brms` の異種 family 多変量モデルは現代的な代替として位置付けられます[@burkner2018]。
 
 #### ベイズ媒介分析（Bayesian mediation analysis）
 
@@ -4530,32 +5839,293 @@ loo_compare(loo(fit_log_gaussian), loo(fit_lognormal))  # 比較不可！
 ```
 :::
 
-### 欠測データの扱い（`mi()` 項）
+### 欠測値・測定誤差・反応時間の同時モデル
 
-brms は **モデル推定と同時に欠測値を補完**できます。事前に `mice` 等で多重代入する必要がなく、不確実性が正しく伝播します[@mcelreath2020]。
+SLA・心理言語学・教育測定のデータでは、欠測値（missing values）、測定誤差（measurement error）、反応時間（reaction time, RT）が同時に現れることが珍しくありません。例えば、語彙判断課題では正誤、RT、語彙サイズ、熟達度、項目特性を同時に記録しますが、RT はタイムアウトや機器エラーで欠測し、語彙サイズは短縮版テストのため測定誤差を含み、正答率と RT は学習者・項目の個人差で相関します。この状況で完全ケース分析だけを行うと、推定対象が「欠測のない観測」に変わってしまう可能性があります。
+
+`brms` では、`mi()` による欠測値・測定誤差の同時推定、`se()` による既知の標準誤差付き応答、`bf()` の組み合わせによる多変量モデル、`subset()` による応答別の観測対象指定を組み合わせられます[@brmsMissingDataDoc; @brmsMiDoc; @brmsAdditionTermsDoc; @brmsMultivariateVignette]。
+
+| 問題 | 典型例 | `brms` の表現 | 何を推定しているか | 注意点 |
+|:--|:--|:--|:--|:--|
+| 目的変数の欠測 | 欠席で事後テスト得点がない | `score | mi() ~ ...` | 欠測した `score` をモデル内で同時に補完 | 基本は MAR 仮定です |
+| 予測子の欠測 | 語彙サイズの一部が未測定 | `mi(vocab_size)` + `bf(vocab_size | mi() ~ ...)` | 予測子の潜在値と主要効果を同時推定 | 予測子の補完モデルを明示します |
+| 測定誤差つき予測子 | 短縮版テストの語彙サイズと SEM | `vocab_obs | mi(sdy = vocab_se) ~ ...` | 観測値ではなく潜在真値を推定 | 古い `me()` は soft deprecated です[@brmsMeDoc] |
+| 測定誤差つき応答 | 推定得点に既知の標準誤差がある | `score | se(score_se, sigma = TRUE) ~ ...` | 観測誤差を含む応答モデル | 主にガウス系応答で使います |
+| 正答と RT の同時分析 | 語彙判断の accuracy + RT | `bf(correct, family = bernoulli()) + bf(rt, family = lognormal())` | 正答しやすさと速さの共変動 | 混合 family では `set_rescor(FALSE)` を使います |
+| RT が一部だけ観測 | 正答試行のみ RT を解釈する | `rt | subset(rt_observed) ~ ...` | RT モデルの対象試行を明示 | 「正答試行の RT」として解釈します |
+
+: 欠測値・測定誤差・反応時間を同時に扱うための `brms` 構文
+
+#### 1. まず欠測パターンを可視化する
+
+同時モデルに進む前に、どの変数がどの程度欠測しているかを可視化します。専用パッケージを使わなくても、`dplyr` と `ggplot2` だけで最低限の確認はできます。
 
 ```r
-# 欠測値がある予測子を mi() で囲む
-bform <- bf(score | mi() ~ age * mi(vocab_size)) +
-         bf(vocab_size | mi() ~ age) +
-         set_rescor(FALSE)
+missing_rate_tbl <- dat_lexical |>
+  summarise(
+    across(
+      c(correct, rt, vocab_obs, proficiency, word_freq),
+      ~ mean(is.na(.x)),
+      .names = "{.col}"
+    )
+  ) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "missing_rate")
 
-fit_mi <- brm(bform, data = dat_with_missing, backend = "cmdstanr")
+ggplot(missing_rate_tbl, aes(x = reorder(variable, missing_rate),
+                             y = missing_rate)) +
+  geom_col(fill = "#2C7FB8") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(
+    x = NULL,
+    y = "Missing rate",
+    title = "Missingness by Variable"
+  )
 ```
 
-- `score | mi()`: 目的変数に欠測がある場合
-- `mi(vocab_size)`: 予測子に欠測がある場合（別のサブモデルで補完）
-- `set_rescor(FALSE)`: 残差相関を推定しない
+欠測率だけでなく、「欠測が条件・熟達度・項目難度と関連しているか」も確認します。欠測が観測済み変数で説明できるなら MAR（Missing At Random）として `mi()` モデルを組みやすくなります。欠測が未観測の理由そのものに依存する MNAR（Missing Not At Random）が疑われる場合、`mi()` だけで問題が解決するとは考えず、感度分析や選択モデルを検討します。
 
-#### 欠測データの実務ガイドライン
+#### 2. 欠測値を `mi()` で同時推定する
 
-1. **MCAR/MAR の仮定**: brms の `mi()` は MAR（Missing At Random）を仮定。MNAR（Not At Random）には対応しない。
-2. **欠測率が 5% 未満**: 完全ケース分析（listwise deletion）でも大きな偏りは生じにくい。
-3. **欠測率が 5-20%**: `mi()` による同時補完を推奨。
-4. **欠測率が 20% 超**: 欠測メカニズムの検討が必要。感度分析を行う。
-5. **報告**: Method セクションに欠測率と処理方法を明記する。
+予測子に欠測がある場合、主要モデルの右辺では `mi(vocab_size)` と書き、その変数自身を説明する補完サブモデルを別に書きます。これにより、補完値の不確実性が主要効果の事後分布へ伝播します[@brmsMissingDataDoc; @brmsMiDoc]。
 
-### 分布回帰（Distributional Regression）
+```r
+# score と vocab_size に欠測がある例
+bform_mi <- bf(
+  score | mi() ~ condition + proficiency + mi(vocab_size) + (1 | class_id)
+) +
+  bf(
+    vocab_size | mi() ~ proficiency + l1_background + (1 | class_id)
+  ) +
+  set_rescor(FALSE)
+
+fit_mi <- brm(
+  bform_mi,
+  data       = dat_with_missing,
+  family     = gaussian(),
+  prior      = c(
+    set_prior("normal(0, 1)", class = "b"),
+    set_prior("student_t(3, 0, 1)", class = "sd")
+  ),
+  backend    = "cmdstanr",
+  chains     = 4,
+  iter       = 4000,
+  seed       = 20260221,
+  save_pars  = save_pars(latent = TRUE),
+  file       = "models/fit_mi"
+)
+```
+
+このモデルの読み方は次の通りです。`score | mi()` は目的変数の欠測を同時に扱う指定です。`mi(vocab_size)` は、主要モデルで使う語彙サイズを観測値そのものではなく、補完サブモデルから推定される潜在値として扱う指定です。`bf(vocab_size | mi() ~ ...)` は、語彙サイズの欠測をどの変数から予測するかを明示しています。
+
+#### 3. 測定誤差を潜在真値としてモデル化する
+
+語彙サイズ、発音評定、熟達度指標などは「測定された値」であり、真の能力そのものではありません。測定誤差が大きい予測子をそのまま右辺に入れると、係数が 0 に近づく方向へ偏ることがあります。`brms` では、測定誤差つき予測子を `mi(sdy = ...)` で表現できます。古い `me(x, sx)` 構文もありますが、現在の公式ドキュメントでは `mi()` による明示的な潜在変数モデルが推奨されます[@brmsMeDoc; @brmsMiDoc]。
+
+```r
+# vocab_obs: 観測された語彙サイズ
+# vocab_se : 語彙サイズ推定値の標準誤差（SEM など）
+
+bform_me <- bf(
+  score ~ condition + proficiency + mi(vocab_obs) + (1 | class_id)
+) +
+  bf(
+    vocab_obs | mi(sdy = vocab_se) ~ proficiency + l1_background + (1 | class_id)
+  ) +
+  set_rescor(FALSE)
+
+fit_me <- brm(
+  bform_me,
+  data       = dat_vocab_error,
+  family     = gaussian(),
+  backend    = "cmdstanr",
+  chains     = 4,
+  iter       = 4000,
+  seed       = 20260221,
+  save_pars  = save_pars(latent = TRUE),
+  file       = "models/fit_measurement_error"
+)
+```
+
+このとき `score ~ ... + mi(vocab_obs)` の係数は、「観測された語彙サイズ」ではなく、測定誤差を取り除いた**潜在的な語彙サイズ**に対する効果として解釈します。測定誤差が大きいほど、係数の信用区間は広くなるのが自然です。これは不確実性を隠しているのではなく、測定の不確実性を正しく反映しているためです。
+
+応答変数側に既知の標準誤差がある場合は、`se()` を使います。例えば、各学習者の能力推定値とその標準誤差が外部の IRT モデルから得られている場合です。
+
+```r
+fit_response_se <- brm(
+  ability_estimate | se(ability_se, sigma = TRUE) ~
+    condition + proficiency + (1 | class_id),
+  data    = dat_ability,
+  family  = gaussian(),
+  backend = "cmdstanr"
+)
+```
+
+#### 4. 正答と反応時間を同時にモデル化する
+
+正答率だけを見ると処理の正確性は分かりますが、処理速度は分かりません。RT だけを見ると、速いが誤答が多い学習者と、遅いが正確な学習者を区別しにくくなります。正答（accuracy）と RT を同時にモデリングすると、学習者ごとの「正答しやすさ」と「速さ」の関連をランダム効果相関として調べられます[@brmsMultivariateVignette]。
+
+```r
+# 正答と RT の基本的な同時モデル
+bf_acc <- bf(
+  correct ~ condition + proficiency + word_freq +
+    (1 |p| participant_id) + (1 |i| item_id),
+  family = bernoulli()
+)
+
+bf_rt <- bf(
+  rt ~ condition + proficiency + word_freq +
+    (1 |p| participant_id) + (1 |i| item_id),
+  family = lognormal()
+)
+
+fit_acc_rt <- brm(
+  bf_acc + bf_rt + set_rescor(FALSE),
+  data       = dat_lexical,
+  backend    = "cmdstanr",
+  chains     = 4,
+  iter       = 4000,
+  seed       = 20260221,
+  file       = "models/fit_acc_rt"
+)
+
+# 学習者・項目レベルの相関を確認
+VarCorr(fit_acc_rt)
+```
+
+`(1 |p| participant_id)` の `p` は、複数の応答式のランダム効果を結びつけるための共有 ID です。同じ共有 ID を使うことで、「正答しやすい学習者ほど速いのか、遅いのか」という相関を推定できます。Bernoulli と lognormal のように family が異なる多変量モデルでは、観測レベルの残差相関は推定せず、`set_rescor(FALSE)` を指定します。
+
+RT が正答試行だけで解釈可能な場合、RT サブモデルに `subset()` を入れて、対象試行を明示します。
+
+```r
+dat_lexical <- dat_lexical |>
+  mutate(rt_observed = !is.na(rt) & correct == 1)
+
+bf_acc <- bf(
+  correct ~ condition + proficiency + word_freq +
+    (1 |p| participant_id) + (1 |i| item_id),
+  family = bernoulli()
+)
+
+bf_rt_correct <- bf(
+  rt | subset(rt_observed) ~ condition + proficiency + word_freq +
+    (1 |p| participant_id) + (1 |i| item_id),
+  family = lognormal()
+)
+
+fit_acc_rt_correct <- brm(
+  bf_acc + bf_rt_correct + set_rescor(FALSE),
+  data    = dat_lexical,
+  backend = "cmdstanr",
+  chains  = 4,
+  iter    = 4000,
+  seed    = 20260221,
+  file    = "models/fit_acc_rt_correct"
+)
+```
+
+このモデルで得られる RT 効果は「正答試行における RT」の効果です。誤答やタイムアウトを含む全体の処理過程をモデル化したい場合は、正答・RT・タイムアウトの生成過程を明示したより複雑なモデルが必要です。
+
+#### 5. 欠測値・測定誤差・RT をまとめたモデル
+
+以下は、語彙サイズに欠測と測定誤差があり、正答と RT を同時に分析する発展例です。実務では一気にこのモデルへ進まず、(1) 正答のみ、(2) RT のみ、(3) 正答 + RT、(4) 測定誤差つき、(5) 欠測込み、という順に積み上げて診断してください。
+
+```r
+# 語彙サイズの観測値 vocab_obs には欠測と測定誤差 vocab_se がある
+# RT は正答試行でのみ解釈する
+# subset() された式で mi() 予測子を使うため、行 ID を index として渡す
+
+dat_lexical <- dat_lexical |>
+  mutate(
+    rt_observed = !is.na(rt) & correct == 1,
+    row_id = row_number()
+  )
+
+bf_acc <- bf(
+  correct ~ condition + proficiency + word_freq + mi(vocab_obs, row_id) +
+    (1 |p| participant_id) + (1 |i| item_id),
+  family = bernoulli()
+)
+
+bf_rt <- bf(
+  rt | subset(rt_observed) ~ condition + proficiency + word_freq +
+    mi(vocab_obs, row_id) +
+    (1 |p| participant_id) + (1 |i| item_id),
+  family = lognormal()
+)
+
+bf_vocab <- bf(
+  vocab_obs | mi(sdy = vocab_se) + index(row_id) ~ proficiency + l1_background +
+    (1 | participant_id),
+  family = gaussian()
+)
+
+fit_joint_acc_rt <- brm(
+  bf_acc + bf_rt + bf_vocab + set_rescor(FALSE),
+  data       = dat_lexical,
+  backend    = "cmdstanr",
+  chains     = 4,
+  iter       = 4000,
+  seed       = 20260221,
+  save_pars  = save_pars(latent = TRUE),
+  control    = list(adapt_delta = 0.99, max_treedepth = 15),
+  file       = "models/fit_joint_acc_rt"
+)
+```
+
+この同時モデルでは、語彙サイズの潜在真値が、正答サブモデルと RT サブモデルの両方に入ります。そのため、「語彙サイズが高いほど正答しやすいか」と「語彙サイズが高いほど速いか」を、語彙サイズの測定誤差を考慮したうえで同時に評価できます。
+
+`subset()` されたサブモデルの中で `mi()` 予測子を使う場合、brms はどの行の潜在値を参照するかを明示する必要があります。そのため、補完される応答側に `index(row_id)` を付け、主要モデル側では `mi(vocab_obs, row_id)` として対応付けています[@brmsMiDoc; @brmsAdditionTermsDoc]。
+
+#### 6. 同時モデルの可視化と報告
+
+同時モデルでは、係数表だけでは結果が伝わりにくいため、応答ごとに予測を可視化します。正答は確率、RT はミリ秒または秒の応答尺度で示すと、初心者にも解釈しやすくなります。
+
+```r
+# 正答確率の条件効果
+ce_acc <- conditional_effects(
+  fit_joint_acc_rt,
+  effects    = "condition",
+  resp       = "correct",
+  re_formula = NA
+)
+
+# RT の条件効果（lognormal でも応答尺度で表示）
+ce_rt <- conditional_effects(
+  fit_joint_acc_rt,
+  effects    = "condition",
+  resp       = "rt",
+  re_formula = NA
+)
+
+plot(ce_acc, plot = FALSE)[[1]] +
+  labs(y = "Predicted accuracy", title = "Accuracy")
+
+plot(ce_rt, plot = FALSE)[[1]] +
+  labs(y = "Predicted RT", title = "Reaction time")
+```
+
+事後予測チェックも応答ごとに行います。
+
+```r
+pp_check(fit_joint_acc_rt, resp = "correct", type = "bars")
+pp_check(fit_joint_acc_rt, resp = "rt", type = "dens_overlay", ndraws = 100)
+```
+
+報告では、次の4点を最低限含めます。
+
+1. **欠測**: 欠測率、欠測パターン、MAR とみなした根拠、感度分析の有無。
+2. **測定誤差**: 測定誤差の由来（SEM、信頼性係数、機器精度など）と、潜在真値として解釈したこと。
+3. **RT 分布**: `lognormal()`、`Gamma()`、`exgaussian()` などを選んだ理由と PPC の結果。
+4. **同時モデルの相関**: 学習者・項目レベルで、正答しやすさと速さがどう関連したか。
+
+::: {.callout-warning}
+#### 同時モデルを使う前の注意
+
+欠測値・測定誤差・RT を同時に扱うモデルは強力ですが、常に最初の選択肢ではありません。サンプルが小さい、欠測率が高い、測定誤差の標準誤差が不確か、RT の外れ値が多い、ランダム効果構造が複雑すぎる、といった条件が重なると、MCMC 診断が悪化しやすくなります。単純なモデルから順に積み上げ、各段階で `Rhat`、ESS、NUTS 診断、PPC、LOO/K-fold を確認してください。
+:::
+
+### 分布回帰（Distributional Regression） {#sec-distributional-regression}
 
 brms では目的変数の**平均だけでなく分散やその他のパラメータも予測子の関数**としてモデル化できます[@burkner2018]。
 
@@ -4667,7 +6237,7 @@ fit_laplace_smoke <- do.call(
 )
 ```
 
-## brms を超えて: 潜在変数モデリングと Stan
+## brms を超えて: 潜在変数モデリングと Stan {#sec-beyond-brms}
 
 ### brms でできること・できないこと
 
@@ -4680,7 +6250,8 @@ fit_laplace_smoke <- do.call(
 | ゼロ過剰/ハードルモデル | ✅ | — | ✅ |
 | 多変量回帰 (CAF) | ✅ | — | ✅ |
 | 分布回帰 (`sigma ~`) | ✅ | — | ✅ |
-| IRT (Rasch, 2PL) | ✅ | — | ✅ |
+| IRT (Rasch, 2PL) | ✅ | — | ✅（詳細は別章） |
+| 層化・事後層化 (stratification / poststratification) | ✅（推定後にRで集計） | — | ✅ |
 | 確認的因子分析 (CFA) | ❌ | ✅ | ✅ |
 | 構造方程式モデリング (SEM) | ❌ | ✅ | ✅ |
 | 成長曲線モデル | ❌ | ✅ | ✅ |
@@ -4690,23 +6261,226 @@ fit_laplace_smoke <- do.call(
 : ベイズモデリングツールの比較
   brms → blavaan → Stan の順で自由度が上がる
 
-### blavaan: ベイズ SEM
+### blavaan: ベイズ SEM {#sec-blavaan}
 
-潜在変数を含むモデルには **blavaan** パッケージが有用です[@merkle2018; @merkle2021]。`lavaan` と同じ構文でベイズ CFA/SEM を実行できます。
+潜在変数を含むモデルには **blavaan** パッケージが有用です[@merkle2018; @merkle2021]。`lavaan` と同じ構文（`=~`, `~`, `~~`）でベイズ CFA/SEM を実行できるため、第 9 章で `lavaan` を学んだ読者は移行コストが極めて低いです。背後では Stan が走り、HMC/NUTS で潜在変数を含む同時事後分布を推定します。
 
-```r
+#### `lavaan` と `blavaan` の対応
+
+| 観点 | `lavaan` (頻度論) | `blavaan` (ベイズ) |
+|:---|:---|:---|
+| 構文 | `'f =~ x1 + x2 + x3'` | **同一**（学習コストゼロ） |
+| 推定 | ML / WLS / GLS | HMC/NUTS via Stan |
+| 出力 | 点推定 + 標準誤差 | 事後分布全体 (中央値・HDI・密度) |
+| 不確実性 | 漸近 (大標本前提) | 厳密 (小サンプルでも有効) |
+| Heywood 解 (負の分散) | 推定が破綻することあり | 半正規/半 Cauchy 事前分布で自動回避 |
+| 適合度 | $\chi^2$, CFI, RMSEA | PPP-value, BIC, posterior predictive checks |
+| カスタム制約 | `==`, `<`, `>` で線形等式・不等式 | 任意の事前分布で柔軟に表現 |
+
+#### 完全なベイズ CFA の実装例
+
+```{r}
+#| eval: false
+#| label: blavaan-cfa-example
+
 # ベイズ確認的因子分析（例: ライティング能力の測定モデル）
-model <- '
+# 4 つの観測変数 (文法、語彙、構成、一貫性) から 1 つの潜在変数 (writing_ability) を抽出
+# さらに潜在変数が proficiency と instruction で説明される構造方程式
+
+cfa_model <- '
+  # 測定モデル (factor loadings)
   writing_ability =~ grammar + vocabulary + organization + coherence
+
+  # 構造モデル (regression on latent variable)
   writing_ability ~ proficiency + instruction
 '
 
-fit_sem <- blavaan::bsem(model, data = dat, backend = "cmdstanr",
-                n.chains = 4, burnin = 1000, sample = 2000)
+fit_sem <- blavaan::bsem(
+  cfa_model,
+  data        = dat_writing,
+  backend     = "cmdstanr",      # rstan より高速
+  n.chains    = 4,
+  burnin      = 1000,            # blavaan の用語は warmup と同義
+  sample      = 2000,
+  dp          = blavaan::dpriors(
+    nu     = "normal(0, 5)",     # 切片
+    lambda = "normal(0, 1)",     # 因子負荷
+    beta   = "normal(0, 1)",     # 構造方程式の回帰係数
+    psi    = "gamma(1, 0.5)"     # 残差分散 (逆ガンマでも可)
+  ),
+  seed        = 20260221
+)
+
+# 事後分布の要約
 summary(fit_sem)
+
+# 適合度: PPP-value (posterior predictive p-value) を確認
+blavaan::fitMeasures(fit_sem, c("ppp", "bic"))
+
+# 事後予測チェック
+blavaan::ppmc(fit_sem)
 ```
 
-**SLA での応用例**: ライティング能力を複数の下位尺度（文法、語彙、構成、一貫性）から潜在変数として推定し、指導法や熟達度の効果を同時にモデル化。
+#### ベイズ SEM の実務的利点
+
+1. **小サンプルでの安定性**: lavaan で Heywood 解（負の分散）が出る場合でも、半正規事前分布で自動回避
+2. **不確実性の伝搬**: 因子負荷・構造係数・潜在変数値の事後分布が同時に得られる
+3. **欠測データへの対応**: `missing = "fiml"` 不要。事後分布が欠測の不確実性を自動的に取り込む
+4. **複雑な事前知識の組み込み**: 「因子負荷は正であるはず」「2 つの構造係数の和は 1」など、lavaan では表現困難な制約を事前分布で柔軟に表現
+5. **第 9 章との接続**: 第 9 章「因子分析・SEM」で扱う lavaan のモデルをそのままベイズで再分析可能
+
+::: {.callout-tip}
+#### `lavaan` か `blavaan` か: 実務的判断基準
+
+| 状況 | 推奨 |
+|:---|:---|
+| サンプルサイズ大 ($N > 500$)、標準的 CFA/SEM | `lavaan` (高速) |
+| 小サンプル ($N < 200$)、Heywood 解の懸念 | **`blavaan`** (事前分布で正則化) |
+| 強い理論的事前知識がある | **`blavaan`** (事前分布として組み込み) |
+| 査読基準で頻度論的適合度指標 (CFI, RMSEA) が必須 | `lavaan` |
+| 事後分布での仮説評価、ROPE 判定が必要 | **`blavaan`** |
+| lavaan に既に習熟している | `blavaan` (構文同一なので即移行可) |
+:::
+
+### ベイズ Rasch モデル: brms による IRT 実装 {#sec-bayesian-rasch}
+
+第 11 章で扱う **項目応答理論 (IRT) の Rasch モデル**は、実は **`brms` の Bernoulli GLMM として直接実装可能**です。これは Rasch モデルが数学的に「対数オッズ = 受験者能力 − 項目困難度」という単純な構造を持つためで、`(1 | person) + (1 | item)` の交差ランダム効果モデルと数学的に等価です[@deboeck2004; @burkner2021irt]。
+
+#### Rasch モデルの数学的定式化と brms 構文の対応
+
+Rasch モデルの確率モデル:
+
+$$
+P(Y_{pi} = 1 \mid \theta_p, \delta_i) = \frac{\exp(\theta_p - \delta_i)}{1 + \exp(\theta_p - \delta_i)} = \mathrm{logit}^{-1}(\theta_p - \delta_i)
+$$
+
+ここで $\theta_p$ は受験者 $p$ の能力、$\delta_i$ は項目 $i$ の困難度。これは **logit リンクの Bernoulli モデルで、固定効果なし、受験者と項目の交差ランダム切片のみ**として実装可能です:
+
+```{r}
+#| eval: false
+#| label: bayesian-rasch-basic
+
+# Rasch モデル: brms の Bernoulli GLMM として実装
+# correct: 0/1 の正答データ (long format)
+# person_id: 受験者 ID
+# item_id: 項目 ID
+
+prior_rasch <- c(
+  set_prior("normal(0, 3)",  class = "sd", group = "person_id"),  # 受験者能力 SD
+  set_prior("normal(0, 3)",  class = "sd", group = "item_id")     # 項目困難度 SD
+)
+# 注: brms は class = "sd" に対して正規分布を指定すると、SD は非負制約があるため
+#     自動的に半正規分布として扱う。明示的に半正規を書きたい場合は
+#     student_t(3, 0, 3) なども使える。
+
+fit_rasch <- brm(
+  correct ~ 0 + (1 | person_id) + (1 | item_id),
+  data       = dat_test,
+  family     = bernoulli(link = "logit"),
+  prior      = prior_rasch,
+  chains     = 4,
+  iter       = 2000,
+  warmup     = 1000,
+  backend    = "cmdstanr",
+  seed       = 20260221,
+  file       = "models/fit_rasch"
+)
+
+# 受験者能力 (θ_p) の事後分布: ranef() で抽出
+theta_p <- ranef(fit_rasch)$person_id[, , "Intercept"]
+
+# 項目困難度 (δ_i) の事後分布: ranef() で抽出して符号反転
+# 切片を 0 にした (1|item_id) は項目「容易度」(正答ロジット) を返すため、
+# 古典的な Rasch 表記の困難度 δ_i = -容易度 として符号反転する。
+delta_i <- -ranef(fit_rasch)$item_id[, , "Intercept"]
+
+# 個別受験者・項目のパラメータと CrI
+print(theta_p)
+print(delta_i)
+```
+
+#### Rasch モデルから IRT モデル族への拡張
+
+`brms` の枠組みで、Rasch から 2PL (2-parameter logistic)、3PL、PCM (Partial Credit Model)、MFRM (Many-Facet Rasch Model) まで自然に拡張できます[@burkner2021irt]:
+
+| モデル | 数学的定式化 | brms 構文 | 第 11/12 章との対応 |
+|:---|:---|:---|:---|
+| **Rasch (1PL)** | $\theta_p - \delta_i$ | `correct ~ 0 + (1\|person) + (1\|item)` | 第 11 章基本モデル |
+| **2PL** | $a_i (\theta_p - \delta_i)$ | `bf(correct ~ a * theta - delta, nl = TRUE) + nlf(...)` の非線形定式化 | 第 11 章拡張 |
+| **PCM (順序応答)** | 累積/隣接ロジット + Rasch | `cumulative()` family + `(1\|person) + (1\|item)` | 第 11 章リッカート版 |
+| **MFRM** | $\theta_p - \delta_i - \beta_r$ | `correct ~ 0 + (1\|person) + (1\|item) + (1\|rater)` | **第 12 章中心モデル** |
+| **LLTM** (Linear Logistic Test Model) | $\delta_i = \sum_k q_{ik} \eta_k$ | 項目特性を固定効果で説明 | 第 11 章発展 |
+| **Explanatory IRT** | 受験者属性 + 項目属性で能力/困難度を説明 | `(1 + x\|person) + (1 + z\|item)` | 第 11 章発展 |
+
+#### MFRM (多相ラッシュモデル) の brms 実装
+
+第 12 章で扱う MFRM は、**評価者ファセットを追加した Rasch モデル**として `brms` で直接実装できます。これは第 10 章 G theory の「Person + Task + Rater + 交互作用」の分散成分推定とも整合しています:
+
+```{r}
+#| eval: false
+#| label: bayesian-mfrm
+
+# MFRM: 受験者 + 課題 + 評価者の交差ランダム効果
+# scoring: スピーキング評定の 2 値正答 or 順序評定
+# Person, Task, Rater が交差ランダム効果として登場
+
+prior_mfrm <- c(
+  set_prior("normal(0, 3)", class = "sd", group = "person_id"),
+  set_prior("normal(0, 3)", class = "sd", group = "task_id"),
+  set_prior("normal(0, 3)", class = "sd", group = "rater_id")
+)
+
+# 2 値版 MFRM (合格/不合格)
+fit_mfrm_binary <- brm(
+  passed ~ 0 + (1 | person_id) + (1 | task_id) + (1 | rater_id),
+  data       = dat_speaking,
+  family     = bernoulli(link = "logit"),
+  prior      = prior_mfrm,
+  chains     = 4, iter = 2000, warmup = 1000,
+  backend    = "cmdstanr",
+  seed       = 20260221,
+  file       = "models/fit_mfrm_binary"
+)
+
+# 順序版 MFRM (5 段階リッカート評定)
+fit_mfrm_ordinal <- brm(
+  rating ~ 0 + (1 | person_id) + (1 | task_id) + (1 | rater_id),
+  data       = dat_speaking,
+  family     = cumulative("logit"),
+  prior      = prior_mfrm,
+  chains     = 4, iter = 2000, warmup = 1000,
+  backend    = "cmdstanr",
+  seed       = 20260221,
+  file       = "models/fit_mfrm_ordinal"
+)
+
+# 評価者の厳しさ (severity) の事後分布
+# 負の値 = 厳しい評価者 (合格させにくい)、正の値 = 甘い評価者
+rater_severity <- ranef(fit_mfrm_binary)$rater_id[, , "Intercept"]
+print(rater_severity)
+```
+
+#### ベイズ MFRM の利点 vs FACETS / TAM
+
+第 12 章で扱う伝統的 MFRM ソフトウェア (FACETS, TAM) との比較:
+
+| 観点 | FACETS / TAM (頻度論) | brms / Stan (ベイズ) |
+|:---|:---|:---|
+| 推定法 | 周辺最尤法 (MML) | HMC/NUTS による事後分布全体 |
+| 評価者厳しさの不確実性 | 標準誤差 (漸近) | 事後分布 + 95% HDI |
+| 評価者数が少ない場合 | 推定不安定 | 事前分布で正則化、安定 |
+| バイアス分析 (rater × task interaction) | 別途計算 | `(1 \| rater:task)` で同一モデル内 |
+| 公正スコア (fair score) | 自動算出 | `posterior_epred()` で算出可能 |
+| ライセンス | FACETS 商用、TAM 無料 | 完全無料・オープンソース |
+| 出力統合 | FACETS は専用形式 | tidyverse / brms ecosystem に直結 |
+
+::: {.callout-tip}
+#### 第 11/12 章への準備としての本節
+
+第 11 章 (IRT) と第 12 章 (MFRM) は本書では **頻度論的な mirr / TAM / FACETS** を中心に扱いますが、本節を読めばすべての IRT モデルが **`brms` の Bernoulli/cumulative GLMM** として再実装可能であることが分かります。第 11/12 章を読んだ後に本節に戻り、同じデータをベイズ的に再分析することで、点推定 + SE では見えなかった「個別受験者・個別評価者の事後分布」「小サンプル時の安定性」を実感できます[@burkner2021irt]。
+
+第 10 章 G theory との接続も明示的です: G theory は分散成分 ($\sigma^2_p$, $\sigma^2_r$, $\sigma^2_i$) を推定し、IRT/MFRM は個別水準のパラメータ ($\theta_p$, $\delta_i$, $\beta_r$) を推定します。両者は**同じ多階層モデルの異なる読み方**であり、`brms` ではどちらも同じ `lmer`/`glmer` 形式の構文で実装できます[@deboeck2004]。
+:::
 
 ### Stan: 完全な自由度
 
@@ -4714,17 +6488,42 @@ summary(fit_sem)
 
 **Stan でしかできないこと（SLA 関連の例）**:
 
-- **カスタム IRT モデル**: 多相ラッシュモデル（MFRM）のベイズ版
+- **カスタム IRT モデル**: 多相ラッシュモデル（MFRM）などのベイズ版（詳細は IRT の章で扱う）
 - **認知診断モデル**: DINA/DINO モデルのベイズ推定
 - **非線形成長モデル**: カスタムの学習曲線（例: 2パラメータ指数関数的成長）
 - **混合分布モデル**: 学習者を「習得群」と「未習得群」に分類する mixture model
 - **カスタム尤度**: 標準的な分布族に当てはまらない応答パターン
+
+#### 層化・事後層化（stratification / poststratification）
+
+英語教育研究では、サンプルが母集団を完全には代表しないことがよくあります。例えば、大学1校の B2 学習者が多すぎる、私立校の参加者が多い、特定の L1 背景の学習者が過小代表される、といった状況です。このとき、層化（stratification）は母集団を「熟達度 × 学校種 × L1 背景 × 地域」のようなセルに分けて考える方法です。事後層化（poststratification）は、モデル推定後に各セルの予測値を母集団セルサイズで重み付けし、母集団全体の推定値を得る方法です[@stanPoststratificationDoc]。
+
+Stan では、階層モデルでセルごとの予測値を推定し、`generated quantities` で事後層化推定量を計算できます。これは MRP（multilevel regression and poststratification）と呼ばれる枠組みです。
+
+```stan
+// 事後層化の発想を示す最小スケッチ
+data {
+  int<lower=1> J;                 // 層・セルの数
+  vector<lower=0>[J] N_pop;       // 母集団における各セルの人数
+}
+parameters {
+  vector[J] theta_cell;           // 各セルの予測平均（実際には階層モデルで推定）
+}
+generated quantities {
+  real theta_population;
+  theta_population = dot_product(N_pop, theta_cell) / sum(N_pop);
+}
+```
+
+`brms` でも、モデルを推定したあとに R 側で `posterior_epred()` を使い、セルサイズで重み付けすれば同じ考え方を実装できます。ただし、複雑なセル構造、欠けているセル、複数アウトカム、非標準的な重み付けを同時に扱う場合は、Stan に直接書く方が透明です。SLA では、特定の授業・学校・地域に偏ったサンプルから、対象母集団全体の平均エラー率や高評価確率を推定したい場合に有用です。
 
 #### brms から Stan への「卒業」パス
 
 1. **brms の `stancode()`** で生成された Stan コードを読み、Stan の構文を理解する（本章で実践済み）
 2. **生成されたコードを修正**: `make_standata()` でデータを、`stancode()` でコードを取得し、部分的に修正して `cmdstanr::cmdstan_model()` でコンパイル
 3. **ゼロからの Stan プログラミング**: @carpenter2017 の Stan User's Guide と @nicenboim2025 のチュートリアルが最良の入門書
+
+実務上は、`brms` が生成した Stan コードをそのまま手編集して再利用する前に、まず `brms` の formula、family、`stanvars`、distributional formula で表現できないかを確認してください。生成コードは `brms` の内部実装に依存するため、バージョン更新で構造が変わることがあります。カスタム Stan に進む場合は、`make_standata()` で Stan に渡すデータを固定し、`cmdstanr::cmdstan_model()` でコンパイルし、シミュレーションデータでパラメータ回復を確認してから実データに適用するのが安全です[@cmdstanrGettingStarted; @carpenter2017]。
 
 brms で 80-90% のベイズ分析はカバーできます。残りの 10-20%（潜在変数、カスタム尤度、認知モデル）に Stan が必要です。
 
@@ -4750,7 +6549,7 @@ brms で 80-90% のベイズ分析はカバーできます。残りの 10-20%（
 
 | 尤度族 | リンク | `Normal(0, 1)` の意味 | 弱情報的な推奨 | メタ分析値の変換 |
 |:--|:--|:--|:--|:--|
-| `gaussian` | `identity` | 応答の 1 単位変化 | `Normal(0, SD_y)` | `d` をそのまま使用 |
+| `gaussian` | `identity` | 応答の 1 単位変化 | `Normal(0, SD_y)` | 応答を標準化していれば `d` と近い尺度で使用 |
 | `poisson` | `log` | `IRR = exp(1) = 2.72`（2.7 倍の変化） | `Normal(0, 0.5-1.0)` | `log(IRR)` を使用 |
 | `bernoulli / binomial` | `logit` | `OR = exp(1) = 2.72` | `Normal(0, 1.0-1.5)` | `log(OR)` を使用 |
 | `cumulative` | `logit` | 累積 `OR = 2.72` | `Normal(0, 1.0)` | `log(OR)` を使用 |
@@ -4759,12 +6558,63 @@ brms で 80-90% のベイズ分析はカバーできます。残りの 10-20%（
 : 事前分布のスケールマッチングガイド
   `Normal(0, σ)` の `σ` は尤度族のリンク関数スケールで解釈される
 
+メタ分析の標準化平均差（$d$ や $g$）は、アウトカムとリンク関数が同じ場合を除き、係数事前分布に直接入れません。2値・順序アウトカムでは潜在ロジスティック分布を仮定した近似として `log(OR) ≈ d × π / √3` が使われることがありますが、これはポアソンモデルの `log(IRR)` には適用できません。
+
+### prior レシピ：研究仮説を `brms` のスケールへ翻訳する
+
+事前分布（prior）は「弱く入れるか、強く入れるか」だけでなく、**どの尺度で入れるか**が重要です。以下の表は、研究仮説から `brms` の係数スケールへ翻訳するための実務レシピです。各モデルでは、`get_prior()` で指定可能なパラメータ名を確認してから `set_prior()` を書いてください[@brmsSetPriorDoc]。
+
+| 分析場面 | 研究仮説の自然な表現 | `brms` での係数スケール | まず試す prior | 事前予測チェックで見る点 |
+|:--|:--|:--|:--|:--|
+| 標準化済みテスト得点 | 平均差 $d = 0.3$ 程度 | identity | `normal(0, 0.5)` | 予測得点が標準化尺度で ±3 を大きく超えないか |
+| エラー数・発話数 | エラーが 20% 減る | `log(IRR)` | `normal(0, 0.5)` または `normal(log(0.8), 0.3)` | 0 個や極端な大カウントの頻度が現実的か |
+| 正誤・合否 | 正答オッズが 1.5 倍 | `log(OR)` | `normal(0, 1)` または `normal(log(1.5), 0.4)` | 事前だけで正答率が 0/1 に張り付かないか |
+| 順序評定 | 高い評定に入るオッズが増える | 累積 `log(OR)` | `normal(0, 1)` | 各カテゴリの事前予測確率が極端に偏らないか |
+| RT（lognormal） | 反応時間が 5% 短くなる | 平均 log-RT | `normal(0, 0.2)` または `normal(log(0.95), 0.1)` | 予測 RT が測定機器の範囲を超えないか |
+| ランダム効果 SD | 学習者差は中程度 | 正値 SD | `student_t(3, 0, 1)` または `exponential(1)` | 個人差だけで非現実的な予測が出ないか |
+| 相関ランダム効果 | 技能間相関は極端でない | 相関行列 | `lkj(2)` | 相関が ±1 近くに過度に集中しないか |
+
+: 研究仮説から事前分布へ翻訳するための prior レシピ
+
+```r
+# 研究仮説をリンク関数スケールへ翻訳する最小例
+
+# ポアソン: 「介入でエラー数が 20% 減る」
+log_irr_feedback <- log(0.80)
+prior_pois_feedback <- c(
+  set_prior(sprintf("normal(%.3f, 0.30)", log_irr_feedback),
+            class = "b", coef = "feedbacktreatment"),
+  set_prior("normal(0, 0.50)", class = "b"),
+  set_prior("student_t(3, 0, 1)", class = "sd")
+)
+
+# ロジスティック: 「正答オッズが 1.5 倍」
+log_or_condition <- log(1.50)
+prior_logit_condition <- c(
+  set_prior(sprintf("normal(%.3f, 0.40)", log_or_condition),
+            class = "b", coef = "conditionexperimental"),
+  set_prior("normal(0, 1)", class = "b"),
+  set_prior("student_t(3, 0, 1)", class = "sd")
+)
+
+# RT: 「実験条件で RT が 5% 短くなる」
+log_rt_ratio <- log(0.95)
+prior_rt_condition <- c(
+  set_prior(sprintf("normal(%.3f, 0.10)", log_rt_ratio),
+            class = "b", coef = "conditionexperimental"),
+  set_prior("normal(0, 0.20)", class = "b"),
+  set_prior("student_t(3, 0, 0.50)", class = "sd")
+)
+```
+
+ROPE も同じ尺度で設定します。例えば「IRR が 0.90〜1.10 なら実質的に差がない」と考えるなら `log(c(0.90, 1.10))` を使います。「OR が 0.84〜1.20 なら実質的に差がない」と考えるなら `log(c(0.84, 1.20))` を使います。係数の posterior はリンク関数スケール、`conditional_effects()` や `posterior_epred()` は応答尺度で確認する、という使い分けが実務では安定します。
+
 ::: {.callout-important}
 #### よくある間違い
 
 - **ポアソンモデルで `Normal(0, 10)`**: log スケールなので `exp(10) = 22,026` 倍の変化を許容することになり、非現実的。`Normal(0, 0.5)` ≈ IRR が 0.6〜1.6 の範囲が適切。
 - **切片（Intercept）の事前分布はスロープと別スケール**: ポアソンの切片はベースレートの対数（例: `log(10) = 2.3`）。`Normal(2.3, 0.7)` のように中心を想定値に合わせる。
-- **メタ分析の効果量 d を事前分布に使う場合**: d → log(OR) の変換が必要（`log(OR) = d × π / √3 ≈ d × 1.81`）。
+- **メタ分析の効果量 d を事前分布に使う場合**: モデルのリンク関数スケールに合わせる。2値・順序アウトカムの近似では d → log(OR)（`log(OR) ≈ d × π / √3 ≈ d × 1.81`）を使うことがありますが、カウントデータでは研究仮説を IRR に翻訳して `log(IRR)` を指定する。
 :::
 
 ### ランダム効果 SD の事前分布: どれを選ぶか
@@ -4877,7 +6727,7 @@ tibble::tribble(
 | 側面 | `cumulative()` | `acat()` |
 |:--|:--|:--|
 | 仮定 | 各カテゴリ `k` に対して `P(Y ≤ k)` をモデル化 | 隣接カテゴリの比 `P(Y=k) / P(Y=k-1)` をモデル化 |
-| 解釈 | 「`k` 以下の累積確率」に対する OR | 「`k` と `k-1` の比」に対する OR |
+| 解釈 | 閾値を超えて高いカテゴリ側に入る累積 OR（brms の `cumulative()` では正の係数が高カテゴリ方向） | 「`k` と `k-1` の比」に対する OR |
 | 比例オッズ仮定 | 全閾値で効果が同一（proportional odds） | 全隣接ペアで効果が同一 |
 | 適切な場面 | 順序尺度で「高い/低い」の方向性が重要 | 「隣接するカテゴリ間の遷移」が重要 |
 | brms 構文 | `family = cumulative()` | `family = acat()` |
@@ -4887,49 +6737,178 @@ tibble::tribble(
 
 #### 実務での選択
 
-- **迷ったら `cumulative()`**: 最も広く使われ、解釈がシンプル。比例オッズ仮定の検証は `pp_check()` で。
+- **迷ったら `cumulative()`**: 最も広く使われ、解釈がシンプル。比例オッズ仮定が疑わしい場合は、カテゴリ別 PPC、予測確率図、`cs()` などのカテゴリ別効果を含むモデル、または `acat()` との `loo_compare()` を組み合わせて確認します。
 - **`acat()` を検討する場面**: 「1→2 の遷移」と「4→5 の遷移」が質的に異なると考えられる場合（例：CEFR の A2→B1 は文法知識、B2→C1 は流暢性）。
 - **両方推定して `loo_compare()`** で比較するのがベストプラクティス。
 
-### 正則化事前分布: Laplace（LASSO）と Horseshoe
+### 正則化事前分布: ベイズ推定と頻度論的 penalty の統一的視点 {#sec-regularizing-priors}
 
-ベイズ推定では、事前分布の選択によって**変数選択**（LASSO 的な効果）を実現できます。
+ベイズ推定の事前分布の選択は、**頻度論の正則化（regularization）と数学的に等価**な役割を果たします。事前分布から **MAP (Maximum A Posteriori) 推定** を求めると、各事前分布が特定の penalty 項をもつ罰則付き最尤推定（penalized MLE）と一致します。この対応関係を理解すると、`brms` の事前分布選択が「頻度論で言う ridge / LASSO / elastic net をどう使うか」と同じ問題に帰着することが見えてきます。
 
-#### Laplace 事前分布（ベイジアン LASSO）
+#### 数学的対応: 事前分布 ↔ Penalty 項
 
-`double_exponential(0, scale)` を固定効果に設定すると、LASSO 回帰のように多くの係数をゼロ付近に収縮させます[@park2008]。`scale` が小さいほど強い正則化です。
+回帰モデル $y = X\beta + \epsilon$ で、$\epsilon \sim N(0, \sigma^2)$ を仮定したときの MAP 推定:
 
-```r
-# Laplace 事前分布で変数選択効果
-prior_lasso <- set_prior("double_exponential(0, 0.5)", class = "b")
+$$
+\hat{\beta}_{\text{MAP}} = \arg\max_\beta \left[ \log p(y | \beta, \sigma) + \log p(\beta) \right]
+= \arg\min_\beta \left[ \frac{1}{2\sigma^2}\|y - X\beta\|^2 - \log p(\beta) \right]
+$$
+
+事前分布 $p(\beta)$ の対数を取ったものが、頻度論的な penalty 項 $-\log p(\beta)$ になります。
+
+| 事前分布 $p(\beta)$ | $-\log p(\beta)$ (penalty) | 対応する頻度論手法 | brms 構文 |
+|:---|:---|:---|:---|
+| **Normal**: $N(0, \tau^2)$ | $\dfrac{1}{2\tau^2}\sum_j \beta_j^2 = \lambda \|\beta\|_2^2$（$\lambda := 1/(2\tau^2)$） | **Ridge 回帰**[@hoerl1970] | `set_prior("normal(0, 0.5)", class = "b")` |
+| **Laplace**: Laplace$(0, b)$ | $\dfrac{1}{b}\sum_j \|\beta_j\| = \lambda \|\beta\|_1$（$\lambda := 1/b$） | **LASSO**[@tibshirani1996; @park2008] | `set_prior("double_exponential(0, 0.5)", class = "b")` |
+| **Normal × Laplace 混合** | $\lambda_1 \|\beta\|_1 + \lambda_2 \|\beta\|_2^2$ | **Elastic Net**[@zou2005] | `set_prior` の合成（Stan 直接書き） |
+| **Horseshoe**: $\beta_j \sim N(0, \tau^2 \lambda_j^2)$, $\lambda_j \sim C^+(0,1)$ | 適応的・閉形なし（局所縮小パラメータ $\lambda_j$ による調整） | **適応的縮小**（厳密には頻度論対応なし）[@carvalho2010; @piironen2017] | `set_prior("horseshoe(1)", class = "b")` |
+| **Spike-and-slab**: 混合分布 | 0/1 に対応する離散選択 | **厳密な変数選択** | `brms` では直接実装なし（Stan 自前） |
+
+**重要な対応点**: ベイズ推定は MAP のみならず**事後分布全体**を返すため、頻度論の点推定（LASSO の係数）よりも豊かな情報（係数の不確実性）を提供します。「LASSO で 0 になった係数」はベイズでは「事後分布が 0 付近に強く集中している係数」として解釈され、感度分析や CrI の議論ができます。
+
+#### Bayesian LASSO（ラプラス事前分布）の詳細
+
+@park2008 が提唱した **Bayesian LASSO** は、Laplace（double exponential）事前分布を回帰係数に当てたモデルです。Laplace 分布の密度関数:
+
+$$
+p(\beta_j | b) = \frac{1}{2b} \exp\left(-\frac{|\beta_j|}{b}\right)
+$$
+
+このため対数密度は $-|\beta_j|/b$ となり、MAP 推定では $\sum_j |\beta_j|$ という **L1 penalty** が課されます。Tibshirani (1996) の頻度論 LASSO と数学的に等価です。
+
+```{r}
+#| label: bayesian-lasso-example
+#| eval: false
+
+# Bayesian LASSO: 多数の予測子から重要なものを縮小選択
+prior_lasso <- c(
+  set_prior("double_exponential(0, 0.5)", class = "b"),
+  set_prior("normal(2.3, 0.7)", class = "Intercept"),
+  set_prior("student_t(3, 0, 1)", class = "sd")
+)
 
 fit_lasso <- brm(
   error_count ~ proficiency + l1_background + task_type +
     essay_length_sc + vocabulary_diversity + sentence_complexity +
+    avg_word_length + type_token_ratio +
     (1 | student_id),
-  data = dat_essay,
-  family = poisson(),
-  prior = prior_lasso,
-  backend = "cmdstanr"
+  data       = dat_essay,
+  family     = poisson(),
+  prior      = prior_lasso,
+  backend    = "cmdstanr",
+  chains     = 4,
+  iter       = 4000,
+  seed       = 20260221,
+  file       = "models/fit_bayesian_lasso"
+)
+
+# 事後分布の縮小度合いを確認
+mcmc_areas(fit_lasso, regex_pars = "^b_", prob = 0.95)
+```
+
+**Bayesian LASSO の利点と限界**:
+
+- **利点**: 頻度論 LASSO が返さない**係数の事後分布全体**が得られる。CrI、HDI、ROPE 判定が可能
+- **利点**: 予測子間の不確実性のトレードオフが見える（相関のある予測子で代替的に選ばれる挙動）
+- **限界**: Horseshoe と比べて**大きい係数も収縮**してしまう傾向（Laplace の裾は exponential で、本当に大きい効果も罰せられる）
+- **限界**: 厳密に 0 にはならない（spike-and-slab と異なり、係数が 0 の確率質量はない）
+
+::: {.callout-tip}
+#### `scale` パラメータの選び方
+
+`double_exponential(0, scale)` の `scale` は L1 penalty の強さに対応します:
+
+- **`scale = 1.0`** (弱い正則化): 大きな係数に寛容。予測子が少なく、強い理論的根拠がある場合
+- **`scale = 0.5`** (標準): 多くの応用で出発点として推奨
+- **`scale = 0.1`** (強い正則化): 予測子が多く、ほとんどの効果がゼロに近いと予想される場合
+- **`scale` を半正規・指数事前で hyperprior 化**: より柔軟。`set_prior("normal(0, 1)", class = "b")` の代わりに `b ~ Laplace(0, lambda); lambda ~ HalfCauchy(0, 1)` で適応的な強度調整
+:::
+
+#### Horseshoe 事前分布: 「適応的縮小」の理論的背景
+
+@carvalho2010 が提案した **horseshoe prior** は、Laplace の弱点（大きい効果も収縮する）を解消する**適応的縮小**を実現します。各係数 $\beta_j$ ごとに独自の縮小強度を許す階層構造:
+
+$$
+\beta_j | \lambda_j, \tau \sim N(0, \tau^2 \lambda_j^2), \quad \lambda_j \sim C^+(0, 1), \quad \tau \sim C^+(0, 1)
+$$
+
+ここで $\lambda_j$ は **局所縮小パラメータ**（local shrinkage）、$\tau$ は **大域縮小パラメータ**（global shrinkage）です。Half-Cauchy 分布の重い裾により、$\lambda_j$ が「ほぼ 0」または「とても大きい」の二極化を促し、結果として**ノイズ係数を強く 0 へ、シグナル係数をほぼそのまま残す**「馬蹄形」の縮小プロファイルが得られます（horseshoe の名の由来）。
+
+@piironen2017 の **regularized horseshoe** は、極端な値の安定化のため $\lambda_j$ にスラブ（slab）を加えた改良版で、`brms` の `horseshoe(1)` がこの実装です。
+
+```{r}
+#| label: horseshoe-example
+#| eval: false
+
+# Horseshoe: 高次元回帰での自動的な変数選択
+prior_hs <- set_prior("horseshoe(df = 1, par_ratio = 0.1)", class = "b")
+# par_ratio: 真の非ゼロ係数の予想割合（10% 程度を仮定）
+
+fit_hs <- brm(
+  error_count ~ ., # 全予測子を投入
+  data       = dat_essay_wide,  # 30+ 予測子のワイドデータ
+  family     = poisson(),
+  prior      = prior_hs,
+  backend    = "cmdstanr",
+  chains     = 4,
+  iter       = 4000,
+  seed       = 20260221,
+  control    = list(adapt_delta = 0.99),  # horseshoe は事後の幾何が複雑
+  file       = "models/fit_horseshoe"
 )
 ```
 
-**使い所**: 予測子が多く（10+）、どれが重要か不明な探索的分析。語彙テストの項目特性（語長、頻度、品詞等）を一度に投入する場合など。
+**`par_ratio` の解釈**: 「全係数のうち、真にゼロでない係数の割合の事前期待値」。例えば `par_ratio = 0.1` は「30 個中 3 個程度が effective」という事前信念。事前知識が乏しい場合は `par_ratio = 0.5` から始め、posterior と比較して調整します。
 
-#### Horseshoe 事前分布（スパース推定）
+#### 三つの正則化の比較: 縮小プロファイルの可視化
 
-`horseshoe(df)` は Laplace よりも「本当にゼロの効果」をゼロに、「本当に大きい効果」を収縮させない性質があります[@piironen2017]。
+3 つの正則化事前分布が、係数の大きさに応じてどう振る舞うかを直感的に理解するための比較:
 
-```r
-# Horseshoe 事前分布（より柔軟なスパース推定）
-prior_hs <- set_prior("horseshoe(1)", class = "b")
+| 正則化 | 小さな係数（ノイズ）| 大きな係数（シグナル） | 計算コスト | 推奨される予測子数 |
+|:---|:---|:---|:---|:---|
+| **Ridge (Normal prior)** | 適度に縮小 | 適度に縮小（**シグナルも弱める**）| 低 | 少 ~ 中（5–20） |
+| **Bayesian LASSO (Laplace)** | 強く縮小（ほぼ 0 へ） | やや縮小される | 中 | 中（10–50） |
+| **Horseshoe** | **強く 0 へ縮小** | **ほとんど縮小しない**（適応的）| 高（divergence 注意）| 多（30–数百） |
+
+```{mermaid}
+%%| label: fig-shrinkage-profiles
+%%| fig-cap: "四つの正則化事前分布の縮小プロファイル概念図。横軸: 真の係数の大きさ、縦軸: 事後推定値の挙動。Ridge は線形に縮小、LASSO は閾値以下を強く縮小、Horseshoe は閾値以下を強く縮小しつつ閾値以上は元のまま残す。Spike-and-slab は厳密に 0 か元のままの二択。"
+flowchart LR
+    A["真の係数: 0付近<br/>(ノイズ)"] -->|"Ridge"| R1["適度に縮小"]
+    A -->|"LASSO"| L1["強く縮小→ ほぼ0"]
+    A -->|"Horseshoe"| H1["強く縮小→ ほぼ0"]
+    A -->|"Spike-and-slab"| S1["厳密に 0<br/>(spike を選択)"]
+    B["真の係数: 大きい<br/>(シグナル)"] -->|"Ridge"| R2["弱められる"]
+    B -->|"LASSO"| L2["やや縮小"]
+    B -->|"Horseshoe"| H2["ほぼ元のまま"]
+    B -->|"Spike-and-slab"| S2["元のまま<br/>(slab を選択)"]
+    style H1 fill:#d1e7dd,stroke:#198754
+    style H2 fill:#d1e7dd,stroke:#198754
+    style S1 fill:#cfe2ff,stroke:#0d6efd
+    style S2 fill:#cfe2ff,stroke:#0d6efd
 ```
 
-**Laplace vs Horseshoe**:
+#### 実務的選択フローチャート
 
-- **Laplace**: 全係数を均等に収縮。計算が速い。LASSO と等価。
-- **Horseshoe**: 大きい効果は収縮しない。計算がやや遅い。理論的にはより良い変数選択。
-- **実務**: 予測子が 5-10 個なら Laplace で十分。20+ 個なら Horseshoe を検討。
+| 状況 | 推奨事前分布 | 理由 |
+|:---|:---|:---|
+| 予測子が少なく（< 5）、すべて理論的に重要 | `Normal(0, 1)` (弱情報) | 正則化の必要が低い |
+| 予測子が中程度（5–15）、相互に相関 | **Ridge** (`Normal(0, 0.5)`) | 多重共線性に頑健、係数が極端化しにくい |
+| 予測子が多く（10–30）、変数選択を兼ねたい | **Bayesian LASSO** (`double_exponential(0, 0.5)`) | 計算が比較的速く、解釈もシンプル |
+| 予測子が非常に多く（30+）、ほとんどがノイズと予想 | **Regularized Horseshoe** (`horseshoe(1)`) | 適応的縮小でシグナルを残しつつノイズを 0 へ |
+| 厳密な変数選択が必要 | Spike-and-slab（要 Stan 自前実装） | 係数が厳密に 0 の事後確率を直接計算 |
+
+#### SLA・心理言語学での応用例
+
+- **語彙テストの予測子選択**: 30 個の語彙特性（頻度、語長、imageability、AoA、隣接語数 …）から正答率を予測するモデル。Horseshoe で最重要な 5–8 個を自動的に identify
+- **ライティング評価の特徴量選択**: 自然言語処理ツールから抽出した 50+ 特徴量（type-token ratio, MTLD, Coh-Metrix 指標 …）からエッセイ評定を予測。Bayesian LASSO で解釈可能な subset を抽出
+- **コーパス頻度モデル**: 多数の話者属性 × 文脈変数で語の使用確率を予測。Ridge で安定推定
+
+::: {.callout-warning}
+#### 正則化事前分布の感度分析は必須
+
+`scale` や `par_ratio` の選択は結果を大きく左右します。`priorsense::powerscale_sensitivity()` で必ず感度を確認し、結果が **prior-data conflict** や **weak likelihood** と判定されたら scale を緩める方向に再調整してください。@sec-hyperparameters の「事前分布の歴史的変遷」callout も参照。
+:::
 
 ### 多変量構造のモデル化（Dirichlet / logistic_normal / LKJ）
 
@@ -4986,29 +6965,149 @@ fit_cor <- brm(
 )
 ```
 
-### ラプラス分布（Laplace, double_exponential）
+### ラプラス事前分布の最小実装例（参考）
 
-ラプラス分布は 0 付近への収縮が強く、係数のスパース化を促す用途で使われます。Stan では `double_exponential` として実装されています[@stanUnboundedDistDoc]。
+ラプラス分布（Stan では `double_exponential`）は係数のスパース化と変数選択を実現する事前分布として極めて重要です。**Bayesian LASSO** との数学的等価性、Ridge / Horseshoe との縮小プロファイルの比較、`scale` の選び方、感度分析の必要性などの詳細は、@sec-regularizing-priors（正則化事前分布: ベイズ推定と頻度論的 penalty の統一的視点）にまとめています。基本構文の参考として最小例のみ示します:
 
-```{r}
-#| label: laplace-prior-example
-#| eval: false
-
+```r
 fit_laplace <- brm(
   y ~ x1 + x2 + x3,
   data  = dat_laplace,
-  prior = c(
-    set_prior("double_exponential(0, 1)", class = "b")
-  ),
+  prior = set_prior("double_exponential(0, 0.5)", class = "b"),
   family = gaussian(),
-  chains = 4,
-  seed   = 20260221
+  chains = 4, seed = 20260221
 )
 ```
 
-`double_exponential` で強い収縮をかける場合は、過度なバイアスを避けるために感度分析（Normal / Student-t / Laplace の比較）を併記してください。
+**重要**: `double_exponential` で強い収縮をかける場合は、`priorsense::powerscale_sensitivity()` での感度分析を必ず併記し、Normal / Student-t / Laplace / Horseshoe の比較で結論の頑健性を確認してください[@stanUnboundedDistDoc]。
 
-### 補足文献（理論と方法）
+## 付録B：MRP（multilevel regression and poststratification）のミニ実例
+
+MRP は、偏りのあるサンプルから母集団全体の推定値を得たいときに有用です[@stanPoststratificationDoc]。ここでは、英語教育研究で「サンプルには私立校・B2 学習者が多いが、推定したい対象母集団は学校種・熟達度・L1 背景の構成が既知である」という状況を考えます。
+
+### 1. 母集団セルを作る
+
+まず、対象母集団を層（cell）に分け、それぞれの人数を用意します。実務では、学校統計、CEFR 分布、受講者台帳、全国調査などからセルサイズを作ります。
+
+```r
+population_cells <- tidyr::crossing(
+  proficiency = c("A2", "B1", "B2"),
+  school_type = c("public", "private"),
+  l1_background = c("Japanese", "Chinese", "Korean")
+) |>
+  mutate(
+    n_pop = c(
+      1200, 350, 220,
+      900,  300, 160,
+      500,  220, 120,
+      400,  180, 90,
+      180,  90,  50,
+      140,  70,  40
+    )
+  )
+```
+
+ここでの `n_pop` は「このセルに母集団で何人いるか」です。MRP の要点は、サンプル内の人数ではなく、**母集団セルサイズで重み付けする**点にあります。
+
+### 2. 階層モデルを推定する
+
+次に、サンプルデータでモデルを推定します。以下では、語彙テストの正答（0/1）を例にしています。
+
+```r
+fit_mrp <- brm(
+  correct ~ proficiency + school_type + l1_background + (1 | classroom),
+  data    = dat_vocab_sample,
+  family  = bernoulli(link = "logit"),
+  prior   = c(
+    set_prior("normal(0, 1)", class = "b"),
+    set_prior("normal(0, 1.5)", class = "Intercept"),
+    set_prior("student_t(3, 0, 1)", class = "sd")
+  ),
+  chains  = 4,
+  iter    = 2000,
+  warmup  = 1000,
+  backend = "cmdstanr",
+  seed    = 20260221
+)
+```
+
+このモデルは各セルの正答確率を推定します。セル数が多く、各セルのサンプルが少ない場合でも、階層モデルや弱情報事前分布により、極端なセル推定をある程度抑えられます。
+
+### 3. セルごとの予測値を母集団で重み付けする
+
+推定後、母集団セル表に対して予測確率を出し、`n_pop` で重み付けします。
+
+```r
+mrp_draws <- fit_mrp |>
+  tidybayes::epred_draws(
+    newdata = population_cells,
+    re_formula = NA
+  ) |>
+  group_by(.draw) |>
+  summarise(
+    theta_mrp = weighted.mean(.epred, w = n_pop),
+    .groups = "drop"
+  )
+
+mrp_draws |>
+  summarise(
+    Estimate = median(theta_mrp),
+    Q2.5 = quantile(theta_mrp, 0.025),
+    Q97.5 = quantile(theta_mrp, 0.975)
+  )
+```
+
+`theta_mrp` は「母集団構成で補正した正答率」の事後分布です。単純なサンプル平均とは異なり、サンプルの偏りを母集団セルサイズで補正しています。
+
+### 4. MRP 推定値を可視化する
+
+MRP では、単一の補正値だけでなく、補正後推定値の不確実性を事後分布として示します。
+
+```r
+ggplot(mrp_draws, aes(x = theta_mrp)) +
+  tidybayes::stat_halfeye(.width = c(0.66, 0.95)) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    x = "Poststratified correct-response probability",
+    y = NULL,
+    title = "MRP Estimate of Population-Level Vocabulary Accuracy"
+  )
+```
+
+報告では、通常のサンプル平均、モデルベースの未補正推定、MRP 推定を並べると、どの程度補正が効いているかが読者に伝わります。
+
+```r
+sample_mean <- mean(dat_vocab_sample$correct)
+mrp_summary <- mrp_draws |>
+  summarise(
+    Estimate = median(theta_mrp),
+    Q2.5 = quantile(theta_mrp, 0.025),
+    Q97.5 = quantile(theta_mrp, 0.975)
+  )
+```
+
+### 5. Stan で直接実装する場合
+
+`brms` では R 側で事後層化を行うのが簡単ですが、Stan では `generated quantities` に母集団重み付けを直接書けます。複数アウトカム、欠けているセル、セル間相関、カスタム重み付けを扱う場合は Stan 直接実装が有利です。
+
+```stan
+generated quantities {
+  real theta_population;
+  vector[J] theta_cell;
+
+  for (j in 1:J) {
+    theta_cell[j] = inv_logit(alpha + X_cell[j] * beta);
+  }
+
+  theta_population = dot_product(N_pop, theta_cell) / sum(N_pop);
+}
+```
+
+このように、Stan では研究質問に直接対応する量を `generated quantities` で定義できます。MRP の場合は、係数そのものよりも `theta_population` の事後分布が主要な報告対象になります。
+
+**ここまでお疲れさまでした**。
+
+## 補足文献（理論と方法）
 
 7. **ベイズ入門（入門的な解説）**: @kruschke2018 ── ベイズ統計の基本概念を心理学・行動科学の研究者向けに解説した論文。NHST との比較が明快です。
 

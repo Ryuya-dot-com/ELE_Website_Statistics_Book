@@ -22,6 +22,7 @@ required_packages <- c(
   "patchwork",
   "probably",
   "purrr",
+  "randomForest",
   "ranger",
   "rpart.plot",
   "scales",
@@ -45,9 +46,9 @@ if (length(missing_packages) > 0) {
 
 ## はじめに
 
-5章・6章で扱ったロジスティック回帰では、「ある説明変数が正答確率にどう影響するか」を1本のグローバルな式でモデル化しました。しかし英語教育データでは、学習者要因と語彙項目要因の**複雑な組み合わせパターン**が頻出します。たとえば、習熟度が高い学習者は retrieval practice 条件で特に効果が大きいが、低習熟者ではその差が消える、といったパターンです。回帰分析でこうしたパターンを捉えるには交互作用項を手動で指定する必要がありますが、どの変数の組み合わせが重要かを事前に知ることは難しいのが実情です。
+5章・6章で扱ったロジスティック回帰では、「ある説明変数が正答確率にどう影響するか」を1本のグローバルな式でモデル化しました。しかし英語教育データでは、学習者要因と語彙項目要因の**複雑な組み合わせパターン**が頻出します。たとえば、習熟度が高い学習者では retrieval practice 条件の観測で正答確率が高い一方、低習熟者ではその差が小さい、といったパターンです。回帰分析でこうしたパターンを捉えるには交互作用項を手動で指定する必要がありますが、どの変数の組み合わせが重要かを事前に知ることは難しいのが実情です。
 
-**ツリーモデル**（決定木・ランダムフォレスト・XGBoost）は、こうした非線形関係や相互作用を、分析者が事前に指定しなくても自動的に発見できる手法群です。本章では、これら3つのツリーモデルを同じ教育データで比較し、モデルの性能評価に**ROC曲線とAUC**を用います。
+**ツリーモデル**（決定木・ランダムフォレスト・XGBoost）は、こうした非線形関係や相互作用の**候補パターン**を、分析者がすべて事前に指定しなくても探索できる手法群です。本章では、GLMを基準線に置き、3つのツリーモデルを同じ教育データで比較し、モデルの性能評価に**ROC曲線とAUC**を用います。
 
 英語教育研究で想定される予測課題の例:
 
@@ -66,9 +67,9 @@ if (length(missing_packages) > 0) {
 | 分野 | 典型的な問い | 目的変数 | ツリーモデルが効きやすい理由 | 最初に見る図 |
 |---|---|---|---|---|
 | SLA | どの学習者が次の語彙テストで正答するか | 2値（正誤） | 習熟度 × 学習条件 × 項目特性の非線形な組み合わせを拾いやすい | ROC / PR / 閾値比較 |
-| 心理言語学 | 品詞曖昧性や語義曖昧性の解消で、どのラベルが選ばれるか | 2値または多値 | 文脈手がかり、語頻度、語長、近接語情報の相互作用を自動検出しやすい | 予測確率図、重要度、SHAP |
+| 心理言語学 | 品詞曖昧性や語義曖昧性の解消で、どのラベルが選ばれるか | 2値または多値 | 文脈手がかり、語頻度、語長、近接語情報の相互作用候補を探索しやすい | 予測確率図、重要度、SHAP |
 | 英語教育学 | どの学習者が支援対象になるか、どの教材群でつまずくか | 2値（到達/未到達） | 明示的な if-then ルールとして現場へ返しやすい | 決定木、混同行列 |
-| 教育学 | 出席・提出・事前成績から成績不振リスクを早期検出できるか | 2値（リスクあり/なし） | 非線形閾値や介入対象のルール化に向く | ROC、キャリブレーション、閾値表 |
+| 教育学 | 出席・提出・事前成績から成績不振リスクを早期検出できるか | 2値（リスクあり/なし） | 非線形閾値や支援候補のルール化に向く | ROC、キャリブレーション、閾値表 |
 
 心理言語学の例で言えば、**品詞曖昧性（POS ambiguity）** や **語義曖昧性（word-sense ambiguity）** の解消は、まさに「複数の手がかりからどのカテゴリを選ぶか」という予測問題です。語頻度、前後文脈、形態情報、語長、隣接語の分布などを入力し、`noun / verb / adjective` や `sense A / sense B / sense C` を予測する構図は、この章の分類問題と同型です。2値ならロジスティック回帰でも扱えますが、**どの文脈でどの手がかりが急に効き始めるか**を事前に式へ書き込むのは簡単ではありません。
 
@@ -80,7 +81,7 @@ if (length(missing_packages) > 0) {
 
 という対応で読むと、SLA・心理言語学の研究質問に結びつけやすくなります。
 
-さらに、ツリーモデルの実務上の強みは、**非線形と交互作用の自動検出** にあります。回帰分析なら `proficiency × condition` や `word_freq × test_time` を分析者が明示的に入れる必要がありますが、ツリーモデルでは「どの変数の組み合わせが効いていそうか」をデータ駆動で探索できます。これは、事前理論がまだ粗い探索段階や、説明変数が多く組み合わせが膨大な研究場面で特に有用です。
+さらに、ツリーモデルの実務上の強みは、**非線形と交互作用候補の探索** にあります。回帰分析なら `proficiency × condition` や `word_freq × test_time` を分析者が明示的に入れる必要がありますが、ツリーモデルでは「どの変数の組み合わせが効いていそうか」をデータ駆動で探索できます。これは、事前理論がまだ粗い探索段階や、説明変数が多く組み合わせが膨大な研究場面で特に有用です。ただし、ツリーが見つけた分岐は「証明された効果」ではなく、独立データ・理論・追加分析で吟味すべき候補です。
 
 #### Yes/No課題では、ツリーモデルとSDT/IRTreeをどう使い分けるか
 
@@ -100,9 +101,9 @@ Lexical Decision Task（LDT）、Lexicosemantic Judgement Task、Grammaticality 
 | 感度と反応バイアスを分けたい | SDT / probit 系モデル | $d'$、criterion、hit / false alarm の構造 |
 | 反応過程を潜在ノードに分けたい | IRTree / SDT-IRT | 複数段階の潜在判断プロセス |
 
-この区別は、「木」という言葉が同じでも中身がまったく違うことを意味します。**ツリーモデルは説明変数空間を分割する予測法**であり、**IRTree は反応過程を分解する心理測定法**です。前者は「誰がどこで誤るか」の予測に強く、後者は「なぜ yes/no が出たか」の測定モデルに強い、と整理しておくと混乱しにくくなります。
+この区別は、「木」という言葉が同じでも中身がまったく違うことを意味します。**ツリーモデルは説明変数空間を分割する予測法**です。一方、**IRTree は反応過程を分解する心理測定法**です。前者は「誰がどこで誤るか」の予測に強く、後者は「なぜ yes/no が出たか」の測定モデルに強い、と整理しておくと混乱しにくくなります。
 
-先行研究については、**直接に LDT/GJT の trial-level behavioral response を CART/RF/XGBoost で主分析する研究は、少なくとも私が確認した範囲ではまだ主流ではありません**。一方で、隣接領域には十分な接点があります。たとえば、語義曖昧性の計算的解消では decision tree が古典的に使われています[@pedersen2001wsd]。また、L2 読解や語彙処理では random forest を使って lexical features の相対的重要性を評価する研究があります[@nahatameuchida2025]。さらに、語彙カテゴリ化や読みに関する学習研究でも機械学習を用いた予測的分析が広がっています[@gaglgregorova2024]。したがって、**予測章の worked example として LDT/GJT 系課題を扱うこと自体は十分に妥当**ですが、もし論文の主張が「感度」や「反応バイアス」にあるなら、SDT や IRTree に接続した方が理論的に強くなります。
+先行研究については、**直接に LDT/GJT の trial-level behavioral response を CART/RF/XGBoost で主分析する研究は、本章で確認した範囲ではまだ主流ではありません**。一方で、隣接領域には十分な接点があります。たとえば、語義曖昧性の計算的解消では decision tree が古典的に使われています[@pedersen2001wsd]。また、L2 読解や語彙処理では random forest を使って lexical features の相対的重要性を評価する研究があります[@nahatameuchida2025]。さらに、語彙カテゴリ化や読みに関する学習研究でも機械学習を用いた予測的分析が広がっています[@gaglgregorova2024]。したがって、**予測章の worked example として LDT/GJT 系課題を扱うこと自体は十分に妥当**ですが、もし論文の主張が「感度」や「反応バイアス」にあるなら、SDT や IRTree に接続した方が理論的に強くなります。
 
 ### 読み方と到達目標
 
@@ -110,18 +111,18 @@ Lexical Decision Task（LDT）、Lexicosemantic Judgement Task、Grammaticality 
 
 この章は、機械学習の実装テクニックを網羅する章ではありません。目的は、**教育研究の読者が「予測モデルを安全に読み、使い、報告できる状態」になること**です。以下の3点だけ確認して進めてください。
 
-1. この章は「2値分類（correct / incorrect）」に絞る。  
-2. いきなり複雑モデルに行かず、GLMを基準に段階的に比較する。  
-3. 最後はAUCだけでなく、閾値・混同行列・キャリブレーションまで確認する。  
+1. この章は「2値分類（correct / incorrect）」に絞ります。
+2. いきなり複雑モデルに行かず、GLMを基準に段階的に比較します。
+3. 最後はAUCだけでなく、閾値・混同行列・キャリブレーションまで確認します。
 
 この3点を守れば、「精度が高いか」だけでなく「現場で使えるか」まで判断できます。
 
 #### この章で最終的に手に入るもの
 
 - **予測結果**: 各観測に対する `P(correct)`（確率）
-- **運用ルール**: 閾値を何にするか（例: Youden最適、Recall重視）
+- **運用ルール**: 閾値を何にするか（例: CV-Youden、CVコスト最小化、陽性クラスのRecall重視）
 - **説明資料**: どの特徴が予測に効いたか（Dominance / Permutation / SHAP）
-- **報告文**: 論文にそのまま使える結果記述テンプレート
+- **報告文**: 論文にそのまま使える報告テンプレート
 
 #### 最初に確認する用語（30秒版）
 
@@ -135,12 +136,12 @@ Lexical Decision Task（LDT）、Lexicosemantic Judgement Task、Grammaticality 
 ::: {.callout-warning}
 #### 陥りやすい3つの誤解
 
-1. **AUCが高ければ実務で使える**  
-   AUCはランキング性能であり、閾値運用の品質を保証しません。  
-2. **複雑モデルは常に優れている**  
-   解釈可能性や再現性が下がる場合があり、GLMで十分なケースもあります。  
-3. **重要度 = 因果効果**  
-   重要度は予測への寄与であり、因果関係の証明ではありません。  
+1. **AUCが高ければ実務で使える**
+   AUCはランキング性能の指標で、閾値運用の品質を保証しません。
+2. **複雑モデルは常に優れている**
+   解釈可能性や再現性が下がる場合があり、GLMで十分なケースもあります。
+3. **重要度 = 因果効果**
+   重要度は予測への寄与を表す指標で、因果関係の証明ではありません。
 :::
 
 #### この章で扱うこと・扱わないこと
@@ -148,29 +149,47 @@ Lexical Decision Task（LDT）、Lexicosemantic Judgement Task、Grammaticality 
 - 扱う: 表形式データの2値分類、モデル比較、閾値設計、確率の妥当性確認
 - 扱わない: 深層学習、時系列モデル、因果推論、厳密な公平性監査
 
-範囲を限定することで、実務で頻出する「語彙テスト正誤予測」の判断フローに集中します。
+範囲を限定することで、実務で頻出する「語彙テスト正誤予測」の判断フローに集中します。本章の `test_time` は「即時テストか遅延テストか」を表す説明変数で、試行順序や時点ごとの自己相関を扱う時系列モデルではありません。反応時間・音声軌跡・縦断測定のように順序そのものが研究対象になる場合は、第13章群の時系列・音声時系列の章に接続します。
 
 #### 概要
 
-- **ツリーモデル** = データを「もし proficiency > 0.4 ならば…」のような条件分岐で繰り返し分割し、局所ごとに予測を出す方法。回帰分析が1本の式で全データを説明するのに対し、ツリーモデルはデータの「区画」ごとに異なる予測を出す。
-- **ROC-AUC** = ランダムに正答者と誤答者を1人ずつ選んだとき、モデルが正答者に高い確率を正しく与える割合。1.0が完璧、0.5がランダム。
+- **ツリーモデル** = データを「もし proficiency > 0.4 ならば…」のような条件分岐で繰り返し分割し、局所ごとに予測を出す方法です。回帰分析が1本の式で全データを説明するのに対し、ツリーモデルはデータの「区画」ごとに異なる予測を出します。
+- **ROC-AUC** = ランダムに正答者と誤答者を1人ずつ選んだとき、モデルが正答者に高い確率を正しく与える割合です。1.0が完璧、0.5がランダムです。
 
-**読む順序（迷ったとき）**
-- 最短ルート（20分）: はじめに → ケース設定 → 決定木 → 3モデル比較 → まとめ
-- 標準ルート（60分）: 上記 + RF + XGBoost + 閾値 + キャリブレーション
-- 拡張ルート（90分+）: 上記 + 回帰→MLの橋渡し + SHAP + ハイパーパラメータ詳細 + 重要度比較
+**節の依存関係と読み進め方**
+
+| 範囲 | カバーする内容 |
+|------|----------------|
+| **基礎** | はじめに → 学習・評価の分割 → GLM → 決定木 → GLM ベースライン + 3 ツリーモデル比較 → まとめ |
+| **応用** | 上記 + RF + XGBoost + 閾値 + キャリブレーション |
+| **発展** | 上記 + Yes/No 課題の SDT / IRTree 補論 + 回帰→ML の橋渡し + SHAP + ハイパーパラメータ詳細 + 重要度比較 |
+
+#### 図と表の役割マップ
+
+この章は図が多いため、最初に「どの図を何の判断に使うか」を整理しておきます。1枚の図でモデルの良し悪しを決めるのではなく、**設計 → 学習 → 比較 → 閾値 → 確率 → 解釈**の順に確認します。
+
+| 確認したいこと | 主に見る図・表 | 読み方 | それだけで判断しないこと |
+|---|---|---|---|
+| データ分割は妥当か | Train/Test split, leakage check | 学習者・項目の重なり、正答率の偏りを確認 | 性能の優劣 |
+| モデルが複雑すぎないか | CV schematic, tuning heatmap, pruning profile | CVで安定して高い領域を探す | テスト性能の確定 |
+| どのモデルがよく並べ替えるか | 指標表, ROC曲線, AUC-CI | ROC-AUCとCIで識別性能を見る | 閾値運用の良否 |
+| 陽性クラスをどれだけ拾えるか | PR曲線, threshold trade-off | RecallとPrecisionの両立を見る | 支援対象の検出率。positive classの定義が先に必要 |
+| 確率をそのまま使えるか | calibration plot, calibration summary, Brier | 予測確率と実測率のずれを見る | 因果効果 |
+| 何が予測に寄与したか | Dominance, permutation, Gain, SHAP, PDP | 重要特徴、方向、局所説明を分けて読む | 教材・条件を変えたときの効果 |
+
+この整理に従うと、最初に「モデル選択」、次に「閾値運用」、最後に「説明・報告」という順番が保てます。
 
 #### この章の到達目標
 
-1. ロジスティック回帰とツリーモデルの違いを、「的のずれ」と「散らばり」（バイアスと分散）の観点から説明できる。
-2. 決定木・ランダムフォレスト・XGBoostの3モデルを同じデータで比較できる。
-3. ROC-AUCだけでなく、複数の評価指標（PR-AUC・閾値依存指標・予測確率の信頼性）も確認し、報告できる。
-4. 変数の相対的重要性を測る複数の方法（SHAP、dominance analysis、permutation importance）の違いを理解し、使い分けられる。
-5. 「精度が高い」で終わらず、教育実務で使える判断に落とし込める。
+1. ロジスティック回帰とツリーモデルの違いを、「的のずれ」と「散らばり」（バイアスと分散）の観点から説明できるようになります。
+2. GLMベースラインと、決定木・ランダムフォレスト・XGBoostの3つのツリーモデルを同じデータで比較できるようになります。
+3. ROC-AUCだけでなく、複数の評価指標（PR-AUC・閾値依存指標・予測確率の妥当性）も確認し、報告できるようになります。
+4. 変数の相対的重要性を測る複数の方法（SHAP、dominance analysis、permutation importance）の違いを理解し、使い分けられるようになります。
+5. 「精度が高い」で終わらず、教育実務で使える判断に落とし込めるようになります。
 
 ## 分析の流れ
 
-本章では、2値分類問題に対してシンプルなモデルから段階的に複雑なモデルへと進み、最終的に複数モデルの性能を比較する。まずロジスティック回帰をベースラインとして出発し、決定木（CART）で非線形パターンを探索する。予測精度が不十分であればランダムフォレストやXGBoostに拡張し、ROC曲線の重ね描きとAUC比較でモデルを選択する。この「シンプルなモデルで始め、必要に応じて複雑なモデルへ拡張する」アプローチは、解釈可能性と予測精度のバランスを重視する教育データ分析において特に有効である。
+本章では、2値分類問題に対してシンプルなモデルから段階的に複雑なモデルへと進み、最終的に複数モデルの性能を比較します。まずロジスティック回帰をベースラインとして出発し、決定木（CART）で非線形パターンを探索します。予測精度が不十分であればランダムフォレストやXGBoostに拡張し、ROC曲線の重ね描きとAUC比較でモデルを比較します。この「シンプルなモデルで始め、必要に応じて複雑なモデルへ拡張する」アプローチは、解釈可能性と予測精度のバランスを重視する教育データ分析で特に有効です。
 
 ```{mermaid}
 %%| label: fig-analysis-flow
@@ -190,7 +209,7 @@ flowchart TD
 
 ### どのパスが最も関連するか
 
-多くの英語教育研究では、まずロジスティック回帰と決定木で十分な予測精度が得られるかを確認することが出発点となる。アンサンブル手法（RF・XGBoost）は予測精度の向上が必要な場合に検討するが、解釈可能性が低下する点に注意が必要である。研究報告を目的とする場合は、まず左側のパス（ベースライン → 評価・報告）を試し、精度が不十分な場合にのみ右側のアンサンブルパスへ進むことを推奨する。
+多くの英語教育研究では、まずロジスティック回帰と決定木で十分な予測精度が得られるかを確認することが出発点になります。アンサンブル手法（RF・XGBoost）は予測精度の向上が必要な場合に検討しますが、解釈可能性が低下する点に注意が必要です。研究報告を目的とする場合は、まず左側のパス（ベースライン → 評価・報告）を試し、精度が不十分な場合に右側のアンサンブルパスへ進む、という順序が説明しやすいです。
 
 
 **このチャンクの目的:** 可視化テーマを章全体で統一するための初期設定です。
@@ -204,6 +223,7 @@ pacman::p_load(
   tidyverse, gt, DT, patchwork,
   tidymodels, workflowsets,
   rpart.plot, vip, ranger, xgboost,
+  randomForest,
   partykit, ggparty,
   probably, scales, dominanceanalysis,
   shapviz
@@ -234,10 +254,10 @@ theme_update(legend.position = "bottom")
 
 ### 主なパッケージの役割
 
-- `tidymodels` / `workflowsets`: 前処理、学習、評価、ワークフロー比較を統一的に扱う。
-- `ranger` / `xgboost` / `rpart.plot` / `partykit` / `ggparty`: 決定木、ランダムフォレスト、勾配ブースティングとその可視化を担当する。
-- `probably` / `vip` / `shapviz` / `dominanceanalysis`: ROC・確率評価、変数重要度、SHAP による解釈を補助する。
-- `tidyverse` / `gt` / `DT` / `patchwork` / `scales`: データ整形、表、対話表、図の合成、軸ラベル整形を支える。
+- `tidymodels` / `workflowsets`: 前処理、学習、評価、ワークフロー比較を統一的に扱います。
+- `ranger` / `xgboost` / `rpart.plot` / `partykit` / `ggparty`: 決定木、ランダムフォレスト、勾配ブースティングとその可視化を担当します。
+- `probably` / `vip` / `shapviz` / `dominanceanalysis`: ROC・確率評価、変数重要度、SHAP による解釈を補助します。
+- `tidyverse` / `gt` / `DT` / `patchwork` / `scales`: データ整形、表、対話表、図の合成、軸ラベル整形を支えます。
 
 ### ミニシミュレーション: GJT / LDT の Yes/No trial data
 
@@ -250,7 +270,7 @@ theme_update(legend.position = "bottom")
 $$
 \text{evidence}_{pi} =
 d_p \cdot s_i
-0.5 \cdot \text{cue}_i
++ 0.5 \cdot \text{cue}_i
 - 0.7 \cdot \text{ambiguity}_i
 - 0.6 \cdot \text{difficulty}_i
 + \tau_{\text{task}}
@@ -297,7 +317,7 @@ task_levels <- c("LDT", "Lexicosemantic", "GJT")
 participant_yesno <- tibble(
   participant = factor(1:n_participants),
   proficiency = rnorm(n_participants, 0, 1),
-  sensitivity = 0.8 + 0.9 * proficiency + rnorm(n_participants, 0, 0.35),
+  sensitivity = pmax(0.15, 0.95 + 0.55 * proficiency + rnorm(n_participants, 0, 0.30)),
   criterion = rnorm(n_participants, 0, 0.45)
 )
 
@@ -358,7 +378,7 @@ yesno_sdt_dat <- crossing(
   )
 ```
 
-このデータでは、**signal trial に対して `yes` が多いほど hit rate が高く**、**noise trial に対して `yes` が多いほど false alarm rate が高い**という構造が自然に出ます。つまり、ツリーモデルの分類問題としても、SDT の Yes/No 課題としても読める形です。
+このデータでは、**signal trial に対して `yes` が多いほど hit rate が高く**、**noise trial に対して `yes` が多いほど false alarm rate が高い**という構造が自然に出ます。`sensitivity` は signal/noise の向きが逆転しないよう正の値に制約しており、ツリーモデルの分類問題としても、SDT の Yes/No 課題としても読める形です。
 
 **このチャンクの目的:** タスク別に hit / false alarm / accuracy を要約し、Yes/No 課題として妥当な構造になっているかを確認します。
 ```{r}
@@ -475,9 +495,11 @@ probit_grid <- crossing(
   cue_strength = mean(yesno_sdt_dat$cue_strength),
   ambiguity = mean(yesno_sdt_dat$ambiguity),
   item_difficulty = mean(yesno_sdt_dat$item_difficulty)
-) |>
+)
+
+probit_grid <- probit_grid |>
   mutate(
-    p_yes = predict(probit_yesno, newdata = cur_data_all(), type = "response"),
+    p_yes = predict(probit_yesno, newdata = probit_grid, type = "response"),
     trial_family = factor(
       if_else(signal_present == 1, "Signal trials", "Noise trials"),
       levels = c("Signal trials", "Noise trials")
@@ -502,7 +524,7 @@ probit_grid |>
 
 #### 同じ Yes/No データを IRTree で読むと何が変わるか
 
-IRTree は、上の `probit` のように1本の反応関数で `yes/no` をまとめて扱うのではなく、**観測された Yes/No の背後に複数の潜在判断ノードがある**と考えます。ここで重要なのは、IRTree が「正誤を当てる方法」ではなく、**反応過程を分解する測定モデル**だという点です。
+IRTree は、上の `probit` のように1本の反応関数で `yes/no` をまとめて扱うのではなく、**観測された Yes/No の背後に複数の潜在判断ノードがある**と考えます。ここで重要なのは、IRTree が「正誤を当てる方法」ではなく、**反応過程を分解する測定モデル**だという点です。ただし、1列の `yes/no` 反応だけから反応過程が自動的に分解されるわけではありません。ノード構造、項目設計、制約、反復観測、代替モデルとの比較がそろって初めて、「弁別」と「反応傾向」を分けて読む根拠が生まれます。
 
 | 観測された結果 | SDT での呼び方 | 予測モデルが見るもの | IRTree が分けて考えたいもの |
 |---|---|---|---|
@@ -543,9 +565,9 @@ $$
 
 回帰分析でも交互作用項（`proficiency:condition`）を手動で追加すれば対応可能ですが、どの交互作用を入れるかは分析者が事前に決める必要があります。変数が10個あれば交互作用の候補は45通り、3次の交互作用まで含めればさらに膨大になります。
 
-ツリーモデルは、この交互作用の発見を**データから自動的に**行います。
+ツリーモデルは、この交互作用候補の探索を**データから**行います。
 
-例えば、retrieval practice条件は習熟度が高い学習者で特に効くが、低習熟者ではほとんど効果がない——という「条件付き効果」があるとする。回帰分析では `proficiency × condition` という交互作用項を分析者が手動で指定する必要がある。しかし決定木は「proficiency > 0.5 の学習者に対してだけ condition を見る」という分割を自動的に発見できる。この自動発見が、予測変数が多い場面でツリーモデルの強みとなる。
+例えば、retrieval practice条件は習熟度が高い学習者で特に効くが、低習熟者ではほとんど差が見えない、という「条件付きパターン」があるとします。回帰分析では `proficiency × condition` という交互作用項を分析者が手動で指定する必要があります。しかし決定木は「proficiency > 0.5 の学習者に対してだけ condition を見る」という分割を候補として拾えます。この探索能力が、予測変数が多い場面でツリーモデルの強みになります。
 
 以下の図は、同じデータに対して「回帰の線形フィット」と「ツリーの矩形分割」がどう異なるかを示しています。コードでは (1) 非線形な真の関係を持つデータを生成し、(2) ロジスティック回帰でフィットし、(3) 決定木でフィットして、3パネルの比較図を作成します。
 
@@ -601,38 +623,40 @@ p3 <- demo_dat |>
 p1 + p2 + p3
 ```
 
-- **(A)** 真の関係は非線形のS字曲線。
-- **(B)** ロジスティック回帰は1本の単調なシグモイドで近似するため、波形を捉えきれない。
-- **(C)** 決定木は区間ごとに異なる確率を割り当て、局所的なパターンにフィットする。
+- **(A)** 真の関係は非線形のS字曲線です。
+- **(B)** ロジスティック回帰は1本の単調なシグモイドで近似するため、波形を捉えきれません。
+- **(C)** 決定木は区間ごとに異なる確率を割り当て、局所的なパターンにフィットします。
 
 #### 回帰とツリーの本質的な違い
 
-- **回帰**: 全データに1本の式（グローバル）。係数を読めば「何が効くか」がわかる。
-- **ツリー**: データを条件分岐で分割し、各領域で別の予測を出す（ローカル）。分岐規則を読めば「どの条件で効くか」がわかる。
+- **回帰**: 全データに1本の式（グローバル）を当てはめます。係数を読めば「何が効くか」がわかります。
+- **ツリー**: データを条件分岐で分割し、各領域で別の予測を出します（ローカル）。分岐規則を読めば「どの条件で効くか」がわかります。
 
 #### バイアスと分散のトレードオフ
 
 モデル選択を理解するうえで最も重要な概念が、**バイアス・分散のトレードオフ**です[@hastie2009; @james2021]。
 
-- **バイアス（bias）**: モデルが現実を単純化しすぎることによる系統的な誤差。ロジスティック回帰が非線形な関係を直線的に近似するとき、これが生じる。
-- **分散（variance）**: データが変わるとモデルの予測が大きく変わる不安定さ。深い決定木はデータの細部まで追いかけるため、別のサンプルでは異なる構造になりやすい。
+- **バイアス（bias）**: モデルが現実を単純化しすぎることによる系統的な誤差です。ロジスティック回帰が非線形な関係を直線的に近似するとき、これが生じます。
+- **分散（variance）**: データが変わるとモデルの予測が大きく変わる不安定さです。深い決定木はデータの細部まで追いかけるため、別のサンプルでは異なる構造になりやすくなります。
 
 用語は統計学の慣用に合わせ、`variance` を **分散** と呼びます。機械学習文献では *bias-variance tradeoff* と英語のまま書かれることもありますが、本章では **バイアス・分散トレードオフ** に統一します。参考: [e-Stat 統計用語集（分散）](https://www.e-stat.go.jp/classifications/terms/90/00/0605)
 
-より厳密には、回帰/分類の期待予測誤差は次の形で分解されます[@geman1992; @hastie2009; @james2021]。
+より厳密には、**二乗損失（回帰）** での期待予測誤差は次の形で分解されます[@geman1992; @hastie2009; @james2021]。
 
 $$
 \mathbb{E}\{(Y-\hat{f}(X))^2\} = \text{Bias}[\hat{f}(X)]^2 + \text{Var}[\hat{f}(X)] + \sigma^2
 $$
 
-同様の分解は、scikit-learn の公式チュートリアル（bias-variance decomposition）でも確認できます。  
+**注意**: この加法分解は二乗損失（回帰）に対する厳密な結果です。0-1 損失（分類）では同様の単純な加法分解は成り立たず、より複雑な定義が必要になります。本章では概念図として読み、分類でも「単純すぎるとバイアス、複雑すぎると分散」という定性的な傾向は同じだと理解してください。
+
+同様の分解は、scikit-learn の公式チュートリアル（bias-variance decomposition）でも確認できます。
 参考: [scikit-learn: Single estimator versus bagging](https://scikit-learn.org/stable/auto_examples/ensemble/plot_bias_variance.html)
 
 ここで \(\sigma^2\) は不可約誤差（データに本質的に含まれるノイズ）です。実務では、この式を次のように読めば十分です。
 
-- モデルを単純にしすぎると、**バイアス** が増える（重要な関係を取りこぼす）。
-- モデルを複雑にしすぎると、**分散** が増える（サンプル依存で予測が不安定になる）。
-- 交差検証は、この2つのバランスが最もよい点を探す手続きである。
+- モデルを単純にしすぎると、**バイアス** が増えます（重要な関係を取りこぼします）。
+- モデルを複雑にしすぎると、**分散** が増えます（サンプル依存で予測が不安定になります）。
+- 交差検証は、この2つのバランスが最もよい点を探す手続きです。
 
 
 **このチャンクの目的:** バイアス・分散トレードオフを、複雑度に対する訓練/テスト誤差の曲線で可視化します。
@@ -677,34 +701,34 @@ bv_dat |>
 
 この図の読み方:
 
-- **左側（低複雑度）**: モデルが単純すぎてデータのパターンを拾えない（**未学習、バイアスが大きい**）。
-- **右側（高複雑度）**: モデルがデータのノイズまで拾ってしまう（**過学習、分散が大きい**）。
-- **最適点**: テスト誤差が最小になる複雑度。この点を交差検証（後述）で探すのが本章の基本戦略。
+- **左側（低複雑度）**: モデルが単純すぎてデータのパターンを拾えません（**未学習、バイアスが大きい**）。
+- **右側（高複雑度）**: モデルがデータのノイズまで拾ってしまいます（**過学習、分散が大きい**）。
+- **最適点**: テスト誤差が最小になる複雑度です。この点を交差検証（後述）で探すのが本章の基本戦略です。
 
 **数値で実感する**: 仮に語彙テストの正答率予測で以下のような結果が出たとします。
 
 | モデル | 訓練データ正答率 | テストデータ正答率 | 症状 |
 |--------|:---:|:---:|------|
-| 浅い決定木（深さ2） | 67% | 65% | バイアス大（両方低い＝パターンを捉えきれていない） |
-| 深い決定木（深さ10） | 95% | 60% | 分散大（訓練とテストの差＝ノイズを学習） |
-| ランダムフォレスト | 78% | 73% | バギングで分散を抑制 |
-| XGBoost | 80% | 75% | ブースティングでバイアスも改善 |
+| 浅い決定木（深さ2） | 67% | 65% | バイアス大（両方低い＝パターンを捉えきれていません） |
+| 深い決定木（深さ10） | 95% | 60% | 分散大（訓練とテストの差＝ノイズを学習しています） |
+| ランダムフォレスト | 78% | 73% | バギングで分散を抑制しています |
+| XGBoost | 80% | 75% | ブースティングでバイアスも改善しています |
 
 訓練データとテストデータの正答率が**両方とも低い**ならバイアスの問題、**訓練だけ高くテストが低い**なら分散の問題です。
 
 本章の3つのツリーモデルは、このトレードオフの異なる位置にいます:
 
-- **決定木**: 深くすれば表現力は高いが、分散が大きい（データの揺れに弱い）。
-- **ランダムフォレスト**: 多数の木の多数決（バギング）で分散を抑制する。
-- **XGBoost**: 前の木の誤差を次の木が修正（ブースティング）し、バイアスを段階的に減らす。
+- **決定木**: 深くすれば表現力は高いですが、分散が大きくなります（データの揺れに弱いです）。
+- **ランダムフォレスト**: 多数の木の多数決（バギング）で分散を抑制します。
+- **XGBoost**: 前の木の誤差を次の木が修正（ブースティング）し、バイアスを段階的に減らします。
 
-#### 3モデルの位置づけ（バイアス・分散の視点）
+#### 3つのツリーモデルの位置づけ（バイアス・分散の視点）
 
 | モデル | 主な戦略 | 効果 |
 |--------|----------|------|
-| 決定木 | 1本の木で分割 | 解釈しやすいが不安定 |
-| ランダムフォレスト | 独立な木の多数決（バギング） | 分散を削減 |
-| XGBoost | 前段の残差を逐次修正（ブースティング） | バイアスを削減 |
+| 決定木 | 1本の木で分割します | 解釈しやすいですが不安定です |
+| ランダムフォレスト | 独立な木の多数決（バギング）を使います | 分散を削減します |
+| XGBoost | 前段の残差を逐次修正します（ブースティング） | バイアスを削減します |
 
 #### ツリーモデルの分岐ロジック：再帰分割
 
@@ -773,13 +797,13 @@ tibble(
   knitr::kable(caption = "Gini Impurity Calculation at proficiency = 0.25")
 ```
 
-分割前のGiniは 0.500（2クラスが半々）。`proficiency = 0.25` で分けると、左は全員 incorrect（$G = 0$）、右は全員 correct（$G = 0$）となり、加重Giniは 0.000 です。これが**最も純粋な分割**です。
+分割前のGiniは 0.500（2クラスが半々）です。`proficiency = 0.25` で分けると、左は全員 incorrect（$G = 0$）、右は全員 correct（$G = 0$）となり、加重Giniは 0.000 です。これが**最も純粋な分割**です。
 
 実際の決定木アルゴリズム（CART）は、すべての変数×すべての分割点でこのGini改善量を計算し、最大の改善をもたらす分割を選びます。これを再帰的に繰り返し、停止条件（最小サンプル数、最大深さなど）に達するまで分岐を続けます[@breiman1984]。
 
 **回帰との対比**:
-- **ロジスティック回帰**: 全データに対して $\beta$ を最適化する（1つのグローバルな最適化問題）。
-- **決定木**: 各ノードで局所的に最良の分割を選ぶ（貪欲な局所最適化の繰り返し）。
+- **ロジスティック回帰**: 全データに対して $\beta$ を最適化します（1つのグローバルな最適化問題です）。
+- **決定木**: 各ノードで局所的に最良の分割を選びます（貪欲な局所最適化の繰り返しです）。
 
 #### 交差検証の直感的理解
 
@@ -826,10 +850,10 @@ cv_dat |>
 
 CVの手順:
 
-1. データをK個に分割する（本章ではK=3）。
-2. 1つ目の分割をテスト用に取っておき、残りで学習する。
-3. 2つ目、3つ目でも同様に繰り返す。
-4. K回の結果を平均して、モデルの汎化性能を推定する。
+1. データをK個に分割します（本章ではK=3）。
+2. 1つ目の分割を検証用に取っておき、残りで学習します。
+3. 2つ目、3つ目でも同様に繰り返します。
+4. K回の結果を平均して、モデルの汎化性能を推定します。
 
 この方法の利点は、テストデータを「使い切る前に」汎化性能を安定的に推定できる点です。ハイパーパラメータのチューニング（後述の `tune_grid`）はすべてこのCV上で行い、最終評価は別に確保したテストデータで行います。
 
@@ -872,17 +896,30 @@ metric_tbl
 
 この章では、次のように役割分担して読みます。
 
-- `ROC_AUC`: モデル全体の識別性能を比較
-- `PR_AUC`: 陽性クラス（ここでは `correct`）を重視した比較
-- `Sensitivity` / `Specificity`: 閾値を決めた後の実運用評価
-- `Brier`: 予測確率の信頼性（キャリブレーション）
+- `ROC_AUC`: モデル全体の識別性能を比較します。
+- `PR_AUC`: 陽性クラス（ここでは `correct`）を重視して比較します。
+- `Sensitivity` / `Specificity`: 閾値を決めた後の実運用評価に使います。
+- `Brier`: 予測確率の総合的な誤差を見ます（識別とキャリブレーションの両方の影響を受けます）。
 
 #### なぜROCだけでなくPRも見るのか
 
-- ROC-AUCは閾値に依存しない便利な比較指標。
-- ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合がある[@saito2015]。
+- ROC-AUCは閾値に依存しない便利な比較指標です。
+- ただし陽性が少ないデータではPR曲線の方が差が見えやすい場合があります[@saito2015]。
+- 厳密には、**ROC-AUC自体は陽性率（有病率）に対して不変**です。一方、Precision（適合率）は陽性率に依存するため、陽性が稀な場面ではPR曲線の方が**運用判断（どれだけの陽性予測が真陽性か）と直結しやすい**という性質があります。「ROC-AUCが不均衡データで誤っている」のではなく、「PR曲線の方が運用上の関心と一致する角度から差を見せてくれる」と理解するのが正確です [@saito2015]。
 
-`yardstick` の2値指標は既定で「因子の第1水準」をイベントとして扱います。そのため本章では `levels = c("incorrect", "correct")` を固定し、`event_level = "second"` を明示しています。`roc_auc()` と `pr_auc()` は閾値非依存の集約指標、`sens()`/`spec()` は閾値依存指標、`brier_class()` は確率予測誤差の二乗平均で、小さいほど良好です。参考: [yardstick: roc_auc()](https://yardstick.tidymodels.org/reference/roc_auc.html), [yardstick: pr_auc()](https://yardstick.tidymodels.org/reference/pr_auc.html), [yardstick: brier_class()](https://yardstick.tidymodels.org/reference/brier_class.html)
+`yardstick` の2値指標は既定で「因子の第1水準」をイベントとして扱います。そのため本章では `levels = c("incorrect", "correct")` を固定し、`event_level = "second"` を明示しています。`roc_auc()` と `pr_auc()` は閾値非依存の集約指標、`sens()`/`spec()` は閾値依存指標、`brier_class()` は確率予測誤差の二乗平均で、小さいほど良好です。Brier score は便利な確率スコアですが、それだけでキャリブレーションを証明する指標ではありません。確率の妥当性を主張する場合は、後半の信頼度図、calibration slope、ECE などと併せて確認します。参考: [yardstick: roc_auc()](https://yardstick.tidymodels.org/reference/roc_auc.html), [yardstick: pr_auc()](https://yardstick.tidymodels.org/reference/pr_auc.html), [yardstick: brier_class()](https://yardstick.tidymodels.org/reference/brier_class.html)
+
+公式ドキュメントに照らすと、本章の評価設計では次の点を固定しておく必要があります。ここを曖昧にすると、同じ予測確率を使っていても、陽性クラスや評価単位の違いで結果の意味が変わります。
+
+| 項目 | 公式仕様で確認すべき点 | 本章での扱い |
+|---|---|---|
+| 陽性クラス | `yardstick` の2値指標はイベント水準を明示しないと既定動作に依存します | `correct` を第2水準に置き、`event_level = "second"` を各指標で明示します |
+| 閾値非依存指標 | `roc_auc()` / `pr_auc()` は確率列から曲線下面積を計算します | モデル選択の主要比較に使いますが、運用閾値の良否とは分けます |
+| 閾値依存指標 | `sens()` / `spec()` / `conf_mat()` は分類ラベルに依存します | CVで決めた閾値をテストデータに適用して評価します |
+| 確率スコア | `brier_class()` は観測クラスと予測確率のずれを要約します | 校正そのものの証明ではなく、キャリブレーション図・校正指標と併読します |
+| 保存済みCV予測 | `collect_predictions()` でCV予測を取り出すには `control_grid(save_pred = TRUE)` が必要です | 閾値選択をテストデータで行わないため、チューニング時にCV予測を保存します |
+
+: Official Specifications That Affect the Interpretation of Classification Metrics
 
 ### 混同行列の確認（最小例）
 
@@ -896,6 +933,10 @@ metric_tbl
 
 # 以降の章でも使える、閾値ごとの基本指標関数
 evaluate_threshold <- function(truth, prob, threshold) {
+  safe_divide <- function(num, den) {
+    if (den > 0) num / den else NA_real_
+  }
+
   pred <- factor(
     if_else(prob >= threshold, "correct", "incorrect"),
     levels = levels(truth)
@@ -909,9 +950,9 @@ evaluate_threshold <- function(truth, prob, threshold) {
   tibble(
     threshold = threshold,
     TP = tp, FP = fp, TN = tn, FN = fn,
-    Sensitivity = tp / (tp + fn),
-    Specificity = tn / (tn + fp),
-    Precision = tp / (tp + fp)
+    Sensitivity = safe_divide(tp, tp + fn),
+    Specificity = safe_divide(tn, tn + fp),
+    Precision = safe_divide(tp, tp + fp)
   )
 }
 
@@ -934,8 +975,8 @@ bind_rows(
 
 この表の読み方:
 
-- 閾値を下げる（0.60 → 0.40）と、拾える正解者（Sensitivity）は上がりやすい。
-- その代わり、誤って正解判定する人数（FP）が増えることがある。
+- 閾値を下げる（0.60 → 0.40）と、拾える正解者（Sensitivity）は上がりやすくなります。
+- その代わり、誤って正解判定する人数（FP）が増えることがあります。
 
 ---
 
@@ -971,7 +1012,7 @@ bind_rows(
 ### データ生成
 
 
-**このチャンクの目的:** 220人の学習者 × 120語彙項目から3,500観測を抽出し、習熟度・学習条件・語彙特性を含む架空データを生成します。交互作用（`proficiency × condition`）も組み込んでいます。
+**このチャンクの目的:** 220人の学習者 × 120語彙項目から3,500観測を抽出し、習熟度・学習条件・語彙特性を含む架空データを生成します。交互作用（`proficiency × condition`）も組み込んでいます。`learner_id` と `item_id` は予測子としては使いませんが、train/test 分割と交差検証でリークを点検するために保持します。
 ```{r}
 #| eval: true
 #| label: simulate-edu-data
@@ -1032,8 +1073,11 @@ df <- obs |>
       levels = c("incorrect", "correct")
     )
   ) |>
-  dplyr::select(correct, proficiency, weekly_study, anxiety, l1_distance,
-         word_freq, word_length, cognate, pos, condition, test_time)
+  dplyr::select(
+    learner_id, item_id, correct,
+    proficiency, weekly_study, anxiety, l1_distance,
+    word_freq, word_length, cognate, pos, condition, test_time
+  )
 
 df |>
   slice_head(n = 10) |>
@@ -1053,6 +1097,8 @@ df |>
 df |>
   summarise(
     n = n(),
+    learners = n_distinct(learner_id),
+    items = n_distinct(item_id),
     correct_rate = mean(correct == "correct"),
     incorrect_rate = mean(correct == "incorrect")
   ) |>
@@ -1120,42 +1166,88 @@ profile_tbl <- tibble(
 
 ## 学習・評価の分割（リーク防止）
 
-最初に固定する原則は3つです。データを 8:2 に分け、テスト側は最終評価まで触らないこと、前処理（対数化・ダミー化）は訓練データだけで計算すること、ハイパーパラメータのチューニングは訓練データ内の交差検証で行うことです。
+最初に固定する原則は3つです。データを 8:2 に分け、テスト側は最終評価まで触らないこと、前処理（対数化・ダミー化）は訓練データだけで計算すること、ハイパーパラメータのチューニングは訓練データ内の交差検証で行うことです。さらに、学習者×項目データでは「どの単位を未知データとして評価したいか」を先に決めます。
 
 この節の目的は、「評価の信頼性を担保する実験設計」を先に固定することです。
+
+評価したい汎化先に応じて、分割すべき単位は変わります。
+
+| 評価したい問い | 分割単位 | 解釈 |
+|---|---|---|
+| 未知の学習者に対して予測できるか | `learner_id` | 本章の主ケースです。新しい受講者への予測性能を評価します。 |
+| 未知の項目に対して予測できるか | `item_id` | 新しい語彙・問題への予測性能を評価します。 |
+| 未知の学習者かつ未知の項目に対して予測できるか | `learner_id` と `item_id` の二重ホールドアウト | 最も厳しい設定です。新しい受講者が新しい項目に答える場面を評価します。 |
+| 既知の学習者・既知の項目の未観測行を補間できるか | 行単位 | 反復構造をまたぐため楽観的になりやすいです。主報告には使いにくいです。 |
 
 ### データ分割
 
 
-**このチャンクの目的:** 層化抽出（`strata = correct`）で 8:2 に train/test 分割し、クラス比率の保持を確認します。
+**このチャンクの目的:** `learner_id` 単位で 8:2 に train/test 分割し、未知学習者への汎化性能を評価します。
 ```{r}
 #| eval: true
 #| label: split-data
 
 set.seed(2024)
-data_split <- initial_split(df, prop = 0.8, strata = correct)
+data_split <- rsample::group_initial_split(df, group = learner_id, prop = 0.8)
 train_data <- training(data_split)
 test_data  <- testing(data_split)
 
-bind_rows(
-  tibble(dataset = "train", n = nrow(train_data),
-         correct_rate = mean(train_data$correct == "correct")),
-  tibble(dataset = "test", n = nrow(test_data),
-         correct_rate = mean(test_data$correct == "correct"))
-) |>
+split_summary <- bind_rows(
+  tibble(
+    dataset = "train",
+    n = nrow(train_data),
+    learners = n_distinct(train_data$learner_id),
+    items = n_distinct(train_data$item_id),
+    correct_rate = mean(train_data$correct == "correct")
+  ),
+  tibble(
+    dataset = "test",
+    n = nrow(test_data),
+    learners = n_distinct(test_data$learner_id),
+    items = n_distinct(test_data$item_id),
+    correct_rate = mean(test_data$correct == "correct")
+  )
+)
+
+split_summary |>
   mutate(correct_rate = percent(correct_rate, accuracy = 0.1)) |>
-  knitr::kable(caption = "Train/Test Split (stratified by outcome)")
+  knitr::kable(caption = "Train/Test Split (grouped by learner_id)")
+
+split_overlap_tbl <- tibble(
+  Check = c("Learners appearing in both train and test", "Items appearing in both train and test"),
+  N = c(
+    length(intersect(train_data$learner_id, test_data$learner_id)),
+    length(intersect(train_data$item_id, test_data$item_id))
+  ),
+  Interpretation = c(
+    "0なら未知学習者への評価としてリークなし",
+    "未知項目への評価ではありません。未知項目を評価したい場合は item_id で分割します"
+  )
+)
+
+split_overlap_tbl |>
+  knitr::kable(caption = "Leakage Check for Group-Aware Splitting")
 ```
 
-`strata = correct` を指定しているため、train/test の正答率は概ね近い値になります。ここで比率差が大きい場合は、分割の再実行やサンプルサイズの再点検を先に行う方が安全です。
+ここでは「未知の学習者に対して予測できるか」を主な評価対象にするため、同じ `learner_id` が train と test の両方に入らないようにしています。項目は train/test の両方に出るため、この分割は「未知項目への汎化」を評価するものではありません。未知項目への汎化を評価したい場合は、同じ考え方で `item_id` 単位の分割を使います。未知学習者かつ未知項目への汎化まで主張したい場合は、学習者と項目の両方を分ける二重ホールドアウトが必要です。ただし、データが薄くなりやすいため、標本数とクラス比の確認をより慎重に行います。
+
+group split は独立性の確保を優先するため、行単位の層化分割ほど train/test の正答率が揃うとは限りません。そのため、分割後の `correct_rate` を必ず確認し、極端にずれている場合は乱数 seed、分割比率、標本サイズを再点検します。
+
+```{r}
+#| eval: false
+
+item_split <- rsample::group_initial_split(df, group = item_id, prop = 0.8)
+```
 
 **たとえ話で理解する分割**:
-- **train**: 授業で練習した問題
-- **test**: 期末テストで初見の問題
+- **train**: これまでの受講者の解答ログ
+- **test**: モデルには見せていない新しい受講者の解答ログ
 
 train の点数だけ高くても、test で下がるなら実務では使いにくいモデルです。
 
-`rsample::initial_split(strata = ...)` は、目的変数のクラス比を train/test でおおむね保つための基本設定です。不均衡データほど `strata` 指定の有無で評価分散が変わるため、分割時の明示が再現性に直結します。参考: [rsample: initial_split()](https://rsample.tidymodels.org/reference/initial_split.html)
+`rsample::group_initial_split()` は、同じグループが train/test の両方に入らないように分割する関数です。教育データでは、行単位のランダム分割よりも「学習者単位」「項目単位」「クラス単位」のどれで未知データを作るかを明示する方が、評価の意味が明確になります。参考: [rsample: group_initial_split()](https://rsample.tidymodels.org/reference/group_initial_split.html)
+
+公式ドキュメント上も、`group_initial_split()` や `group_vfold_cv()` は「グループを分割単位にする」ための関数です。ただし、学習者と項目が交差しているデータでは、1回のグループ分割で両方の未知性を同時に保証できるとは限りません。本章では主分析を「未知学習者への汎化」として `learner_id` で分割し、未知項目への汎化は補助的な感度分析として別に `item_id` 分割を確認する設計にしています。これは、予測性能を高く見せるためではなく、**どの母集団へ一般化したいか**を評価設計に対応させるためです。参考: [rsample: group_vfold_cv()](https://rsample.tidymodels.org/reference/group_vfold_cv.html)
 
 ### 前処理レシピ
 
@@ -1234,9 +1326,9 @@ glm_fit |>
 - @azen2009 は、ロジスティック回帰で dominance analysis を使うために、
   R2類似指標の選定とブートストラップ推論を組み合わせて、重要度の再現性を検討しました。
 - @mizumoto2022 は、応用言語学データの再解析で dominance analysis を併用し、
-  「標準化βだけでは見えにくい相対的重要性」を示しました。  
-- 本章での具体例としては、`proficiency` と `condition` の relative share を比較し、  
-  「学習者要因と授業デザイン要因のどちらが予測改善に効いているか」を同じ尺度で読む、という使い方になります。  
+  「標準化βだけでは見えにくい相対的重要性」を示しました。
+- 本章での具体例としては、`proficiency` と `condition` の relative share を比較し、
+  「学習者要因と授業デザイン要因のどちらが予測改善に効いているか」を同じ尺度で読む、という使い方になります。
 
 以下のコードでは、(1) 通常のglmオブジェクトを作成し、(2) `dominanceanalysis`パッケージで全てのサブモデルの組み合わせにおける各変数の平均的な改善量を計算し、(3) Nagelkerke R2ベースの結果を表にします。
 
@@ -1338,8 +1430,8 @@ level別プロットは「モデルが複雑になるほど、どの変数の追
 
 ### Dominance と SHAP の役割分担
 
-- Dominance（ここ）: **GLM全体**で、説明変数の相対的重要性を比較する。
-- SHAP（後半）: **XGBoost**で、全体と個別予測の寄与を説明する。
+- Dominance（ここ）: **GLM全体**で、説明変数の相対的重要性を比較します。
+- SHAP（後半）: **XGBoost**で、全体と個別予測の寄与を説明します。
 
 #### Mizumoto (2022) スタイルの最小実装
 
@@ -1365,7 +1457,7 @@ dominanceanalysis::averageContribution(da_miz)$r2.n |>
 
 ### GLMの限界とツリーモデルへの動機
 
-GLMは全データに1つの式をあてはめるため、交互作用を捉えるには `proficiency:condition` のように手動で指定する必要があります。変数が多い場合、すべての交互作用を事前に列挙するのは現実的ではありません。次節以降のツリーモデルは、この**交互作用の発見を自動的に**行う点が根本的に異なります。
+GLMは全データに1つの式をあてはめるため、交互作用を捉えるには `proficiency:condition` のように手動で指定する必要があります。変数が多い場合、すべての交互作用を事前に列挙するのは現実的ではありません。次節以降のツリーモデルは、この**交互作用候補の探索**をデータ駆動で行う点が根本的に異なります。
 
 ---
 
@@ -1379,11 +1471,11 @@ GLMは全データに1つの式をあてはめるため、交互作用を捉え�
 
 ### 決定木の基本構造
 
-- 決定木は、データを「条件分岐」で繰り返し分けるモデルです。  
-- 分岐点（ノード）では、例: `proficiency > 0.4` のような質問をします。  
-- 最後の葉（leaf）で、正答確率やクラス（correct / incorrect）を出します。  
-- 良い点: ルールが可視化でき、教育的解釈がしやすい。  
-- 注意点: 1本の木はデータの小さな揺れに影響されやすい。  
+- 決定木は、データを「条件分岐」で繰り返し分けるモデルです。
+- 分岐点（ノード）では、例: `proficiency > 0.4` のような質問をします。
+- 最後の葉（leaf）で、正答確率やクラス（correct / incorrect）を出します。
+- 良い点: ルールが可視化でき、教育的解釈がしやすいです。
+- 注意点: 1本の木はデータの小さな揺れに影響されやすいです。
 
 英語教育の文脈では、「どの条件の学習者が正答しやすいか」をif-thenルールで説明できる点が、決定木の大きな利点です。分岐ロジックの詳細（Gini不純度による分割選択）は、先の「回帰から機械学習への橋渡し」で解説しました。ここではその仕組みを実際の教育データに適用し、ハイパーパラメータのチューニングから可視化までを行います。
 
@@ -1409,13 +1501,13 @@ GLMは全データに1つの式をあてはめるため、交互作用を捉え�
 `grid_regular`は各ハイパーパラメータの範囲を等間隔に区切ってグリッドを作ります。`levels = c(3, 2, 2)`は、cost_complexityを3段階、tree_depthを2段階、min_nを2段階に設定し、計3x2x2=12通りの組み合わせを試すという意味です。
 
 
-**このチャンクの目的:** 3-fold CVで決定木のハイパーパラメータを12通り探索し、最良設定を選択します。
+**このチャンクの目的:** 同じ `learner_id` を複数foldに分けない3-fold CVで決定木のハイパーパラメータを12通り探索し、最良設定を選択します。
 ```{r}
 #| eval: true
 #| label: tune-decision-tree
 
 set.seed(2024)
-folds <- vfold_cv(train_data, v = 3, strata = correct)
+folds <- rsample::group_vfold_cv(train_data, group = learner_id, v = 3)
 
 tree_spec <- decision_tree(
   cost_complexity = tune(),
@@ -1448,9 +1540,11 @@ tree_best <- select_best(tree_res, metric = "roc_auc")
 tree_best
 ```
 
+この `folds` は訓練データの内部だけで作られます。各foldでは、同じ学習者の行が分析側と評価側に分かれないため、ハイパーパラメータ探索の段階でも「未知学習者への汎化」という最終評価の問いと整合します。なお、CV内の評価foldはチューニング用の検証データで、最終テストデータとは別物です。
+
 この出力で得られる `cost_complexity`, `tree_depth`, `min_n` は、以降の最終木を再現するための確定値です。論文では「探索範囲」「CV設定」「採用値」の3点をセットで記載すると再現性が上がります。
 
-`tune_grid` の結果を読むときは、最良設定1点だけでなく「次点との差」も確認します。上位2〜3設定のROC-AUCがほぼ同じなら、より単純な設定（浅い木・大きい `min_n`）を選ぶと、過学習リスクを下げながら解釈可能性を保てます。
+`tune_grid` の結果を読むときは、最良設定1点だけでなく「次点との差」も確認します。本章のコードはROC-AUC最大の設定を自動採用しますが、上位2〜3設定のROC-AUCがほぼ同じなら、より単純な設定（浅い木・大きい `min_n`・大きい `cost_complexity`）を採用候補にする方が、過学習リスクを下げながら解釈可能性を保ちやすくなります。
 
 parsnip の `decision_tree(engine = "rpart")` では、`cost_complexity` が `cp` に対応し、木の刈り込み強度を決めます。`tree_depth` は `maxdepth`、`min_n` は `minsplit` に対応し、木の複雑さと安定性を制御します。参考: [parsnip: decision_tree() with rpart](https://parsnip.tidymodels.org/reference/details_decision_tree_rpart.html), [rpart: rpart.control](https://stat.ethz.ch/R-manual/R-devel/RHOME/library/rpart/html/rpart.control.html)
 
@@ -1458,7 +1552,7 @@ parsnip の `decision_tree(engine = "rpart")` では、`cost_complexity` が `cp
 
 ### チューニング面
 
-最良設定だけを見ると「どこまでが同等性能か」が見えません。`collect_metrics()` で全候補を取り出し、どの領域が安定して高性能かをヒートマップで確認します。  
+最良設定だけを見ると「どこまでが同等性能か」が見えません。`collect_metrics()` で全候補を取り出し、どの領域が安定して高性能かをヒートマップで確認します。
 この図は、**単一点最適化ではなく、再現しやすい領域選択**を行うための可視化です。
 
 
@@ -1494,9 +1588,9 @@ tree_tune_roc |>
 ```
 
 この図では「最高値」だけでなく「近傍の広さ」を見ます。
-- 高性能タイルが複数連続する領域は、再標本化で再現しやすい。
-- 単発で高いタイルは偶然上振れの可能性がある。
-- 同等性能なら、より単純な設定（浅い木・大きい `min_n`）を優先しやすい。
+- 高性能タイルが複数連続する領域は、再標本化で再現しやすいです。
+- 単発で高いタイルは偶然上振れの可能性があります。
+- 同等性能なら、より単純な設定（浅い木・大きい `min_n`）を優先しやすいです。
 
 `collect_metrics()` は `tune_grid()` の結果をパラメータごと平均化して返すため、可視化の基礎表として使えます。自動可視化として `autoplot(tune_results, type = "marginals")` も利用できますが、本章では意思決定しやすい2次元ヒートマップを手動で作成しています。参考: [tune: collect_metrics()](https://tune.tidymodels.org/reference/collect_predictions.html), [tune: Introduction article](https://tune.tidymodels.org/articles/tune.html)
 
@@ -1542,7 +1636,7 @@ rpart.plot::rpart.plot(tree_model, type = 2, extra = 104,
 #| warning: false
 
 # parsnip経由モデルはas.party()変換で必要な内部情報が不足する場合があるため、
-# 同条件で可視化専用のrpartモデルを再学習する。
+# 同条件で可視化専用のrpartモデルを再学習します。
 tree_train_vis <- train_data |>
   mutate(word_freq = log10(word_freq + 1))
 
@@ -1571,24 +1665,24 @@ ggparty::ggparty(tree_party) +
 ```
 
 `ggparty` 図は見た目の一貫性と拡張性に強みがあります。
-- `theme()` で章全体の図スタイルに合わせやすい。
-- ノード情報を追加して、用途別に注釈を作りやすい。
-- ただし、可読性だけを優先するなら `rpart.plot` の方が簡潔な場合もある。
+- `theme()` で章全体の図スタイルに合わせやすいです。
+- ノード情報を追加して、用途別に注釈を作りやすいです。
+- ただし、可読性だけを優先するなら `rpart.plot` の方が簡潔な場合もあります。
 
 `partykit::as.party()` は `rpart` オブジェクトを party 構造に変換する標準手順です。`ggparty` は party オブジェクトを `ggplot2` レイヤで描くため、他の可視化とのデザイン統一に適します。参考: [partykit (CRAN)](https://cran.r-project.org/package=partykit), [ggparty (CRAN)](https://cran.r-project.org/package=ggparty)
 
 ### 剪定プロファイル
 
-木構造の図だけでは、どれだけ刈り込みが妥当かは判断しづらいです。`rpart` が内部的に計算した `cptable` を使って、分岐数と誤差の関係を可視化します。
+木構造の図だけでは、どれだけ刈り込みが妥当かは判断しづらいです。`rpart` が内部的に計算した `cptable` を使って、分岐数と誤差の関係を可視化します。ただし、この `cptable` は `rpart` 内部の診断表です。本章の主要なハイパーパラメータ選択は、上で実行した `learner_id` 単位の grouped CV に基づきます。
 
 
-**このチャンクの目的:** rpartのcptableから分岐数と内部CV誤差の関係を描画し、刈り込みの妥当性を確認します。
+**このチャンクの目的:** rpartのcptableから分岐数と内部診断誤差の関係を描画し、刈り込みの妥当性を補助的に確認します。
 ```{r}
 #| eval: true
 #| label: tree-pruning-profile
 #| fig-width: 8
 #| fig-height: 5
-#| fig-cap: "Internal pruning profile from rpart cptable"
+#| fig-cap: "Diagnostic pruning profile from rpart cptable"
 
 tree_cp_tbl <- tree_model$cptable |>
   as.data.frame(check.names = FALSE) |>
@@ -1605,16 +1699,17 @@ tree_cp_tbl |>
   ) +
   labs(
     title = "Pruning Profile of the Fitted Tree",
-    subtitle = "Lower xerror indicates better internal pruning level",
+    subtitle = "Diagnostic only; final tuning used learner-grouped CV",
     x = "Number of splits",
     y = "xerror (internal CV error)"
   )
 ```
 
 この図は「枝を増やすほど良いわけではない」ことを確認するために使います。
-- `nsplit` が増えても `xerror` が改善しない領域は過剰複雑化の候補。
-- `xstd` が大きい点は不確実性が高く、過信しない。
-- 実務では、最小誤差点の近傍でより単純な木を選ぶ戦略が説明しやすい。
+- `nsplit` が増えても `xerror` が改善しない領域は過剰複雑化の候補です。
+- `xstd` が大きい点は不確実性が高く、過信しません。
+- 実務では、最小誤差点の近傍でより単純な木を選ぶ戦略が説明しやすいです。
+- 本章のような反復測定データでは、最終判断は `learner_id` 単位のgrouped CVとheld-out testで行います。
 
 `rpart` には `printcp()` / `plotcp()` があり、CPと内部交差検証誤差の確認が標準ワークフローです。本章は `ggplot2` で同等情報を再描画し、他図との見た目を統一しています。参考: [rpart: plotcp and printcp](https://stat.ethz.ch/R-manual/R-devel/library/rpart/html/plotcp.html)
 
@@ -1624,9 +1719,9 @@ tree_cp_tbl |>
 
 一方、単木の限界も明確です:
 
-- **高分散**: データの一部を変えるだけで、木の構造が大きく変わることがある。
-- **貪欲アルゴリズム**: 各分岐で局所最適を選ぶため、全体最適とは限らない。
-- **外挿不可**: 訓練データの範囲外の値に対して、最も近いリーフの予測をそのまま返す。
+- **高分散**: データの一部を変えるだけで、木の構造が大きく変わることがあります。
+- **貪欲アルゴリズム**: 各分岐で局所最適を選ぶため、全体最適とは限りません。
+- **外挿不可**: 訓練データの範囲外の値に対して、最も近いリーフの予測をそのまま返します。
 
 したがって、決定木は「予測の仕組みを説明するモデル」として使い、精度を求める場合は次節以降のアンサンブル手法を検討します。
 
@@ -1645,7 +1740,7 @@ tibble(split_var = tree_model$frame$var) |>
   knitr::kable(caption = "Decision Tree Split Frequency: Variables repeatedly used for branching")
 ```
 
-この表は、木がどの変数を重視して意思決定しているかを確認するための基礎資料です。
+この表は、木がどの変数を分岐に使ったかを確認するための基礎資料です。分岐回数は説明用の要約で、Permutation importance や SHAP のような予測性能ベースの重要度とは別物として扱います。
 
 ### 葉ノードプロファイル
 
@@ -1690,10 +1785,10 @@ tree_leaf_profile |>
   )
 ```
 
-この図は「どの葉が信頼できるか」を点検するために使います。
-- `n` が小さい葉は率が極端でも不安定な可能性がある。
-- バーと点の乖離が大きい葉は、局所的な当てはまり不良の候補。
-- 教育実務で介入対象を定義する際は、`n` と率を必ずセットで確認する。
+この図は「どの葉が信頼できるか」を点検するために使います。ただし、ここでは学習データ上の葉ノードを見ているため、外部性能の証拠ではなく、最終木の構造診断として読みます。
+- `n` が小さい葉は率が極端でも不安定な可能性があります。
+- バーと点の乖離が大きい葉は、局所的な当てはまり不良の候補です。
+- 教育実務で支援候補を定義する際は、`n` と率を必ずセットで確認します。
 
 ### 決定マップ
 
@@ -1746,22 +1841,92 @@ tree_map_grid |>
 ```
 
 決定マップでは、境界の形からモデルの性質を読めます。
-- 境界が軸平行の階段状になるのは、木が軸方向に分割するため。
-- 急激な色変化は、分岐閾値をまたいだ判定切替を示す。
-- 2変数図は説明用に有効だが、他変数固定の条件付き可視化である点を本文で明示する。
+- 境界が軸平行の階段状になるのは、木が軸方向に分割するためです。
+- 急激な色変化は、分岐閾値をまたいだ判定切替を示します。
+- 2変数図は説明用に有効ですが、他変数固定の条件付き可視化だという点を本文で明示します。
+
+### 単木の安定性確認
+
+決定木は読みやすい一方で、データの小さな変化に敏感です。そこで、学習者単位でブートストラップ標本を作り、同じ設定で木を繰り返し学習したとき、根ノードにどの変数が選ばれやすいかを確認します。この図は「単木のルールをどれくらい頑健に読めるか」を点検するための補助診断です。
+
+
+**このチャンクの目的:** 学習者単位のブートストラップで単木を繰り返し作り、根ノード分岐の安定性を確認します。
+```{r}
+#| eval: true
+#| label: tree-root-stability
+#| fig-width: 8
+#| fig-height: 5
+#| fig-cap: "Root-split stability of single decision trees under learner-level bootstrap resampling"
+
+set.seed(2024)
+n_tree_boot <- 40
+learner_ids_train <- unique(train_data$learner_id)
+
+tree_root_stability <- map_dfr(seq_len(n_tree_boot), \(b) {
+  sampled_learners <- tibble(
+    learner_id = sample(
+      learner_ids_train,
+      size = length(learner_ids_train),
+      replace = TRUE
+    ),
+    boot_draw = seq_len(length(learner_ids_train))
+  )
+
+  boot_data <- sampled_learners |>
+    left_join(train_data, by = "learner_id") |>
+    mutate(word_freq = log10(word_freq + 1))
+
+  boot_tree <- rpart::rpart(
+    correct ~ proficiency + weekly_study + anxiety + l1_distance +
+      word_freq + word_length + cognate + pos + condition + test_time,
+    data = boot_data,
+    method = "class",
+    control = rpart::rpart.control(
+      cp = tree_best$cost_complexity,
+      maxdepth = as.integer(tree_best$tree_depth),
+      minsplit = as.integer(tree_best$min_n)
+    )
+  )
+
+  tibble(
+    draw = b,
+    root_split = boot_tree$frame$var[1]
+  )
+})
+
+tree_root_stability |>
+  count(root_split, sort = TRUE) |>
+  mutate(
+    proportion = n / sum(n),
+    root_split = fct_reorder(root_split, proportion)
+  ) |>
+  ggplot(aes(x = root_split, y = proportion)) +
+  geom_col(fill = "#4C78A8") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Root Split Stability Across Bootstrap Trees",
+    subtitle = "Single-tree explanations are more stable when the same root variable appears repeatedly",
+    x = "Root split variable",
+    y = "Bootstrap proportion"
+  )
+```
+
+根ノードがほぼ同じ変数に集中していれば、単木の最初の大きな分岐は比較的安定していると読めます。逆に、根ノードが複数変数に分散する場合は、1本の木図だけを強く解釈せず、RFやXGBoostの重要度、SHAP、サブグループ別性能と照合して慎重に報告します。
 
 :::
 
 ::: {.callout-note}
 ### 可視化の使い分け（決定木）
-1. **木図 (`rpart.plot`)**: ルールそのものを説明する。
-2. **木図 (`ggparty`)**: ggplot文法で木構造を描き、スタイル統一しやすくする。
-3. **チューニング面（ヒートマップ）**: 設定選択の妥当性を示す。
-4. **葉ノードプロファイル**: 各葉の安定性と当てはまりを点検する。
-5. **決定マップ**: 主要2変数で局所ルールを直感的に示す。
+1. **木図 (`rpart.plot`)**: ルールそのものを説明します。
+2. **木図 (`ggparty`)**: ggplot文法で木構造を描き、スタイル統一しやすくします。
+3. **チューニング面（ヒートマップ）**: 設定選択の妥当性を示します。
+4. **葉ノードプロファイル**: 各葉の安定性と当てはまりを点検します。
+5. **決定マップ**: 主要2変数で局所ルールを直感的に示します。
+6. **単木の安定性確認**: 学習者単位の再標本化で、根ノード分岐がどれくらい再現するかを確認します。
 :::
 
-決定木は「1人の専門家の判断」に似ている。もし同じデータを少しだけ入れ替えて木を作り直したら、まったく違う分岐ルールが出てくるかもしれない（高分散）。では、100人の専門家にそれぞれ少しずつ異なるデータを渡して判断させ、多数決をとったらどうか？個々の判断はばらつくが、集約すると安定する——これがランダムフォレストの基本発想である。
+決定木は「1人の専門家の判断」に似ています。同じデータを少しだけ入れ替えて木を作り直すと、異なる分岐ルールが出てくることがあります（高分散）。では、多数の専門家にそれぞれ少しずつ異なる資料を渡して判断してもらい、多数決を取るとどうなるでしょうか。個々の判断はばらついても、集約すると安定します。これがランダムフォレストの基本発想です。
 
 ---
 
@@ -1777,14 +1942,14 @@ tree_map_grid |>
 
 ランダムフォレストの土台は**バギング（Bootstrap Aggregating）**です。手順は以下の通りです:
 
-1. 元データからブートストラップ標本（復元抽出）を作る。
-2. その標本で1本の決定木を育てる。
-3. 1-2をB回繰り返す（本章ではB = 300）。
-4. 全B本の木の予測を**多数決**（分類の場合）または**平均**（回帰の場合）で統合する。
+1. 元データからブートストラップ標本（復元抽出）を作ります。
+2. その標本で1本の決定木を育てます。
+3. 1-2をB回繰り返します（本章ではB = 300）。
+4. 全B本の木の予測を**多数決**（分類の場合）または**平均**（回帰の場合）で統合します。
 
 比喩で言えば、「多数の専門家に別々の資料を渡し、独立に判断してもらって多数決をとる」イメージです。1人の判断は偏りやすくても、独立した多数の専門家の多数決は安定します。本章では300本の木（`trees = 300`）を使用します。
 
-本章のデータで言えば、木1は「proficiencyが高い学習者を正答と判定するルール」を学び、木2は「cognate（同根語）であれば正答しやすいルール」を拾い、木3は「retrieval条件と即時テストの組み合わせに注目するルール」を学ぶ、というように各木が異なる特徴に着目する。500本の木がそれぞれ異なる「視点」を持つため、多数決をとると1本の木では見逃しがちなパターンも拾える。
+本章のデータで言えば、木1は「proficiencyが高い学習者を正答と判定するルール」を学び、木2は「cognate（同根語）であれば正答しやすいルール」を拾い、木3は「retrieval条件と即時テストの組み合わせに注目するルール」を学ぶ、というように各木が異なる特徴に着目します。300本の木がそれぞれ異なる「視点」を持つため、多数決をとると1本の木では見逃しがちなパターンも拾えます。
 
 ランダムフォレストはバギングに加えて、各分岐で**変数のランダム選択**（mtry個だけ候補にする）を行います。これにより、強い変数（例: proficiency）がすべての木で最初に選ばれる状況を防ぎ、木どうしの**相関を下げて**分散削減効果を高めます[@breiman2001]。
 
@@ -1869,7 +2034,7 @@ rf_final_fit <- fit(rf_final_wf, data = train_data)
 この段階で、CVは「設計選択」に、最終学習は「本番モデル構築」に役割が分かれます。テストデータにはまだ触れないことで、評価の独立性を守ります。
 
 
-**このチャンクの目的:** OOB（Out-of-Bag）誤差を取り出し、内部汎化推定を確認します。
+**このチャンクの目的:** OOB（Out-of-Bag）誤差を取り出し、ランダムフォレスト内部の参考指標として確認します。
 ```{r}
 #| eval: true
 #| label: rf-oob-check
@@ -1886,23 +2051,23 @@ tibble(
   knitr::kable(caption = "Random Forest OOB Check")
 ```
 
-OOB精度が高すぎる一方でテスト精度が低い場合は、データ分割差や特徴量リークを疑います。逆にOOBとテストが近ければ、汎化性能の見積もりは概ね安定していると判断できます。
+OOB精度が高すぎる一方でテスト精度が低い場合は、データ分割差や特徴量リークを疑います。ただし、本章のOOBはランダムフォレスト内部の行単位ブートストラップに基づくため、`learner_id` 単位の test set や grouped CV の代替にはなりません。OOBは「モデル内部の参考値」、最終判断は held-out learners でのテスト性能に置きます。
 
 ### OOB（Out-of-Bag）エラーとは
 
-各木はブートストラップ標本で学習するため、約3分の1のデータが「使われない」まま残ります。この残りデータで予測精度を算出したものがOOBエラーです。交差検証と同等の汎化推定が、追加コストなしで得られる点がランダムフォレストの利点です。
+各木はブートストラップ標本で学習するため、約3分の1のデータが「使われない」まま残ります。この残りデータで予測精度を算出したものがOOBエラーです。1行ずつ独立したデータでは交差検証に近い内部評価として便利ですが、同じ学習者や同じ項目が複数行に現れる教育データでは、OOB側にも学習済みの学習者・項目に近い情報が残りえます。そのため、本章ではOOBを grouped CV/test の代替ではなく、補助的な安定性チェックとして扱います。
 
 ### 変数重要度
 
 ここは「どの要因が予測に効いていたか」を説明する節です。ランダムフォレストでは**Permutation importance**（並べ替え重要度）を使います。原理は次の通りです:
 
-1. テストデータ（またはOOBデータ）で元の予測精度を記録する。
-2. ある変数の値をランダムにシャッフルして、予測精度を再計算する。
-3. 精度の**低下幅**がその変数の重要度になる。
+1. OOBデータまたは検証データで元の予測精度を記録します。
+2. ある変数の値をランダムにシャッフルして、予測精度を再計算します。
+3. 精度の**低下幅**がその変数の重要度になります。
 
-大きく低下する変数は「その変数がないと予測が壊れる」＝重要な変数です。Gini不純度ベースの重要度（impurity importance）とは異なり、permutation importanceはカテゴリカル変数のカーディナリティに対するバイアスが小さいとされています[@strobl2007]。
+大きく低下する変数は「その変数がないと予測が壊れる」＝重要な変数です。本章の `ranger` 実装では、学習済みRFのOOB予測に基づくPermutation importanceを取り出しています。Gini不純度ベースの重要度（impurity importance）よりカテゴリカル変数のカーディナリティバイアスは小さくなりやすい一方、相関の強い特徴量があると重要度が分散したり、片方だけが高く見えたりする点には注意します [@strobl2007]。**相関の強い特徴量がある場合の根本的な対処**としては、@strobl2008 が提案した **条件付き並べ替え重要度 (conditional permutation importance)** が有効で、`party::cforest` + `permimp::permimp()` で実装できます。重要度の解釈は、点推定だけでなく複数手法 (impurity / permutation / conditional permutation / SHAP) を併記して比較する方が安全です。
 
-カーディナリティとは「カテゴリの水準数」のことである。例えば本章のデータでは `pos`（品詞）は5水準、`condition`（条件）は3水準である。Gini不純度ベースの重要度は分岐回数で計算するため、水準数が多い変数ほど分岐に使われやすく、実際の予測力以上に重要度が膨らむ。これがカーディナリティバイアスである。
+カーディナリティとは「カテゴリの水準数」のことです。例えば本章のデータでは `pos`（品詞）は3水準、`condition`（条件）は3水準です。Gini不純度ベースの重要度は分岐改善量の集計で計算されるため、水準数が多い変数や連続変数ほど分割候補が多く、実際の予測力以上に重要度が膨らむことがあります。これがカーディナリティバイアスです。
 
 
 **このチャンクの目的:** Permutation importanceの表と棒グラフを出力します。
@@ -1957,7 +2122,7 @@ randomForest::importance(rf_miz) |>
 
 本文の `ranger` 実装は tidymodels ワークフローに載せるためのものです。一方、この短いスクリプトは「Mizumoto と同じ発想で重要度を確認したい」読者向けの最短経路です。
 
-ランダムフォレストは「全員が独立に判断して多数決」。これで分散は下がるが、全員が同じ弱点を持っていたら？例えば100本の木が全て「anxietyの効果を過小評価」していたら、多数決でもその偏りは消えない。XGBoostは発想を変える。「1本目の木の間違いを分析し、その間違いを集中的に修正する2本目の木を作る」——つまり逐次的に弱点を補う戦略である。
+ランダムフォレストは「多数の木が独立に判断して多数決する」方法です。これで分散は下がりますが、木の集合全体に同じ弱点が残ることもあります。例えば多くの木が「anxietyの効果を過小評価」していれば、多数決でもその偏りは残ります。XGBoostは発想を変え、「1本目の木の間違いを分析し、その間違いを集中的に修正する2本目の木を作る」というように、逐次的に弱点を補う戦略を取ります。
 
 ---
 
@@ -1988,9 +2153,9 @@ XGBoost は「前の木が間違えた部分を、次の木が重点的に修正
 ブースティングの手順を、比喩を使って説明します:
 
 1. **1回目の家庭教師**が全体を見て、「習熟度が低い学習者は苦手」と大まかに判断する（浅い木）。
-2. **2回目の家庭教師**は、1回目が見逃した部分（例: 同根語なのに間違えた高習熟者）を重点的に指導する。
-3. **3回目**はさらに細かい見逃しを拾う。
-4. 最終予測は、全家庭教師の判断を**学習率（learn_rate）で縮小しながら足し合わせた**もの。
+2. **2回目の家庭教師**は、1回目が見逃した部分（例: 同根語なのに間違えた高習熟者）を重点的に指導します。
+3. **3回目**はさらに細かい見逃しを拾います。
+4. 最終予測は、全家庭教師の判断を**学習率（learn_rate）で縮小しながら足し合わせた**ものです。
 
 数式で書くと、$m$回目までのモデルの予測は:
 
@@ -2023,7 +2188,7 @@ XGBoostは設定項目が多いため、各パラメータの意味を整理し�
 
 ### モデルとチューニング
 
-XGBoostは強力ですが、設定が多いため、ここでは小さめの探索空間で実行可能性を優先します。`grid_space_filling(type = "latin_hypercube")` は、高次元のパラメータ空間をまんべんなくカバーするようにポイントを配置する方法です。通常のグリッドサーチ（格子点の全組み合わせ）ではパラメータが7つもあると計算量が膨大になるため、少ない試行回数（ここでは5通り）で広い範囲を効率的に探索します。
+XGBoostは強力ですが、設定が多いため、ここでは小さめの探索空間で実行可能性を優先します。`grid_space_filling(type = "latin_hypercube")` は、高次元のパラメータ空間をまんべんなくカバーするようにポイントを配置する方法です。通常のグリッドサーチ（格子点の全組み合わせ）ではパラメータが7つもあると計算量が膨大になるため、少ない試行回数（ここでは5通り）で広い範囲を効率的に探索します。実研究でXGBoostを主分析にする場合は、探索点を増やす、反復回数と学習率の範囲を広げる、早期停止用の検証データを別に用意する、といった追加設計も検討します。
 
 
 **このチャンクの目的:** Latin hypercubeグリッドで7パラメータを5通り探索し、3-fold CVで最良設定を選択します。
@@ -2065,16 +2230,17 @@ xgb_res <- tune_grid(
   xgb_wf,
   resamples = folds,
   grid = xgb_grid,
-  metrics = metric_set(roc_auc, pr_auc)
+  metrics = metric_set(roc_auc, pr_auc),
+  control = control_grid(save_pred = TRUE)
 )
 
 xgb_best <- select_best(xgb_res, metric = "roc_auc")
 xgb_best
 ```
 
-XGBoostでは、単一パラメータより組み合わせで性能が決まります。特に `learn_rate` が小さい場合は `trees` が多く必要になるため、採用値をセットで読むことが重要です。
+XGBoostでは、単一パラメータより組み合わせで性能が決まります。特に `learn_rate` が小さい場合は `trees` が多く必要になるため、採用値をセットで読むことが重要です。`tree_depth` が深く、`learn_rate` が高く、`trees` も多い設定は過学習しやすいため、CV性能だけでなくキャリブレーションやサブグループ性能も後で確認します。
 
-`learn_rate(range = c(-3.5, -0.8))` は対数スケール指定であり、実際の学習率はおおむね 0.0003〜0.16 の範囲で探索されます。数値の桁を誤読しないよう、「logスケールで探索した」ことを本文に明記すると誤解を防げます。
+`learn_rate(range = c(-3.5, -0.8))` は対数スケール指定で、実際の学習率はおおむね 0.0003〜0.16 の範囲で探索されます。数値の桁を誤読しないよう、「logスケールで探索した」ことを本文に明記すると誤解を防げます。
 
 CVで選ばれた学習率、反復回数、木の深さ等を確定し、訓練データ全体で最終モデルを構築します。
 
@@ -2113,7 +2279,7 @@ xgb.importance(model = xgb_engine_fit) |>
 
 Gain重要度は高速で有用ですが、カテゴリ数の多い特徴が有利になりやすい特性があります。最終報告では、後続のSHAPやRFのPermutation重要度と照合して整合性を確認する方針を取ります。
 
-加えて、Gainは「分岐でどれだけ損失を減らしたか」の集計であり、寄与の方向（正答側へ押したか、誤答側へ押したか）は示しません。方向解釈にはSHAPを併用する設計が必要です。
+加えて、Gainは「分岐でどれだけ損失を減らしたか」の集計で、寄与の方向（正答側へ押したか、誤答側へ押したか）は示しません。方向解釈にはSHAPを併用する設計が必要です。
 
 ### SHAP（全体と個別の解釈）
 
@@ -2123,28 +2289,35 @@ Gain重要度は高速で有用ですが、カテゴリ数の多い特徴が有�
 
 考え方の核は、ゲーム理論のShapley値に基づいています。「チーム（全特徴）の成果（予測）を、各メンバー（特徴）に公平に分配するにはどうすればよいか」を計算します。具体例で説明します:
 
-- テストデータ全体の平均正答確率が 0.55 とする。
-- ある学習者（Case A）の予測が 0.85 なら、0.30 の「上積み」がある。
-- SHAPはこの 0.30 を「proficiency が +0.15、word_freq が +0.08、anxiety が +0.05、…」のように各特徴に分配する。
+- XGBoostでは、SHAP値は通常、確率そのものではなくロジット/マージンのスケールで加法分解されます。
+- たとえば平均的なマージンが 0.20、ある学習者（Case A）のマージンが 1.75 なら、差分 1.55 があります。
+- SHAPはこの 1.55 を「proficiency が +0.80、word_freq が +0.35、anxiety が +0.20、…」のように各特徴に分配します。確率として説明したい場合は、最後に逆ロジット変換で `P(correct)` に戻します。
 
 この分解により、「**なぜ**この学習者は正答と予測されたのか」を特徴ごとに説明できます。
 
 ::: {.callout-note}
 ### Shapley値の直感
-ゲーム理論では「チームの成果を各メンバーに公平に分配する」問題を考えます。SHAPはこれと同じ発想で、「予測という成果を、各特徴量という"プレイヤー"に公平に振り分ける」計算です。例えば、ある学習者の正答確率が0.85と予測されたとき、SHAPは「そのうちproficiencyが+0.15、word_freqが+0.10、conditionが+0.05寄与し、ベースラインが0.55」のように分解します。全プレイヤーの寄与を足すと必ず予測値に一致する点が、他の重要度指標にはない特長です。
+ゲーム理論では「チームの成果を各メンバーに公平に分配する」問題を考えます。SHAPはこれと同じ発想で、「予測という成果を、各特徴量という"プレイヤー"に公平に振り分ける」計算です。XGBoostの `predcontrib = TRUE` では、寄与は確率差ではなくロジット/マージン上の寄与として返る点に注意します。全プレイヤーの寄与と `BIAS` を足すとモデル出力に一致し、その値をシグモイド関数に通すと `P(correct)` に戻せます。
+:::
+
+XGBoost公式ドキュメントでも、`predcontrib = TRUE` は各特徴量の寄与と `BIAS` 列を返し、寄与和がモデル出力に対応すると説明されています。したがって、本章のSHAP図は「正答確率そのものを何ポイント上げたか」ではなく、「ロジット/マージン上で正答側・誤答側へどれだけ押したか」として読みます。参考: [xgboost prediction docs](https://xgboost.readthedocs.io/en/stable/prediction.html)
+
+::: {.callout-warning}
+#### path-dependent vs interventional TreeSHAP の違い
+`predcontrib = TRUE` は内部的に **path-dependent TreeSHAP** [@lundberg2020] を計算します。これは木の構造に沿って寄与を分配する高速アルゴリズムで、**訓練データの特徴量分布**に依存します。一方、観測分布で介入を考える **interventional TreeSHAP** は概念的により因果的な解釈に近く、両者は相関の強い特徴量があるときに値が一致しないことが知られています [@janzing2020]。本章では実用優先で path-dependent を使いますが、相関の強い特徴量間で寄与が振り分けられる場合は、Shapley値が「予測モデルの寄与の公平な分配」であって因果効果ではないことを再確認してください。汎用的な代替実装として、`kernelshap` パッケージ [@kernelshappkg] (model-agnostic Kernel SHAP) を `shapviz` と組み合わせる選択肢もあります。
 :::
 
 #### 論文での活用例
 
 先行研究マップの文献を、本章の実装に対応づけます:
 
-- **Dominance**（@budescu1993; @azen2003 系）: GLMベースラインで使用済み。全サブモデル比較で変数の相対的重要性を算出。本章の `glm-dominance-analysis` に対応。
-- **SHAP local → global**（@lundberg2017 系）: 1件の予測をベースライン＋寄与に分解し、多数集約して全体理解へ進む。@lundberg2020 は医療データで希少だが高リスクな要因を抽出。本章の `xgb-shap-local` → `xgb-shap-global` に対応。
+- **Dominance**（@budescu1993; @azen2003 系）: GLMベースラインで使用済みです。全サブモデル比較で変数の相対的重要性を算出します。本章の `glm-dominance-analysis` に対応します。
+- **SHAP local → global**（@lundberg2017 系）: 1件の予測をベースライン＋寄与に分解し、多数集約して全体理解へ進みます。@lundberg2020 は医療データで希少だが高リスクな要因を抽出しています。本章の `xgb-shap-local` → `xgb-shap-global` に対応します。
 - **教育データでの読み替え**: たとえばある学習者のlocal SHAPで `test_time_delayed` が負、`proficiency` が正なら、「遅延テスト条件は不利だが、習熟度がそれを一部補っている」と解釈できます。
 
 #### 全体: どの特徴が平均的に効いたか
 
-SHAPの計算は3ステップで進みます: (1) テストデータをXGBoostが受け取れる行列形式に変換する、(2) `predcontrib = TRUE`オプションで各観測×各変数のSHAP値を取得する、(3) 全観測にわたる絶対値の平均（Mean |SHAP|）を計算して全体的な重要度を算出する。
+SHAPの計算は3ステップで進みます: (1) 説明対象データをXGBoostが受け取れる行列形式に変換します、(2) `predcontrib = TRUE`オプションで各観測×各変数のSHAP値を取得します、(3) 全観測にわたる絶対値の平均（Mean |SHAP|）を計算して全体的な重要度を算出します。本章では最終モデルの説明対象としてテストデータを使いますが、SHAPは性能評価指標ではありません。テストデータのSHAPを見た後にモデルや閾値を選び直すと、評価の独立性が崩れます。
 
 
 **このチャンクの目的:** テストデータのSHAP値（predcontrib）を計算し、Mean|SHAP|で全体的な特徴量重要度を算出します。
@@ -2220,11 +2393,11 @@ beeswarmプロットの読み方:
 
 **beeswarmで驚くパターンを見つけたら**、それはデータからの重要な信号です。たとえば `word_freq` が高い（赤）にもかかわらず SHAP 値が負側にあるなら、(1) 高頻度語が簡単すぎて天井効果が出ている、(2) 高頻度語が短語に偏り `word_length` と交絡している、(3) 特定の頻度帯にサンプルが偏っている、といった可能性を検討します。beeswarm で仮説を立て、PDP や Local SHAP で検証する流れが実務的です。
 
-`predict(..., predcontrib = TRUE)` は、各特徴量の加法寄与と `BIAS` 列を返します。行ごとの寄与和はモデル出力（マージン）に対応するため、確率との対応を説明する場合は「ロジットスケールの寄与」である点を明記すると誤読を防げます。ロジットスケールとは、確率 $p$ を $\log(p / (1-p))$ に変換した尺度です。確率 0.5 はロジット 0、確率 0.8 はロジット約 1.4 に対応します。SHAP 値はこのスケール上で加法的に分解されるため、確率に戻すには逆変換（シグモイド関数）が必要です。参考: [xgboost prediction docs](https://xgboost.readthedocs.io/en/stable/prediction.html), [xgboost in R tutorial](https://xgboost.readthedocs.io/en/stable/R-package/xgboostPresentation.html)
+`predict(..., predcontrib = TRUE)` は、各特徴量の加法寄与と `BIAS` 列を返します。行ごとの寄与和はモデル出力（マージン）に対応するため、確率との対応を説明する場合は「ロジットスケールの寄与」だという点を明記すると誤読を防げます。ロジットスケールとは、確率 $p$ を $\log(p / (1-p))$ に変換した尺度です。確率 0.5 はロジット 0、確率 0.8 はロジット約 1.4 に対応します。SHAP 値はこのスケール上で加法的に分解されるため、確率に戻すには逆変換（シグモイド関数）が必要です。参考: [xgboost prediction docs](https://xgboost.readthedocs.io/en/stable/prediction.html), [xgboost in R tutorial](https://xgboost.readthedocs.io/en/stable/R-package/xgboostPresentation.html)
 
 #### 部分依存プロット（PDP）: 効果の形を見る
 
-SHAP beeswarmは個別観測の寄与を示すが、「変数が増えるとP(correct)はどう変わるか」という関数形は読み取りにくい。PDP（Partial Dependence Plot）は、他の変数を平均化したときの特定変数の限界効果を描く。
+SHAP beeswarmは個別観測の寄与を示しますが、「変数が増えるとP(correct)はどう変わるか」という関数形は読み取りにくいです。PDP（Partial Dependence Plot）は、他の変数を平均化したときの特定変数の限界効果を描きます。
 
 **このチャンクの目的:** proficiency と word_freq の部分依存プロットを描画し、XGBoostモデルの予測に対する各変数の限界効果の形を確認します。
 ```{r}
@@ -2269,14 +2442,15 @@ pdp_data |>
 PDPの読み方:
 
 - **横軸**: 対象変数の値。**縦軸**: 他の変数を平均化したときの予測確率。
-- **単調増加**（proficiency）: 変数が高いほど一貫してP(correct)が上がる。
-- **閾値型**（word_freq）: ある値を超えると急に効果が変わる。語彙頻度が極端に低い語は習得が難しいことを示唆。
-- **SHAPとの違い**: SHAPは個別観測の寄与分解、PDPは平均的な関数形。報告ではSHAPで重要変数を特定し、PDPで効果の形を補足するのが実務的。
+- **単調増加**（proficiency）: 変数が高いほど一貫してP(correct)が上がるかを確認します。
+- **閾値型**（word_freq）: ある値を超えると予測確率が急に変わるかを確認します。語彙頻度が極端に低い語は正答確率が低く予測されやすい、という読み方になります。
+- **SHAPとの違い**: SHAPは個別観測の寄与分解、PDPは平均的な関数形です。報告ではSHAPで重要変数を特定し、PDPで予測確率の形を補足するのが実務的です。
 
 **PDPの注意点**:
-- 曲線の両端（データが少ない領域）は推定が不安定なので、中央部分を優先して読む。
-- 曲線がジグザグなら、他の変数との相互作用が強い可能性がある。ICE（Individual Conditional Expectations）プロットで個別曲線を確認するとよい。
-- 教育的な読み方の例として、`proficiency` の PDP が「0.0付近で急上昇し、0.5以降は緩やか」なら、「中程度の習熟度を超えると正答率の改善が鈍化する。指導資源は低〜中習熟度の学習者に集中すべき」という示唆につながる。
+- 曲線の両端（データが少ない領域）は推定が不安定なので、中央部分を優先して読みます。
+- PDPは、観測データ内ではほとんど出現しない特徴量の組み合わせも平均化に含めることがあります。強い相関や交互作用がある場合は、ICE（Individual Conditional Expectations）プロットや条件付きPDPも検討します。
+- 曲線がジグザグなら、他の変数との相互作用が強い可能性があります。ICEプロットで個別曲線を確認するとよいです。
+- 教育的な読み方の例として、`proficiency` の PDP が「0.0付近で急上昇し、0.5以降は緩やか」なら、「このモデルでは低〜中習熟度帯で予測確率の差が大きい」と読めます。支援対象の候補を立てる材料にはなりますが、指導資源をそこへ配分すれば成果が上がる、という因果的判断には別の研究デザインが必要です。
 
 #### 個別: 1つの予測をどう説明するか
 
@@ -2324,15 +2498,15 @@ Local SHAPの正値は「correct側へ押す寄与」、負値は「incorrect側
 
 ::: {.callout-tip}
 ### SHAPの解釈指針
-- **Global SHAP**: どの特徴が「全体として」効いているか。  
-- **Local SHAP**: 1件の予測で、どの特徴が「正答側/誤答側」に押したか。  
+- **Global SHAP**: どの特徴が「全体として」効いているか。
+- **Local SHAP**: 1件の予測で、どの特徴が「正答側/誤答側」に押したか。
 :::
 
 ---
 
 ## 特徴量重要度の統合比較
 
-ここまで、GLMではDominance analysis、RFではPermutation importance、XGBoostではGain importanceとSHAPという4つの異なる重要度指標が登場した。「proficiencyが最重要」という結論は共通しそうだが、2位以下の順序は手法によって異なるかもしれない。異なる手法が「同じ答え」を出す変数ほど頑健に重要と言える。ここでは4手法を横断的に比較する。
+ここまで、GLMではDominance analysis、RFではPermutation importance、XGBoostではGain importanceとSHAPという4つの異なる重要度指標が登場しました。「proficiencyが最重要」という結論は共通しそうですが、2位以下の順序は手法によって異なるかもしれません。異なる手法が「同じ答え」を出す変数ほど、予測上は頑健に重要だと判断しやすくなります。ここでは4手法を横断的に比較します。
 
 ::: {.panel-tabset}
 
@@ -2345,7 +2519,7 @@ Local SHAPの正値は「correct側へ押す寄与」、負値は「incorrect側
 | Dominance analysis | GLM | 全サブモデル比較での平均R²改善量 | 理論的に厳密。相対的重要性を公平に比較 | 線形モデル前提。計算コスト高（変数が多いと困難） |
 | Permutation importance | RF | 変数シャッフル後の精度低下幅 | モデル非依存。カーディナリティバイアスが小さい | 相関の強い変数間で重要度が分散する |
 | Gain importance | XGBoost | 分岐に使われた際の損失改善量の合計 | 計算が速い。ツリー構造から直接算出 | カーディナリティの高い変数を過大評価しやすい |
-| SHAP | XGBoost | 各予測のShapley値の絶対値平均 | 局所→全体の統一的枠組み。理論的に公平 | 計算コストが高い。相互作用の直接解釈には追加分析が必要 |
+| SHAP | XGBoost | 各予測のShapley値の絶対値平均 | 局所→全体の統一的枠組みです。理論的に公平です | 計算コストが高いです。相互作用の直接解釈には追加分析が必要です |
 
 : Comparison of Four Feature Importance Methods
 
@@ -2409,15 +2583,15 @@ bind_rows(dom_rank, perm_rank, gain_rank, shap_rank) |>
 
 4手法は「異なる質問に答える異なる道具」です。報告時は次のように使い分けます:
 
-- **GLMを主モデルとして使う場合**: Dominance analysisを主報告。係数表と組み合わせて相対的重要性を議論する。
-- **ツリーモデルを主モデルとして使う場合**: SHAPを主報告（理論的公平性が高い）。Permutation importanceを補助として併記し、Gain importanceは参考に留める[@strobl2007]。
-- **複数手法の合意**: 全手法で上位に来る変数（例: proficiency, word_freq）は頑健に重要と判断できる。手法間で順位が異なる変数は、「どの手法を信頼するか」の根拠を明記する。
+- **GLMを主モデルとして使う場合**: Dominance analysisを主報告にし、係数表と組み合わせて相対的重要性を議論します。
+- **ツリーモデルを主モデルとして使う場合**: SHAPを主報告にし、Permutation importanceを補助として併記し、Gain importanceは参考に留めます[@strobl2007]。
+- **複数手法の合意**: 全手法で上位に来る変数（例: proficiency, word_freq）は、予測上頑健に重要だと判断しやすいです。手法間で順位が異なる変数は、「どの手法を信頼するか」の根拠を明記します。
 
 :::
 
 ---
 
-## 3モデル比較（ROCはここで効く）
+## GLMベースライン＋3ツリーモデル比較（ROCはここで効く）
 
 ### 概要
 
@@ -2433,8 +2607,8 @@ bind_rows(dom_rank, perm_rank, gain_rank, shap_rank) |>
 | Property | Logistic | Decision Tree | Random Forest | XGBoost |
 |---|---|---|---|---|
 | 解釈容易性 | 高（係数表） | 高（分岐規則） | 中（重要度） | 中（SHAP） |
-| 非線形対応 | 手動で指定 | 自動 | 自動 | 自動 |
-| 相互作用発見 | 手動で指定 | 自動 | 自動 | 自動 |
+| 非線形対応 | 手動で指定 | データ駆動で探索 | データ駆動で探索 | データ駆動で探索 |
+| 相互作用発見 | 手動で指定 | 分岐候補として探索 | 分岐候補として探索 | 分岐候補として探索 |
 | 計算速度 | 速い | 速い | 中程度 | やや遅い |
 | チューニング複雑さ | なし〜低 | 低 | 中 | 高 |
 | 過学習リスク | 低 | 高 | 低 | 中 |
@@ -2455,6 +2629,11 @@ bind_rows(dom_rank, perm_rank, gain_rank, shap_rank) |>
 collect_binary_preds <- function(fit_obj, data, model_name) {
   tibble(
     model = model_name,
+    learner_id = data$learner_id,
+    item_id = data$item_id,
+    proficiency = data$proficiency,
+    condition = data$condition,
+    test_time = data$test_time,
     truth = data$correct,
     .pred_correct = predict(fit_obj, data, type = "prob")$.pred_correct,
     .pred_class = predict(fit_obj, data, type = "class")$.pred_class
@@ -2525,7 +2704,7 @@ model_case_pred |>
   knitr::kable(caption = "Case-Based Probability Comparison: Predicted probability of correct response")
 ```
 
-ケース比較は「平均的にどちらが良いか」ではなく「どんな学習者で判断が割れるか」を見るために使います。教育実務では、この差が介入対象の選定に直結します。
+ケース比較は「平均的にどちらが良いか」ではなく「どんな学習者で判断が割れるか」を見るために使います。教育実務では、この差が支援候補を議論する出発点になります。
 
 ::: {.panel-tabset}
 
@@ -2540,6 +2719,7 @@ model_case_pred |>
 metric_summary <- pred_all |>
   group_by(model) |>
   summarise(
+    Threshold = 0.50,
     ROC_AUC = roc_auc_vec(truth, .pred_correct, event_level = "second"),
     PR_AUC = pr_auc_vec(truth, .pred_correct, event_level = "second"),
     Accuracy = accuracy_vec(truth, .pred_class),
@@ -2556,9 +2736,194 @@ metric_summary |>
 
 Event level is `correct` (second level).
 
-`metric_summary` は最終順位表ですが、用途に応じて重みづけを変える前提で読みます。例えば「見逃し回避」を重視するなら、ROC-AUCが僅差でもSensitivityやPR-AUCの差で採用モデルが逆転し得ます。
+`metric_summary` は最終順位表ですが、用途に応じて重みづけを変える前提で読みます。ここに出る `Accuracy`、`Sensitivity`、`Specificity` は、各モデルの既定クラス予測（実質的には `P(correct) >= .50`）での値です。運用閾値を決めた後の性能は、後の閾値比較表で別に確認します。例えば「正答を取りこぼさない」ことを重視するなら、ROC-AUCが僅差でもSensitivityやPR-AUCの差で採用モデルが逆転し得ます。
 
-各指標が答える問いは異なります。`Accuracy` は全体の当たりやすさ、`Sensitivity` は正答者を拾えるか、`Specificity` は誤答者を正しく除外できるか、`Brier` は確率予測そのものの正確さを表します。結果節では「どの問いを優先したか」を先に宣言してから指標値を提示すると、読者が判断軸を追いやすくなります。
+表は正確な値を読むのに向いていますが、モデル間の差を一目で見るには図も有効です。次のスコアカードでは、識別性能、既定閾値での分類性能、確率スコアを同じ画面に並べます。
+
+**このチャンクの目的:** 主要指標をモデル別に可視化し、どの指標で差が出ているかを確認します。
+```{r}
+#| eval: true
+#| label: model-metric-scorecard
+#| fig-width: 11
+#| fig-height: 7
+#| fig-cap: "Model metric scorecard: threshold-free, threshold-dependent, and probabilistic metrics"
+
+model_order <- metric_summary |>
+  arrange(ROC_AUC) |>
+  pull(model)
+
+metric_scorecard <- metric_summary |>
+  dplyr::select(
+    model, ROC_AUC, PR_AUC, Accuracy,
+    Sensitivity, Specificity, Brier
+  ) |>
+  pivot_longer(
+    cols = -model,
+    names_to = "Metric",
+    values_to = "Value"
+  ) |>
+  mutate(
+    model = factor(model, levels = model_order),
+    Metric = factor(
+      Metric,
+      levels = c("ROC_AUC", "PR_AUC", "Accuracy", "Sensitivity", "Specificity", "Brier")
+    ),
+    Direction = if_else(Metric == "Brier", "Lower is better", "Higher is better")
+  )
+
+metric_scorecard |>
+  ggplot(aes(x = model, y = Value, fill = Direction)) +
+  geom_col(width = 0.72) +
+  geom_text(
+    aes(label = scales::number(Value, accuracy = 0.001)),
+    hjust = -0.08,
+    size = 3
+  ) +
+  coord_flip() +
+  facet_wrap(~ Metric, ncol = 3) +
+  scale_y_continuous(limits = c(0, 1), expand = expansion(mult = c(0, 0.12))) +
+  scale_fill_manual(values = c(
+    "Higher is better" = "#2C7FB8",
+    "Lower is better" = "#D95F02"
+  )) +
+  labs(
+    title = "Model Comparison Scorecard",
+    subtitle = "Brier is the only panel where lower values are better",
+    x = NULL,
+    y = "Metric value",
+    fill = NULL
+  )
+```
+
+この図では、まずROC-AUCとPR-AUCで識別性能を見ます。次に、Sensitivity / Specificity / Accuracy が既定閾値でどう変わるかを確認します。Brierだけは小さいほど良いので、他のパネルと同じ向きで読まないようにします。本文でモデルを選ぶときは、「XGBoostがROC-AUCで最良だった」だけで終わらせず、「PR-AUC、Brier、閾値依存指標でも同じ判断になるか」を続けて書くと、読者が判断過程を追いやすくなります。
+
+ここでの指標は、held-out learners の全項目反応をまとめて評価する **response-level** 指標です。予測単位が「新しい学習者が新しい項目に正答するか」であれば自然ですが、各学習者を同じ重みで評価したい場合は、学習者ごとに指標を計算して平均する **learner-macro** 評価も併記します。ただし、ROC-AUCを学習者ごとに計算するには、その学習者内に `correct` と `incorrect` の両方が必要です。
+
+```{r}
+#| eval: true
+#| label: learner-macro-metrics
+
+learner_macro_summary <- pred_all |>
+  group_by(model, learner_id) |>
+  summarise(
+    Accuracy = accuracy_vec(truth, .pred_class),
+    Brier = brier_class_vec(truth, .pred_correct, event_level = "second"),
+    ROC_AUC = if (n_distinct(truth) == 2) {
+      roc_auc_vec(truth, .pred_correct, event_level = "second")
+    } else {
+      NA_real_
+    },
+    .groups = "drop"
+  ) |>
+  group_by(model) |>
+  summarise(
+    Learners = n(),
+    Learners_with_AUC = sum(!is.na(ROC_AUC)),
+    ROC_AUC_macro = mean(ROC_AUC, na.rm = TRUE),
+    Accuracy_macro = mean(Accuracy),
+    Brier_macro = mean(Brier),
+    .groups = "drop"
+  ) |>
+  arrange(desc(ROC_AUC_macro))
+
+learner_macro_summary |>
+  mutate(across(where(is.numeric), ~ round(., 3))) |>
+  knitr::kable(caption = "Learner-Macro Metrics: each held-out learner contributes equally")
+```
+
+各指標が答える問いは異なります。`Accuracy` は全体の当たりやすさ、`Sensitivity` は正答者を拾えるか、`Specificity` は誤答者を正しく除外できるか、`Brier` は確率予測の総合的な誤差を表します。結果節では「どの問いを優先したか」を先に宣言してから指標値を提示すると、読者が判断軸を追いやすくなります。
+
+### 平均性能だけで見落とすもの（サブグループ別性能）
+
+全体のROC-AUCやAccuracyが高くても、特定の層で性能が大きく落ちることがあります。教育データでは、習熟度帯、テスト時点、教材条件、L1背景などで誤りの出方が変わる場合があるため、モデルを実際の判断に近づけるほど、平均性能だけでなく**どの層で外しやすいか**を確認する必要があります。
+
+ここでは例として、`proficiency` を3分位で低・中・高に分け、さらに `test_time`（immediate / delayed）で分けてXGBoostの性能を確認します。この確認は、厳密な公平性監査ではありません。正式な公平性評価では、どの属性を、どの指標で、どの許容差まで確認するかを事前に定義する必要があります。
+
+**このチャンクの目的:** XGBoostの予測性能を習熟度帯 × テスト時点ごとに集計し、平均性能の裏にある弱い領域を確認します。
+```{r}
+#| eval: true
+#| label: subgroup-performance
+
+make_proficiency_band <- function(x) {
+  cut(
+    x,
+    breaks = quantile(x, probs = c(0, 1 / 3, 2 / 3, 1), na.rm = TRUE),
+    include.lowest = TRUE,
+    labels = c("Low", "Mid", "High")
+  )
+}
+
+safe_auc_group <- function(d) {
+  if (n_distinct(d$truth) < 2) return(NA_real_)
+  roc_auc_vec(d$truth, d$.pred_correct, event_level = "second")
+}
+
+calc_group_metrics <- function(d) {
+  threshold_eval <- evaluate_threshold(d$truth, d$.pred_correct, 0.50)
+
+  tibble(
+    n = nrow(d),
+    correct_rate = mean(d$truth == "correct"),
+    ROC_AUC = safe_auc_group(d),
+    Accuracy = (threshold_eval$TP + threshold_eval$TN) / nrow(d),
+    Sensitivity = threshold_eval$Sensitivity,
+    Specificity = threshold_eval$Specificity,
+    Precision = threshold_eval$Precision,
+    Brier = brier_class_vec(d$truth, d$.pred_correct, event_level = "second")
+  )
+}
+
+subgroup_summary <- pred_all |>
+  mutate(proficiency_band = make_proficiency_band(proficiency)) |>
+  group_by(model, proficiency_band, test_time) |>
+  group_modify(~ calc_group_metrics(.x)) |>
+  ungroup()
+
+subgroup_summary |>
+  dplyr::filter(model == "XGBoost") |>
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  arrange(proficiency_band, test_time) |>
+  knitr::kable(caption = "Subgroup Performance for XGBoost: proficiency band by test time")
+```
+
+**このチャンクの目的:** サブグループ別性能をヒートマップ化し、弱いセルを視覚的に見つけます。
+```{r}
+#| eval: true
+#| label: subgroup-performance-heatmap
+#| fig-width: 9
+#| fig-height: 5.5
+#| fig-cap: "Subgroup performance heatmap for XGBoost"
+
+subgroup_summary |>
+  dplyr::filter(model == "XGBoost") |>
+  dplyr::select(proficiency_band, test_time, ROC_AUC, Sensitivity, Specificity, Precision) |>
+  pivot_longer(
+    cols = c(ROC_AUC, Sensitivity, Specificity, Precision),
+    names_to = "Metric",
+    values_to = "Value"
+  ) |>
+  mutate(
+    Metric = factor(
+      Metric,
+      levels = c("ROC_AUC", "Sensitivity", "Specificity", "Precision")
+    ),
+    Label = if_else(is.na(Value), "NA", scales::number(Value, accuracy = 0.01))
+  ) |>
+  ggplot(aes(x = test_time, y = proficiency_band, fill = Value)) +
+  geom_tile(color = "white", linewidth = 1) +
+  geom_text(aes(label = Label), size = 3.5) +
+  scale_fill_gradient(low = "#FEE8C8", high = "#2C7FB8", limits = c(0, 1), na.value = "gray90") +
+  facet_wrap(~ Metric, ncol = 4) +
+  labs(
+    title = "XGBoost Performance by Subgroup",
+    subtitle = "Rows = proficiency bands; columns = test time",
+    x = "Test time",
+    y = "Proficiency band",
+    fill = "Metric"
+  )
+```
+
+この図で重要なのは、「どのセルが低いか」を見ることです。たとえば delayed × Low proficiency でSensitivityが低いなら、そのモデルは正答する低習熟度学習者を誤って `incorrect` 側に置きやすい可能性があります。Specificityが低いなら、誤答する観測を `correct` 側に置きやすい可能性があります。`NA` は、そのサブグループ内に該当する真値クラスや予測クラスがなく、分母が0になるため指標を計算できないセルです。こうした差は、モデルを採用しない理由になる場合もあれば、閾値をサブグループ別に調整する理由になる場合もあります。ただし、サブグループ別閾値は説明責任や公平性の問題を伴うため、研究目的と倫理的妥当性を明記して扱います。
 
 ### 公式ドキュメント補足（event level）
 
@@ -2571,54 +2936,78 @@ Event level is `correct` (second level).
 
 解釈の指針:
 
-- まず `ROC_AUC` と `PR_AUC` で上位候補を2つ程度に絞る。
-- 次に `Sensitivity` / `Specificity` と `Brier` で用途適合性を確認する。
+- まず `ROC_AUC` と `PR_AUC` で上位候補を2つ程度に絞ります。
+- 次に `Sensitivity` / `Specificity` と `Brier` で用途適合性を確認します。
+
+::: {.callout-important}
+本章では `correct` を陽性クラスにしています。したがって、ここでの `Sensitivity` は「正答する観測を正答側として拾えるか」を意味します。支援対象の早期抽出が目的なら、目的変数を `risk` / `incorrect` 側に作り直して陽性クラスにするか、`P(correct)` が低い観測を支援候補にするルールとして別に定義します。`correct` の感度を、そのまま「リスクの検出率」と読まないことが重要です。
+:::
 
 ### 指標確認の優先順序
 
-1. 研究で「見逃しが痛い」なら `Sensitivity` と `PR_AUC` を優先。  
-2. 全体性能を比較する場合は `ROC_AUC`。  
-3. 予測確率そのものを使うなら `Brier` とキャリブレーション図を確認。
+1. 研究で「正答者の取りこぼしが痛い」なら `Sensitivity` と `PR_AUC` を優先します。支援対象の見逃しを扱うなら、陽性クラスを `incorrect` / `risk` 側に再定義します。
+2. 全体性能を比較する場合は `ROC_AUC` を確認します。
+3. 予測確率そのものを使うなら `Brier` とキャリブレーション図を確認します。
 
 ### ROC曲線の直感
 
 ROC曲線がどうやって作られるかを直感的に確認しておきます。
 
-1. 閾値を **1.0**（全員を incorrect と判定）に設定する → TPR = 0, FPR = 0（左下の点）。
-2. 閾値を少しずつ**下げる** → correct と判定される人が増え、TPR（感度）が上がる。同時にFPR（偽陽性率）も上がる。
-3. 閾値を **0.0**（全員を correct と判定）にする → TPR = 1, FPR = 1（右上の点）。
+1. 閾値を **1.0**（全員を incorrect と判定）に設定します → TPR = 0, FPR = 0（左下の点）。
+2. 閾値を少しずつ**下げます** → correct と判定される人が増え、TPR（感度）が上がります。同時にFPR（偽陽性率）も上がります。
+3. 閾値を **0.0**（全員を correct と判定）にします → TPR = 1, FPR = 1（右上の点）。
 4. 各閾値で得られた (FPR, TPR) の点をつないだ曲線がROC曲線です。
 
 **AUCの直感的意味**: ランダムに正答者1人と誤答者1人を選んだとき、モデルが**正答者に高い確率を与える割合**。AUC = 1.0 なら完璧な識別、AUC = 0.5 ならランダムと同等です[@fawcett2006]。
 
 ### AUC信頼区間
 
-指標テーブルの点推定だけでは、モデル間の差が統計的に意味のある差なのかが判断できない。ブートストラップでROC-AUCの95%信頼区間を計算し、CIの重なりからモデル間の有意差を視覚的に評価する。
+指標テーブルの点推定だけでは、モデル間の差がどれくらい不確実かを判断できません。ここではブートストラップでROC-AUCの95%信頼区間を計算し、点推定だけに頼らない比較にします。ただし、個別モデルのCIの重なりは有意差検定そのものではありません。モデル差を主張したい場合は、同じ再標本化単位でAUC差の信頼区間を直接計算するか、DeLong検定などの対応のある比較を使います。
 
-**このチャンクの目的:** ブートストラップ2000回でROC-AUCの95%CIを計算し、フォレストプロットで比較します。
+ここでも、評価対象は「未知学習者への汎化」です。そのため、行単位ではなく `learner_id` 単位で再標本化します。行単位に戻すと、同じ学習者の複数項目反応を独立な観測として扱い、CIが過度に狭く見える可能性があります。
+
+**このチャンクの目的:** 学習者クラスタ単位のブートストラップ500回でROC-AUCの95%CIを計算し、フォレストプロットで比較します。
 ```{r}
 #| eval: true
 #| label: auc-bootstrap-ci
 #| fig-width: 9
 #| fig-height: 5
-#| fig-cap: "ROC-AUC with 95% bootstrap confidence intervals"
+#| fig-cap: "ROC-AUC with 95% learner-cluster bootstrap confidence intervals"
 
 set.seed(42)
-n_boot <- 2000
+n_boot <- 500
+
+safe_auc <- function(d) {
+  if (n_distinct(d$truth) < 2) return(NA_real_)
+  roc_auc_vec(d$truth, d$.pred_correct, event_level = "second")
+}
+
+safe_quantile <- function(x, prob) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) return(NA_real_)
+  unname(quantile(x, prob))
+}
 
 boot_auc <- pred_all |>
   group_by(model) |>
   group_map(~ {
     d <- .x
+    learner_ids <- unique(d$learner_id)
     aucs <- replicate(n_boot, {
-      idx <- sample(nrow(d), replace = TRUE)
-      roc_auc_vec(d$truth[idx], d$.pred_correct[idx], event_level = "second")
+      sampled_learners <- tibble(
+        learner_id = sample(learner_ids, length(learner_ids), replace = TRUE),
+        boot_draw = seq_along(learner_id)
+      )
+      d_boot <- sampled_learners |>
+        left_join(d, by = "learner_id")
+
+      safe_auc(d_boot)
     })
     tibble(
       model = .y$model,
-      auc   = roc_auc_vec(d$truth, d$.pred_correct, event_level = "second"),
-      lower = quantile(aucs, 0.025),
-      upper = quantile(aucs, 0.975)
+      auc   = safe_auc(d),
+      lower = safe_quantile(aucs, 0.025),
+      upper = safe_quantile(aucs, 0.975)
     )
   }) |>
   bind_rows()
@@ -2635,16 +3024,16 @@ boot_auc |>
   )
 ```
 
-CIが重なっているモデル同士は、このデータでは統計的に明確な優劣がつかない。教育研究ではAPA 7に沿ってCIを報告することが推奨されており、点推定だけでなくCIを併記することで、結果の不確実性を正直に示せる。
+CIが大きく重なっているモデル同士では、このデータだけで優劣を強く主張しにくいです。教育研究ではAPA 7に沿ってCIを報告することが推奨されており、点推定だけでなくCIを併記することで、結果の不確実性を正直に示せます。
 
 ### AUC-CIの読み方
 
-**まずここを見る**: 各モデルのエラーバー（CI幅）が重なっているかどうか。
+**まずここを見ます**: 各モデルのエラーバー（CI幅）が重なっているかどうかです。
 
-- CIが**重なっていない**モデル同士: 統計的に有意な性能差がある可能性が高い。
-- CIが**大きく重なっている**モデル同士: このデータサイズでは優劣が確定しない。同じ実験を100回繰り返したら、どちらが勝つか変わるかもしれない。
-- CI幅が**狭い**（例: 0.81–0.83）: 推定が安定している。CI幅が**広い**（例: 0.72–0.88）: サンプルサイズ不足の可能性。
-- 指標テーブルの点推定AUCと比べて、CIの**下限**がより現実的な性能見積もりと言える。
+- CIが**重なっていない**モデル同士: 性能差が比較的大きい可能性があります。ただし、正式にはAUC差のCIや対応のある検定で確認します。
+- CIが**大きく重なっている**モデル同士: このデータサイズでは優劣が確定しません。同じ実験を100回繰り返したら、どちらが勝つか変わる可能性があります。
+- CI幅が**狭い**（例: 0.81–0.83）: 推定が安定しています。CI幅が**広い**（例: 0.72–0.88）: サンプルサイズ不足の可能性があります。
+- 指標テーブルの点推定AUCと比べて、CIの**下限**がより現実的な性能見積もりと言えます。
 
 ### ROC曲線
 
@@ -2701,9 +3090,55 @@ PR曲線は陽性クラス（ここでは `correct`）の検出品質に敏感�
 ### ここでの読み方
 
 - ROC-AUCが近いモデルでも、PR-AUCでは差が広がることがあります。
-- 教育現場で「見逃し（FN）」を避けたいなら、Recall/PrecisionのバランスをPRで確認する方が実務的です。
+- 教育現場で陽性クラスの取りこぼし（FN）を避けたいなら、Recall/PrecisionのバランスをPRで確認する方が実務的です。支援対象を扱う場合は、支援対象が陽性クラスになるよう目的変数を設計します。
 
 :::
+
+### 陽性クラスが極端に少ないとき: 不均衡データの追加対処 {#sec-class-imbalance}
+
+陽性率が 5–10% 未満になると、PR-AUC や閾値調整だけでは安定した運用にならない場合があります。本章のメイン例は概ね均衡しているデータですが、教育研究では「成績不振リスク（ごく一部の学習者）」「稀少エラータイプ」「中退・離脱予測」のように、**陽性クラスが極端に少ないシナリオ**も頻出します。実務上のオプションを 3 系統に整理します。
+
+| 対処 | 実装例 (R) | 性質 | 注意点 |
+|---|---|---|---|
+| **アルゴリズム側の重み付け** | `boost_tree(...) |> set_engine("xgboost", scale_pos_weight = neg/pos)`、`ranger::ranger(..., class.weights = c(...))` | 学習データを変えずにクラス重みを調整。確率予測の性質を比較的保つ | 重みの値は CV 上で調整。極端な重みは過学習の方向に進みやすい |
+| **リサンプリング (recipe ステップ)** | `themis::step_downsample(positive_class)`、`themis::step_smote()`、`themis::step_rose()` [@themispkg] | 訓練データの陽性比率を物理的に変える。tidymodels の recipe に統合可能 | **訓練データのみ**で適用 (CV の `analysis` セットだけ)。`assessment` セットや test set には適用しない。確率を直接使うなら**再校正必須** |
+| **閾値ベースの後処理** | `probably::threshold_perf()` で運用閾値を低めに設定 | データもモデルも変えず、判定境界だけを動かす | 解釈は容易だが、確率自体の分布は変わらない |
+
+::: {.callout-warning}
+#### リサンプリング後の確率は再校正が必須
+`step_downsample` や `step_smote` を使うと訓練データの陽性比率が変わるため、モデルが返す確率は**元の母集団の陽性率を反映しなくなります**。確率を業務判断にそのまま使う場合は、本章後半のキャリブレーション節と `probably::cal_estimate_logistic()` / `cal_estimate_isotonic()` で再校正することが必須です。閾値だけで運用するなら再校正は不要ですが、報告では「リサンプリング後の確率はベースレートを反映しない」ことを明記してください。
+:::
+
+実装の最小例 (recipe に SMOTE ステップを追加):
+
+```r
+library(themis)
+
+rec_smote <- recipe(correct ~ ., data = train_dat) |>
+  step_normalize(all_numeric_predictors()) |>
+  step_dummy(all_nominal_predictors()) |>
+  step_smote(correct, over_ratio = 1.0)  # 陽性:陰性 = 1:1 まで増やす
+
+wf_smote <- workflow() |>
+  add_recipe(rec_smote) |>
+  add_model(boost_tree(...) |> set_engine("xgboost"))
+```
+
+XGBoost で `scale_pos_weight` を渡す場合:
+
+```r
+library(parsnip)
+
+xgb_spec <- boost_tree(...) |>
+  set_engine("xgboost", scale_pos_weight = sum(train_dat$correct == "incorrect") /
+                                          sum(train_dat$correct == "correct"))
+```
+
+選択の目安は次の通りです。
+
+- **陽性率が 30% 以上**: 通常の閾値調整 + Youden / コストベースで十分。リサンプリング不要。
+- **陽性率が 10–30%**: PR-AUC を主指標にし、必要に応じて `scale_pos_weight` か閾値の側で対処。
+- **陽性率が 10% 未満**: `themis::step_downsample` + 再校正、または `scale_pos_weight` を CV で探索。確率の使い道（判定だけか、確率そのものを伝えるか）を先に決めてから手法を選ぶ。
 
 ---
 
@@ -2711,9 +3146,11 @@ PR曲線は陽性クラス（ここでは `correct`）の検出品質に敏感�
 
 ### 概要
 
-AUCは閾値なしの比較指標です。実務では1つの閾値を決めて「介入する/しない」を判断します。閾値の選び方は目的次第で、バランス型（Youden）、見逃し回避型（低閾値）、誤警報回避型（高閾値）に分かれます。
+AUCは閾値なしの比較指標です。実務では1つの閾値を決めて「支援候補にする/しない」を判断します。閾値の選び方は目的次第で、バランス型（Youden）、取りこぼし回避型（低閾値）、誤警報回避型（高閾値）に分かれます。
 
-AUCは「ランク付けの上手さ」を示しますが、現場では最終的に**閾値**が必要です。ここが「研究結果を実務判断へ変換する」一番重要な節です。
+AUCは「ランク付けの上手さ」を示しますが、現場では最終的に**閾値**が必要です。ここが「研究結果を実務判断へ変換する」一番重要な節です。閾値は、最終テストデータではなく、訓練データ内のCV予測や別の検証データで決めます。テストデータは、事前に決めたモデルと閾値を最後に評価するために残します。
+
+Youden's J は、Sensitivity と Specificity の和を最大化する古典的な規則です[@youden1950]。ただし、この規則は誤分類コストが対称に近い場合の出発点であり、教育支援のように「見逃し」と「誤警報」の重みが異なる場面では、コスト構造を別に定義する必要があります。したがって、本章では Youden 閾値を「研究報告のバランス型基準」として扱い、運用判断ではコストベース閾値も併記します。
 
 ### 閾値選択の3つのアプローチ
 
@@ -2722,26 +3159,33 @@ AUCは「ランク付けの上手さ」を示しますが、現場では最終�
 
 | Approach | Formula | Best for | Example |
 |---|---|---|---|
-| Youden's J（バランス型） | Sensitivity + Specificity - 1 を最大化 | 感度と特異度のバランスが重要な場面 | 研究報告のデフォルト |
-| コストベース | FNコスト × FN + FPコスト × FP を最小化 | 見逃しと誤警報のコストが非対称な場面 | 語彙スクリーニング（見逃しが高コスト） |
+| Youden's J（バランス型） | Sensitivity + Specificity - 1 を最大化 | 感度と特異度のバランスが重要な場面 | 研究報告の出発点 |
+| コストベース | FNコスト × FN + FPコスト × FP を最小化 | 取りこぼしと誤警報のコストが非対称な場面 | 語彙スクリーニング（支援対象を陽性クラスに置く場合） |
 | 固定Sensitivity | Sensitivity ≥ 0.90 に固定し、対応するSpecificityを確認 | 一定以上の検出率を保証したい場面 | 進級判定の補助ツール |
 
 : Three Approaches to Threshold Selection
 
 ### 例: YoudenのJで閾値を選ぶ
 
-ここでは例として、最上位モデル（ここでは`XGBoost`を想定）でYoudenのJを使います。
+ここでは例として、最上位モデル（ここでは`XGBoost`を想定）でYoudenのJを使います。重要なのは、YoudenのJを**テストデータではなくCV予測**から計算することです。
 
 
-**このチャンクの目的:** XGBoostのROC曲線からYouden's Jを計算し、最適閾値を選択します。
+**このチャンクの目的:** XGBoostのCV予測からYouden's Jを計算し、テスト前に閾値を選択します。
 ```{r}
 #| eval: true
 #| label: threshold-selection
 
 xgb_pred <- pred_all |> dplyr::filter(model == "XGBoost")
 
-roc_tbl_xgb <- xgb_pred |>
+xgb_cv_pred <- collect_predictions(xgb_res, parameters = xgb_best) |>
+  transmute(
+    truth = correct,
+    .pred_correct = .pred_correct
+  )
+
+roc_tbl_xgb <- xgb_cv_pred |>
   roc_curve(truth, .pred_correct, event_level = "second") |>
+  dplyr::filter(is.finite(.threshold)) |>
   mutate(youden_j = sensitivity + specificity - 1)
 
 best_threshold <- roc_tbl_xgb |>
@@ -2751,10 +3195,46 @@ best_threshold <- roc_tbl_xgb |>
 best_threshold
 ```
 
-ここで得た閾値は「このデータ分割での最適値」です。別データにそのまま移植するのではなく、再学習時に再推定する運用ルールを明記しておくと再現性が高まります。
+ここで得た閾値は、訓練データ内のCV予測から選んだ「この学習手順での運用閾値」です。別データにそのまま移植するのではなく、再学習時に同じ手順で再推定する運用ルールを明記しておくと再現性が高まります。テストデータは次の混同行列で初めて使い、閾値選択には使いません。
+
+閾値がどこに置かれているかは、まず予測確率の分布で確認すると分かりやすくなります。正答と誤答の分布がよく分かれていれば、どこに閾値を置いても混同行列は安定しやすくなります。一方、2つの分布が大きく重なっているなら、どの閾値を選んでもFNとFPのトレードオフが残ります。
+
+**このチャンクの目的:** XGBoostのテスト予測確率分布を正誤別に描き、CVで選んだ閾値がどの位置にあるかを確認します。
+```{r}
+#| eval: true
+#| label: xgb-score-distribution
+#| fig-width: 9
+#| fig-height: 5.5
+#| fig-cap: "Distribution of predicted P(correct) by observed outcome, with the CV-selected threshold"
+
+xgb_pred |>
+  ggplot(aes(x = .pred_correct, fill = truth)) +
+  geom_histogram(
+    bins = 30,
+    position = "identity",
+    alpha = 0.55,
+    color = "white"
+  ) +
+  geom_vline(
+    xintercept = best_threshold,
+    linewidth = 1,
+    linetype = "dashed",
+    color = "#1B1B1B"
+  ) +
+  scale_fill_manual(values = c("incorrect" = "#D95F02", "correct" = "#2C7FB8")) +
+  labs(
+    title = "Predicted Score Distribution: XGBoost",
+    subtitle = "Dashed line = CV-selected Youden threshold",
+    x = "Predicted P(correct)",
+    y = "Number of observations",
+    fill = "Observed outcome"
+  )
+```
+
+この図では、破線より右側が `correct` 判定、左側が `incorrect` 判定になります。青と橙が大きく重なる領域は、モデルにとって判定が難しい観測です。支援候補を `P(correct)` の低さで定義する場合は、左側の領域にどれだけ観測が集まるかを確認します。
 
 
-**このチャンクの目的:** Youden最適閾値で予測クラスを再判定し、混同行列を出力します。
+**このチャンクの目的:** CVで選んだYouden閾値をテストデータに適用し、混同行列を出力します。
 ```{r}
 #| eval: true
 #| label: confusion-at-best-threshold
@@ -2772,10 +3252,48 @@ conf_mat(xgb_threshold_eval, truth = truth, estimate = .pred_class_j)
 
 混同行列では、合計精度よりも `FN` と `FP` の内訳を優先して確認します。教育支援の場面では、どちらの誤りが高コストかを先に定義してから閾値を調整するのが実務的です。
 
+数表の混同行列は正確ですが、結果節で説明するときは図にした方が誤りの型を示しやすくなります。
+
+**このチャンクの目的:** CV-Youden閾値でのXGBoost混同行列をヒートマップ化し、各真値クラス内の割合も表示します。
+```{r}
+#| eval: true
+#| label: confusion-heatmap-xgb
+#| fig-width: 7.5
+#| fig-height: 6
+#| fig-cap: "Confusion matrix heatmap for XGBoost at the CV-selected threshold"
+
+conf_heatmap_tbl <- xgb_threshold_eval |>
+  count(truth, predicted = .pred_class_j, name = "n") |>
+  group_by(truth) |>
+  mutate(row_prop = n / sum(n)) |>
+  ungroup() |>
+  mutate(
+    label = paste0(n, "\n", scales::percent(row_prop, accuracy = 0.1)),
+    truth = factor(truth, levels = c("correct", "incorrect")),
+    predicted = factor(predicted, levels = c("incorrect", "correct"))
+  )
+
+conf_heatmap_tbl |>
+  ggplot(aes(x = predicted, y = truth, fill = n)) +
+  geom_tile(color = "white", linewidth = 1.2) +
+  geom_text(aes(label = label), size = 4, lineheight = 0.9) +
+  scale_fill_gradient(low = "#F7FBFF", high = "#2C7FB8") +
+  coord_equal() +
+  labs(
+    title = "Confusion Matrix at the CV-Selected Threshold",
+    subtitle = "Cell labels show count and row percentage",
+    x = "Predicted class",
+    y = "Observed class",
+    fill = "Count"
+  )
+```
+
+この図では、対角セルが正しく分類された観測、対角外セルが誤分類です。`truth = correct` で `predicted = incorrect` のセルは、正答する観測を取りこぼしたケースです。逆に `truth = incorrect` で `predicted = correct` のセルは、誤答する観測を正答側に置いたケースです。どちらを重く見るかは、研究目的と運用コストで決まります。
+
 ### 閾値を変えると何が変わるか（実データで比較）
 
 
-**このチャンクの目的:** 3つの閾値候補（0.30, Youden最適, 0.70）での混同行列指標を横並び比較します。
+**このチャンクの目的:** 3つの閾値候補（0.30, CV-Youden, 0.70）をテストデータに適用し、混同行列指標を横並び比較します。
 ```{r}
 #| eval: true
 #| label: threshold-candidate-comparison
@@ -2785,7 +3303,7 @@ threshold_cmp <- bind_rows(
   evaluate_threshold(xgb_pred$truth, xgb_pred$.pred_correct, best_threshold),
   evaluate_threshold(xgb_pred$truth, xgb_pred$.pred_correct, 0.70)
 ) |>
-  mutate(Setting = c("Recall重視", "Youden最適", "Precision重視")) |>
+  mutate(Setting = c("正答Recall重視", "CV-Youden", "正答Precision重視")) |>
   dplyr::select(Setting, threshold, TP, FP, TN, FN, Sensitivity, Specificity, Precision)
 
 threshold_cmp |>
@@ -2793,26 +3311,188 @@ threshold_cmp |>
   knitr::kable(caption = "Threshold Trade-off Table (XGBoost): Lower threshold generally increases recall but also false positives")
 ```
 
-上から順に「取りこぼしを減らす設定」→「バランス設定」→「誤警報を減らす設定」と読めます。
+上から順に、`correct` を陽性クラスにした場合の「正答の取りこぼしを減らす設定」→「バランス設定」→「誤って正答扱いする観測を減らす設定」と読めます。支援対象の検出を主目的にする場合は、`incorrect` / `risk` を陽性クラスにして同じ表を作るか、`P(correct)` が低い観測を支援候補とする別ルールを定義します。
+
+表だけでは、閾値を少し動かしたときの変化が見えにくいので、閾値を0.05から0.95まで動かした曲線も描きます。
+
+**このチャンクの目的:** XGBoostで閾値を連続的に変えたとき、Sensitivity・Specificity・Precisionがどう動くかを可視化します。
+```{r}
+#| eval: true
+#| label: threshold-tradeoff-curve
+#| fig-width: 9
+#| fig-height: 5.5
+#| fig-cap: "Threshold trade-off curve for XGBoost"
+
+threshold_path <- map_dfr(
+  seq(0.05, 0.95, by = 0.01),
+  \(th) evaluate_threshold(xgb_pred$truth, xgb_pred$.pred_correct, th)
+) |>
+  dplyr::select(threshold, Sensitivity, Specificity, Precision) |>
+  pivot_longer(
+    cols = c(Sensitivity, Specificity, Precision),
+    names_to = "Metric",
+    values_to = "Value"
+  )
+
+threshold_path |>
+  ggplot(aes(x = threshold, y = Value, color = Metric)) +
+  geom_line(linewidth = 1, na.rm = TRUE) +
+  geom_vline(
+    xintercept = best_threshold,
+    linewidth = 0.9,
+    linetype = "dashed",
+    color = "gray35"
+  ) +
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent_format(accuracy = 1)) +
+  scale_color_manual(values = c(
+    "Sensitivity" = "#2C7FB8",
+    "Specificity" = "#D95F02",
+    "Precision" = "#1B9E77"
+  )) +
+  labs(
+    title = "Threshold Trade-off: XGBoost",
+    subtitle = "Dashed line = CV-selected Youden threshold",
+    x = "Threshold for P(correct)",
+    y = "Metric value",
+    color = NULL
+  )
+```
+
+この図は、閾値設計の説明に向いています。低い閾値では `correct` と判定される観測が増え、Sensitivityは上がりやすい一方、誤って `correct` とするFPも増えやすくなります。高い閾値では逆に、`correct` 判定は慎重になります。最終報告では、採用した閾値だけでなく、その閾値がどのトレードオフ上にあるかを示すと判断過程が透明になります。
 
 閾値を決める際は、次の順序で運用ルールを固定すると実務でぶれにくくなります。
-1. 目的を1つに絞る（例: 見逃し最小化）。
+1. 目的を1つに絞る（例: 支援対象の見逃し最小化）。
 2. その目的に対応する主指標を決める（例: Sensitivity）。
 3. 許容できる副作用の上限を決める（例: FP率の上限）。
-4. その条件を満たす閾値候補を比較して最終採用する。
+4. その条件を満たす閾値候補を比較して最終採用します。
 
 ### 実務ではコストベースで閾値を決める
 
-- 早期介入モデルなら「見逃し（FN）コスト」が高い。
-- その場合、Youden最適より低めの閾値にしてRecallを優先する設計がありえます。
+- 支援対象を `risk` / `incorrect` 側の陽性クラスとして定義する早期支援モデルなら、「支援対象の見逃し（FN）コスト」が高いです。
+- 本章のように `correct` を陽性クラスにする場合は、`P(correct)` が低い観測を支援候補として扱うため、「誤答する観測を正答扱いするFP」のコストを高く見ます。
+
+ここで注意したいのは、**FP/FNの意味はpositive classによって変わる**という点です。本章では `correct` を陽性クラスにしているため、
+
+- **FN**: 本当は `correct` なのに `incorrect` と判定した観測（不必要に支援候補へ回す可能性）
+- **FP**: 本当は `incorrect` なのに `correct` と判定した観測（支援が必要な観測を見逃す可能性）
+
+になります。したがって、`P(correct)` を使って支援候補を拾うなら、`FP` のコストを高く置く設定が自然です。もし目的変数を `risk` / `incorrect` 側に作り替えて、それを陽性クラスにするなら、支援対象の見逃しは `FN` として数えられます。
+
+次の例では、`correct` を陽性クラスにしたまま、**誤答する観測を正答扱いするFPをFNの4倍重く見る**という仮定で、CV予測上の期待コストが最小になる閾値を選びます。この4倍という値は分析結果から推定するものではなく、研究目的・教育判断・運用資源に基づいて事前に決める設計値です。
+
+**このチャンクの目的:** CV予測上でFP/FNに異なるコストを置き、期待コストを最小にする閾値を選択します。
+```{r}
+#| eval: true
+#| label: cost-based-threshold
+
+evaluate_threshold_cost <- function(truth, prob, threshold, cost_fn = 1, cost_fp = 1) {
+  evaluate_threshold(truth, prob, threshold) |>
+    mutate(
+      Cost_FN = cost_fn,
+      Cost_FP = cost_fp,
+      Total_Cost = cost_fn * FN + cost_fp * FP,
+      Cost_per_obs = Total_Cost / length(truth)
+    )
+}
+
+cost_fn <- 1
+cost_fp <- 4
+
+cost_threshold_grid <- map_dfr(
+  seq(0.05, 0.95, by = 0.01),
+  \(th) evaluate_threshold_cost(
+    xgb_cv_pred$truth,
+    xgb_cv_pred$.pred_correct,
+    threshold = th,
+    cost_fn = cost_fn,
+    cost_fp = cost_fp
+  )
+)
+
+cost_threshold <- cost_threshold_grid |>
+  slice_min(Cost_per_obs, n = 1, with_ties = FALSE) |>
+  pull(threshold)
+
+cost_threshold
+```
+
+**このチャンクの目的:** CV予測上の閾値別コスト曲線を描き、Youden閾値とコスト最小化閾値を比較します。
+```{r}
+#| eval: true
+#| label: cost-threshold-curve
+#| fig-width: 9
+#| fig-height: 5.5
+#| fig-cap: "Cost curve for threshold selection based on cross-validated XGBoost predictions"
+
+cost_threshold_grid |>
+  ggplot(aes(x = threshold, y = Cost_per_obs)) +
+  geom_line(linewidth = 1, color = "#1B9E77") +
+  geom_vline(
+    xintercept = best_threshold,
+    linewidth = 0.9,
+    linetype = "dashed",
+    color = "#2C7FB8"
+  ) +
+  geom_vline(
+    xintercept = cost_threshold,
+    linewidth = 0.9,
+    linetype = "dotdash",
+    color = "#D95F02"
+  ) +
+  labs(
+    title = "Cost-Based Threshold Selection",
+    subtitle = paste0(
+      "CV predictions; FN cost = ", cost_fn,
+      ", FP cost = ", cost_fp,
+      "; dashed = Youden, dot-dash = cost-min"
+    ),
+    x = "Threshold for P(correct)",
+    y = "Expected cost per observation"
+  )
+```
+
+この図では、曲線が低いほど、その閾値での誤分類コストが小さいことを意味します。Youden閾値はSensitivityとSpecificityのバランスを取る規則ですが、コスト最小化閾値は「どちらの誤りを重く見るか」を明示的に反映します。2つの縦線が離れている場合は、研究報告で「統計的にバランスのよい閾値」と「運用上のコストを反映した閾値」が異なることを説明します。
+
+最後に、CVで選んだ2つの閾値をテストデータへ適用し、性能とコストを比較します。ここでも、テストデータで閾値を選び直していない点が重要です。
+
+**このチャンクの目的:** CV-Youden閾値とCVコスト最小化閾値をテストデータに適用し、混同行列指標とコストを比較します。
+```{r}
+#| eval: true
+#| label: cost-threshold-test-comparison
+
+bind_rows(
+  evaluate_threshold_cost(
+    xgb_pred$truth,
+    xgb_pred$.pred_correct,
+    threshold = best_threshold,
+    cost_fn = cost_fn,
+    cost_fp = cost_fp
+  ) |>
+    mutate(Threshold_Rule = "CV-Youden"),
+  evaluate_threshold_cost(
+    xgb_pred$truth,
+    xgb_pred$.pred_correct,
+    threshold = cost_threshold,
+    cost_fn = cost_fn,
+    cost_fp = cost_fp
+  ) |>
+    mutate(Threshold_Rule = "CV cost-min")
+) |>
+  dplyr::select(
+    Threshold_Rule, threshold, TP, FP, TN, FN,
+    Sensitivity, Specificity, Precision, Cost_per_obs
+  ) |>
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Test-set comparison of CV-selected Youden and cost-minimizing thresholds")
+```
 
 ### 教育場面での閾値判断の具体例
 
-- **語彙習得スクリーニング**（学習困難リスクの早期検出）: 見逃し（FN）のコストが高い。学習困難な生徒を見逃すと支援が遅れる。→ **低閾値**でSensitivityを優先。FP（過剰検出）は追加テストで確認すればよい。
-- **進級判定**（合格基準の設定）: 誤判定（FP）で基準未達の学習者を通過させるコストが高い。→ **高閾値**でSpecificity/Precisionを優先。
-- **研究報告**（一般的なモデル比較）: 特定のコスト構造を仮定しない。→ **Youden's J** でバランスをとり、他の閾値候補も感度分析として併記する。
+- **語彙習得スクリーニング**（学習困難リスクの早期検出）: 支援対象の見逃し（FN）のコストが高いです。支援対象を目的変数の陽性側に置くならSensitivityを優先します。本章の `P(correct)` を使うなら、低い `P(correct)` を支援候補として扱い、追加テストで確認します。
+- **進級判定**（合格基準の設定）: 誤判定（FP）で基準未達の学習者を通過させるコストが高いです。→ **高閾値**でSpecificity/Precisionを優先します。
+- **研究報告**（一般的なモデル比較）: 特定のコスト構造を仮定しません。→ **Youden's J** でバランスをとり、他の閾値候補も感度分析として併記します。
 
-先ほどの3ケースで考えると、Case A（高習熟+有利条件）とCase B（低習熟+不利条件）は閾値の影響を受けにくい（どちらもほぼ確実に一方に分類される）。**Case C（中習熟+中間条件）がボーダーライン**であり、閾値の選択によって判定が変わる典型的な学習者です。
+先ほどの3ケースで考えると、Case A（高習熟+有利条件）とCase B（低習熟+不利条件）は閾値の影響を受けにくいです（どちらもほぼ確実に一方に分類されます）。**Case C（中習熟+中間条件）がボーダーライン**で、閾値の選択によって判定が変わる典型的な学習者です。
 
 ---
 
@@ -2820,9 +3500,9 @@ threshold_cmp |>
 
 ### 概要
 
-予測確率が0.80なら、実際に80%の人が正答していてほしい。この一致度がキャリブレーションです。AUCが高くてもキャリブレーションが悪いことがあります。
+予測確率が0.80なら、実際に80%の人が正答していてほしいところです。この一致度がキャリブレーションです。AUCが高くてもキャリブレーションが悪いことがあります。
 
-AUCは「順位の正しさ」を測るが、「確率そのものの正しさ」は保証しない。教育現場で「この生徒は80%の確率で基準を超える」と伝えるなら、その80%の信頼性を確認する必要がある。天気予報の比喩で言えば、「降水確率70%」と言った日のうち実際に雨が降ったのが70%なら、キャリブレーションが良いと言える。学習支援の優先順位づけに確率を使う場合は、この確認を省略しない。
+AUCは「順位の正しさ」を測りますが、「確率そのものの正しさ」は保証しません。教育現場で「この生徒は80%の確率で基準を超える」と伝えるなら、その80%の信頼性を確認する必要があります。天気予報の比喩で言えば、「降水確率70%」と言った日のうち実際に雨が降ったのが70%なら、キャリブレーションが良いと言えます。学習支援の優先順位づけに確率を使う場合は、この確認を省略しません。
 
 
 **このチャンクの目的:** XGBoostの予測確率を10分位に区切り、各区間の予測平均と実測正答率を対比するキャリブレーション図を描きます。
@@ -2859,37 +3539,101 @@ calib_all |>
   )
 ```
 
-4モデルを並べると、キャリブレーションの差が一目でわかる。ロジスティック回帰は最尤推定の性質上、キャリブレーションが良好になりやすい。一方、ツリー系モデルは葉ノードのサンプル比率に基づく確率推定のため、ずれが生じることがある。点が系統的に対角線から外れるモデルには、再校正（Platt scaling / isotonic regression）を検討する。
+4モデルを並べると、キャリブレーションの差が一目でわかります。ロジスティック回帰は最尤推定の性質上、キャリブレーションが良好になりやすい一方、ツリー系モデルは葉ノードのサンプル比率やアンサンブルのスコア変換に基づいて確率を出すため、ずれが生じることがあります。点が系統的に対角線から外れるモデルには、再校正（Platt scaling / isotonic regression）を検討します[@platt1999; @niculescu2005]。具体的には、**ランダムフォレストはバギングの平均化により比較的良好な校正を示しやすい**一方、**XGBoost などのブースティングは確率を中央寄せ・極端化させやすく、再校正の必要性が相対的に高い**傾向があります [@niculescu2005]。実装は `probably::cal_estimate_logistic()` (Platt) や `probably::cal_estimate_isotonic()` で、CV 上または別の検証セット上で再校正モデルを当てます。
 
-分位ごとの `n` が小さい場合、点の上下は偶然変動の影響を受けやすい。小標本では分位数を5に減らすか、ブートストラップで不確実性を併記すると解釈が安定する。
+分位ごとの `n` が小さい場合、点の上下は偶然変動の影響を受けやすくなります。小標本では分位数を5に減らすか、ブートストラップで不確実性を併記すると解釈が安定します。再校正を実際に行う場合は、テストデータではなく、訓練データ内のCV予測または別の検証データで校正モデルを学習します。
 
 ### キャリブレーション図の見方
 
-**まずここを見る**: 4パネルそれぞれで、点が対角線（完璧なキャリブレーション）からどれだけ離れているかを比較する。
+**まずここを見ます**: 4パネルそれぞれで、点が対角線（完璧なキャリブレーション）からどれだけ離れているかを比較します。
 
-- 点が対角線より**上**: 実際の正答率が予測より高い（モデルが過小評価 = 慎重すぎる）。
-- 点が対角線より**下**: 実際の正答率が予測より低い（モデルが過大評価 = 自信過剰）。
-- **点のサイズ**が小さいビン（n が少ない）は偶然変動の影響を受けやすいので、大きな点を優先的に読む。
-- **GLMは対角線に沿いやすい**（最尤推定の性質上、キャリブレーションが良好になりやすい）。ツリー系が対角線から外れている場合は、Platt scalingの検討材料になる。
+- 点が対角線より**上**: 実際の正答率が予測より高いです（モデルが過小評価 = 慎重すぎます）。
+- 点が対角線より**下**: 実際の正答率が予測より低いです（モデルが過大評価 = 自信過剰です）。
+- **点のサイズ**が小さいビン（n が少ない）は偶然変動の影響を受けやすいので、大きな点を優先的に読みます。
+- **GLMは対角線に沿いやすい**です（最尤推定の性質上、キャリブレーションが良好になりやすいです）。ツリー系が対角線から外れている場合は、Platt scalingの検討材料になります。
+
+図に加えて、校正のずれを要約する数値も確認します。ここでは3つだけ使います。ECEは機械学習分野でよく使われる要約指標ですが、ビン数やビンの切り方に依存します[@guo2017]。そのため、ECEだけで校正の良否を断定せず、信頼度図と calibration intercept/slope を合わせて読みます。
+
+- **Calibration intercept**: 0に近いほど、全体として予測が高すぎたり低すぎたりしていません。
+- **Calibration slope**: 1に近いほど、予測確率の広がりが適切です。1より小さい場合は予測が極端すぎる傾向、1より大きい場合は予測が控えめすぎる傾向を示します。
+- **ECE**（Expected Calibration Error）: 予測確率ビンごとの予測平均と実測率のずれを、ビンサイズで重みづけした値です。0に近いほどよいです。
+
+**このチャンクの目的:** キャリブレーション図を補足するため、intercept・slope・ECEをモデル別に計算します。
+```{r}
+#| eval: true
+#| label: calibration-summary
+
+calc_ece <- function(truth, prob, bins = 10L) {
+  tibble(truth = truth, prob = prob) |>
+    mutate(bin = ntile(prob, bins)) |>
+    group_by(bin) |>
+    summarise(
+      n = n(),
+      pred_mean = mean(prob),
+      obs_rate = mean(truth == "correct"),
+      .groups = "drop"
+    ) |>
+    summarise(ECE = sum(n / sum(n) * abs(obs_rate - pred_mean))) |>
+    pull(ECE)
+}
+
+calc_calibration_summary <- function(truth, prob) {
+  eps <- 1e-6
+  p <- pmin(pmax(prob, eps), 1 - eps)
+  y <- as.integer(truth == "correct")
+
+  if (length(unique(y)) < 2) {
+    return(tibble(
+      Calibration_Intercept = NA_real_,
+      Calibration_Slope = NA_real_,
+      ECE_10 = calc_ece(truth, prob)
+    ))
+  }
+
+  calib_fit <- glm(
+    y ~ lp,
+    data = tibble(y = y, lp = qlogis(p)),
+    family = binomial()
+  )
+
+  tibble(
+    Calibration_Intercept = unname(coef(calib_fit)[1]),
+    Calibration_Slope = unname(coef(calib_fit)[2]),
+    ECE_10 = calc_ece(truth, prob)
+  )
+}
+
+calibration_summary <- pred_all |>
+  group_by(model) |>
+  group_modify(~ calc_calibration_summary(.x$truth, .x$.pred_correct)) |>
+  ungroup() |>
+  arrange(ECE_10)
+
+calibration_summary |>
+  mutate(across(where(is.numeric), ~ round(.x, 3))) |>
+  knitr::kable(caption = "Calibration Summary: intercept, slope, and expected calibration error")
+```
+
+この表は、キャリブレーション図を読むための補助です。`ECE_10` が小さいモデルは、10分位で見たときの平均的なずれが小さい。`Calibration_Slope` が1から大きく離れる場合は、予測確率のばらつきが強すぎる、または弱すぎる可能性があります。ただし、これらの値も標本サイズとビンの切り方に依存するため、図と合わせて判断します。
 
 ### Brier scoreの解釈
 
-Brier scoreは予測確率の精度を定量化する指標です:
+Brier scoreは予測確率の精度を定量化する古典的な指標です[@brier1950]:
 
 $$
 \text{Brier} = \frac{1}{N}\sum_{i=1}^{N}(p_i - y_i)^2
 $$
 
-ここで $p_i$ は予測確率、$y_i$ は実際の結果（0 or 1）です。**0が完璧**（予測確率と実際が完全一致）で、ベースレートが50%のときの**ランダム予測は0.25**です。先ほどの指標テーブルでBrierが低いモデルほどキャリブレーションが良い傾向にあります。
+ここで $p_i$ は予測確率、$y_i$ は実際の結果（0 or 1）です。**0が完璧**（予測確率と実際が完全一致）で、ベースレートが50%のときの**ランダム予測は0.25**です。先ほどの指標テーブルでBrierが低いモデルほど、確率予測としての総合誤差は小さいと読めます。ただし、Brier score は「順位づけがうまいこと」と「確率がよく校正されていること」の両方に影響されるため、キャリブレーションそのものは図や校正指標で別に確認します。
 
-具体例で考えると、ある学習者に「正答確率0.9」と予測し、実際に正答した場合、その学習者のBrierへの寄与は $(0.9 - 1)^2 = 0.01$ と小さい（良い予測）。逆に「正答確率0.9」と予測したのに誤答だった場合、寄与は $(0.9 - 0)^2 = 0.81$ と大きい（悪い予測）。全学習者のこの値を平均したのがBrier scoreである。
+具体例で考えると、ある学習者に「正答確率0.9」と予測し、実際に正答した場合、その学習者のBrierへの寄与は $(0.9 - 1)^2 = 0.01$ と小さくなります。逆に「正答確率0.9」と予測したのに誤答だった場合、寄与は $(0.9 - 0)^2 = 0.81$ と大きくなります。全学習者のこの値を平均したのがBrier scoreです。
 
 #### キャリブレーション改善の選択肢
 
-本章ではキャリブレーションの**確認**までを行いますが、系統的なずれがある場合の**改善手法**も存在します。
+本章ではキャリブレーションの**確認**までを行いますが、系統的なずれがある場合の**改善手法**も存在します。再校正はモデル選択後の「後処理」ですが、テストデータで校正モデルを学習すると評価が楽観的になります。そのため、訓練データ内のCV予測、または別に確保した校正用データで学習します。
 
-- **Platt scaling**: 予測確率を入力、実際の結果を出力とするロジスティック回帰を追加で当てはめる。パラメトリックな手法なので少ないデータでも安定するが、S字カーブの仮定が合わない場合は不適切。
-- **Isotonic regression**: 「予測が高いほど実測も高い」という単調性だけを仮定し、ノンパラメトリックに校正する。柔軟だがデータが少ないと過適合しやすい。
+- **Platt scaling**: 予測確率を入力、実際の結果を出力とするロジスティック回帰を追加で当てはめます。パラメトリックな手法なので少ないデータでも安定しますが、S字カーブの仮定が合わない場合は不適切です。
+- **Isotonic regression**: 「予測が高いほど実測も高い」という単調性だけを仮定し、ノンパラメトリックに校正します。柔軟ですが、データが少ないと過適合しやすくなります。
 
 R では `probably` パッケージで実装可能です。確率値を「この学習者は 80% の確率で正答する」のように直接使う運用では、キャリブレーション改善の検討に値します[@steyerberg2010]。
 
@@ -2905,7 +3649,7 @@ R では `probably` パッケージで実装可能です。確率値を「この
 
 #### SLA
 
-SLA では、「どの学習者がどの語を学習できたか」「次の小テストで基準に達するか」「どの条件で遅延保持が維持されるか」といった問いが典型です。ツリーモデルは、`proficiency × condition × item difficulty` のような非線形・交互作用を自動的に拾えるため、**どの層で指導法の効き方が変わるか** を探索的に把握したいときに有効です。
+SLA では、「どの学習者がどの語を学習できたか」「次の小テストで基準に達するか」「どの条件で遅延保持が維持されるか」といった問いが典型です。ツリーモデルは、`proficiency × condition × item difficulty` のような非線形・交互作用候補を拾えるため、**どの層で予測確率の差が大きいか** を探索的に把握したいときに有効です。指導法の効果そのものを主張する場合は、予測モデルだけでなく、介入割付や交絡調整を含む因果推論の設計が必要です。
 
 #### 心理言語学
 
@@ -2913,9 +3657,9 @@ SLA では、「どの学習者がどの語を学習できたか」「次の小�
 
 #### 英語教育学・教育学
 
-英語教育学や教育学では、「支援対象の早期抽出」「到達判定の補助」「提出遅延や成績不振の予測」のように、最終的に**介入する / しない** を決める場面が多くなります。このときは AUC の高さだけでなく、`Sensitivity`、`Specificity`、`Precision`、キャリブレーションをセットで確認し、**見逃しが痛いのか、誤警報が痛いのか** を先に決める必要があります。
+英語教育学や教育学では、「支援対象の早期抽出」「到達判定の補助」「提出遅延や成績不振の予測」のように、最終的に**介入候補にする / しない** を決める場面が多くなります。このときは AUC の高さだけでなく、`Sensitivity`、`Specificity`、`Precision`、キャリブレーションをセットで確認し、**どのクラスの取りこぼしが痛いのか、どのクラスの誤警報が痛いのか** を先に決める必要があります。
 
-#### 非線形・交互作用の自動検出という利点
+#### 非線形・交互作用候補を探索できる利点
 
 これらの分野に共通する利点は、ツリーモデルが **非線形** と **交互作用** を事前指定なしに探索できることです。回帰分析なら `proficiency:condition` や `context:frequency` を研究者が明示的に入れなければなりませんが、ツリーモデルでは「どこで分岐するか」「どの変数を組み合わせるか」をデータ駆動で見つけられます。そのため、本章のモデルは「理論が固まった検証」よりも、**どこに複雑なパターンがありそうかを見つける探索** に特に向いています。
 
@@ -2925,34 +3669,59 @@ SLA では、「どの学習者がどの語を学習できたか」「次の小�
 
 1. データ分割（train/test または CV設計）
 2. 主要指標（ROC-AUC, PR-AUC, Sens/Spec, Brier）
-3. 閾値の決定根拠（Youden, あるいはコスト設計）
-4. 解釈（重要特徴・教育的意味）
-5. 限界（外的妥当性、バイアス、公平性）
+3. 閾値の決定根拠（CV-Youden, あるいはコスト設計）
+4. サブグループ別性能（必要に応じて）
+5. 解釈（重要特徴・教育的意味）
+6. 限界（外的妥当性、バイアス、公平性）
 
-### 教育的含意の例（この章のケース）
+### 予測結果から書ける範囲の例（この章のケース）
 
-- `retrieval`条件は`glossing`より正答率を押し上げる傾向。これはretrieval practiceの文献知見と一致する。
-- ただし遅延テストで効果が減衰する可能性がある（交互作用）。カリキュラム設計では、retrieval practiceの間隔配置を検討すべき示唆を含む。
-- 学習時間だけでなく語彙特性（頻度・長さ・同根語）も予測に寄与。これは語彙教材の選定基準に直接関わる。
+- `retrieval`条件の観測では、`glossing`条件より `P(correct)` が高く予測される傾向があります。これはretrieval practiceの文献知見と整合的ですが、この分析だけで条件の因果効果を推定したわけではありません。
+- `condition` と `test_time` の組み合わせで予測確率が変わる場合、遅延テストで保持パターンが変わる可能性を示す探索的結果として報告できます。カリキュラム設計への示唆は、実験デザインや第18章の因果推論と合わせて慎重に書きます。
+- 学習時間だけでなく語彙特性（頻度・長さ・同根語）も予測に寄与する場合、教材選定で注目すべき候補特徴として整理できます。ただし、特徴重要度は「教材を変えれば成果が変わる」ことを直接示すものではありません。
 
-#### 結果記述テンプレート（日本語）
+### 報告テンプレート（論文・報告書向け）
 
-「XGBoostはテストデータでROC-AUC = .82、PR-AUC = .78を示した。閾値を0.52（Youden最適）に設定した場合、Sensitivity = .80、Specificity = .72であった。SHAP分析の結果、proficiencyとword_freqが最も強い予測因子であり、conditionとtest_timeの交互作用も確認された。教育実務では見逃しコストを考慮し、閾値を0.40に下げる運用も妥当である。」
+予測モデルの報告では、モデル名と AUC だけでは再現性も実務的意味も伝わりにくいです。最低限、**分割方法、比較モデル、評価指標、閾値、キャリブレーション、解釈、限界**をそろえます。L2 研究としての書式は *Language Learning* の Open Methods ガイドライン [@norris2015] に準拠すれば、再現性に必要な情報の漏れを防げます。
+
+| 報告要素 | 本章での確認箇所 | 書くべき内容 |
+|:---|:---|:---|
+| 予測課題 | ケース設定、目的変数 | 何を positive class としたか、評価単位は response / learner / item / trial のどれかを書きます |
+| 分割設計 | 学習・評価の分割 | learner単位・item単位など、汎化先に対応した分割を明示します。CVは訓練データ内で行います |
+| 比較モデル | GLM、決定木、RF、XGBoost | GLMを基準線として含め、複雑モデルの上積みを示します |
+| 評価指標 | ROC、PR、Brier、混同行列 | AUCだけでなく、クラス不均衡、確率スコア、TP/FP/TN/FNも確認します |
+| 不確実性 | AUC信頼区間 | 学習者クラスタ単位など、再標本化単位を明示 |
+| 閾値 | Youden、コストベース閾値 | テストデータではなくCV/検証データで決めたこと、どの誤分類を重く見たかを説明 |
+| キャリブレーション | 信頼度図、Brier | 確率を直接使う場合は校正状態を報告 |
+| サブグループ | 習熟度帯、テスト時点、背景変数 | 平均性能だけでなく、性能が落ちる層がないかを確認 |
+| 解釈 | Dominance、Permutation、SHAP、PDP | 重要度を因果効果として読まないことを明示します。SHAPのスケールも説明します |
+| 限界 | 外的妥当性、公平性、リーク | データ生成過程・測定単位・サブグループ性能の制約を書きます |
+
+#### 日本語テンプレート
+
+「XGBoostは、`learner_id`単位の3-fold CVでハイパーパラメータを調整した後、未知学習者からなるテストデータでROC-AUC = .82、PR-AUC = .78を示しました。評価単位はresponse-levelで、陽性クラスは `correct` としました。CV予測から選んだYouden閾値0.52をテストデータに適用したところ、Sensitivity = .80、Specificity = .72、TP/FP/TN/FN = xx/xx/xx/xxでした。学習者クラスタ単位のブートストラップ95%CIはROC-AUC = [.xx, .xx]でした。サブグループ確認では、低習熟度・遅延テスト条件でSensitivityが相対的に低く、運用前に閾値設定または追加確認が必要な可能性が示唆されました。SHAP分析では、proficiencyとword_freqが予測に大きく寄与しました。これらは正答確率の予測に関する結果で、条件や教材特徴の因果効果を示すものではありません。」
+
+コストベース閾値を採用した場合は、次の一文を加えると判断根拠が明確になります。
+
+「閾値選択では、`correct` を陽性クラスとしたため、誤答観測を正答扱いするFPを、正答観測を誤答扱いするFNの4倍重く設定しました。CV予測上の期待コストを最小化する閾値は0.xxで、この閾値をテストデータに適用したときのCost per observationはx.xxでした。」
 
 上記の数値は仮の例です。ご自身の分析結果で置き換えてください。
 
 #### Results Template (English)
 
-"An XGBoost classifier was trained on the vocabulary learning data (N = 3,500 observations) with 3-fold cross-validation for hyperparameter tuning. On the held-out test set, XGBoost achieved ROC-AUC = .82 and PR-AUC = .78. At the Youden-optimal threshold (0.52), sensitivity was .80 and specificity was .72. SHAP analysis revealed proficiency and word frequency as the strongest predictors. For practical deployment, a lower threshold may be warranted to minimize false negatives in early intervention contexts."
+"An XGBoost classifier was trained on the vocabulary learning data (N = 3,500 observations) with learner-grouped 3-fold cross-validation for hyperparameter tuning. The positive class was `correct`, and performance was evaluated at the response level on held-out learners. On the test set, XGBoost achieved ROC-AUC = .82 and PR-AUC = .78. Applying the Youden threshold selected from cross-validated training predictions (0.52) yielded sensitivity = .80, specificity = .72, and TP/FP/TN/FN = xx/xx/xx/xx. A learner-cluster bootstrap yielded a 95% CI of [.xx, .xx] for ROC-AUC. Subgroup checks suggested lower sensitivity for low-proficiency delayed-test observations, indicating that threshold setting or additional review may be needed before operational use. SHAP values indicated that proficiency and word frequency contributed strongly to predictions. These results describe predictive associations and should not be interpreted as causal effects of instructional conditions."
+
+When using a cost-based threshold, add: "Because the positive class was `correct`, false positives corresponded to incorrect observations classified as correct. We therefore assigned FP errors four times the cost of FN errors. The cost-minimizing threshold selected from cross-validated predictions was 0.xx, yielding a test-set cost per observation of x.xx."
 
 The numbers above are illustrative. Replace them with your actual results.
 
 ### 限界と今後の課題
 
-- **外的妥当性**: 本章のデータは架空の生成データであり、実データでの再現が必要。
-- **多水準構造の簡略化**: 本章では `learner_id` と `item_id` の変量効果を含めていない。実際のデータでは、6章で扱ったGLMMとの比較が必要になる場合がある。
-- **公平性**: 学習者の背景（L1, 性別等）によって予測精度が異なる可能性がある。サブグループ別の性能評価を行うことが望ましい。
-- **因果推論との区別**: ツリーモデルは予測に優れるが、「retrieval conditionが正答率を**因果的に**高める」とは直接言えない。因果推論には別の枠組み（例: 傾向スコア、差の差）が必要。
+- **外的妥当性**: 本章のデータは架空の生成データで、実データでの再現が必要です。
+- **多水準構造の扱い**: 本章では `learner_id` 単位で train/test とCVを分け、未知学習者への汎化を評価しています。ただし `item_id` は train/test の両方に出るため、未知項目への汎化性能は別途 `item_id` 単位の分割で確認する必要があります。
+- **変量効果との違い**: ツリーモデル自体には `learner_id` と `item_id` の変量効果を入れていません。説明・推論が主目的なら、6章で扱ったGLMMとの比較が必要になる場合があります。
+- **公平性**: 学習者の背景（L1, 性別等）によって予測精度が異なる可能性があります。サブグループ別の性能評価を行うことが望ましいです。
+- **因果推論との区別**: ツリーモデルは予測に優れますが、「retrieval conditionが正答率を**因果的に**高める」とは直接言えません。因果推論には別の枠組み（例: 傾向スコア、差の差）が必要です。
 
 ---
 
@@ -2960,11 +3729,11 @@ The numbers above are illustrative. Replace them with your actual results.
 
 ### 概要
 
-学習データを10%から100%まで段階的に使い、テスト性能の変化を確認します。曲線が平坦になっていればデータは十分で、まだ上昇中ならデータ追加で改善の余地があります。
+学習データを10%から100%まで段階的に使い、検証性能の変化を確認します。曲線が平坦になっていればデータは十分で、まだ上昇中ならデータ追加で改善の余地があります。
 
-ここまで4つのモデルを構築・評価してきた。最後に残る問いは「データは十分だったか？」である。もしデータが倍あれば、RFやXGBoostの精度はさらに上がるのか？それとも既に飽和しているのか？章冒頭で理論的に示したバイアス-バリアンストレードオフが、実データでどう現れるかを学習曲線で確認する。
+ここまで4つのモデルを構築・評価してきました。最後に残る問いは「データは十分だったのでしょうか」です。もしデータが倍あれば、RFやXGBoostの精度はさらに上がるのでしょうか。それとも既に飽和しているのでしょうか。章冒頭で理論的に示したバイアス-バリアンストレードオフが、データ量に対してどう現れるかを学習曲線で確認します。最終テストデータを繰り返し見ないよう、ここでは訓練データをさらに内部訓練/検証に分けて診断図を作ります。
 
-**このチャンクの目的:** 訓練データサイズを段階的に増やし、GLMとRFのテストROC-AUCの変化を学習曲線として描画します。
+**このチャンクの目的:** 訓練データサイズを段階的に増やし、GLMとRFの内部検証ROC-AUCの変化を学習曲線として描画します。
 ```{r}
 #| eval: true
 #| label: learning-curves
@@ -2973,11 +3742,18 @@ The numbers above are illustrative. Replace them with your actual results.
 #| fig-cap: "Learning curves: ROC-AUC by training set size"
 
 set.seed(123)
+lc_split <- rsample::group_initial_split(train_data, group = learner_id, prop = 0.8)
+lc_train_data <- training(lc_split)
+lc_valid_data <- testing(lc_split)
 train_sizes <- seq(0.1, 1.0, by = 0.1)
 
 lc_results <- map_dfr(train_sizes, \(frac) {
-  idx <- sample(nrow(train_data), size = floor(nrow(train_data) * frac))
-  train_sub <- train_data[idx, ]
+  learner_sub <- lc_train_data |>
+    distinct(learner_id) |>
+    slice_sample(prop = frac)
+
+  train_sub <- lc_train_data |>
+    semi_join(learner_sub, by = "learner_id")
 
   prep_glm <- prep(rec_glm, training = train_sub)
   prep_tree <- prep(rec_tree, training = train_sub)
@@ -2986,22 +3762,22 @@ lc_results <- map_dfr(train_sizes, \(frac) {
     set_engine("glm") |>
     fit(correct ~ ., data = bake(prep_glm, new_data = train_sub))
 
-  rf_sub <- rand_forest(mtry = rf_best$mtry, min_n = rf_best$min_n, trees = 500) |>
+  rf_sub <- rand_forest(mtry = rf_best$mtry, min_n = rf_best$min_n, trees = 300) |>
     set_engine("ranger") |>
     set_mode("classification") |>
     fit(correct ~ ., data = bake(prep_tree, new_data = train_sub))
 
-  test_glm <- bake(prep_glm, new_data = test_data)
-  test_rf  <- bake(prep_tree, new_data = test_data)
+  valid_glm <- bake(prep_glm, new_data = lc_valid_data)
+  valid_rf  <- bake(prep_tree, new_data = lc_valid_data)
 
   bind_rows(
     tibble(frac = frac, n = nrow(train_sub), model = "Logistic",
-           auc = roc_auc_vec(test_data$correct,
-                             predict(glm_sub, test_glm, type = "prob")$.pred_correct,
+           auc = roc_auc_vec(lc_valid_data$correct,
+                             predict(glm_sub, valid_glm, type = "prob")$.pred_correct,
                              event_level = "second")),
     tibble(frac = frac, n = nrow(train_sub), model = "Random Forest",
-           auc = roc_auc_vec(test_data$correct,
-                             predict(rf_sub, test_rf, type = "prob")$.pred_correct,
+           auc = roc_auc_vec(lc_valid_data$correct,
+                             predict(rf_sub, valid_rf, type = "prob")$.pred_correct,
                              event_level = "second"))
   )
 })
@@ -3013,25 +3789,25 @@ lc_results |>
   scale_color_manual(values = c("Logistic" = "#D95F02", "Random Forest" = "#1B9E77")) +
   labs(
     title = "Learning Curves: GLM vs Random Forest",
-    subtitle = "Test-set ROC-AUC as a function of training data size",
+    subtitle = "Internal validation ROC-AUC as a function of training data size",
     x = "Training set size (n)",
-    y = "Test ROC-AUC",
+    y = "Validation ROC-AUC",
     color = "Model"
   )
 ```
 
 学習曲線の読み方:
 
-- **GLM**は少量データでも比較的安定する（低バリアンス）が、天井が低い（高バイアス = 非線形を捉えられない）。
-- **RF**はデータが少ないと不安定（高バリアンス）だが、データ増加とともにGLMを追い越す可能性がある（低バイアス）。
-- 曲線が**平坦**になった領域では、データ追加よりモデル改良や特徴量エンジニアリングの方が効果的。
-- 2曲線が**収束していない**場合は、さらなるデータ収集で差が開く（または縮まる）可能性がある。
+- **GLM**は少量データでも比較的安定します（低バリアンス）が、天井が低いです（高バイアス = 非線形を捉えられません）。
+- **RF**はデータが少ないと不安定です（高バリアンス）が、データ増加とともにGLMを追い越す可能性があります（低バイアス）。
+- 曲線が**平坦**になった領域では、データ追加よりモデル改良や特徴量エンジニアリングの方が効果的です。
+- 2曲線が**収束していない**場合は、さらなるデータ収集で差が開く（または縮まる）可能性があります。
 
 #### 学習曲線の実務的な読み方
 
 まず、曲線が**平坦になる点**を探します。その点がサンプルサイズの十分性の目安です。
 
-- 例: RF の曲線が `n = 800` 以降ほぼ横ばいなら、「800 行あれば十分。データを倍にしても精度は上がらない」と結論できます。
+- 例: RF の曲線が `n = 800` 以降ほぼ横ばいなら、「800 行あれば十分です。データを倍にしても精度は上がりません」と結論できます。
 - 曲線が**まだ上昇中**で終わっているなら、データ追加で改善の余地があります。査読者への説明にも使いやすく、「学習曲線が飽和していないため、追加データで性能改善が見込まれる」と書けます。
 - 各点のギザギザは訓練データの乱数化の影響です。小さい `N (< 200)` での上下は気にしすぎず、全体のトレンドを見ます。
 
@@ -3039,20 +3815,24 @@ lc_results |>
 
 ## 方法論上の留意点
 
-1. **AUC単独でモデル選択を行わない**  
-   対応: PR-AUC、閾値依存指標（Sensitivity / Specificity / Precision）も併記する。
-2. **目的変数のイベント水準を明示する**  
-   対応: `event_level = "second"` などを明示し、再現可能性を確保する。
-3. **前処理リークを防止する**  
-   対応: recipe の学習は学習データのみに限定し、workflow で一体化する。
-4. **複雑モデルを無条件に採用しない**  
-   対応: 単純モデル（GLM / 単木）を必ず比較対象に含める。
-5. **カテゴリカル変数の重要度に注意する**  
-   対応: 水準数が多いカテゴリカル変数は、Gini / Gain ベースの重要度で過大評価されやすい[@gries2020]。Permutation importance や SHAP と併用する。
-6. **Gain重要度のカーディナリティバイアスを意識する**  
-   対応: XGBoost の Gain 重要度は分岐回数に依存するため、連続変数を優遇しやすい。SHAP と併記して頑健性を確認する[@strobl2007]。
-7. **サンプルサイズとモデル複雑度のバランスを取る**  
-   対応: サンプルサイズが小さい場合（例: `N < 500`）、ツリーモデルより GLM の方が安定することがある。データ量に見合ったモデル複雑度を常に検討する。
+1. **AUC単独でモデル選択を行わない**
+   対応: PR-AUC、閾値依存指標（Sensitivity / Specificity / Precision）も併記します。
+2. **目的変数のイベント水準を明示する**
+   対応: `event_level = "second"` などを明示し、再現可能性を確保します。
+3. **前処理リークを防止する**
+   対応: recipe の学習は学習データのみに限定し、workflow で一体化します。
+4. **複雑モデルを無条件に採用しない**
+   対応: 単純モデル（GLM / 単木）を必ず比較対象に含めます。
+5. **カテゴリカル変数の重要度に注意する**
+   対応: 水準数が多いカテゴリカル変数は、Gini / Gain ベースの重要度で過大評価されやすいです[@gries2020]。Permutation importance や SHAP と併用します。
+6. **Gain重要度のカーディナリティバイアスを意識する**
+   対応: XGBoost の Gain 重要度は分岐回数に依存するため、連続変数を優遇しやすいです。SHAP と併記して頑健性を確認します[@strobl2007]。
+7. **サンプルサイズとモデル複雑度のバランスを取る**
+   対応: サンプルサイズが小さい場合（例: `N < 500`）、ツリーモデルより GLM の方が安定することがあります。データ量に見合ったモデル複雑度を常に検討します。
+8. **OOBをgrouped CVの代替にしない**
+   対応: RFのOOBは便利な内部診断ですが、学習者や項目の反復構造をまたぐ評価では、`learner_id` や `item_id` 単位のCV/testを別に設計します。
+9. **説明用図を見てモデルを選び直さない**
+   対応: SHAP、PDP、単木の安定性確認はモデル解釈のための図です。これらを見た後に閾値やモデルを変更する場合は、別の検証データで再評価します。
 
 ---
 
@@ -3062,35 +3842,47 @@ lc_results |>
 
 回帰→決定木→RF→XGBoostの順にモデルの複雑度を上げ、ROC/PR/閾値/キャリブレーションで評価しました。ツリーモデルは非線形・相互作用に強い一方、ROC-AUC単独ではなく複数指標で判断し、閾値は教育目的に合わせて選ぶ必要があります。
 
-本章の主要な結論は次の通りである。
+本章の主要な結論は次の通りです。
 
-1. **ツリーモデルは非線形・相互作用を自動的に捉える**: ロジスティック回帰では手動で交互作用項を指定する必要があるが、ツリーモデルはデータ駆動で最適な分割を発見する。英語教育データのように、学習者要因と項目要因が複雑に絡む場面で特に有用である。
+1. **ツリーモデルは非線形・相互作用候補を探索できます**: ロジスティック回帰では手動で交互作用項を指定する必要がありますが、ツリーモデルはデータ駆動で有用な分割候補を見つけます。英語教育データのように、学習者要因と項目要因が複雑に絡む場面で特に有用です。
 
-2. **ROCは有用だが、ROCだけでは不十分**: PR-AUC（陽性クラスが少ないとき特に重要）、Brier score（確率の信頼性）、閾値依存指標（Sensitivity/Specificity）を組み合わせて初めて、モデルの実力を多面的に評価できる。
+2. **ROCは有用ですが、ROCだけでは不十分です**: PR-AUC（陽性クラスが少ないとき特に重要）、Brier score（確率予測の総合誤差）、閾値依存指標（Sensitivity/Specificity）を組み合わせて初めて、モデルの実力を多面的に評価できます。
 
-3. **実務判断には閾値とキャリブレーションが必要**: AUCは「モデルの潜在能力」を示すが、教育現場で「この学習者に介入する/しない」を決めるには閾値が必要。その閾値は教育目的（見逃し回避 vs 誤警報回避）に合わせて選ぶ。確率値を直接使う場合はキャリブレーションの確認が不可欠。
+3. **実務判断には閾値とキャリブレーションが必要です**: AUCは「モデルの潜在能力」を示しますが、教育現場で「この学習者を支援候補にする/しない」を決めるには閾値が必要です。その閾値は教育目的（取りこぼし回避 vs 誤警報回避）に合わせて、訓練データ内のCV予測または検証データで選びます。確率値を直接使う場合はキャリブレーションの確認が不可欠です。
 
-4. **モデル選択は目的に依存する**: 精度だけでなく、解釈可能性、計算コスト、チューニング負荷を考慮する。実務では次の判断基準を用いると良い:
+4. **モデル選択は目的に依存します**: 精度だけでなく、解釈可能性、計算コスト、チューニング負荷を考慮します。実務では次の判断基準を用いると整理しやすくなります。
 
-- データが少ない（< 500行）→ **GLM**で十分な場合が多い。
-- 非線形・相互作用が複雑 → **RF**（安定性重視）or **XGBoost**（精度重視）。
-- 予測根拠の透明性が最優先 → **決定木**。
-- 最高精度を追求し、解釈にはSHAPを使う → **XGBoost + SHAP**。
+- データが少ない（< 500行）→ **GLM**で十分な場合が多いです。
+- 非線形・相互作用が複雑 → **RF**（安定性重視）or **XGBoost**（精度重視）を検討します。
+- 予測根拠の透明性が最優先 → **決定木**を検討します。
+- 最高精度を追求し、解釈にはSHAPを使う → **XGBoost + SHAP**を検討します。
 
 ---
 
 ## 実務チェックリスト（提出前に確認）
 
-- [ ] 予測課題は明確か（何を当てるか）。
-- [ ] データ分割とCV手順を明記したか。
-- [ ] ハイパーパラメータのチューニング手順を記載したか。
-- [ ] 交差検証の設計（fold数・層化）を報告したか。
-- [ ] ROC-AUCとPR-AUCの両方を示したか。
-- [ ] 閾値の根拠を記述したか。
-- [ ] キャリブレーション図を確認したか。
-- [ ] 複数の重要度指標を比較したか。
-- [ ] 比較モデル（GLM含む）の結果を併記したか。
-- [ ] 教育的解釈と限界（公平性含む）を書いたか。
+- [ ] 予測課題は明確ですか（何を当てるか）。
+- [ ] データ分割とCV手順を明記しましたか。
+- [ ] ハイパーパラメータのチューニング手順を記載しましたか。
+- [ ] 交差検証の設計（fold数・グループ化単位）を報告しましたか。
+- [ ] ROC-AUCとPR-AUCの両方を示しましたか。
+- [ ] positive class と評価単位（response-level / learner-macro等）を明示しましたか。
+- [ ] 閾値の根拠を記述しましたか（テストデータではなくCV/検証データで決めましたか）。
+- [ ] コストベース閾値を使う場合、FP/FNのコスト比を事前根拠とともに明記しましたか。
+- [ ] キャリブレーション図を確認しましたか。
+- [ ] サブグループ別に性能が大きく落ちる層がないか確認しましたか。
+- [ ] 複数の重要度指標を比較しましたか。
+- [ ] 比較モデル（GLM含む）の結果を併記しましたか。
+- [ ] 教育的解釈と限界（公平性含む）を書きましたか。
+
+---
+
+## 次に読む章
+
+- **推論・説明を主目的に戻したい場合**: 第5章のGLM/GAM、または第6章のGLMMで係数・ランダム効果・不確実性を明示します。
+- **予測されたリスクを介入判断に接続したい場合**: 第18章で因果 estimand と識別仮定を整理します。高リスク群に介入することと、介入が効くことは別問題です。
+- **学習者タイプを教師なしで探索したい場合**: 第19章のクラスタリングで、予測ラベルを置かない分類を検討します。
+- **時系列・音声・試行順序を扱う場合**: 第13章群で自己相関、時点、within-token trajectory の扱いを確認します。
 
 ---
 
@@ -3103,9 +3895,11 @@ lc_results |>
 |---|---|---|---|
 | 英語教育応用 | Zhang & Lu (2025) | L2テキストのCEFRレベル分類にRFを使用 | 本章のRFセクションと変数重要度の読み方に対応 |
 | 英語教育応用 | Mau & Feng (2025) | L2ライティング自動評価にXGBoost分類器を使用 | 本章のXGBoostセクションとモデル比較の枠組みに対応 |
-| 英語教育応用 | Niu (2025) | 英語教育評価の精度改善にRFを活用（会議報告） | 本章のRFセクションに対応。会議論文のため再現時は評価設計を明示 |
+| 英語教育応用 | Niu (2025) | 英語教育評価の精度改善にRFを活用（会議報告） | 本章のRFセクションに対応します。会議論文のため再現時は評価設計を明示します |
 | 方法論（ツリー） | Gries (2020) | コーパス言語学でのツリーモデルの落とし穴を指摘 | 本章の方法論上の留意点（カテゴリカル変数の過大評価等）に対応 |
 | 方法論（重要度） | Mizumoto (2022) | 応用言語学でdominance analysisとRFの実践手順を提示 | 本章のGLM dominanceとRF重要度セクションに対応 |
+| 方法論（閾値） | Youden (1950) | Sensitivity + Specificity - 1 に基づく診断閾値規則を提示 | 本章のCV-Youden閾値選択に対応 |
+| 方法論（確率校正） | Brier (1950), Platt (1999), Niculescu-Mizil & Caruana (2005), Guo et al. (2017) | 確率予測スコア、Platt scaling、isotonic regression、ECEの基礎 | 本章のBrier score・キャリブレーション図・再校正の注意点に対応 |
 | 教科書 | James et al. (2021) | ISLR: ツリーモデルの教育的標準テキスト | 本章の概念説明（バイアス・分散・バギング・ブースティング）の理論的基盤 |
 | 教科書 | Kuhn & Silge (2022) | Tidy Modeling with R: tidymodels の実装体系を整理した教科書 | 本章のtidymodels実装パターン全体に対応 |
 
@@ -3122,8 +3916,8 @@ lc_results |>
   - [tidymodels: Getting started (models)](https://www.tidymodels.org/start/models/)
   - [tidymodels: Getting started (resampling)](https://www.tidymodels.org/start/resampling/)
 - 分割・前処理:
-  - [rsample: initial_split()](https://rsample.tidymodels.org/reference/initial_split.html)
-  - [rsample: vfold_cv()](https://rsample.tidymodels.org/reference/vfold_cv.html)
+  - [rsample: group_initial_split()](https://rsample.tidymodels.org/reference/group_initial_split.html)
+  - [rsample: group_vfold_cv()](https://rsample.tidymodels.org/reference/group_vfold_cv.html)
   - [recipes: step_log()](https://recipes.tidymodels.org/reference/step_log.html)
   - [recipes: step_dummy()](https://recipes.tidymodels.org/reference/step_dummy.html)
 - モデル仕様:
@@ -3136,12 +3930,14 @@ lc_results |>
   - [ggparty (CRAN)](https://cran.r-project.org/package=ggparty)
 - チューニング:
   - [tune: tune_grid()](https://tune.tidymodels.org/reference/tune_grid.html)
-  - [tune: collect_metrics()](https://tune.tidymodels.org/reference/collect_predictions.html)
+  - [tune: collect_predictions()](https://tune.tidymodels.org/reference/collect_predictions.html)
+  - [tune: control_grid()](https://tune.tidymodels.org/reference/control_grid.html)
   - [dials: grid_space_filling()](https://dials.tidymodels.org/reference/grid_space_filling.html)
 - 評価・解釈:
   - [yardstick: roc_auc()](https://yardstick.tidymodels.org/reference/roc_auc.html)
   - [yardstick: pr_auc()](https://yardstick.tidymodels.org/reference/pr_auc.html)
   - [yardstick: brier_class()](https://yardstick.tidymodels.org/reference/brier_class.html)
+  - [probably package](https://probably.tidymodels.org/)
   - [pROC package site](https://xrobin.github.io/pROC/)
   - [xgboost prediction docs](https://xgboost.readthedocs.io/en/stable/prediction.html)
   - [xgboost in R tutorial](https://xgboost.readthedocs.io/en/stable/R-package/xgboostPresentation.html)

@@ -14,9 +14,12 @@ required_packages <- c(
   "broom",
   "dplyr",
   "emmeans",
+  "gt",
   "knitr",
+  "MASS",
+  "mgcv",
+  "nnet",
   "ordinal",
-  "pacman",
   "performance",
   "pscl",
   "purrr",
@@ -30,14 +33,14 @@ required_packages <- c(
 
 missing_packages <- setdiff(required_packages, rownames(installed.packages()))
 if (length(missing_packages) > 0) {
-  install.packages(missing_packages, repos = "https://cloud.r-project.org")
+  message("Install required packages before rendering: ", paste(missing_packages, collapse = ", "))
 }
 ```
 
 
 ## はじめに
 
-英語教育研究では、目的変数が正規分布を仮定しにくい場面が多くあります。典型例は、
+本章へようこそ。英語教育研究では、目的変数が正規分布を仮定しにくい場面が多くあります。典型例は、
 **正誤（0/1）**、**相互作用回数（count）**、**正の連続量**です。これらを
 通常の線形回帰で処理すると、分布仮定と解釈がずれやすくなります。
 
@@ -48,6 +51,11 @@ if (length(missing_packages) > 0) {
 
 本章は、理論説明を最小限にし、**そのまま再利用できる実務手順**に重点を置きます。
 
+::: {.callout-tip}
+#### 難しく感じても大丈夫
+リンク関数・dispersion・GAM の `k` / `edf` といった概念は、初読では理解が部分的でも自然です。最初は **「中核となる読み筋」** に従って 3 ケース(`binomial` / `Poisson` / `Gamma`)の実装と読み方を掴むことを目標にし、理論や発展トピックは必要になったときに戻ってくる読み方を推奨します。
+:::
+
 ### 第5章と第6章の使い分け
 
 | 状況 | 使う章 |
@@ -56,28 +64,41 @@ if (length(missing_packages) > 0) {
 | 同じ学習者から複数観測がある | 6章（GLMM） |
 | 独立性 + 非線形の両方が問題 | GAMM（6章末尾で概説） |
 
-迷ったら、まず本章で GLM/GAM を試し、章末の「6章への接続」で GLMM との比較を確認してください。
+本章で最初に決めるのは、**アウトカムの型に合う分布族・リンク関数・解釈スケール**です。参加者、項目、評価者、電極、AOI などが繰り返し出る場合は、本章で分布とリンクを決めたうえで、第6章の GLMM / GAMM に移します。
+
+::: {.callout-note}
+#### 第5章で決めること・第6章へ渡すこと
+
+| 判断 | 第5章で扱う範囲 | 第6章へ渡す範囲 |
+|---|---|---|
+| 目的変数の型 | 2値、カウント、正の連続量、割合、名義・順序カテゴリ | 同じ型を保ったままランダム効果を追加 |
+| 係数の読み方 | OR, IRR, 倍率, RRR, 予測確率 | 固定効果の解釈を保ちつつ不確実性を補正 |
+| 非線形性 | GAM の smooth で確認 | 反復構造もあるなら GAMM |
+| 独立性 | 独立観測を前提に診断 | participant / item / rater などの反復をモデル化 |
+
+したがって、実験データでは「第5章だけで完結させる」のではなく、**第5章で応答分布を決め、第6章で依存構造を足す**という読み方が安全です。
+:::
 
 ### この章の到達目標
 
-- 分布とリンク関数を、研究目的に応じて選べる。
-- GLM と GAM を同じ研究課題で比較し、採用理由を説明できる。
-- 係数を OR（オッズ比: ある条件で事象が何倍起きやすいか）/ IRR（発生率比: カウントが何倍になるか）/ 倍率（連続値が何倍になるか）に変換し、応答スケール予測で可視化できる。
-- 章内コードをそのままテンプレートとして使える。
+- 分布とリンク関数を、研究目的に応じて選べます。
+- GLM と GAM を同じ研究課題で比較し、採用理由を説明できます。
+- 係数を OR（オッズ比: ある条件で事象が何倍起きやすいか）/ IRR（発生率比: カウントが何倍になるか）/ 倍率（連続値が何倍になるか）に変換し、応答スケール予測で可視化できます。
+- 章内コードをそのままテンプレートとして使えます。
 
-### ファストトラック {.unnumbered}
+### 中核となる読み筋 {.unnumbered}
 
-以下の順で読むと 60 分ほどで GLM/GAM の基本ワークフローを習得できます。
+GLM/GAM の基本ワークフローを把握するには、以下の順序で各節を読むと依存関係が崩れません。
 
-| 順序 | セクション | 所要時間 | 内容 |
-|:---:|---|:---:|---|
-| 1 | 理論はここだけ確認する | 10分 | 分布族 + リンク関数 + MLE の3ステップ |
-| 2 | ケース1: 2値（Binary） | 20分 | GLM/GAM推定 → OR → 予測 → 診断 |
-| 3 | モデル比較と OR | 10分 | AIC、sjPlot、worked interpretation |
-| 4 | 報告テンプレート（Case 1） | 10分 | APA 7 形式のMethod/Results |
-| 5 | 第6章への接続 | 10分 | GLM → GLMM への判断基準 |
+| 順序 | セクション | 内容 |
+|:---:|---|---|
+| 1 | 理論はここだけ確認する | 分布族 + リンク関数 + MLE の3ステップ |
+| 2 | ケース1: 2値（Binary） | GLM/GAM 推定 → OR → 予測 → 診断 |
+| 3 | モデル比較と OR | AIC、sjPlot、worked interpretation |
+| 4 | 報告テンプレート（Case 1） | APA 7 形式の Method/Results |
+| 5 | 第6章への接続 | GLM → GLMM への判断基準 |
 
-**2回目以降に読む**: ケース2（カウント）、ケース3（連続正値）、リンク関数の詳細、トラブルシューティング
+**応用編**: ケース2（カウント）、ケース3（連続正値）、リンク関数の詳細、トラブルシューティング
 
 ### OLS から GLM への橋渡し {.unnumbered}
 
@@ -93,8 +114,8 @@ if (length(missing_packages) > 0) {
 つまり、**通常の重回帰分析（`lm()`）は GLM の特殊ケース**です。GLM を学ぶとは、この3つの選択肢を適切に選べるようになることです。
 
 - **指数型分布族**とは、正規・二項・ポアソン・ガンマなどの幅広い分布を含むグループです。GLM はこのグループ内の分布を自由に選べます。
-- **リンク関数**とは、予測値（線形予測子）をアウトカムの平均に変換する関数です。例：logit は確率（0〜1）を対数オッズ（−∞〜+∞）に変換します。
-- **MLE（最尤推定法）**とは、「このデータが観測される確率を最大にする」パラメータ値を求める方法です。正規分布では OLS と同じ結果になりますが、2値やカウントデータでは MLE が正しい推定法です。
+- **リンク関数**とは、アウトカムの平均 $\mu$ を線形予測子 $\eta$ に変換する関数です。例：logit は確率（0〜1）を対数オッズ（−∞〜+∞）に変換します。逆に、$\eta$ から平均へ戻す関数を**逆リンク関数**と呼びます。
+- **MLE（最尤推定法）**とは、「このデータが観測される確率または密度を最大にする」パラメータ値を求める方法です。正規分布では OLS と同じ結果になりますが、2値やカウントデータでは MLE が正しい推定法です。
 
 本章では、GLM/GAM の前提に合わせて **1 行 = 1 つの独立観測単位** となる現実的シミュレーションデータを用います。ケース1・ケース2は独立 dyad、ケース3は独立 learner を単位とします。
 
@@ -107,10 +128,21 @@ if (length(missing_packages) > 0) {
 #| message: false
 #| warning: false
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
+pre_packages <- c("tidyverse", "knitr")
+missing_pre <- pre_packages[
+  !vapply(pre_packages, requireNamespace, logical(1), quietly = TRUE)
+]
 
+if (length(missing_pre) > 0) {
+  stop(
+    "Install required packages before rendering: ",
+    paste(missing_pre, collapse = ", ")
+  )
+}
 
-pacman::p_load(tidyverse)
+suppressPackageStartupMessages({
+  library(tidyverse)
+})
 
 ```
 
@@ -159,6 +191,8 @@ tibble(
 #| eval: true
 #| label: lm-failure-demo
 #| fig-height: 4
+#| fig-cap: "Binary outcomes: why ordinary lm() can leave the probability scale"
+#| fig-alt: "A scatterplot of binary outcomes with an orange linear lm prediction line extending below 0 and above 1, and a blue logistic glm curve staying between 0 and 1."
 
 set.seed(2024)
 n_demo <- 200
@@ -205,7 +239,7 @@ ggplot(nd_demo, aes(x = score)) +
 
 ## 分析の流れ
 
-GLM/GAM の分析では、**目的変数の型（2値・カウント・ゼロ過剰カウント・連続正値・(0,1)割合・名義カテゴリ・順序カテゴリ）に応じて分布族とリンク関数を選ぶ**ことが出発点になります。分布の選択を誤ると、推定値の解釈がデータの生成過程と乖離し、予測精度だけでなく実質的な結論にも影響を及ぼします。本章では、まず目的変数の型を確認し、2値なら Binomial GLM、カウントなら Poisson GLM（過分散があれば Negative Binomial GLM）、ゼロ過剰なら zero-inflated / hurdle、連続正値なら Gamma GLM、(0,1) の連続割合なら beta regression を選択します。名義カテゴリが3水準以上なら multinomial regression、順序カテゴリなら ordinal regression を選びます。次に非線形性を診断し、必要なら GAM に拡張、不要なら GLM を維持します。最後に AIC 比較と残差診断でモデルを確定し、OR / IRR / 倍率 / RRR / 予測確率を中心に報告します。
+GLM/GAM の分析では、**目的変数の型（2値・カウント・ゼロ過剰カウント・連続正値・(0,1)割合・名義カテゴリ・順序カテゴリ）に応じて分布族とリンク関数を選ぶ**ことが出発点になります。分布の選択を誤ると、推定値の解釈がデータの生成過程と乖離し、予測精度だけでなく実質的な結論にも影響を及ぼします。本章では、まず目的変数の型を確認し、2値なら Binomial GLM、カウントなら Poisson GLM（過分散があれば Negative Binomial GLM）、ゼロ過剰なら zero-inflated / hurdle、連続正値なら Gamma GLM、(0,1) の連続割合なら beta regression を選択します。名義カテゴリが3水準以上なら multinomial regression、順序カテゴリなら ordinal regression を選びます。次に非線形性を診断し、必要なら GAM に拡張、不要なら GLM を維持します。最後に AIC 比較、応答スケール予測、残差診断を合わせて候補モデルを絞り、OR / IRR / 倍率 / RRR / 予測確率を中心に報告します。
 
 英語教育研究では、テスト項目の正誤データ（2値）や発話中のエラー回数（カウント）を扱うことが多いため、**Binomial GLM** または **Poisson / NB GLM** のパスを辿るケースが最も一般的です。一方、SLA・心理言語学・教育学では、**ゼロが異常に多い構文使用回数**、**L2使用率のような割合データ**、**未知語への対処方略の選択**、**自己効力感・確信度・ルーブリック得点** も頻出します。まずはアウトカムの型を正しく決め、その後で GLM / ZI-Hurdle / Beta / multinomial / ordinal / GAM のどこへ進むかを選んでください。
 
@@ -215,13 +249,43 @@ GLM/GAM の分析では、**目的変数の型（2値・カウント・ゼロ過
 |:--|:--|:--|:--|:--|
 | 助言関係の有無を予測 | `0/1` | Binomial GLM | 連続予測子に閾値・飽和が疑われる | OR + 予測確率 |
 | 協働回数の差を比較 | count | Poisson GLM | 非線形が疑われる / 残差構造が複雑 | IRR + 予測件数 |
-| ゼロが極端に多い回数を説明 | zero-heavy count | NB / ZINB / Hurdle | まずゼロ生成過程を分けて考える。非線形化はその後 | `Pr(any use)` + 期待件数 |
+| ゼロが極端に多い回数を説明 | zero-heavy count | NB / ZINB / Hurdle | まずゼロ生成過程を分けて考えます。非線形化はその後 | `Pr(any use)` + 期待件数 |
 | 協働強度の差を説明 | positive continuous | Gamma GLM | 連続予測子の形が直線でない | 倍率 + 予測平均 |
+| 反応時間・注視時間を説明 | positive continuous, usually right-skewed | log-normal LMM / Gamma GLM | 試行順・習熟度・語頻度の効果が非線形 | 予測 RT / 注視時間 + 比率変化 |
 | L2使用率や完成率を説明 | continuous proportion in `(0,1)` | Beta Regression | 割合の形が直線でない / 分散も説明したい | 予測割合 + 必要なら precision |
 | 方略選択を予測 | nominal (3+ categories) | Multinomial Logit | まずカテゴリ回帰を正しく選ぶ。非線形化は別途検討 | RRR + 各カテゴリの予測確率 |
 | 5件法評定を説明 | ordered categories | Ordinal Logit | まず順序情報を保つ。必要なら `clm()` の拡張や Bayesian ordinal | 共通 OR + 各カテゴリの予測確率 |
 
 : GLM/GAM Decision Map (Applied Linguistics Data)
+
+::: {.callout-note}
+#### 実験データでは「アウトカムの型」と「反復構造」を分けて考える
+
+語彙判断課題、文法性判断課題、self-paced reading、eye-tracking、ERP では、1 行が 1 試行になることが多いです。この場合、まず本章の表で **正誤・反応時間・注視時間・振幅・注視比率** の型を決めます。その後、同じ参加者・同じ項目・同じ電極・同じ AOI が繰り返し出るなら、第6章の混合効果モデルへ進みます。
+
+| データ例 | 代表的アウトカム | 本章での出発点 | 第6章以降で追加する構造 |
+|---|---|---|---|
+| Lexical Decision / GJT | `correct` (0/1), `rt_ms` | Binomial / Gamma / log-normal | participant と item の交差乱効果、trial order |
+| Eye-tracking reading | first fixation, gaze duration, skipping | Gamma / Binomial | participant, item, interest area |
+| Visual World Paradigm | AOI 注視比率の時間変化 | Binomial / Beta / GAM | time-bin, participant, item, AOI |
+| ERP | time-window 平均振幅 | Gaussian / robust model | participant, item, electrode, time window |
+
+MNE-Python、EEGLAB、Praat、eye-tracker 付属ソフトで前処理した後も、R に入る時点では多くの場合この表のいずれかの形になります。前処理ツールは信号処理を担当し、R は統計モデルと報告可能な推定を担当する、と役割分担すると整理しやすくなります。
+:::
+
+::: {.callout-tip}
+#### 迷いやすい判断とチュートリアル論文
+
+| 判断 | 先に確認すること | 参照先 |
+|---|---|---|
+| 正答率を線形モデルで扱うか | 0/1 反応なら平均化より binomial model を優先します。集約後の割合は情報を落としやすいです | @jaeger2008; @winter2019stats |
+| カウントに Poisson を使うか | 平均と分散が近いか、ゼロが多すぎないかを見ます。過分散なら NB / zero-inflated / hurdle を検討します | @winter2019stats |
+| RT・注視時間をどう扱うか | 正の連続量で右裾が長いなら、`log(RT)` LMM、Gamma GLM/GLMM、lognormal model の解釈差を比べます | @lo2015 |
+| GAM を使うか | 理論上の閾値・飽和・U字形があるか、残差図が直線モデルの限界を示すかを見ます | @soskuthy2017; @wood2017 |
+| GAMM へ進むか | 非線形性だけでなく、participant/item/electrode/AOI などの反復構造も同時に残っているかを見ます | @wieling2018; @wood2017 |
+
+実験データでは、モデル名から入るよりも、**測定値の型、反復構造、時間方向の曲がり**を分けて確認すると判断が安定します。たとえば eye-tracking の `gaze duration` は「正の連続量」、VWP の AOI 注視は「時間 bin ごとの割合または 0/1」、ERP の window 平均振幅は「連続量」なので、同じ実験研究でも出発点は変わります。
+:::
 
 ### 3つの解釈スケール
 
@@ -240,11 +304,34 @@ GLM/GAM では、同じモデルでも**どの尺度で読むか**によって�
 - **OR / IRR / multiplier** は、1単位変化で何倍になるかを示します。
 - **応答スケール予測**は、実際にどれくらい違うのかを示します。
 
-実務では  
-`係数表で方向を確認 -> exp(beta) で倍率を確認 -> 予測図で大きさを伝える`  
+実務では
+`係数表で方向を確認 -> exp(beta) で倍率を確認 -> 予測図で大きさを伝える`
 という順に読むと迷いにくくなります。
 
 ## 理論はここだけ確認する
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本節(GLM の最尤推定・リンク関数・尤度比検定・AIC/BIC・前提条件チェックリスト)は理論的な土台です。**初読では飛ばして「ケース 1: 助言関係の有無」に直接進む**こともできます。実データを当てはめながら、必要な箇所だけ戻ってくる読み方を推奨します。
+:::
+
+::: {.callout-note}
+#### 記号の早見表
+本章で繰り返し登場する記号を一箇所にまとめておきます(本文中で初出する箇所で詳述します)。
+
+| 記号 | 名称 | 意味 |
+|---|---|---|
+| $Y$ | 目的変数(応答) | 観測されたアウトカム(0/1, count, 正の連続) |
+| $\mu = E(Y \mid X)$ | 条件付き平均 | 予測子で条件付けたときの $Y$ の期待値 |
+| $\eta$ | 線形予測子 | $\eta = \beta_0 + \beta_1 X_1 + \cdots$(予測子の線形結合) |
+| $g(\cdot)$ | リンク関数 | $g(\mu) = \eta$($\mu$ を $\eta$ にマップ:logit, log, identity 等) |
+| $g^{-1}(\cdot)$ | 逆リンク | $\mu = g^{-1}(\eta)$(予測値を応答スケールに戻す) |
+| $\phi$ | dispersion パラメータ | $\mathrm{Var}(Y \mid X) = \phi \cdot V(\mu)$ の倍率 |
+| $V(\mu)$ | 分散関数 | 平均 $\mu$ に依存する分散構造(Poisson: $\mu$、Gamma: $\mu^2$) |
+| $\beta_j$ | 回帰係数 | 線形予測子上の効果(応答スケールではない) |
+:::
+
+
 
 GLM を一言でまとめると、**「3ステップのレシピ」**です[@nelder1972; @winter2019stats]。
 
@@ -261,16 +348,16 @@ GLM で分布を選ぶというのは、「見た目が似ている分布を当�
 2. **平均が大きくなったとき、分散がどう増えるか**
    OLS のように一定なのか、平均と一緒に増えるのか、平均より速く増えるのか。
 
-この2つがデータとずれていると、予測値の範囲が不自然になるだけでなく、標準誤差や信頼区間の解釈まで崩れます。したがって `family` は、単なる R の引数ではなく、**測定されたアウトカムの性質そのもの**だと考えるのが大切です。
+この2つがデータとずれていると、予測値の範囲が不自然になるだけでなく、標準誤差や信頼区間の解釈まで崩れます。したがって `family` は、単なる R の引数ではなく、**測定されたアウトカムの性質そのもの**だと考えることが大切です。
 
 | Family / model | Allowed values | Typical variance pattern | Typical use in SLA / psycholinguistics / education | Why Gaussian is awkward |
 |---|---|---|---|---|
-| Bernoulli / Binomial | 0/1 または 0〜n 成功数 | $\mu(1-\mu)$ | 項目正誤、正答数、受講完了の有無 | 予測が 0 未満や 1 超になりうる |
-| Poisson | 0, 1, 2, ... | $\mathrm{Var}(Y)=\mu$ | エラー回数、発話回数、協働回数 | 負の件数を予測しうる。不等分散を無視 |
-| Negative Binomial | 0, 1, 2, ... | $\mathrm{Var}(Y)>\mu$ | ばらつきの大きいエラー回数、ゼロと多発が混在する行動数 | Poisson より柔軟だが Gaussian ではさらに不自然 |
-| Gamma | $Y>0$ | $\mathrm{Var}(Y)\propto\mu^2$ | RT、発話速度、継続時間、正の強度指標 | 負の予測を出しうる。右歪みを捉えにくい |
-| Multinomial | いずれか1カテゴリ | 各カテゴリ確率の和が1 | 方略選択、反応タイプ分類 | カテゴリ間の排他性を反映できない |
-| Ordinal | 順序つきカテゴリ | latent continuum + thresholds | 自己効力感、confidence rating、ルーブリック | 順序情報を捨てるか、等間隔を仮定してしまう |
+| Bernoulli / Binomial | 0/1 または 0〜n 成功数 | $\mu(1-\mu)$ | 項目正誤、正答数、受講完了の有無 | 予測が 0 未満や 1 超になりえます |
+| Poisson | 0, 1, 2, ... | $\mathrm{Var}(Y)=\mu$ | エラー回数、発話回数、協働回数 | 負の件数を予測しえます。不等分散を無視します |
+| Negative Binomial | 0, 1, 2, ... | $\mathrm{Var}(Y)>\mu$ | ばらつきの大きいエラー回数、ゼロと多発が混在する行動数 | Poisson より柔軟ですが Gaussian ではさらに不自然です |
+| Gamma | $Y>0$ | $\mathrm{Var}(Y)\propto\mu^2$ | RT、発話速度、継続時間、正の強度指標 | 負の予測を出しえます。右歪みを捉えにくいです |
+| Multinomial | いずれか1カテゴリ | 各カテゴリ確率の和が1 | 方略選択、反応タイプ分類 | カテゴリ間の排他性を反映できません |
+| Ordinal | 順序つきカテゴリ | latent continuum + thresholds | 自己効力感、confidence rating、ルーブリック | 順序情報を捨てるか、等間隔を仮定してしまいます |
 
 #### 離散カテゴリ分布の直感図 {.unnumbered}
 
@@ -278,6 +365,8 @@ GLM で分布を選ぶというのは、「見た目が似ている分布を当�
 #| eval: true
 #| label: fig-discrete-families
 #| fig-height: 4.2
+#| fig-cap: "Discrete outcome families: Bernoulli/binomial, multinomial, and ordinal structures"
+#| fig-alt: "Three faceted bar charts showing probabilities for a two-category Bernoulli outcome, a three-category unordered multinomial outcome, and a five-category ordered ordinal outcome."
 
 discrete_family_df <- tibble(
   family = c(
@@ -306,7 +395,7 @@ ggplot(discrete_family_df, aes(x = category, y = probability, fill = family)) +
   ) +
   facet_wrap(~ family, scales = "free_x") +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                     limits = c(0, 0.55)) +
+                     limits = c(0, 0.72)) +
   labs(
     x = NULL,
     y = "Probability",
@@ -323,6 +412,8 @@ ggplot(discrete_family_df, aes(x = category, y = probability, fill = family)) +
 #| eval: true
 #| label: fig-mean-variance-families
 #| fig-height: 4.5
+#| fig-cap: "Mean-variance relationships across common GLM families"
+#| fig-alt: "Line chart comparing how variance changes with the mean for Gaussian, Bernoulli, Poisson, negative binomial, and Gamma families."
 
 mu_dense <- seq(0.01, 10, length.out = 400)
 mu_binary <- seq(0.01, 0.99, length.out = 200)
@@ -348,11 +439,11 @@ ggplot(mean_var_df, aes(x = mean, y = variance, color = family)) +
 
 この図の要点は単純です。
 
-- **Gaussian** は分散が一定だと考える。
-- **Poisson** は平均が大きいほど分散も同じ比率で増える。
-- **Negative Binomial** は、Poisson より速く分散が増える。
-- **Gamma** は、平均が大きくなるほど分散がさらに速く増える。
-- **Bernoulli** は、平均が 0.5 付近で最も分散が大きく、0 や 1 に近づくと分散が小さくなる。
+- **Gaussian** は分散が一定だと考えます。
+- **Poisson** は平均が大きいほど分散も同じ比率で増えます。
+- **Negative Binomial** は、Poisson より速く分散が増えます。
+- **Gamma** は、平均が大きくなるほど分散がさらに速く増えます。
+- **Bernoulli** は、平均が 0.5 付近で最も分散が大きく、0 や 1 に近づくと分散が小さくなります。
 
 したがって、`family` の選択は「予測値の形」だけでなく、**不確実性をどう計算するか** そのものに直結しています。Poisson で過分散を無視すると SE が小さく出やすい、Gamma を Gaussian で近似すると右裾の不確実性をうまく拾いにくい、というのはこの図の違いが実務に現れたものです。
 
@@ -361,7 +452,7 @@ ggplot(mean_var_df, aes(x = mean, y = variance, color = family)) +
 この3要素を数式で書くと以下のようになります[@nelder1972]。
 
 - **線形予測子**: $\eta_i = \mathbf{x}_i^\top\beta$（つまり、おなじみの「切片 + 傾き × 予測子」。$\eta_i = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ldots$ と同じ意味を行列で簡潔に書いたもの）
-- **リンク関数**: $g(\mu_i) = \eta_i$（アウトカムの平均 $\mu$ を変換して、線形予測子 $\eta$ と等しくする。例：logit リンクなら $\log\frac{\mu}{1-\mu} = \eta$、つまり「確率をオッズに変換してから対数をとる」）
+- **リンク関数**: $g(\mu_i) = \eta_i$（アウトカムの平均 $\mu$ を変換して、線形予測子 $\eta$ と等しくします。例：logit リンクなら $\log\frac{\mu}{1-\mu} = \eta$、つまり「確率をオッズに変換してから対数をとります」）
 - **分布**: $Y_i$ の分布（binomial, Poisson, Gamma など。アウトカムのばらつき方を指定する）
 
 GAM は GLM の線形項を平滑関数 $f(\cdot)$ に置き換え、
@@ -373,40 +464,92 @@ $$
 
 #### GAM の仕組みを理解する
 
-**GLM との違い**: GLM は「$y = \beta_0 + \beta_1 x$」のように、予測子 $x$ と応答 $y$ の関係を**直線**で近似します。GAM は「$y = \beta_0 + f(x)$」のように、この直線を**なめらかな曲線** $f(x)$ に置き換えます。
+**GLM との違い**: GLM は応答そのものではなく、リンク関数で変換した平均 $g(\mu)$ と予測子の関係を**直線**で近似します。logit や log リンクでは、応答スケールの予測曲線はすでに非線形に見えることがあります。GAM はこのリンクスケール上の直線成分 $\beta_1 x$ を、なめらかな曲線 $f(x)$ に置き換えます。
 
-**曲線の作り方（スプライン）**: GAM は予測子の範囲を小さな区間に分割し、各区間で低次の多項式（通常は3次）を当てはめ、区間の境界でなめらかにつなぎます。これが**スプライン**です。つなぎ目の位置を**ノット（knot）**と呼びます。
+**曲線の作り方（スプライン）**: GAM は、複数の基底関数（basis functions）を組み合わせてなめらかな曲線を作ります。古典的なスプラインでは区間のつなぎ目を**ノット（knot）**と呼びますが、`mgcv` の thin plate regression spline では、ユーザーが明示的にノットを置くよりも、**基底次元**とペナルティで曲線の柔軟さを制御する、と理解する方が正確です。
 
 **3つの重要なパラメータ**:
 
 | パラメータ | R での指定 | 意味 | 実務での判断 |
 |---|---|---|---|
-| **k**（基底次元） | `s(x, k = 10)` | 曲線の最大の複雑さ。ノットの数に相当 | `gam.check()` で k-index < 0.8 なら k を増やす |
-| **edf**（推定自由度） | 出力の `summary()` に表示 | 実際に使われた複雑さ。1 = 直線、2 ≈ 放物線 | edf ≈ 1 なら GLM で十分。edf >> 1 なら非線形 |
+| **k**（基底次元） | `s(x, k = 10)` | 曲線が使える自由度の上限を決める値。単純なノット数ではありません | `gam.check()`、edf が上限に近いか、k を増やしたとき推定が変わるかで判断 |
+| **edf**（推定自由度） | 出力の `summary()` に表示 | 実際に使われた複雑さ。1 = 直線、2 ≈ 放物線 | edf ≈ 1 なら GLM で十分です。edf >> 1 なら非線形 |
 | **ペナルティ λ** | 自動推定（REML） | 曲線のくねくね度を制御。大きいほど滑らか | 研究者が直接触ることはほぼない |
 
 **なぜ REML が必要か**: OLS では「残差の二乗和を最小にする」だけで回帰直線が決まりますが、GAM では曲線の形（くねくね度）も決めなければなりません。もしペナルティなしで当てはめると、データの全てのノイズを拾ったギザギザの曲線になります（過適合）。REML（制限付き最尤法）は「データへの適合度」と「曲線の滑らかさ」を**自動的にバランス**させる推定法です。研究者がペナルティの強さを手動で調整する必要がないのが大きな利点です[@wood2011]。
 
 **アナロジー**: GAM のスプラインは「定規を使わずにフリーハンドで曲線を描く」ようなもの。ただし、ペナルティが「あまり複雑にしすぎないで」とブレーキをかけるため、過適合が防がれます[@wood2017]。
 
-**SLA での具体例**: 語彙サイズと読解速度の関係は、低語彙では大きく改善するが高語彙では頭打ちになる（天井効果）。GLM は直線しか引けないため頭打ちを捉えられませんが、GAM の `s(vocab_size)` は自動的にこの非線形パターンを検出します。
+**SLA での具体例**: 語彙サイズと読解速度の関係は、低語彙では大きく改善するが高語彙では頭打ちになる（天井効果）ことがあります。GLM はリンクスケール上で一定の傾きを仮定するため、このような屈曲を十分に表せない場合がありますが、GAM の `s(vocab_size)` はこの非線形パターンを柔軟に推定できます。
+
+::: {.callout-note}
+#### `mgcv` の主要 basis(基底)カタログ
+`mgcv::s()` の `bs =` 引数で基底関数を切り替えられます。SLA・心理言語学で使う代表的な選択を整理します。
+
+| 基底 | `bs =` | 用途・特徴 |
+|---|---|---|
+| **Thin plate regression spline** | `"tp"`(default) | 万能・回転不変。`s(x)` の既定で、迷ったらこれ |
+| **Cubic regression spline** | `"cr"` | 計算が速く、大規模データ向き(`bam()` と相性◎) |
+| **Cyclic cubic spline** | `"cc"` | **周期データ用**。時間帯(0-24時)、曜日、年内日(1-365)などで使う |
+| **P-splines** | `"ps"` | より局所的な平滑化。重複ノットや低次基底に強い |
+| **Random effect (factor)** | `"re"` | 参加者・項目のランダム切片(GAMM の代替) |
+| **Factor smooth interaction** | `"fs"` | 各カテゴリで個別の smooth(参加者ごとの曲線) |
+| **Tensor product** | `te()`, `ti()` | **2 変数以上の交互作用 smooth**(空間 × 時間など)|
+| **Markov random field** | `"mrf"` | 地理的隣接行列ベース(地理空間データ章で使用) |
+
+```r
+# 例:時間帯(0-24)の周期的効果 + 参加者ランダム
+m_cyclic <- mgcv::gam(
+  rt ~ s(time_of_day, bs = "cc", k = 12) +     # 周期的(0時 = 24時)
+       s(participant, bs = "re"),               # 参加者ランダム
+  family = Gamma(link = "log"), method = "REML",
+  knots = list(time_of_day = c(0, 24)),         # 周期境界を明示
+  data = dat_rt
+)
+```
+
+**選択の目安**:単変量で迷ったら `"tp"`、周期データなら `"cc"`、参加者効果なら `"fs"`(参加者ごとに smooth が違う)または `"re"`(切片のみ違う)、2 変数交互作用なら `te()`(変数のスケールが違う)または `s(x, y)`(同じスケール)。詳細は @wood2017 第 5 章参照。
+:::
 
 実装仕様は `stats::glm` / `stats::family` / `mgcv` の公式ドキュメントを参照してください
 [@rstatsglm; @rstatsfamily; @mgcvpkg]。
+
+::: {.callout-tip}
+#### モダンな GAM 可視化:`gratia` と `mgcViz`
+本章では `mgcv::plot.gam()` を使っていますが、ggplot2 ベースのモダンな代替として 2 つのパッケージが現在標準化しつつあります [@gratiapkg; @mgcvizpkg]。
+
+| パッケージ | 主要関数 | 特徴 |
+|---|---|---|
+| **`gratia`** | `gratia::draw(model)` | 全 smooth を ggplot2 で一括描画、partial residual の重ね描き、`appraise()` で診断 4 図 |
+| **`mgcViz`** | `getViz(model) \|> plot()` | leveraging-binning で大規模データに強い、shiny インタラクティブ可視化、`check()` で診断 |
+
+```r
+library(gratia)
+gratia::draw(m_bin_gam)            # 全 smooth を ggplot2 で
+gratia::appraise(m_bin_gam)        # QQ + 残差 + ヒストグラム + 適合度の 4 図
+
+library(mgcViz)
+viz_obj <- getViz(m_bin_gam)
+print(plot(viz_obj, allTerms = TRUE))   # ggplot2 ベース、レイヤ追加可能
+mgcViz::check(viz_obj)
+```
+
+**いつ使うか**:**論文用の図**を作るときは `gratia::draw()` が最も簡単(ggplot2 互換で `+ theme_minimal()` 等で調整可能)。**大規模データ**(n > 10,000)や**インタラクティブな探索**では `mgcViz`。本章は `plot.gam` で統一していますが、両者は最終的にまったく同じ smooth を描画します。
+:::
 
 ::: {.callout-note}
 #### なぜ GLM だけでなく GAM が必要なのか — SLA・心理言語学の先行研究から
 
 GAM が GLM/LMM より有利な場面は「非線形関係が理論的に予想される場合」です。以下は実際に GAM を使った先行研究の例です。
 
-| 研究 | 分野 | GAM で何を発見したか | なぜ GLM では不十分だったか |
+| 研究 | 分野 | GAM で何を発見したか | GLM では不十分だった理由 |
 |---|---|---|---|
 | @baayen2017cave | 心理言語学 | 語彙判断 RT が実験中に非線形に変化（学習→疲労→注意の波） | LMM は試行番号を線形としか扱えず、疲労効果を見逃す |
 | @winter2016 | 言語変化 | 言語変化の軌跡が多項式では捉えきれない非線形パターンを示す | Growth Curve Analysis の多項式は端部でアーティファクトを生む |
 | @pedersen2019 | 生態学→SLA応用可 | 個人ごとに異なる非線形発達軌跡（階層的 GAM） | ランダム傾きは直線のみ。個人別の曲線は GAM の factor smooth が必要 |
 | @wirtz2025 | SLA | 英語習熟度の発達が開始年齢の非線形関数 | 早期開始の利点が一定ではなく、加速→頭打ちのパターン |
 
-**判断の目安**: `gam.check()` で edf が k-1 に張り付く、または残差に構造がある場合、GAM への拡張を検討してください。差が小さければ解釈しやすい GLM を維持するのが実務上の安全策です。
+**判断の目安**: `gam.check()` で k-index が低く、p 値も小さい、edf が上限に近い、または `k` を増やすと推定曲線が変わる場合、より柔軟な GAM を検討してください。差が小さければ解釈しやすい GLM を維持するのが実務上の安全策です。
 :::
 
 ::: {.callout-tip}
@@ -440,7 +583,7 @@ OLS（線形回帰）では、モデルの良さを「残差平方和（RSS）�
 - **カウントデータ**: 分散が平均に依存するため、全観測に同じ重みをかける RSS は不公平
 - **Gamma データ**: 分散が平均の二乗に比例するため、同じ問題が発生
 
-代わりに、**尤度**（データが観測される確率）をモデルの良さの指標にします。尤度が高い = そのモデルがデータをよく説明している、という意味です。AIC, BIC, 尤度比検定（LRT）は全て尤度に基づいています。
+代わりに、**尤度**（離散データでは観測データの確率、連続データでは観測値付近の密度）をモデルの良さの指標にします。尤度が高い = そのモデルがデータをよく説明している、という意味です。AIC, BIC, 尤度比検定（LRT）は全て尤度に基づいています。
 :::
 
 モデル比較を説明するには、尤度を明示しておく必要があります。
@@ -450,9 +593,9 @@ L(\theta \mid y) = \prod_{i=1}^{n} f(y_i \mid \theta), \quad
 \ell(\theta) = \log L(\theta \mid y)
 $$
 
-- 尤度 $L$: 「このモデルが観測データをどれだけ起こしやすいか」を表す数値。コインを10回投げて7回表が出たとき、$p = 0.7$ の尤度は $p = 0.5$ より高い（7/10 表は $p = 0.7$ の方が起こりやすいため）
-- 対数尤度 $\ell$: 尤度の対数をとったもの。掛け算を足し算に変換できるため、コンピュータでの計算が安定する
-- $\prod$（パイ記号）: 「全部かけ合わせる」の意味。各観測の確率を全て掛けた値が尤度
+- 尤度 $L$: 「このモデルが観測データをどれだけ起こしやすいか」を表す数値。離散データでは確率、連続データでは確率密度の積として計算します。コインを10回投げて7回表が出たとき、$p = 0.7$ の尤度は $p = 0.5$ より高い（7/10 表は $p = 0.7$ の方が起こりやすいため）
+- 対数尤度 $\ell$: 尤度の対数をとったものです。掛け算を足し算に変換できるため、コンピュータでの計算が安定します
+- $\prod$（パイ記号）: 「全部かけ合わせる」の意味です。各観測の確率または密度を全て掛けた値が尤度です
 
 実務でよく使う比較指標は以下です[@burnham2002]。
 
@@ -461,7 +604,7 @@ $$
 \mathrm{BIC} = -2\ell + k\log n
 $$
 
-- $k$: 推定パラメータ数（`y ~ x1 + x2` なら $k = 3$：切片 + 傾き2つ）
+- $k$: 推定パラメータ数。`y ~ x1 + x2` の二項・Poisson GLM なら通常 $k = 3$（切片 + 傾き2つ）ですが、Gaussian / Gamma では分散・分散パラメータ、Negative Binomial では theta などもモデルの複雑さに含まれます。
 - 小さい AIC/BIC は、適合と複雑さのバランスがよいことを示す
 
 ::: {.callout-note}
@@ -503,18 +646,19 @@ $$
 ::: {.callout-note}
 #### LRT を使うときの条件
 
-- 同じ分布族・同じリンク関数・同じデータで比較する。
-- **入れ子**とは、小さいモデルが大きいモデルの「予測子を減らしたバージョン」であること（例：`y ~ x1 + x2` は `y ~ x1 + x2 + x3` の入れ子）。
-- GAM では平滑化推定が入るため、GLMのLRTと同じ感覚で乱用しない。
-  本章では GAM 比較は主に AIC / `compare_performance()` / `gam.check()` で判断する。
+- 同じ分布族・同じリンク関数・同じデータで比較します。
+- **入れ子**とは、小さいモデルが大きいモデルの「予測子を減らしたバージョン」であることです（例：`y ~ x1 + x2` は `y ~ x1 + x2 + x3` の入れ子です）。
+- LRT のカイ二乗近似は大標本での近似です。分散成分が 0 境界にある検定、zero-inflation の有無、quasi-likelihood モデルなどでは、通常の $\chi^2$ 検定をそのまま使えないことがあります。
+- GAM では平滑化推定が入るため、GLMのLRTと同じ感覚では乱用しません。
+  本章では GAM 比較は主に AIC / `compare_performance()` / `gam.check()` で判断します。
 :::
 
 ::: {.callout-note}
 #### LRT と AIC/BIC の使い分け
 
-- **LRT**: 入れ子モデル（一方が他方の特殊ケース）でのみ使用可能。p 値を返す。
-- **AIC/BIC**: 入れ子でなくても使用可能。**ただし、異なる分布族（例: OLS vs Gamma GLM）の AIC を R の `AIC()` で直接比較するのは危険です**。R の `AIC()` は各分布族で異なるスケールの対数尤度を使うため、Gaussian と Gamma の AIC 値は同一基準ではありません。同じ分布族内でのモデル比較（例: Poisson GLM vs Poisson GAM）には安全に使えます。
-- 異なる分布族を比較する場合は、`performance::compare_performance()` の結果を参考値として示しつつ、**残差診断（DHARMa、pp_check）と理論的整合性**を主な判断基準にしてください。
+- **LRT**: 入れ子モデル（一方が他方の特殊ケース）でのみ使用可能です。p 値を返す。
+- **AIC/BIC**: 入れ子でなくても使用可能です。ただし、比較できるのは原則として**同じ観測データ・同じ目的変数**を説明しているモデルどうしです。たとえば raw `y` に対する Gaussian GLM と Gamma GLM は比較候補になりますが、`y` と `log(y)` のように目的変数を変えたモデルの AIC は直接比較できません。
+- 異なる分布族を比較する場合は、`performance::compare_performance()` の結果を参考にしつつ、**残差診断（`check_model()`, `check_overdispersion()`, `gam.check()`）と理論的整合性**を主な判断基準にしてください。
 - 両方が同じ結論を指すなら、判断は明快です。矛盾する場合は、理論的な整合性と診断結果を加味して最終判断してください。
 :::
 
@@ -525,8 +669,8 @@ $$
 
 「アウトカムの正規性」を Shapiro-Wilk 検定で確認する方が多いですが、
 GLM では**アウトカムの正規性は仮定していません**。
-分布は `family` 引数で指定するものであり、2値データが正規分布に従わないのは当然です。
-確認すべきは「`family` がアウトカムの型と整合しているか」と「残差に大きな問題がないか」です。
+分布は `family` 引数で指定するものであり、2値データは正規分布を仮定する対象ではありません。
+確認したいのは「`family` がアウトカムの型と整合しているか」と「残差に大きな問題がないか」です。
 :::
 
 GLM/GAM の前提は「正規性」だけではありません。実務では次を最低限確認します。
@@ -571,7 +715,7 @@ Gamma()$link      # → "inverse"（デフォルト。本章では log を明示
 |---|---|---|---|---|
 | logit | $\log\{p/(1-p)\}$ | $\mathrm{logit}^{-1}(\eta)$ | $\exp(\beta)$ はオッズ比（OR） | 最も標準的。解釈がしやすい |
 | probit | $\Phi^{-1}(p)$ | $\Phi(\eta)$ | 潜在正規尺度での変化量 | logit と予測は近いが係数尺度は異なる |
-| cloglog | $\log\{-\log(1-p)\}$ | $1-\exp\{-\exp(\eta)\}$ | 非対称リンク | 稀少イベント/離散時間ハザードで有用[@prentice1978] |
+| cloglog | $\log\{-\log(1-p)\}$ | $1-\exp\{-\exp(\eta)\}$ | 非対称リンク | 離散時間ハザードや非対称な発生過程で有用[@prentice1978] |
 | log-log | $-\log\{-\log(p)\}$ | $\exp\{-\exp(-\eta)\}$ | cloglog の鏡像 | 事象定義を反転したい場合に有用[@vgamcloglog] |
 | cauchit | $\tan\{\pi(p-1/2)\}$ | $\arctan(\eta)/\pi + 1/2$ | 重尾リンク | 外れ値的な線形予測子に比較的頑健 |
 | log | $\log(p)$ | $\exp(\eta)$ | $\exp(\beta)$ はリスク比に近い解釈 | 確率>1の制約に注意 |
@@ -581,14 +725,14 @@ Gamma()$link      # → "inverse"（デフォルト。本章では log を明示
 
 #### logit vs probit（よくある疑問）
 
-- 予測確率の形はしばしば似るが、係数尺度は同一ではない。
-- 係数比較では「どちらが有意か」より、**応答スケール予測**で比較する方が安全。
-- `exp(beta)` を OR として解釈できるのは logit のときのみ。
-- **SLA での実務**: 語彙テストの正答率、文法性判断の正誤など、ほとんどのケースで logit が標準。probit を選ぶのは SDT（信号検出理論）に基づく分析の場合のみ。
+- 予測確率の形はしばしば似ますが、係数尺度は同一ではありません。
+- 係数比較では「どちらが有意か」より、**応答スケール予測**で比較する方が安全です。
+- `exp(beta)` を OR として解釈できるのは logit のときのみです。
+- **SLA での実務**: 語彙テストの正答率、文法性判断の正誤など、ほとんどのケースで logit が標準です。probit を選ぶのは SDT（信号検出理論）に基づく分析の場合のみです。
 
-#### cloglog / log-log（稀少イベント向け）
+#### cloglog / log-log（非対称な発生過程向け）
 
-- **cloglog**: 成功確率が極端に低い（< 5%）場合に logit より適切。離散時間ハザードモデル（学習者の脱落分析など）で使用[@prentice1978]。
+- **cloglog**(complementary log-log):**離散時間ハザード**(discrete-time hazard、ある時点までに事象が**初めて**起こる累積確率)として解釈できる場合や、0 から 1 への立ち上がりが非対称(立ち上がりがゆっくり、上限近くで急激に詰まる)だと理論的に考えられる場合に有用です [@prentice1978]。SLA 例:学習者が**ある構文を初めて産出するまでの試行回数**、特定の言語的ストラテジーが学習中のどの段階で**初出現**するか、など。稀少イベントで使われることはありますが、ベースレートが低いことだけで logit より適切になるわけではありません。
 - **log-log**: `cloglog` の反転関係。`VGAM` 文書では「0/1の定義を反転すると実質的に loglog が適用される」ことが示されている[@vgamcloglog]。
 - **SLA での場面**: 稀少な語用論的ストラテジーの使用有無、極低頻度のエラータイプなど。
 
@@ -596,7 +740,7 @@ Gamma()$link      # → "inverse"（デフォルト。本章では log を明示
 
 1. **特別な理由がなければ logit**（OR 解釈が可能、最も広く使われる）
 2. SDT 分析なら probit（$d'$ の直接推定に対応）
-3. 稀少イベント（ベースレート < 5%）なら cloglog
+3. 離散時間ハザードや非対称な発生過程を仮定するなら cloglog
 4. 理論的根拠がない限り、cauchit / log / identity は避ける
 
 :::
@@ -609,6 +753,7 @@ Gamma()$link      # → "inverse"（デフォルト。本章では log を明示
 #| eval: true
 #| label: fig-link-functions
 #| fig-cap: "Inverse link functions: how the linear predictor maps to probability"
+#| fig-alt: "Curves showing logit, probit, and complementary log-log inverse links from a linear predictor to a probability."
 #| fig-height: 4
 #| fig-width: 7
 
@@ -655,26 +800,26 @@ ggplot(links_df, aes(x = eta, y = prob, color = link)) +
 
 **GLM の例**: `glm(correct ~ proficiency + score, family = binomial, data = dat)`
 
-→ 「正誤（correct）を、習熟度（proficiency）とスコア（score）で予測する。分布は二項分布。」
+→ 「正誤（correct）を、習熟度（proficiency）とスコア（score）で予測します。分布は二項分布です。」
 :::
 
 ## 実行前ガイド
 
-1. 研究質問を「確率・件数・平均」のどれかに落とし込む。
-2. まず GLM を当てる（最小構成）。
-3. 過分散・残差・予測妥当性を確認する。
-4. 連続予測子の形が怪しい場合だけ GAM に拡張する。
-5. 係数はリンクスケール、図は応答スケールで報告する。
+1. 研究質問を「確率・件数・平均」のどれかに落とし込みます。
+2. まず GLM を当てます（最小構成）。
+3. 過分散・残差・予測妥当性を確認します。
+4. 連続予測子の形が怪しい場合だけ GAM に拡張します。
+5. 係数はリンクスケール、図は応答スケールで報告します。
 
 ## セットアップ
 
 ### 主なパッケージの役割
 
-- `MASS` / `nnet` / `ordinal` / `pscl` / `betareg`: 負の二項、名義、多項、ゼロ過剰、ベータ回帰など、GLM の拡張ファミリーを扱う。
-- `mgcv`: 一般化加法モデルを使って非線形効果を柔軟に表現する。
+- `MASS` / `nnet` / `ordinal` / `pscl` / `betareg`: 負の二項、名義、多項、ゼロ過剰、ベータ回帰など、GLM の拡張ファミリーを扱います。
+- `mgcv`: 一般化加法モデルを使って非線形効果を柔軟に表現します。
 - `tidyverse`: データ整形、可視化、結果表作成の共通基盤。
-- `performance` / `see` / `emmeans` / `sjPlot` / `broom`: 診断、診断図の描画、推定周辺平均、モデル図示、出力整形を担当する。
-- `gt`: 論文向けの比較表を整える。
+- `performance` / `see` / `emmeans` / `sjPlot` / `broom`: 診断、診断図の描画、推定周辺平均、モデル図示、出力整形を担当します。
+- `gt`: 論文向けの比較表を整えます。
 
 ```{r}
 #| eval: true
@@ -682,40 +827,60 @@ ggplot(links_df, aes(x = eta, y = prob, color = link)) +
 #| message: false
 #| warning: false
 
-pacman::p_load(
-  MASS,
-  nnet,
-  ordinal,
-  pscl,
-  betareg,
-  tidyverse,
-  mgcv,
-  performance,
-  see,
-  emmeans,
-  sjPlot,
-  broom,
-  gt
+required_packages <- c(
+  "MASS", "nnet", "ordinal", "pscl", "betareg", "tidyverse",
+  "mgcv", "performance", "see", "emmeans", "sjPlot", "broom",
+  "gt", "knitr", "scales"
 )
 
-# プロットは全て英語のため、フォント指定不要（システムデフォルトを使用）
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(
-      face = "bold",
-      size = rel(1.0),
-      lineheight = 1.04,
-      margin = margin(b = 6)
-    ),
-    plot.subtitle = element_text(
-      size = rel(0.92),
-      lineheight = 1.04,
-      margin = margin(b = 8)
-    ),
-    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ))
-theme_update(legend.position = "bottom")
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages) > 0) {
+  stop(
+    "Install required packages before rendering: ",
+    paste(missing_packages, collapse = ", ")
+  )
+}
+
+suppressPackageStartupMessages({
+  library(MASS)
+  library(nnet)
+  library(ordinal)
+  library(pscl)
+  library(betareg)
+  library(tidyverse)
+  library(mgcv)
+  library(performance)
+  library(see)
+  library(emmeans)
+  library(sjPlot)
+  library(broom)
+  library(gt)
+})
+
+book_theme <- function(base_size = 12) {
+  theme_bw(base_size = base_size, base_family = "sans") +
+    theme(
+      plot.title.position = "plot",
+      plot.title = element_text(
+        face = "bold",
+        size = rel(1.0),
+        lineheight = 1.04,
+        margin = margin(b = 6)
+      ),
+      plot.subtitle = element_text(
+        size = rel(0.92),
+        lineheight = 1.04,
+        margin = margin(b = 8)
+      ),
+      plot.margin = margin(t = 10, r = 14, b = 10, l = 10),
+      legend.position = "bottom"
+    )
+}
+
+theme_set(book_theme())
 set.seed(2024)
 
 # ── ヘルパー関数 ──
@@ -725,7 +890,7 @@ set.seed(2024)
 make_ic_table <- function(...) {
   models <- list(...)
   names(models) |>
-    purrr::map_dfr(function(nm) {
+    purrr::map(function(nm) {
       m <- models[[nm]]
       tibble(
         model = nm,
@@ -734,6 +899,7 @@ make_ic_table <- function(...) {
         deviance = deviance(m)
       )
     }) |>
+    purrr::list_rbind() |>
     arrange(AIC)
 }
 
@@ -755,22 +921,7 @@ plot_check_model_separate <- function(
 
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
-      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(
-      face = "bold",
-      size = rel(1.0),
-      lineheight = 1.04,
-      margin = margin(b = 6)
-    ),
-    plot.subtitle = element_text(
-      size = rel(0.92),
-      lineheight = 1.04,
-      margin = margin(b = 8)
-    ),
-    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ) +
+      book_theme() +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),
@@ -902,7 +1053,8 @@ tibble(
 ```{r}
 #| eval: true
 #| label: fig-outcome-shapes
-#| fig-cap: "Outcome shapes across the three cases"
+#| fig-cap: "3つのケースにおけるアウトカム分布（outcome distribution）の違い。二値、カウント、正の連続値では適切な分布族（family）が異なります。"
+#| fig-alt: "二値データ、カウントデータ、正の連続データの分布を並べたヒストグラム。二値は0と1に集中し、カウントは右裾が長く、正の連続値も右に歪んでいます。"
 #| fig-width: 10
 #| fig-height: 3.6
 
@@ -980,17 +1132,20 @@ count(
 
 各モデルの設定を確認しておきます。
 
-- `family = binomial(link = "logit")`: アウトカムが 0/1 であることを R に伝え、logit リンクを使う
-- `family = binomial(link = "probit")`: 同じ2値アウトカムだが、リンク関数を正規分布の累積分布関数に変更
-- `family = binomial(link = "cloglog")`: 非対称リンク。稀少イベントや離散時間ハザードモデルで有用
-- `family = binomial(link = "cauchit")`: 重い裾をもつリンク。外れ値的な線形予測子に頑健
+- `family = binomial(link = "logit")`: アウトカムが 0/1 であることを R に伝え、logit リンクを使います
+- `family = binomial(link = "probit")`: 同じ2値アウトカムですが、リンク関数を正規分布の累積分布関数に変更します
+- `family = binomial(link = "cloglog")`: 非対称リンクです。離散時間ハザードや非対称な発生過程を仮定する場合に有用です
+- `family = binomial(link = "cauchit")`: 重い裾をもつリンクです。外れ値的な線形予測子に頑健です
 
 GAM では、連続予測子 `score_from_sc` と `score_to_sc` を平滑関数 `s()` で扱い、
-非線形関係を自動的に検出させます。
+非線形関係をデータから推定します。
 
 - `method = "REML"`: 平滑化パラメータの推定に制限付き最尤法を使用（@wood2011 が推奨する標準設定）
 - `select = TRUE`: 不要な平滑項をゼロに縮退させることを許可（自動変数選択に近い効果。edf ≈ 0 なら「その予測子の非線形効果は不要」と判断される）
-- `k = 8`: 平滑項の基底次元の上限。実際に使われる自由度（edf）はデータから推定される。`k` は「曲線の最大の複雑さ」を制御するため、小さすぎると真の非線形パターンを見逃す。目安: 予測子のユニーク値数の半分程度から開始し、`gam.check()` で k-index < 0.8 なら増やす
+- `k = 8`: 平滑項の基底次元です。実際に使われる自由度（edf）はデータとペナルティから推定されます。`k` が小さすぎると真の非線形パターンを見逃すため、`gam.check()` の k-index、edf が上限に近いか、`k` を増やしたとき曲線が変わるかを合わせて確認します。
+
+本章では最終推定を安定させるため GAM を `method = "REML"` で当てます。
+GLM と GAM の AIC 差は便利なスクリーニング指標ですが、GAM の採否は AIC だけで決めず、`edf`、smooth plot、`gam.check()`、応答スケールでの予測差を合わせて判断します。
 
 ```{r}
 #| eval: true
@@ -1055,7 +1210,7 @@ broom::tidy(m_bin_gam, parametric = TRUE, conf.int = TRUE) |>
 
 | 列 | 意味 | 実務上の読み方 |
 |---|---|---|
-| `Estimate` | **ロジットスケール**の係数（確率ではない） | 正なら対数オッズが増加＝助言関係の可能性が高まる |
+| `Estimate` | **ロジットスケール**の係数（確率ではありません） | 正なら対数オッズが増加＝助言関係の可能性が高まります |
 | `Std. Error` | 推定の不確実さ | 小さいほど精度が高い |
 | `z value` | Wald 検定統計量（Estimate / SE） | 絶対値が約 2 以上なら有意に近い |
 | `Pr(>|z|)` | p 値 | < .05 で「偶然では説明しにくい」と判断 |
@@ -1079,12 +1234,12 @@ GAM の出力には GLM にはない **Approximate significance of smooth terms*
 
 | 項目 | 意味 | 判断基準 |
 |---|---|---|
-| `edf`（有効自由度） | 平滑項が実質的に使っている自由度 | edf ≈ 1 なら線形と同等（GAM の利点なし）。edf > 2 なら意味のある非線形 |
+| `edf`（有効自由度） | 平滑項が実質的に使っている自由度 | edf ≈ 1 ならほぼ線形。edf が 2 を超え、図でも曲線が見えるなら非線形の可能性 |
 | `Ref.df` | 検定に使用される参照自由度 | 技術的な値（通常は解釈不要） |
-| `Chi.sq` / `p-value` | 平滑項全体の有意性検定 | p < .05 なら「直線では捉えられない関係がある」 |
+| `Chi.sq` / `p-value` | 平滑項全体の有意性検定 | p < .05 なら、その平滑項が予測に寄与している可能性 |
 
 - edf が **0 に近い**場合（`select = TRUE` 使用時）：その平滑項はペナルティで完全に縮退しており、予測に寄与していません。
-- **R-sq.(adj)**: 逸脱度ベースの近似決定係数。GLM の値と比較して GAM の追加利得を評価できます。
+- **R-sq.(adj)**: 応答値の分散説明に基づく近似的な決定係数です。非正規モデル、特に binomial GAM では `Deviance explained` や応答スケールの予測差も合わせて見ます。
 
 ```{r}
 #| eval: true
@@ -1113,7 +1268,7 @@ tibble::as_tibble(
   knitr::kable(caption = "Case 1: Smooth-term summary from the binomial GAM")
 ```
 
-この表は、GAM の平滑項を最短で読むための要約です。まず `edf` を見て「直線で足りるか」を判断し、次に `p` 値で「その非線形全体がゼロと言えるか」を確認します。ただし、**本当にどんな形をしているか** は表だけでは分からないので、次の smooth plot を必ず見ます。
+この表は、GAM の平滑項を最短で読むための要約です。まず `edf` を見て「直線で足りそうか」を判断し、次に `p` 値で「その平滑項が予測に寄与しているか」を確認します。ただし、`p` 値は「非線形性そのもの」の検定ではありません。**本当にどんな形をしているか** は表だけでは分からないので、次の smooth plot を必ず見ます。
 
 #### smooth plot の読み方
 
@@ -1123,6 +1278,8 @@ GAM の解釈で注意が必要なのは、`plot.gam()` や smooth plot の **y 
 #| eval: true
 #| label: fig-binary-gam-smooths
 #| fig-height: 4.8
+#| fig-cap: "Case 1: ロジスティック GAM の平滑項（smooth terms）。y 軸は予測確率ではなく、リンクスケール（link scale）上の中心化された部分効果を示します。"
+#| fig-alt: "送信者得点と受信者得点それぞれの平滑効果を示す2面の図です。青い曲線と信頼帯があり、0を示す水平破線が引かれています。"
 
 smooth_grid <- tidyr::crossing(
   score_from_sc = seq(min(dat_bin$score_from_sc), max(dat_bin$score_from_sc), length.out = 180),
@@ -1199,8 +1356,8 @@ ggplot(smooth_plot_tbl, aes(x = predictor_value, y = effect)) +
 
 要するに、GAM では
 
-1. `edf` で「直線か、曲線か」を確認する  
-2. smooth plot で「どの範囲で曲がっているか」を確認する  
+1. `edf` で「直線か、曲線か」を確認する
+2. smooth plot で「どの範囲で曲がっているか」を確認する
 3. 応答スケール予測で「確率がどれだけ変わるか」を説明する
 
 という順序で読むと迷いにくくなります。
@@ -1237,6 +1394,9 @@ performance::compare_performance(
 ```{r}
 #| eval: true
 #| label: pred-link-binary
+#| fig-height: 4.6
+#| fig-cap: "Predicted advice-tie probabilities under four binary-link functions"
+#| fig-alt: "Line plot comparing logit, probit, complementary log-log, and cauchit predicted probabilities across sender baseline score, faceted by same-class status through line types."
 
 new_bin_link <- tidyr::expand_grid(
   same_class = c(0L, 1L),
@@ -1298,7 +1458,7 @@ GLM と GAM のどちらを最終モデルにするかを判断します。
 判断基準は「GAM にすることで、GLM では捉えられなかった非線形パターンが改善されるか？」です。
 
 #### SLA での判断例
-語彙テストで「語彙サイズと正答率の関係」を調べた場合、GLM は直線的な関係を仮定しますが、GAM は天井効果（高語彙サイズで正答率が頭打ちになる）を自動的に捉えます。AIC が 4 以上改善し、edf > 2 であれば、非線形モデルを採用する根拠になります。
+語彙テストで「語彙サイズと正答率の関係」を調べた場合、ロジスティック GLM はロジットスケールで直線的な関係を仮定します。一方、GAM は天井効果（高語彙サイズで正答率が頭打ちになる）が単純な S 字曲線では表しにくい場合にも柔軟に表現できます。AIC が 4 以上改善し、edf が 2 を超え、smooth plot でも実質的な曲がりが見えるなら、非線形モデルを採用する根拠になります。
 
 以下の3ステップで比較します:
 
@@ -1319,6 +1479,7 @@ make_ic_table(
 ```
 
 AIC / BIC / deviance を比較します。GAM の AIC が GLM より 4 以上小さければ非線形の追加利得がある可能性があります。
+ただし GAM では平滑化パラメータ推定が入るため、AIC差は補助的な指標として扱い、`edf`、図、`gam.check()`、応答スケールの予測差と合わせて読みます。REML の推定スコアそのものを、固定効果構造が異なるモデル間で単純比較するわけではありません。
 差が小さければ、より解釈しやすい GLM を採用するのが実務上の安全策です。
 
 #### LRT（尤度比検定）
@@ -1368,9 +1529,9 @@ performance::compare_performance(m_bin_glm, m_bin_gam) |>
 
 | 列名 | 意味 | 判断基準 |
 |---|---|---|
-| **AIC / BIC** | 情報量規準（低いほど良い） | 差が 4 以上あればモデル選択の根拠になる |
-| **R2_Tjur** | Tjur の判別 R²（2値モデル専用）。予測確率の平均差 | 0 に近いと予測力なし、1 に近いと完全判別 |
-| **RMSE** | 残差の標準偏差。予測誤差の大きさ | 低いほど良い。2値モデルでは 0〜1 の範囲 |
+| **AIC / BIC** | 情報量規準（低いほど良いです） | 差が 4 以上あればモデル選択の根拠になります |
+| **R2_Tjur** | Tjur の判別 R²（2値モデル専用）。予測確率の平均差 | 0 に近いと予測力なし、1 に近いと完全判別です |
+| **RMSE** | 残差の標準偏差。予測誤差の大きさ | 低いほど良いです。2値モデルでは 0〜1 の範囲です |
 | **Sigma** | 残差の分散推定 | GLM では 1 に固定（binomial） |
 
 **読み方のポイント**: AIC が同等（差 < 2）なら、より解釈しやすい GLM を採用します。R2_Tjur は効果量の指標として報告に使えます。
@@ -1399,7 +1560,7 @@ sjPlot::tab_model(
 - **Predictors**: 予測変数名。参照カテゴリ（例: A2）は表に現れません。
 - **Odds Ratios**: OR（オッズ比）。1 を基準に「何倍か」を読みます。
 - **CI**: 95% 信頼区間。1 をまたげば統計的に非有意。
-- **p**: p 値。太字 or *** は有意を示します。
+- **p**: p 値。太字 or `***` は有意を示します。
 - **Observations**: 観測数。**AIC**: モデルの情報量規準。
 
 `sjPlot` は**報告用の整形レイヤー**として非常に有用です。ただし、どのモデルを採用するかは `sjPlot` ではなく、AIC/BIC、診断、理論的整合性で判断します。
@@ -1431,6 +1592,36 @@ broom::tidy(m_bin_glm, conf.int = TRUE, exponentiate = TRUE) |>
   knitr::kable(caption = "Case 1: Odds Ratios (Binomial GLM)")
 ```
 
+::: {.callout-tip}
+#### Profile likelihood CI と Wald CI の違い
+`broom::tidy(model, conf.int = TRUE)` は内部で `confint(model)` を呼び、`glm` オブジェクトに対しては **profile likelihood CI**(尤度比に基づく区間)を返します。一方 `confint.default(model)` は **Wald CI**(係数 ± 1.96 × SE、係数の漸近正規性を仮定)を返します。
+
+| 種類 | 関数 | 性質 | いつ使うか |
+|---|---|---|---|
+| **Profile likelihood CI** | `confint(model)` / `broom::tidy(conf.int = TRUE)` | 非対称になり得る、尤度の曲率を反映 | 小サンプル(n < 100)、係数が大きい(\|β\| > 2)、推奨 |
+| **Wald CI** | `confint.default(model)` | 常に対称、計算が速い | 大サンプル + 中程度の係数 |
+
+完全分離の閾値付近や n < 50 程度では **Wald CI が大きく外れる**ことがあります。SLA の小規模実験では `confint(model)`(profile)を使うのが安全です。
+:::
+
+::: {.callout-tip}
+#### Bootstrap CI:小サンプル + 非標準的分布での選択肢
+profile likelihood CI でも信頼できないとき(n が極小、係数の分布が極めて非対称、過分散の影響が強い)、**ノンパラメトリック・ブートストラップ CI** が頑健な代替になります。
+
+```r
+library(boot)
+boot_fun <- function(data, indices) {
+  fit <- glm(tie ~ same_class + prof_gap + score_from_sc + score_to_sc,
+             family = binomial, data = data[indices, ])
+  exp(coef(fit))   # OR スケールで返す
+}
+boot_results <- boot(data = dat_bin, statistic = boot_fun, R = 2000)
+boot.ci(boot_results, type = "perc", index = 2)  # same_class の percentile CI
+```
+
+`parameters::bootstrap_parameters(model, iterations = 2000)` も同じ目的でより簡潔に書けます。
+:::
+
 #### OR テーブルの読み方（worked interpretation）
 
 各予測子の OR を以下のように解釈します。
@@ -1439,7 +1630,7 @@ broom::tidy(m_bin_glm, conf.int = TRUE, exponentiate = TRUE) |>
 - **prof_gap**: OR が 1 より大きければ、習熟度差が 1 段階大きくなるごとにオッズがその倍率で増加します。
 - **score_from_sc**: 送信者のベースライン得点が 1SD 高くなるごとのオッズの変化を示します。
 - **score_to_sc**: 受信者のベースライン得点が 1SD 高くなるごとのオッズの変化です。
-- **score_gap**: 送信者と受信者の得点差が 1SD 大きくなるごとのオッズの変化です。
+- **score_gap**: 送信者と受信者の標準化得点の差が 1 z-score unit 大きくなるごとのオッズの変化です。
 - **prof_from / prof_to**: カテゴリカル変数のため、参照水準（A2）と比較した各水準の OR です。
 
 ::: {.callout-tip}
@@ -1471,6 +1662,9 @@ GLM と GAM の予測を重ねることで、「非線形を許すとどれだ�
 ```{r}
 #| eval: true
 #| label: pred-binary
+#| fig-height: 4.6
+#| fig-cap: "Case 1: ロジスティック GLM とロジスティック GAM による助言関係の予測確率（predicted probability）。帯は各モデルの 95% 信頼区間（confidence interval）を示します。"
+#| fig-alt: "送信者のベースライン得点を横軸、助言関係の予測確率を縦軸にした折れ線図。GLM と GAM、同クラスと異クラスの条件が比較されています。"
 
 new_bin <- tidyr::expand_grid(
   same_class = c(0L, 1L),
@@ -1521,7 +1715,7 @@ ggplot(plot_bin, aes(x = score_from_sc, y = prob, color = model, fill = model, l
 **図の読み方**:
 
 - **y 軸**: 助言関係の予測確率（0〜1）。読者にとって最も直感的なスケールです。
-- **GLM と GAM の曲線がほぼ一致**: ロジットスケールでの線形仮定が妥当であり、より単純な GLM で十分。
+- **GLM と GAM の曲線がほぼ一致**: ロジットスケールでの線形仮定が妥当であり、より単純な GLM で十分です。
 - **GAM 曲線に明確な屈曲がある**: 非線形関係があり、GAM がより適切。
 - **同クラスと異クラスの曲線の間隔**: `same_class` 効果の実質的な大きさを確率スケールで示します。間隔が大きいほど、クラスの同一性が助言関係に大きく影響しています。
 
@@ -1529,6 +1723,8 @@ ggplot(plot_bin, aes(x = score_from_sc, y = prob, color = model, fill = model, l
 #| eval: true
 #| label: fig-binary-risk-diff
 #| fig-height: 4.4
+#| fig-cap: "Case 1: 同クラスであることによる予測確率差（risk difference / probability-point difference）。オッズ比ではなく、確率が何ポイント変わるかを示します。"
+#| fig-alt: "送信者のベースライン得点ごとに、同クラス条件と異クラス条件の予測確率差を示した折れ線図。GLM と GAM の2本の曲線が比較されています。"
 
 bin_prob_diff <- new_bin |>
   mutate(class_condition = if_else(same_class == 1L, "same", "different")) |>
@@ -1559,7 +1755,7 @@ ggplot(bin_prob_diff, aes(x = score_from_sc, y = risk_difference, color = model)
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
     x = "Sender Baseline Score (z)",
-    y = "Absolute Probability Difference\n(Same class - Different class)",
+    y = "Probability Difference\n(Same class - Different class)",
     color = "Model",
     title = "Case 1: How much does same-class membership change the probability?",
     subtitle = "Probability-point differences are often easier to interpret than odds ratios"
@@ -1623,6 +1819,10 @@ bin_prob_examples |>
 
 これは AIC や OR の代わりではなく、**予測確率を教育的な意思決定に使ってよいか** をみる追加チェックです。SLA の介入研究なら、「誰が tie を持ちやすいか」だけでなく、「予測確率 0.70 をどこまで信頼してよいか」を確認する、という位置づけです。
 
+ただし、ここで計算している calibration と Brier score は、同じデータでモデルを当てはめ、同じデータで評価する **apparent performance** です。
+モデル間の予測性能を厳密に比較したい場合は、holdout、交差検証、または bootstrap optimism correction を使います。
+本章では、OR や AIC だけでは見えない応答スケール上の挙動を確認するための診断として使います。
+
 ```{r}
 #| eval: true
 #| label: binary-calibration
@@ -1675,14 +1875,16 @@ bin_brier_tbl |>
 #| eval: true
 #| label: fig-binary-calibration
 #| fig-height: 4.6
+#| fig-cap: "In-sample calibration plot for the binary GLM and GAM"
+#| fig-alt: "Calibration plot with mean predicted probability on the x-axis and observed tie rate on the y-axis. A dashed 45-degree line indicates perfect calibration."
 
 ggplot(
   bin_calibration_tbl,
-  aes(x = mean_predicted, y = observed_rate, color = model, size = n)
+  aes(x = mean_predicted, y = observed_rate, color = model)
 ) +
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray55") +
   geom_line(linewidth = 0.8, alpha = 0.8) +
-  geom_point(alpha = 0.9) +
+  geom_point(aes(size = n), alpha = 0.9) +
   scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
@@ -1697,12 +1899,44 @@ ggplot(
 
 **読み方のポイント**:
 
-- **45度線に近い**: 予測確率と実測率がよく一致している  
-- **線より下**: 確率を高く出しすぎている（over-prediction）  
-- **線より上**: 確率を低く出しすぎている（under-prediction）  
+- **45度線に近い**: 予測確率と実測率がよく一致している
+- **線より下**: 確率を高く出しすぎている（over-prediction）
+- **線より上**: 確率を低く出しすぎている（under-prediction）
 - **Brier score は低いほど良い**: 0 に近いほど、確率予測のズレが小さい
 
 GLM と GAM で Brier と calibration がほぼ同じなら、**非線形を入れても実務上の確率予測はほとんど変わっていない** と判断できます。その場合は、より単純で報告しやすい GLM を選ぶ理由が強くなります。
+
+::: {.callout-tip}
+#### ROC 曲線と AUC:分類性能の評価
+calibration が「**確率の正しさ**」を見る指標であるのに対し、**ROC 曲線**(Receiver Operating Characteristic)は「**閾値を変えながら True Positive Rate と False Positive Rate のトレードオフ**」を可視化します。**AUC**(Area Under the Curve、0.5 = ランダム、1.0 = 完全分離)が分類性能の総合スコアとして使われます。R では `pROC` パッケージが標準的です [@prochr]。
+
+```{r}
+#| label: fig-binary-roc
+#| eval: true
+#| fig-width: 6
+#| fig-height: 5
+#| fig-cap: "Case 1: 二項 GLM と GAM の ROC 曲線。AUC が大きいほど(対角線から左上に離れるほど)分類性能が高い。"
+#| fig-alt: "縦軸が True Positive Rate、横軸が False Positive Rate の ROC 曲線。GLM と GAM の 2 本の曲線と、ランダム分類を示す対角線が描かれている。各曲線には AUC 値がラベルとして付く。"
+if (requireNamespace("pROC", quietly = TRUE)) {
+  roc_glm <- pROC::roc(bin_eval_tbl$observed[bin_eval_tbl$model == "GLM"],
+                        bin_eval_tbl$predicted[bin_eval_tbl$model == "GLM"],
+                        quiet = TRUE)
+  roc_gam <- pROC::roc(bin_eval_tbl$observed[bin_eval_tbl$model == "GAM"],
+                        bin_eval_tbl$predicted[bin_eval_tbl$model == "GAM"],
+                        quiet = TRUE)
+  plot(roc_glm, col = "#1b7837",
+       main = sprintf("ROC: GLM AUC = %.3f, GAM AUC = %.3f",
+                      pROC::auc(roc_glm), pROC::auc(roc_gam)))
+  plot(roc_gam, col = "#762a83", add = TRUE)
+  legend("bottomright", legend = c("GLM", "GAM"),
+         col = c("#1b7837", "#762a83"), lwd = 2)
+} else {
+  message("pROC 未インストールのため ROC 曲線をスキップ")
+}
+```
+
+**読み方**:左上に近いほど良い分類器(高い TPR / 低い FPR)。AUC = 0.5 はランダム、0.7 で実用最低限、0.8 以上で良好、0.9 以上で優秀の目安です。**ROC・AUC・キャリブレーション・閾値選択の体系的な扱いは第 8 章「予測分析:ROC 曲線とツリーモデル」**を参照してください。本章では「ロジスティック GLM が分類器としても評価できる」ことを示すにとどめます。
+:::
 
 `sjPlot::plot_model()` は、特定の予測子の効果を可視化する簡便な関数です。
 `type = "pred"` で応答スケールの予測を出力し、`terms` で表示する予測子を選択します。
@@ -1710,6 +1944,9 @@ GLM と GAM で Brier と calibration がほぼ同じなら、**非線形を入�
 ```{r}
 #| eval: true
 #| label: sjplot-binary-pred
+#| fig-height: 4.6
+#| fig-cap: "Case 1: `sjPlot::plot_model()` によるロジスティック GLM の予測確率（predicted probability）の確認。"
+#| fig-alt: "送信者のベースライン得点に沿って、送信者の習熟度水準ごとの助言関係の予測確率を表示した図です。"
 
 sjPlot::plot_model(
   m_bin_glm,
@@ -1724,7 +1961,7 @@ sjPlot::plot_model(
     color = "Sender proficiency",
     fill = "Sender proficiency"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1782,8 +2019,8 @@ pairs(emm_to, adjust = "holm") |>
 #### EMMs テーブルの読み方
 
 - **EMMs テーブル**: 各習熟度水準（A2, B1, B2）の予測確率を示します。他の予測子は平均値に固定されています。「B2 の送信者は平均的に X% の確率で助言関係をもつ」のように読みます。
-- **Pairwise テーブル**: 各ペア（A2-B1, A2-B2, B1-B2）の対数オッズ差と p 値を示します。`p.value` が Holm 補正後に .05 未満であれば、そのペア間に有意な差があります。
-- 報告では、EMMs の確率値をペア間の差と合わせて提示すると、読者に伝わりやすくなります（例：「B2 送信者の予測確率は X% であり、A2 送信者の Y% と比べて有意に高かった, p = .ZZZ」）。
+- **Pairwise テーブル**: 各ペア（A2-B1, A2-B2, B1-B2）の比較を示します。`type = "response"` で表示している場合でも、検定自体はリンクスケールの対数オッズ差に基づき、表では odds ratio として出ることがあります。`p.value` が Holm 補正後に .05 未満であれば、そのペア間に有意な差があります。
+- 報告では、EMMs の確率値をペア比較（リンクスケールの検定、または odds ratio）と合わせて提示すると、読者に伝わりやすくなります（例：「B2 送信者の予測確率は X% であり、A2 送信者の Y% と比べて有意に高かった, p = .ZZZ」）。
 
 ### 診断
 
@@ -1805,21 +2042,21 @@ gam.check(m_bin_gam)
 
 **4つのプロットの読み方**:
 
-- **左上（QQ プロット）**: 残差が対角線に沿っていれば分布仮定は妥当。裾で大きくずれていれば分布族の不適合を示唆（例：Poisson → Negative Binomial への変更を検討）。
-- **右上（残差 vs 線形予測子）**: 系統的なパターン（U字型、漏斗型）がなければ OK。パターンがあれば予測子の非線形性や分散構造の問題を示唆。
-- **左下（ヒストグラム）**: 残差の分布。極端な歪みがなければ問題なし。
-- **右下（残差 vs 応答値）**: 応答値の大きさに依存した残差パターンがないか確認。Gamma や Poisson では軽い扇状が許容される。
+- **左上（QQ プロット）**: 残差が対角線に沿っていれば分布仮定は妥当です。裾で大きくずれていれば分布族の不適合を示唆します（例：Poisson → Negative Binomial への変更を検討します）。
+- **右上（残差 vs 線形予測子）**: 系統的なパターン（U字型、漏斗型）がなければ OK です。パターンがあれば予測子の非線形性や分散構造の問題を示唆します。
+- **左下（ヒストグラム）**: 残差の分布です。極端な歪みがなければ問題ありません。
+- **右下（残差 vs 応答値）**: 応答値の大きさに依存した残差パターンがないか確認します。Gamma や Poisson では軽い扇状が許容されます。
 
 **k-index テーブルの読み方**:
 
-- k-index ≈ 1.0: 現在の `k` で十分
-- k-index < 0.8 かつ p < .05: `k` を倍にして再推定（例: `k = 8` → `k = 16`）
-- edf が k-1 に張り付く: `k` が明らかに不足。増やすべき
+- k-index が 1.0 前後で、edf が上限に近くなく、残差にも構造がなければ、現在の `k` は概ね十分です
+- k-index が低く（例: 0.8 未満）、p 値も小さい場合は、`k` を増やして再推定します（例: `k = 8` → `k = 16`）
+- edf が上限に近い、または `k` を増やすと曲線が変わる場合は、`k` 不足を疑います
 
 #### k の判断ルール
 
-`gam.check()` で k-index < 0.8 かつ p < .05 の場合、GAM を `k` を倍にして再当てはめしてください（例：`k = 8` → `k = 16`）。
-k-index ≈ 1.0 であれば現在の設定で問題ありません。
+`gam.check()` で k-index が低く、p 値も小さい場合、GAM を `k` を増やして再当てはめしてください（例：`k = 8` → `k = 16`）。
+k-index だけで十分性が証明されるわけではないため、edf が上限に近いか、残差に系統的パターンが残っていないかも確認します。
 
 #### Concurvity（平滑項間の冗長性）
 
@@ -1832,15 +2069,15 @@ k-index ≈ 1.0 であれば現在の設定で問題ありません。
 concurvity(m_bin_gam, full = FALSE)
 ```
 
-**concurvity とは**: 回帰の「多重共線性（VIF）」の GAM 版です。平滑項同士が似たパターンを捉えようとしていないかを測定します。`full = FALSE` を指定すると、各平滑項がペアワイズでどの程度冗長かを示す行列が得られます。
+**concurvity とは**: 回帰の「多重共線性（VIF）」の GAM 版です。平滑項同士が似たパターンを捉えようとしていないかを測定します。`full = FALSE` を指定すると、`worst`、`observed`、`estimate` などの行列が返ります。
 
-**判断基準**（`worst` 列を見る）:
+**判断基準**（まず `concurvity(..., full = FALSE)$worst` の該当セルを見る）:
 
-- 値が 0 に近い: 冗長性なし（問題なし）
-- 0.3〜0.8: 中程度の冗長性（注意が必要だが致命的ではない）
-- 0.8 以上: 強い冗長性。平滑項の統合または一方の削除を検討
+- 値が 0 に近い: 冗長性なしです（問題ありません）
+- 0.3〜0.8: 中程度の冗長性です（注意が必要ですが致命的ではありません）
+- 0.8 以上: 強い冗長性です。平滑項の統合または一方の削除を検討します
 
-**読み方の例**: もし `s(score_from_sc)` の `worst` 列が 0.45 であれば、「sender のスコアの平滑効果は他の平滑項と中程度に冗長」→ 注意は必要だが、即座に削除する必要はありません。0.9 であれば、その平滑項は他の項とほぼ同じ情報を捉えているため、一方を削除するか線形項（`score_from_sc` を `s()` なしで入れる）に簡素化すべきです。
+**読み方の例**: もし `s(score_from_sc)` と別の平滑項の `worst` 値が 0.45 であれば、「sender のスコアの平滑効果は他の平滑項と中程度に冗長」→ 注意は必要ですが、即座に削除する必要はありません。0.9 であれば、その平滑項は他の項とほぼ同じ情報を捉えているため、一方を削除するか線形項（`score_from_sc` を `s()` なしで入れる）に簡素化します。
 
 #### 過分散・共線性
 
@@ -1854,16 +2091,21 @@ performance::check_overdispersion(m_bin_glm)
 performance::check_collinearity(m_bin_glm)
 ```
 
+::: {.callout-tip}
+#### Bernoulli でも DHARMa は有効
+個別レベル 0/1 の Bernoulli GLM では `check_overdispersion()` の解釈に限界がありますが、**DHARMa のシミュレーション残差(scaled residuals)は使えます**。`DHARMa::simulateResiduals(m_bin_glm) |> plot()` で QQ プロット + 残差 vs 予測値の総合パターンが分かります(具体的な使い方は Case 2 の DHARMa callout を参照)。
+:::
+
 **過分散の読み方**:
 
-- **2値データの重要な注意**: 個別レベルの 0/1 データ（各行が1回の試行）では、分散パラメータは定義上 1 に固定されるため、**過分散は理論的に発生しません**。`check_overdispersion()` の結果はここでは参考情報にすぎません。過分散が問題になるのは、集約された二項データ（n > 1 の試行数がある場合）やカウントデータ（ケース2）です。
+- **2値データの重要な注意**: 個別レベルの 0/1 データ（各行が1回の試行）では、Bernoulli GLM の分散パラメータを別に識別できないため、通常の過分散検定は有用ではありません。`check_overdispersion()` の結果はここでは参考情報にすぎません。ただし、未観測異質性、クラスタ相関、反復測定、モデル不適合があれば標準誤差は過小になり得ます。その場合は GLMM、GEE、ロバスト SE、またはモデル仕様の見直しを検討します。集約された二項データ（n > 1 の試行数がある場合）やカウントデータ（ケース2）では、過分散チェックがより直接的に重要です。
 - ケース2（Poisson/NB）では、このチェックが**モデル選択の決定的な根拠**になります。
 
 **共線性（VIF）の読み方**:
 
-- VIF < 3: 問題なし
-- VIF 3〜5: 中程度の共線性。推定は可能だが注意
-- VIF > 5: 高い共線性。予測子の削除・統合を検討
+- VIF < 3: 問題ありません
+- VIF 3〜5: 中程度の共線性です。推定は可能ですが注意が必要です
+- VIF > 5: 高い共線性です。予測子の削除・統合を検討します
 - カテゴリカル変数の VIF は構造的にやや高くなりやすい点に留意
 
 #### 総合診断（check_model）
@@ -1890,8 +2132,8 @@ plot_check_model_separate(
 
 **出力の読み方**:
 
-- **Posterior predictive check**: モデルから生成したデータが実データに似ていれば、モデルの仮定は妥当。
-- **Binned residuals**: 2値データでは通常の残差プロットが使えないため、残差をビンに分けて平均残差を確認します。ほとんどのビンがゼロ近辺にあれば OK。
+- **Posterior predictive check**: モデルから生成したデータが実データに似ていれば、モデルの仮定は妥当です。
+- **Binned residuals**: 2値データでは通常の残差プロットが使えないため、残差をビンに分けて平均残差を確認します。ほとんどのビンがゼロ近辺にあれば問題ありません。
 - **Influential observations**: クック距離が大きい観測値がないかを確認します。
 
 :::
@@ -1899,8 +2141,8 @@ plot_check_model_separate(
 #### 注意点
 
 - GAM の平滑項が縮退（edf がほぼ 0 または 1）した場合、
-  「非線形の追加利得は小さい」と判断できる。
-- 最終報告は OR と予測確率図を併記すると読み手に伝わりやすい。
+  「非線形の追加利得は小さい」と判断できます。
+- 最終報告は OR と予測確率図を併記すると読み手に伝わりやすくなります。
 - 診断で深刻な問題がなければ、論文には「主要な仮定違反は認められなかった」と1文で記述し、必要に応じて図を supplementary materials に掲載します。
 
 ------------------------------------------------------------------------
@@ -1920,15 +2162,15 @@ plot_check_model_separate(
 
 ただし、Poisson は**平均 = 分散**を仮定します。例えば平均3回なら分散も3。しかし実データではばらつきがもっと大きいこと（**過分散**）がよくあります。例：平均3回なのに、0回と15回の学習者が混在していれば分散は3よりはるかに大きくなります。
 
-**過分散を無視すると何が起きるか**: Poisson モデルは「ばらつきは平均と同じくらい」と信じています。実際のばらつきがその2倍あるのに Poisson を使うと、**標準誤差が本来の半分程度に過小推定**されます。結果として：
+**過分散を無視すると何が起きるか**: Poisson モデルは「ばらつきは平均と同じくらい」と信じています。実際の分散比(dispersion ratio)を $\phi$ とすると、Poisson の標準誤差は **本来の $1/\sqrt{\phi}$ 倍に過小推定**されます(例:$\phi = 2$ なら約 0.71 倍、$\phi = 4$ なら 0.5 倍)。結果として:
 
-- p 値が実際より小さくなる（偽陽性のリスクが上がる）
-- 信頼区間が実際より狭くなる（精度を過信する）
-- 「有意」と判断した効果が、実はノイズだった可能性が高まる
+- p 値が実際より小さくなります（偽陽性のリスクが上がります）
+- 信頼区間が実際より狭くなります（精度を過信します）
+- 「有意」と判断した効果が、実はノイズだった可能性が高まります
 
 つまり、過分散を放置すると**結論が信頼できなくなる**のです。
 
-この場合、Negative Binomial（NB）に切り替えます。NB は分散が平均より大きくてもよい分布で、追加の分散パラメータ（theta）でばらつきの超過分を吸収します。**まず Poisson で始め、過分散を確認し、必要なら NB に切り替える**のが GLM の標準的な手順です[@burnham2002]。
+この場合、Negative Binomial（NB）に切り替えるのが有力な候補です。NB は分散が平均より大きくてもよい分布で、追加の分散パラメータ（theta）でばらつきの超過分を吸収します。ただし、過分散の原因はゼロ過剰、露出量（exposure）の違い、非線形性、階層構造の見落としでも起こります。**まず Poisson で始め、過分散を確認し、必要なら NB・offset・zero-inflated / hurdle・GLMM を検討する**のが実務的な手順です[@burnham2002]。
 
 ### モデル用データの作成（独立 dyad のシミュレーション）
 
@@ -1981,20 +2223,20 @@ performance::check_overdispersion(m_count_pois)
 
 **過分散テストの読み方**:
 
-- **dispersion ratio**: この値が 1 に近ければ Poisson の仮定は妥当。1 より大きく、かつ p 値が有意であれば過分散が存在します。
+- **dispersion ratio**: この値が 1 に近ければ Poisson の仮定は妥当です。1 より大きく、かつ p 値が有意であれば過分散が存在します。
 - 過分散がある場合、Poisson の標準誤差は**過小評価**されます。その結果、本来有意でない効果が有意と判定されるリスク（偽陽性の膨張）が生じます。
 
 ::: {.callout-warning}
 #### カウントデータでは過分散チェックを絶対に飛ばさない
 
 Poisson 回帰で過分散を無視すると、標準誤差が実際より小さく推定され、Type I エラー率が膨張します。
-過分散が検出された場合は、次のステップで負の二項（NB）モデルに切り替えます。
+過分散が検出された場合は、次のステップで負の二項（NB）モデルに切り替えます。あわせて、ゼロが多すぎないか、観測ごとの exposure が異ならないか、非線形性や階層構造を見落としていないかも確認します。
 :::
 
 ### NB-GLM と NB-GAM
 
 過分散が検出されたため、**負の二項（Negative Binomial, NB）分布**に切り替えます。
-NB は Poisson に**分散パラメータ（theta）**を追加したモデルで、平均と分散を独立に扱えます。
+NB は Poisson に**分散パラメータ（theta）**を追加したモデルで、Poisson より柔軟に平均超過分散を表せます。`glm.nb()` や `mgcv::nb()` で使う典型的な NB2 では、分散はおおよそ $\mathrm{Var}(Y)=\mu+\mu^2/\theta$ のように平均と theta で決まり、平均と分散を任意に独立指定できるわけではありません。
 
 - `MASS::glm.nb()`: NB-GLM を当てはめます。内部で theta を推定します。
 - `mgcv::gam(..., family = nb())`: NB-GAM。連続予測子の非線形を許容します。
@@ -2040,7 +2282,7 @@ edf ≈ 1 であれば、`baseline_mean_sc` の非線形効果は小さく、NB-
 ### モデル比較と IRR
 
 Poisson, NB-GLM, NB-GAM の3モデルを情報量規準で比較します。
-通常、過分散がある場合は Poisson の AIC が最も大きく（最も悪い適合）なります。
+通常、過分散がある場合は Poisson の AIC が最も大きく（最も悪い適合）なります。GAM の AIC は便利な補助指標ですが、平滑化パラメータ推定を含むため、採否は edf、`gam.check()`、予測図と合わせて判断します。
 
 ```{r}
 #| eval: true
@@ -2065,8 +2307,8 @@ performance::compare_performance(m_count_pois, m_count_nb_glm, m_count_nb_gam) |
 ```
 
 上の表で AIC が最も小さいモデルを確認します。
-Poisson → NB への改善が大きければ、過分散の扱いが重要であったことが裏付けられます。
-NB-GLM → NB-GAM の改善が小さければ、非線形の追加利得は限定的です。
+Poisson → NB への改善が大きければ、過分散の扱いが重要だったことが裏付けられます。
+NB-GLM → NB-GAM の改善が小さく、edf と smooth plot でも曲がりが弱ければ、非線形の追加利得は限定的です。
 
 `sjPlot::tab_model()` で Poisson と NB-GLM の回帰テーブルを並べ、
 係数と標準誤差の違いを確認します。過分散を無視した Poisson の SE が NB より小さいことに注目してください。
@@ -2084,7 +2326,7 @@ sjPlot::tab_model(
 )
 ```
 
-カウントデータでは、係数を指数変換して **IRR（Incidence Rate Ratio: 発生率比）** として解釈します。
+カウントデータでは、係数を指数変換して **IRR（Incidence Rate Ratio: 発生率比）** として解釈します。IRR は、他の予測子を一定にしたときの期待カウントの比です。観測ごとに観察時間・語数・発話量などの exposure が異なる場合は、`offset(log(exposure))` を入れて発生率として解釈します。
 
 - IRR = 1: 効果なし
 - IRR > 1: その予測子が増えると期待カウント（協働回数）が増加
@@ -2106,11 +2348,13 @@ broom::tidy(m_count_nb_glm, conf.int = TRUE, exponentiate = TRUE) |>
   knitr::kable(caption = "Case 2: IRR (NB GLM)")
 ```
 
+`exponentiate = TRUE` にすると切片も指数変換されますが、切片の指数は IRR ではなく、参照条件での期待カウントです。IRR として読むのは、切片以外の係数です。
+
 #### IRR テーブルの読み方（worked interpretation）
 
-- **same_class**: IRR が 1 より大きければ、同クラスのペアは異クラスに比べてその倍率だけ期待協働回数が多い。たとえば IRR = 3.0 なら「同クラスペアの期待協働回数は異クラスの 3 倍」です。
-- **prof_gap**: 習熟度差が 1 段階大きくなるごとに期待協働回数がその倍率で変化します。
-- **baseline_mean_sc**: ペアのベースライン平均得点が 1SD 高くなるごとの変化率です。
+- **same_class**: 他の予測子を一定にしたとき、IRR が 1 より大きければ、同クラスのペアは異クラスに比べてその倍率だけ期待協働回数が多い。たとえば IRR = 3.0 なら「同クラスペアの期待協働回数は異クラスの 3 倍」です。
+- **prof_gap**: 他の予測子を一定にしたとき、習熟度差が 1 段階大きくなるごとに期待協働回数がその倍率で変化します。
+- **baseline_mean_sc**: 他の予測子を一定にしたとき、ペアのベースライン平均得点が 1SD 高くなるごとの変化率です。
 
 #### IRR を論文で報告するときの書き方
 
@@ -2127,6 +2371,9 @@ NB-GLM と NB-GAM の予測を比較します。
 ```{r}
 #| eval: true
 #| label: pred-count
+#| fig-height: 4.6
+#| fig-cap: "Case 2: 負の二項 GLM と負の二項 GAM による期待協働回数（expected count）の応答スケール予測。灰色の帯は NB-GLM の 95% 信頼区間（confidence interval）を示します。"
+#| fig-alt: "ペアの平均ベースライン得点を横軸、期待協働回数を縦軸にした折れ線図。同クラスと異クラス、NB-GLM と NB-GAM が比較されています。"
 
 new_count <- tidyr::expand_grid(
   same_class = c(0L, 1L),
@@ -2173,13 +2420,16 @@ ggplot(plot_count, aes(x = baseline_mean_sc, y = mu, color = model, linetype = s
 **図の読み方**:
 
 - **y 軸**: 期待協働回数（0以上の連続値）。ベースライン平均得点が変化するにつれて、期待カウントがどう変わるかを示します。
-- **NB-GLM と NB-GAM の曲線が近い**: log スケールでの線形仮定が妥当。GLM で十分。
-- **NB-GAM に屈曲がある**: 非線形が存在し、GAM が有用。
+- **NB-GLM と NB-GAM の曲線が近い**: log スケールでの線形仮定が妥当です。GLM で十分です。
+- **NB-GAM に屈曲がある**: 非線形が存在し、GAM が有用です。
 - **同クラス vs 異クラスの間隔**: `same_class` 効果の実質的な大きさを件数スケールで示します。
 
 ```{r}
 #| eval: true
 #| label: sjplot-count-pred
+#| fig-height: 4.5
+#| fig-cap: "Case 2: `sjPlot::plot_model()` による負の二項 GLM の期待カウント（expected count）の確認。"
+#| fig-alt: "ペアの平均ベースライン得点に沿って、期待協働回数の予測値と信頼帯を示した図です。"
 
 sjPlot::plot_model(
   m_count_nb_glm,
@@ -2191,7 +2441,7 @@ sjPlot::plot_model(
     x = "Mean baseline score of dyad (z)",
     y = "Expected collaboration count"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -2213,7 +2463,7 @@ sjPlot::plot_model(
 ### 下位検定（Case 2: same_class）
 
 `same_class` は 0/1 の二水準変数ですが、`emmeans` で応答スケール（期待カウント）を算出し、
-差の検定を明示的に行うと報告が明確になります。
+ペア間の比（ratio; IRR 相当）を明示的に確認すると報告が明確になります。
 
 ```{r}
 #| eval: true
@@ -2238,7 +2488,7 @@ pairs(emm_count_same) |>
 
 EMMs テーブルは、同クラス / 異クラスのそれぞれの期待協働回数を示します。
 Pairwise テーブルの ratio は比率スケールでの比較（IRR に相当）です。
-p 値が有意であれば、同クラスと異クラスの期待カウントに統計的な差があります。
+p 値が有意であれば、同クラスと異クラスの期待カウント比に統計的な差があります。
 
 ### 診断
 
@@ -2258,7 +2508,7 @@ gam.check(m_count_nb_gam)
 concurvity(m_count_nb_gam, full = FALSE)
 ```
 
-**読み方**: Case 1 の4プロットと同じ基準です。k-index ≈ 1.0 なら十分、concurvity の worst > 0.8 の組み合わせがあれば平滑項の統合を検討してください。
+**読み方**: Case 1 の4プロットと同じ基準です。k-index、edf が上限に近いか、`k` を増やしたとき曲線が変わるかを合わせて判断します。`concurvity(..., full = FALSE)$worst` で 0.8 を超える組み合わせがあれば平滑項の統合を検討してください。
 
 #### 過分散（Poisson vs NB）
 
@@ -2270,10 +2520,91 @@ concurvity(m_count_nb_gam, full = FALSE)
 
 performance::check_overdispersion(m_count_pois)
 performance::check_overdispersion(m_count_nb_glm)
+performance::check_zeroinflation(m_count_nb_glm)
 ```
 
-Poisson の dispersion ratio が大きく有意である一方、
-NB の dispersion ratio が 1 に近ければ、NB への切り替えが過分散を適切に吸収したことを意味します。
+Poisson の dispersion ratio が大きく有意であり、
+NB の dispersion ratio が 1 に近ければ、NB への切り替えが過分散を概ね吸収したことを意味します。ゼロ率が観測値より大きくずれる場合は、`performance::check_zeroinflation()` や後半の zero-inflated / hurdle model も確認します。
+
+::: {.callout-tip}
+#### DHARMa による多面的残差診断
+`check_overdispersion()` だけでは見えない**残差パターン全体**(分布逸脱・分散不均一・外れ値・自己相関など)を検証するには、`DHARMa` パッケージが現代標準です [@dharmapkg]。シミュレーションベースの**スケール残差**を生成するため、binomial / Poisson / NB / Gamma / 混合モデル(第6章)まで統一的に使えます。
+
+```r
+library(DHARMa)
+sim_res <- DHARMa::simulateResiduals(m_count_nb_glm, n = 1000)
+plot(sim_res)                              # QQ + 残差 vs 予測値の総合プロット
+DHARMa::testDispersion(sim_res)            # 過分散の formal test
+DHARMa::testZeroInflation(sim_res)         # ゼロ過剰の formal test
+DHARMa::testQuantiles(sim_res)             # 分布の quantile 一致を検定
+```
+
+DHARMa の利点は **(a) 残差の解釈が「均一分布からの逸脱」に統一される**こと、**(b) 自己相関(時系列・空間)の検定 (`testTemporalAutocorrelation`, `testSpatialAutocorrelation`) も可能**なことです。
+:::
+
+実際に Case 2 の NB-GLM に適用してみると、左の **QQ プロット**(scaled residuals が均一分布の理論分位とどれだけ一致するか)と、右の **残差 vs 予測値プロット**(残差が予測値全域で均等に散らばっているか)が同時に得られます。
+
+```{r}
+#| label: fig-dharma-nb-glm
+#| eval: true
+#| fig-width: 10
+#| fig-height: 5
+#| fig-cap: "DHARMa scaled residuals: Case 2 (Negative Binomial GLM) の総合診断。左 = QQ プロット(均一分布との一致)、右 = scaled residuals vs predicted(均一に散らばっていれば適合良好)。各種 formal test の結果がプロット上に表示される。"
+#| fig-alt: "左パネルに DHARMa の QQ プロット(対角線に沿うほど分布適合が良い)、右パネルに scaled residuals vs ranked model predictions(青の四分位線が水平に近いほど分散の不均一性がない)を並べた診断図。"
+if (requireNamespace("DHARMa", quietly = TRUE)) {
+  set.seed(2024)
+  sim_res_nb <- DHARMa::simulateResiduals(m_count_nb_glm, n = 1000)
+  plot(sim_res_nb)
+} else {
+  message("DHARMa 未インストールのため診断図をスキップ")
+}
+```
+
+**読み方**:
+
+- **左 QQ プロット**:点が対角線上に並んでいれば、scaled residuals(0-1 範囲に正規化された残差)が均一分布に従う = 分布族の選択は妥当。逸脱があれば KS test の p 値が小さく表示される
+- **右の散布図**:scaled residuals(縦軸 0-1)が予測値の全域で均等に散らばっていれば等分散性 OK。**青の四分位線**(0.25 / 0.5 / 0.75)が水平に近ければ良好で、湾曲や傾きがあれば残差構造が残っている
+- **diss(分散不均一)・combined adj. quantile test** の結果も同時に表示されるので、視覚と検定を併せて判断する
+
+::: {.callout-tip}
+#### Cluster-robust SE:同一参加者・同一ペアからの観測がある場合
+本章は「観測が独立」を前提にしていますが、SLA データではしばしば**ペア・グループ・クラス**に学習者が入れ子になります(例:同じ peer pair から複数のターン交換、同じクラスから複数の発話)。第 6 章 GLMM が王道ですが、応急的には **cluster-robust SE** で SE を補正できます。
+
+```r
+library(sandwich)
+library(lmtest)
+
+m_robust <- glm(y ~ x, family = poisson, data = dat)
+# クラスター変数を指定(例:dyad_id)
+lmtest::coeftest(m_robust,
+                 vcov = sandwich::vcovCL(m_robust,
+                                          cluster = ~ dyad_id,
+                                          type = "HC0"))
+```
+
+これは **同じクラスター内の残差相関**を考慮した SE で、Poisson GLM + 過分散の応急対処にも使えます(quasi-Poisson と同様の効果)。
+:::
+
+::: {.callout-tip}
+#### `marginaleffects` で AME / 条件付き予測を一発取得
+本章は `predict()` + 手作りグリッドで予測値を出していますが、**`marginaleffects`** [@arelbundock2024marginaleffects] を使うと **平均限界効果(AME)・条件付き対比較・予測図**が同じ API で書けます。binomial / Poisson / NB / Gamma / mixed / Bayesian すべてに対応。
+
+```r
+library(marginaleffects)
+
+# (1) 平均限界効果(response scale)
+avg_slopes(m_count_nb_glm, variables = "score_from")
+
+# (2) 群間比較(リスク差・カウント差を直接計算)
+avg_comparisons(m_count_nb_glm, variables = list(same_class = c(0, 1)))
+
+# (3) 予測図(条件付き)
+plot_predictions(m_count_nb_glm,
+                 condition = list("score_from", "same_class"))
+```
+
+論文の Robustness セクションで `emmeans` と並列に提示すると、推定の不確実性を多角的に示せます。
+:::
 
 #### 共線性・総合診断
 
@@ -2299,9 +2630,9 @@ NB の選択は妥当です。
 ::: {.callout-note}
 #### 注意点
 
-- 過分散がある場合、Poisson をそのまま使うと標準誤差が過小評価されやすい。
-- NB を基準にし、非線形が必要なときだけ NB-GAM へ拡張する。
-- 0 が極端に多い場合（ゼロ過剰）は `zeroinfl()` や `hurdle()` も検討候補。
+- 過分散がある場合、Poisson をそのまま使うと標準誤差が過小評価されやすいです。
+- NB を基準にし、非線形が必要なときだけ NB-GAM へ拡張します。
+- 0 が極端に多い場合（ゼロ過剰）は `zeroinfl()` や `hurdle()` も検討候補です。
 :::
 
 ------------------------------------------------------------------------
@@ -2319,9 +2650,9 @@ NB の選択は妥当です。
 
 正の連続値データは SLA で頻出します：
 
-- **発話速度**（語数/分）: 0 にはならず、右に歪む（多くは中程度だが、一部の流暢な学習者が非常に速い）
-- **反応時間**（ミリ秒）: 必ず正で、右裾が長い（ほとんどは速いが、まれに非常に遅い反応がある）[@lo2015]
-- **ライティングの語数**: 正の連続値（0語は通常ありえない）で、課題により大きくばらつく
+- **発話速度**（語数/分）: 0 にはならず、右に歪みます（多くは中程度ですが、一部の流暢な学習者が非常に速いです）
+- **反応時間**（ミリ秒）: 必ず正で、右裾が長いです（ほとんどは速いですが、まれに非常に遅い反応があります）[@lo2015]
+- **注視時間・発話持続時間・協働継続時間**: 必ず正で、右裾が長く、平均が大きい条件ほどばらつきも大きくなりがちです
 
 いずれも OLS（正規分布仮定）では**負の予測値**が生じたり、**分散の不等性**に対処できなかったりする問題があります。Gamma GLM はこれらを自然に扱えます。
 
@@ -2329,15 +2660,19 @@ NB の選択は妥当です。
 
 正に歪んだ連続データに対して、伝統的には `log(y)` に変換してから `lm()` を使う方法がとられてきました。しかし、この方法には重要な問題があります：
 
-1. **対数変換は「log(y) の平均」をモデル化する**のに対し、Gamma GLM は「**y の平均の対数**」をモデル化します。この2つは異なります（イェンセンの不等式）。つまり、対数変換 + OLS の予測値を元のスケールに戻すと、**体系的に偏った推定値**になります。
+1. **対数変換は「log(y) の平均」をモデル化する**のに対し、Gamma GLM は「**y の平均の対数**」をモデル化します。この2つは異なります（イェンセンの不等式）。つまり、対数変換 + OLS の予測値を単に `exp()` で戻し、それを元スケールの平均として読むと、**補正なしには体系的に偏った推定値**になります。
 2. **ゼロ値が含まれると対数変換できません**（log(0) = −∞）。Gamma GLM もゼロは扱えませんが、この問題が明示的になるため対処しやすくなります。
 3. **信頼区間の計算**が Gamma GLM の方が適切です。対数変換 + OLS の CI を元に戻すと非対称性が過小評価されます。
+
+ただし、これは「log 変換 + OLS が常に誤り」という意味ではありません。
+研究質問が「幾何平均」や「比率変化」にある場合、また smearing correction や bootstrap で元スケールの予測を補正する場合、log-normal モデルとして妥当な選択肢になります。
+本章で Gamma GLM を優先するのは、**元スケールの条件付き平均**を直接モデル化し、予測値を常に正に保ち、係数を倍率として読めるからです。
 
 ### GLM/GAM の当てはめ
 
 正の連続量（協働強度）には **Gamma 分布 + log リンク** が自然な選択です。
 
-- **Gamma 分布**: 正の値のみをとり、右裾が長い分布に適合します。分散が平均に比例して大きくなるデータ（分散が一定でない場合）に向いています。
+- **Gamma 分布**: 正の値のみをとり、右裾が長い分布に適合します。標準的な Gamma GLM では分散が平均の二乗に比例します($\mathrm{Var}(Y \mid X) = \phi\,\mu^2$、$\phi$ は dispersion パラメータ)。言い換えると、平均が高い条件ほど標準偏差も大きくなりやすいデータに向いています。**注意**:R の `stats::Gamma()` は **dispersion** $\phi$($\approx 1/\text{shape}$)を `summary.glm()` の `Dispersion parameter` 行に表示します。**shape ではない**点に注意してください(shape を確認したいときは `MASS::gamma.shape()` を併用)。
 - **log リンク**: 予測値が常に正になることを保証し、係数を**乗法的**（何倍か）に解釈できます。
 
 比較のために、通常の線形回帰（OLS: 正規分布仮定）も当てはめます。
@@ -2379,21 +2714,22 @@ broom::tidy(m_pos_gamma_gam, parametric = TRUE, conf.int = TRUE) |>
 
 #### OLS vs Gamma GLM の出力比較
 
-OLS（`m_pos_lm`）と Gamma GLM（`m_pos_gamma_glm`）の係数が異なるのは当然です。
+OLS（`m_pos_lm`）と Gamma GLM（`m_pos_gamma_glm`）の係数が異なるのは自然です。
 
 - **OLS の係数**: 「ベースライン得点が 1SD 上がると、協働強度が β 単位増える」（加法）
 - **Gamma GLM の係数（log スケール）**: 「ベースライン得点が 1SD 上がると、協働強度が exp(β) 倍になる」（乗法）
 
 どちらが適切かは、データの性質に依存します。
-分散が平均に比例する（得点が高い人ほどばらつきも大きい）場合は Gamma が適しています。
-モデル比較（AIC/BIC）と `check_model()` の診断で判断します。
+分散が平均の二乗に比例し、得点が高い人ほど標準偏差も大きい場合は Gamma が適しています。
+モデル比較（AIC/BIC）、`check_model()` の診断、応答スケールでの予測値を合わせて判断します。AIC が小さくても、予測値や残差診断が研究対象の測定スケールと合っていなければ採用理由としては弱くなります。
 
 ::: {.callout-note}
 #### Gamma GLM の注意点
 
 Gamma 分布は**厳密に正の値**のみをモデル化できます。
 `collab_strength` に 0 が含まれる場合、Gamma GLM はエラーを返すか、不安定な推定になります。
-0 を含むデータでは、小さな定数（例: 0.001）を加えるか、Tweedie 分布を検討してください。
+0 を含むデータでは、ゼロがどのように生じたかを先に考えます。構造的にゼロがあり得るなら two-part / hurdle model、ゼロと正の連続量が同じ過程から出ると考えるなら Tweedie 分布、検出限界によるゼロなら censored model が候補です。
+小さな定数（例: 0.001）を加える方法は、推定対象と尤度を変え、結果が定数の選び方に依存します。主分析ではなく、応急的な感度分析として扱います。
 :::
 
 ### モデル比較と倍率解釈
@@ -2401,7 +2737,7 @@ Gamma 分布は**厳密に正の値**のみをモデル化できます。
 OLS, Gamma GLM, Gamma GAM の3モデルを比較します。
 
 ::: {.callout-important}
-**AIC の直接比較に注意**: R の `AIC()` は Gaussian（OLS）と Gamma GLM で異なる尤度スケールを使うため、**数値の直接比較は厳密には不適切**です。以下の表は参考値として扱い、**残差診断**（Q-Q プロット、DHARMa）と**理論的整合性**（データが非負で右に歪んでいるなら Gamma が自然）を主な判断基準としてください。
+**AIC の使い方に注意**: この節の OLS と Gamma GLM は、どちらも同じ raw `collab_strength` を説明しているため、AIC はモデル比較の参考になります。ただし、`log(collab_strength)` を目的変数にした線形モデルを追加した場合、その AIC は raw 尺度のモデルとは直接比較できません。Gamma GAM の AIC は非線形性の補助指標として使い、edf、smooth plot、`gam.check()`、応答スケールの予測差を合わせて判断します。最終判断では、AIC だけでなく、残差診断、予測値が正の範囲に収まるか、係数を加法的に読むべきか乗法的に読むべきかを合わせて確認してください。
 :::
 
 ```{r}
@@ -2470,7 +2806,7 @@ broom::tidy(m_pos_gamma_glm, conf.int = TRUE, exponentiate = TRUE) |>
 ::: {.callout-tip}
 #### 倍率を論文で報告するときの書き方
 
-「Gamma GLM（log リンク）において、ベースライン得点の 1SD 増加は協働強度の有意な増加と関連していた, β = [値], SE = [値], z = [値], p = [値], exp(β) = [値], 95% CI [[下限], [上限]]。これは [値]% の増加に相当する。」
+「Gamma GLM（log リンク）において、ベースライン得点の 1SD 増加は協働強度の有意な増加と関連していました, β = [値], SE = [値], z = [値], p = [値], exp(β) = [値], 95% CI [[下限], [上限]]。これは [値]% の増加に相当します。」
 :::
 
 ### 応答スケール予測（期待協働強度）
@@ -2481,6 +2817,9 @@ broom::tidy(m_pos_gamma_glm, conf.int = TRUE, exponentiate = TRUE) |>
 ```{r}
 #| eval: true
 #| label: pred-positive
+#| fig-height: 4.6
+#| fig-cap: "Case 3: Gamma GLM と Gamma GAM による期待協働強度（expected collaboration strength）の応答スケール予測。灰色の帯は Gamma GLM の 95% 信頼区間（confidence interval）を示します。"
+#| fig-alt: "ベースライン得点を横軸、期待協働強度を縦軸にした折れ線図。クラス別の線種と Gamma-GLM / Gamma-GAM のモデル差が示されています。"
 
 new_pos <- tidyr::expand_grid(
   class = factor(c("A", "B", "C"), levels = levels(dat_pos$class)),
@@ -2520,12 +2859,15 @@ ggplot(plot_pos, aes(x = baseline_score_sc, y = mu, color = model, linetype = cl
 **図の読み方**:
 
 - **y 軸**: 期待協働強度（正の連続値）。
-- **Gamma-GLM と Gamma-GAM の曲線が近い**: log スケールでの線形仮定が妥当。GAM は不要。
+- **Gamma-GLM と Gamma-GAM の曲線が近い**: log スケールでの線形仮定が妥当です。GAM は不要。
 - **クラス間の曲線間隔**: クラスの違いが協働強度にどの程度影響しているかを示します。
 
 ```{r}
 #| eval: true
 #| label: sjplot-positive-pred
+#| fig-height: 4.5
+#| fig-cap: "Case 3: `sjPlot::plot_model()` による Gamma GLM の期待協働強度（expected value）の確認。"
+#| fig-alt: "ベースライン得点に沿って、クラス別の予測協働強度と信頼帯を示した図です。"
 
 sjPlot::plot_model(
   m_pos_gamma_glm,
@@ -2539,7 +2881,7 @@ sjPlot::plot_model(
     color = "Class",
     fill = "Class"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -2561,7 +2903,7 @@ sjPlot::plot_model(
 ### 下位検定（Case 3: class / proficiency）
 
 class（3水準）と proficiency（3水準）について、
-各水準の期待協働強度（応答スケール）とペア間の差を `emmeans` で算出します。
+各水準の期待協働強度（応答スケール）とペア間の比（ratio）を `emmeans` で算出します。
 
 ```{r}
 #| eval: true
@@ -2589,7 +2931,7 @@ pairs(emm_prof_pos, adjust = "holm") |>
   knitr::kable(caption = "Case 3: Pairwise (Proficiency, Holm)")
 ```
 
-EMMs テーブルの ratio 列が 1 からどれだけ離れているかが、群間差の実質的な大きさを示します。
+Pairwise テーブルの ratio 列が 1 からどれだけ離れているかが、群間差の実質的な大きさを示します。log link の Gamma GLM では、応答スケールのペア比較は通常「差」ではなく「比」として解釈します。
 Holm 補正後の p 値で有意性を判断してください。
 
 ### 診断
@@ -2610,7 +2952,7 @@ gam.check(m_pos_gamma_gam)
 concurvity(m_pos_gamma_gam, full = FALSE)
 ```
 
-**読み方**: 4プロットの基準は Case 1 と同じ。Gamma モデルでは QQ プロットの右裾に軽い逸脱があっても許容されます（Gamma 分布自体が右裾を持つため）。k-index ≈ 1.0 なら十分です。
+**読み方**: 4プロットの基準は Case 1 と同じです。Gamma モデルでは QQ プロットの右裾に軽い逸脱があっても許容されます（Gamma 分布自体が右裾を持つため）。k-index、edf が上限に近いか、`k` を増やしたとき曲線が変わるかを合わせて判断します。
 
 #### 共線性
 
@@ -2624,6 +2966,20 @@ performance::check_collinearity(m_pos_gamma_glm)
 ```
 
 **読み方**: VIF < 3（安全）、3-5（注意）、> 5（懸念）。class と proficiency が相関している場合でも VIF < 5 であれば実用上の問題はありません。
+
+::: {.callout-tip}
+#### Gamma GLM でも DHARMa を使う
+Gamma GLM の残差診断にも `DHARMa::simulateResiduals()` が有効です。Gamma の右裾長 + log リンクで生じる残差パターンが、シミュレーションベースのスケール残差により**均一分布からの逸脱**として直感的に読めます。
+
+```r
+library(DHARMa)
+sim_res <- DHARMa::simulateResiduals(m_pos_gamma_glm, n = 1000)
+plot(sim_res)
+DHARMa::testQuantiles(sim_res)   # 分布形状の適合検定
+```
+
+詳細は Case 2 の DHARMa callout を参照してください。
+:::
 
 #### 総合診断（OLS vs Gamma）
 
@@ -2640,7 +2996,7 @@ plot_check_model_separate(m_pos_gamma_glm, model_name = "m_pos_gamma_glm", check
 plot_check_model_separate(m_pos_gamma_gam, model_name = "m_pos_gamma_gam", checks = c("pp_check", "outliers", "vif"))
 ```
 
-特に注目すべき点:
+特に注目したい点:
 
 - **OLS の残差プロット**: 残差が漏斗状に広がっていれば、分散が一定でない（不等分散）ことを示し、Gamma への切り替えを支持します。
 - **Gamma の Posterior predictive check**: 生成データが実データの右裾の分布を再現できていれば、Gamma の仮定は妥当です。
@@ -2650,8 +3006,8 @@ plot_check_model_separate(m_pos_gamma_gam, model_name = "m_pos_gamma_gam", check
 ::: {.callout-note}
 #### 注意点
 
-- Gamma(link = log) では、係数の指数変換が「何倍か」を意味する。
-- 非線形が弱い場合は GLM で十分。GAM は必要最小限で使う。
+- Gamma(link = log) では、係数の指数変換が「何倍か」を意味します。
+- 非線形が弱い場合は GLM で十分です。GAM は必要最小限で使います。
 :::
 
 ## 第6章への接続: モデル比較とランダム効果選択（最短実装）
@@ -2664,30 +3020,30 @@ plot_check_model_separate(m_pos_gamma_gam, model_name = "m_pos_gamma_gam", check
 この依存構造を無視したまま GLM の結果を報告すると、標準誤差が過小になり偽陽性が増えます。
 :::
 
-5章で GLM/GAM の判断ができたら、次に確認すべきは
+5章で GLM/GAM の判断ができたら、次に確認したいのは
 「観測の独立性が崩れていないか」です。学習者・項目の反復がある場合は、
 GLMM を候補に含めて比較します[@jaeger2008; @baayen2008; @barr2013; @meteyard2020]。
 
 実務では次の順序が安定です。
 
-1. まず GLM（固定効果のみ）を作る。
-2. ランダム切片（例: `from` / `to`）を追加した GLMM を作る。
-3. 必要ならランダム傾きを試す。
-4. `compare_performance()`、`anova(..., test="Chisq")`、`isSingular()` を併用して採否を決める。
+1. まず GLM（固定効果のみ）を作ります。
+2. ランダム切片（例: `from` / `to`）を追加した GLMM を作ります。
+3. 必要ならランダム傾きを試します。
+4. `compare_performance()`、`anova(..., test="Chisq")`、`isSingular()` を併用して採否を決めます。
 
 以下の表は、GLM から GLMM への拡張を検討する際の判断ガイドです。具体的な実装は第6章で詳しく扱います。
 
 | ステップ | モデル | R コード（第6章で実行） | 判断基準 |
 |---|---|---|---|
 | 0 | GLM（固定効果のみ） | `glm(y ~ x, family = binomial)` | ベースライン |
-| 1 | + 送信者ランダム切片 | `glmer(y ~ x + (1\|from), ...)` | AIC が GLM より 4+ 低ければ有意義 |
+| 1 | + 送信者ランダム切片 | `glmer(y ~ x + (1\|from), ...)` | AIC/BIC、分散成分、予測、理論で判断 |
 | 2 | + 受信者ランダム切片 | `glmer(y ~ x + (1\|from) + (1\|to), ...)` | LRT で Step 1 と比較 |
 | 3 | + ランダム傾き | `glmer(y ~ x + (1+x1\|from) + (1\|to), ...)` | `isSingular() = FALSE` を確認 |
 
 **判断の3点セット**:
 
-1. **AIC/BIC**: GLM より GLMM の AIC が 4 以上小さければ、ランダム効果が重要
-2. **LRT（`anova()`）**: 入れ子モデル間で有意（p < .05）なら、追加したランダム効果に意味がある
+1. **AIC/BIC**: GLM より GLMM の情報量規準が十分に改善するかを見る
+2. **LRT（`anova()`）**: 入れ子モデル間で有意なら、追加した構造に意味がある可能性があります。ただし分散成分が0境界にある検定なので、通常の `p < .05` だけで機械的に決めない
 3. **`isSingular()`**: `TRUE` ならランダム効果が過剰。シンプルなモデルに戻す
 
 具体的なコードと出力の解釈は第6章で詳しく扱います。
@@ -2695,8 +3051,136 @@ GLMM を候補に含めて比較します[@jaeger2008; @baayen2008; @barr2013; @
 ### 第5章での判断を第6章へつなぐポイント
 
 - 非線形が主課題なら GAM、依存構造が主課題なら GLMM。
-- どちらも疑われる場合は、まず GLMM で依存構造を処理してから GAMM を検討する。
-- モデル選択は単一指標ではなく、適合指標・特異適合・理論整合性の3点で判断する。
+- どちらも疑われる場合は、まず GLMM で依存構造を処理してから GAMM を検討します。
+- モデル選択は単一指標ではなく、適合指標・特異適合・理論整合性の3点で判断します。
+
+実験データでは、非線形性と依存構造が同時に出ることが珍しくありません。たとえば反応時間が試行番号とともに短くなるが、短くなり方は参加者ごとに違う場合、線形のランダム傾きだけでは足りないことがあります。この場合は `mgcv::gam()` / `mgcv::bam()` で、
+
+```r
+gam(rt_ms ~ condition + s(trial, by = condition) +
+      s(trial, participant, bs = "fs", m = 1) +
+      s(item, bs = "re"),
+    family = Gamma(link = "log"), method = "REML", data = dat)
+```
+
+のように、条件別の滑らかな試行効果に加え、参加者ごとの trial 曲線のずれ（factor-smooth interaction）と項目ランダム効果を同時に入れます。単に `s(participant, bs = "re")` を入れただけでは参加者ごとの曲線差ではなくランダム切片しか表せません。大規模な trial-level data では `bam(discrete = TRUE)` も候補になります。ただし、GAMM は解釈と診断が難しくなるため、GLM/GAM と GLMM の結果を先に確認し、「曲線を入れないと残差構造が残る」場合に進むのが安全です。
+
+## 検定力分析(power analysis)
+
+研究計画段階で **「効果量 X を検出するのに何 N が必要か」** を見積もる方法は、GLM/GAM では以下の 3 つが標準です。
+
+| 方法 | 関数・パッケージ | 適する場面 |
+|---|---|---|
+| **シミュレーションベース** | `simr::powerSim()` [@simr] | 任意の固定効果に対して N を変えて検定力を計算(`glm`/`glmer` 両対応) |
+| **解析的計算(2 群比較系のみ)** | `pwr::pwr.2p.test()`(2 値群間)、`pwr::pwr.t.test()`(continuous) | 単純なデザインで概算 |
+| **手作りシミュレーション** | `replicate()` + 自作 DGP | 任意の複雑なデザイン(例:GLM + interaction、GAM smooth) |
+
+```r
+# simr による Logistic GLM の検定力分析
+library(simr)
+
+# (1) 既存モデルから出発
+m_pilot <- glm(tie ~ same_class + prof_gap, family = binomial,
+               data = dat_pilot)
+
+# (2) 想定効果量を上書き
+fixef(m_pilot)["same_class"] <- log(2.0)   # OR = 2.0 を仮定
+
+# (3) 検定力シミュレーション(N を 2 倍に拡張する例)
+sim_extended <- extend(m_pilot, along = "same_class", n = 200)
+powerSim(sim_extended, fixed("same_class"), nsim = 200)
+```
+
+::: {.callout-tip}
+#### GLM の事前検定力分析でよくある盲点
+**事前検定力分析(a priori power analysis)** は、研究を **始める前**に効果量・α・検定力から N を逆算するもので、研究計画と前登録に使います。一方、**事後検定力(observed power)** は、観測されたデータから事後的に検定力を計算するもので、新しい情報をほとんど提供しません [@hoenig2001]。**研究計画時にしか使わない**のが鉄則です。
+
+GLM 特有の盲点:
+- **OR = 2.0 でも、ベース率(base rate)が極端に低いと検出は難しい**(例:base rate 1%、N = 200 では OR = 2 を 80% で検出するのが困難)
+- **過分散がある count データ**:Poisson 仮定で計算した N は **過小評価**(NB を仮定した検定力分析が必要)
+- **完全分離の懸念**:小標本では Firth ペナルティ前提で検定力を計算
+:::
+
+## ベイズ GLM への接続(詳細は第 7 章)
+
+GLM の枠組みは**ベイズ統計**でもほぼそのまま適用できます。`brms` パッケージ [@brmspkg] は `glm` と同じ family/link 体系を Stan ベースの MCMC で実装しており、特に **(1) 小サンプル**、**(2) 完全分離問題**、**(3) 信頼区間ではなく信用区間で報告したいとき**、**(4) 事前情報を活用したいとき**に強力です。
+
+例えば本章 Case 1 の `m_bin_glm` のベイズ版は次の 1 行で書けます。
+
+```r
+library(brms)
+
+m_brms_bin <- brm(
+  tie ~ same_class + prof_gap + score_from_sc + score_to_sc,
+  family = bernoulli(link = "logit"),
+  data = dat_bin,
+  prior = c(prior(normal(0, 1), class = "b")),  # 弱情報事前
+  chains = 4, cores = 4, seed = 2024
+)
+```
+
+`negbinomial(link = "log")` や `Gamma(link = "log")` も同じ書き方で Case 2 / Case 3 のベイズ版になります。**事前分布の選び方・収束診断・事後可視化・LOO 比較・分布回帰など、ベイズ統計の体系的な扱いは第 7 章「ベイズ推定」を参照**してください。本章では「同じ family が brms でも使える」という接続を示すにとどめます。
+
+## モデル比較とクロスバリデーション
+
+GLM/GAM の汎化性能を評価するには、訓練データ上の AIC/BIC だけでなく、**未知データへの予測精度**を評価することが重要です。SLA 研究で使える主な手法は:
+
+| 手法 | 関数 | 適する場面 |
+|---|---|---|
+| **k-fold CV(GLM)** | `boot::cv.glm(data, glm.fit, K = 10)` | k 分割で deviance / 誤分類率を計算 |
+| **LOOCV(small data)** | `boot::cv.glm(data, glm.fit, K = nrow(data))` | n が小さい時の標準 |
+| **WAIC / LOO(brms)** | `loo::loo()` / `loo::waic()` | ベイズモデル比較の現代標準 |
+| **Repeated CV** | `caret::trainControl(method = "repeatedcv")` | より安定した推定 |
+
+```r
+# k-fold CV deviance for Logistic GLM
+library(boot)
+cv_result <- cv.glm(data = dat_bin, glmfit = m_bin_glm, K = 10)
+cv_result$delta   # [raw_deviance, adjusted_deviance]
+
+# 複数モデルの比較
+cv.glm(dat_bin, m_bin_glm,    K = 10)$delta
+cv.glm(dat_bin, m_bin_gam_lm, K = 10)$delta  # GAM を比較
+
+# Brier score / AUC は第 8 章「予測分析」で詳述
+```
+
+::: {.callout-tip}
+#### AIC vs CV: いつどちらを使うか
+- **AIC**:同じデータで適合した複数モデルの**相対**比較に向く。計算が速い
+- **CV**:**未知データ**への予測精度を直接推定。サンプル外性能を評価したい時の現代標準
+- 大標本かつ family が同じなら AIC ≈ CV、小標本では CV(特に LOO)が信頼できる
+- **family が異なるモデル間(Poisson vs NB)では AIC を使う**(LRT は使えない)
+:::
+
+## 分布パラメータ全体をモデル化(distributional regression)
+
+通常の GLM は **平均 $\mu$ のみ**を予測子で説明します。しかし実際のデータでは、**平均だけでなく分散・形状・歪み**も予測子に依存することがあります。これを統一的に扱うのが **distributional regression** です。
+
+| 枠組み | パッケージ | 対応分布 |
+|---|---|---|
+| **GAMLSS** | `gamlss::gamlss()` | $\mu$, $\sigma$, $\nu$, $\tau$ それぞれを予測子の関数化(70 以上の分布) |
+| **brms distributional** | `brms::brm(bf(y ~ x, sigma ~ x), ...)` | 同様、ベイズで実装 |
+| **mgcv distributional** | `mgcv::gam(list(y ~ s(x), ~ s(x)), family = gaulss())` | location-scale GAM |
+
+```r
+# GAMLSS 例:平均と分散の両方を予測子で説明
+library(gamlss)
+m_gamlss <- gamlss(
+  collab_strength ~ proficiency_sc + baseline_score_sc,    # μ モデル
+  sigma.formula = ~ proficiency_sc,                         # σ モデル(分散も予測)
+  family = GA,                                              # Gamma 分布
+  data = dat_pos
+)
+summary(m_gamlss)
+```
+
+**SLA で使える典型場面**:
+- 学習者の習熟度が高いほど「正答率の平均が上がるが、ばらつきも小さくなる」(分散 ↓)
+- 課題が難しいほど「平均は変わらないが、ばらつきが大きくなる」(分散 ↑)
+- 反応時間で「速い人は安定、遅い人は不安定」(右裾長の歪み)
+
+これらは通常の GLM では検出できず、distributional regression が必要です。詳細な扱いは第 7 章(brms)と GAMLSS チュートリアル [@stasinopoulos2017gamlss] を参照してください。
 
 ## 3ケースをどう報告するか（実践テンプレート）
 
@@ -2707,6 +3191,7 @@ GLMM を候補に含めて比較します[@jaeger2008; @baayen2008; @barr2013; @
 - 区間推定は `95% CI [LL, UL]` で表記
 - 効果量（OR / IRR / 倍率）を必ず併記
 - リンクスケールの係数と応答スケールの図をセットで示す
+- L2 研究としての効果量解釈には、単変量の Cohen 目安に加えて Plonsky & Oswald [-@plonsky2014] の SLA 専用参照値 (群間 *d*: .40 / .70 / 1.00; 相関 *r*: .25 / .40 / .60) を併記すると分野慣行に即した記述になります。報告書式は *Language Learning* の Open Methods ガイドライン [@norris2015] に準拠すれば、再現性に必要な情報の漏れを防げます。
 
 ### ケース別テンプレート（worked example）
 
@@ -2806,9 +3291,12 @@ baseline score.
 **Results:**
 
 ```text
-The Gamma GLM provided better fit than the OLS model (ΔAIC = [値]),
-consistent with the right-skewed distribution and mean-variance
-relationship observed in collaboration strength.
+The Gamma GLM showed lower AIC than the OLS model (ΔAIC = [値])
+and produced diagnostics consistent with the right-skewed distribution
+and mean-variance relationship observed in collaboration strength.
+The Gamma GAM did / did not provide a meaningful improvement over
+the Gamma GLM (ΔAIC = [値], edf = [値]); inspection of the smooth
+term and `gam.check()` indicated [linear pattern / nonlinear pattern].
 
 A 1-SD increase in baseline score was associated with a
 multiplicative change in expected collaboration strength,
@@ -2841,13 +3329,15 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 `DHARMa` は階層構造を含む GLMM の残差診断で特に有効なため、
 6章で本格的に使用しています。
 
-## トラブルシューティング（実務で詰まりやすい点）
+## トラブルシューティング（実務で判断が分かれる点）
 
-### `family` の不一致
+GLM / GAM で実際に解析を進めるとき、誰もが一度は遭遇しやすい 7 つのつまずきポイントを取り上げます。該当する項目だけ参照する形でも構いません。
 
-**症状**: モデルは収束するが、診断プロットが全面的に破綻。予測値が理論上ありえない範囲に出る。
+### `family` が不一致だったときは?
 
-**原因**: outcome の型（0/1, count, positive continuous）と `family` が合っていない。
+**症状**: モデルは収束するが、診断プロットが全面的に破綻。予測値が理論上ありえない範囲に出ます。
+
+**原因**: outcome の型（0/1, count, positive continuous）と `family` が合っていません。
 
 **修正**: 以下の対応表を確認してください。
 
@@ -2857,55 +3347,60 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 | 0以上の整数 | `poisson` or `nb()` | `gaussian` |
 | 正の連続量 | `Gamma(link="log")` | `gaussian` |
 
-### 過分散の見落とし
+### 過分散を見落としてしまったときは?
 
-**症状**: Poisson GLM の係数が有意だが、NB に切り替えると非有意になる。
+**症状**: Poisson GLM の係数が有意ですが、NB に切り替えると非有意になります。
 
-**原因**: Poisson は「平均 = 分散」を仮定するため、実際の分散が大きい場合に SE が過小評価される。
+**原因**: Poisson は「平均 = 分散」を仮定するため、実際の分散が大きい場合に SE が過小評価されます。
 
-**修正**: count データでは必ず `check_overdispersion()` を最初に実行。dispersion ratio > 1 かつ有意なら NB に切り替え。
+**修正**: count データでは必ず `check_overdispersion()` を最初に実行します。dispersion ratio > 1 かつ有意なら NB に切り替えます。
 
-### GAM の `k` が不足
+### GAM の `k` が不足しているときは?
 
-**症状**: `gam.check()` で k-index が 0.8 未満、p 値が有意。
+**症状**: `gam.check()` で k-index が低く、p 値が有意。さらに edf が上限に近い、または残差に非線形パターンが残っています。
 
-**原因**: 基底次元が小さすぎて、データの非線形パターンを捉えきれていない。
+**原因**: 基底次元が小さすぎて、データの非線形パターンを捉えきれていません。
 
-**修正**: `k` を倍に増やして再当てはめ（例: `k = 8` → `k = 16`）。k-index ≈ 1 になるまで調整。ただし k をデータ数以上にはしない。
+**修正**: `k` を増やして再当てはめします（例: `k = 8` → `k = 16`）。k-index だけでなく、edf、残差プロット、予測曲線が実質的に変わるかを確認します。ただし k をデータ数以上にはしません。
 
-### 係数の解釈を混同する
+### 係数の解釈を混同してしまったときは?
 
-**症状**: 「OR = 2 だから確率が2倍」と誤解する。
+**症状**: 「OR = 2 だから確率が2倍」と誤解します。
 
-**原因**: OR はオッズの比であり、確率の比ではない。ベースラインの確率によって、同じ OR でも確率の変化幅は大きく異なる。
+**原因**: OR はオッズの比であり、確率の比ではありません。ベースラインの確率によって、同じ OR でも確率の変化幅は大きく異なります。
 
-**修正**: 必ず応答スケール（予測確率 / 期待カウント / 期待値）を併記する。OR / IRR / 倍率だけで報告しない。
+**修正**: 必ず応答スケール（予測確率 / 期待カウント / 期待値）を併記します。OR / IRR / 倍率だけでは報告しません。
 
-### 完全分離・準完全分離（binary GLM）
+### 完全分離・準完全分離（binary GLM）が起きたときは?
 
-**症状**: 一部の係数が極端に大きい（例: 15〜20以上）。SE が非常に大きいか `Inf`。収束警告が出る。
+**症状**: 一部の係数が極端に大きい（例: 15〜20以上）。SE が非常に大きいか `Inf`。収束警告が出ます。
 
-**原因**: ある予測子の値でアウトカムが完全に 0 または 1 に分かれてしまう。
+**原因**: ある予測子の値でアウトカムが完全に 0 または 1 に分かれてしまいます。
 
-**修正**: (1) 該当する予測子のカテゴリを統合、(2) Firth のペナルティ付き尤度（`brglm2` パッケージ）を検討、(3) サンプルサイズを増やす。
+**修正**: (1) 該当する予測子のカテゴリを統合します、(2) Firth のペナルティ付き尤度（`brglm2` パッケージ）を検討します、(3) サンプルサイズを増やします。
 
-### Gamma GLM でゼロ値エラー
+### Gamma GLM でゼロ値エラーが出たときは?
 
 **症状**: `Error in eval(family$initialize): y values must be > 0`
 
-**原因**: Gamma 分布は厳密に正の値のみをモデル化するため、0 を含むデータでは使えない。
+**原因**: Gamma 分布は厳密に正の値のみをモデル化するため、0 を含むデータでは使えません。
 
-**修正**: (1) 小さな定数を加える（例: `collab_strength + 0.001`）、(2) Tweedie 分布（`tweedie()` in mgcv）を検討、(3) 0 を含む場合はハードルモデルを検討。
+**修正**: まずゼロの意味を確認します。構造的ゼロなら two-part / hurdle model、ゼロと正の連続量が同じ過程から出るなら Tweedie 分布（`mgcv::tw()`）、検出限界なら censored model を検討します。小さな定数を加える方法（例: `collab_strength + 0.001`）は、定数への感度を確認する応急的な分析として扱います。
 
-### GAM の edf が k-1 に張り付く
+### GAM の edf が上限に近いときは?
 
-**症状**: `gam.check()` で edf がほぼ k-1 と一致。
+**症状**: 単変量の `s(x, k = ...)` で edf が利用可能な上限に近く、k-index も低いか、`k` を増やすと曲線が変わります。
 
-**原因**: 基底次元の上限まで平滑が使われており、これ以上の柔軟性が必要だが k が不足している。
+**原因**: 基底次元の上限まで平滑が使われており、これ以上の柔軟性が必要ですが k が不足している可能性があります。ただし tensor smooth、factor smooth、制約つき smooth では最大 edf が単純に `k - 1` にならないことがあります。
 
-**修正**: `k` を大きくして再当てはめ。edf が k-1 に張り付かなくなるまで増やす。
+**修正**: `k` を大きくして再当てはめし、edf、k-index、予測曲線、残差構造が安定するかを確認します。
 
 ## 発展トピック（GAM の拡張と GLM の応用）
+
+::: {.callout-important}
+#### 初読では飛ばして第 6 章へ
+ここから先(約 1,400 行)は **多カテゴリカル / 順序 / ゼロ過剰 / hurdle / beta / Tweedie / GAM tensor** など、特定アウトカム型に出会った時の **「辞書」** として使う発展節です。**初読では飛ばし、第 6 章 (混合効果モデル)へ進んで構いません**。実データに合わせて該当セクションだけ参照してください。下の「発展部の読み方」で自分のアウトカムに対応する枝を選んでから読み始めるのが効率的です。
+:::
 
 本章の3ケースをマスターしたら、以下のトピックに進むことで分析の幅が大きく広がります。
 
@@ -2924,7 +3419,7 @@ exp(β) = [値], 95% CI [[下限], [上限]], indicating a [値]%
 
 #### offset（露出変数）: テキスト長の補正 {.unnumbered}
 
-コーパス分析やライティング研究では、テキストの長さが異なるため、エラー**数**をそのまま比較できません。500語のエッセイは200語のエッセイより多くのエラーを含むのが当然です。**offset** はこの問題を解決します。
+コーパス分析やライティング研究では、テキストの長さが異なるため、エラー**数**をそのまま比較できません。500語のエッセイは200語のエッセイより多くのエラーを含みやすい構造です。**offset** はこの問題を解決します。
 
 ```{r}
 #| eval: true
@@ -2987,6 +3482,8 @@ tibble::tibble(
 #### 名義カテゴリ3水準以上: Multinomial Regression {.unnumbered}
 
 アウトカムが3水準以上で、しかも自然な順序を持たないなら、**multinomial logit** を使います。`nnet::multinom()` は、最初のカテゴリを参照カテゴリにして、残りのカテゴリについて `K - 1` 個のロジットを推定します[@venables2002modern; @nnetpkg]。
+
+multinomial logit では、ある選択肢を加えたり除いたりしたとき、他の選択肢間の相対オッズが変わらないという **IIA assumption（independence of irrelevant alternatives）** が暗黙に置かれます。`skip / infer / AI lookup` のように選択肢が近い代替関係を持つ場合、この仮定が強すぎることがあります。その場合は、予測確率の感度確認、nested logit、mixed multinomial model などを検討します。
 
 ここでは、SLA の読解課題を想定します。学習者が未知語に出会ったときに取りうる選択肢を
 
@@ -3167,6 +3664,8 @@ multi_coef_story_tbl |>
 #| eval: true
 #| label: fig-multinom-coef
 #| fig-height: 4.6
+#| fig-cap: "多項ロジット（multinomial logit）における相対リスク比（RRR: relative risk ratio）の係数図。破線は RRR = 1 を示します。"
+#| fig-alt: "予測子ごとに、Inferencing と AI lookup の相対リスク比と信頼区間を横向きに示した係数図です。1を示す縦の破線があります。"
 
 ggplot(
   multi_coef_plot_tbl,
@@ -3193,6 +3692,8 @@ ggplot(
 #| eval: true
 #| label: fig-multinom-pred
 #| fig-height: 4.8
+#| fig-cap: "多項ロジット（multinomial logit）から得た方略選択カテゴリの予測確率（predicted probabilities）。各支援条件で習熟度に伴うカテゴリ確率の変化を示します。"
+#| fig-alt: "習熟度を横軸、予測確率を縦軸にした3面の折れ線図。Skip、Inferencing、AI lookup の確率が支援条件ごとに表示されています。"
 
 nd_multi <- tidyr::crossing(
   proficiency_sc = seq(-2.2, 2.2, length.out = 120),
@@ -3241,6 +3742,8 @@ ggplot(pred_multi, aes(x = proficiency_sc, y = probability, color = strategy)) +
 #| eval: true
 #| label: fig-multinom-stack
 #| fig-height: 5.1
+#| fig-cap: "多項ロジット（multinomial logit）の予測確率を積み上げた構成比（probability composition）。各 x 値で3カテゴリの合計は100%になります。"
+#| fig-alt: "習熟度に沿って、Skip、Inferencing、AI lookup の予測確率が積み上げ面グラフとして支援条件ごとに表示されています。"
 
 ggplot(pred_multi, aes(x = proficiency_sc, y = probability, fill = strategy)) +
   geom_area(color = "white", linewidth = 0.25, alpha = 0.9) +
@@ -3282,7 +3785,7 @@ multi_prob_examples |>
 
 積み上げ面グラフは、同じ情報を **配分の変化** として読ませるための補助図です。1 本の縦切片を見ると、その proficiency 水準で `Skip / Inferencing / AI lookup` が何対何対何で起こりそうかが分かります。multinomial regression では、**カテゴリごとの確率は互いに連動して合計 100% になる**ので、この配分図は line plot より直感的なことがあります。
 
-この例では、低 proficiency・高 anxiety では `Skip` が優勢ですが、習熟度が上がると `Inferencing` が優勢になります。また `AI support` 条件では `AI lookup` の確率が全体に押し上げられます。教育的には、「どの支援条件が、どの層の学習者にどの方略を促すか」を見るためのモデルだと理解すると分かりやすいです。ここで大事なのは、**RRR 表は参照カテゴリとの比較であり、研究質問としては予測確率図の方がそのまま読める**という点です。
+この例では、低 proficiency・高 anxiety では `Skip` が優勢ですが、習熟度が上がると `Inferencing` が優勢になります。また `AI support` 条件では `AI lookup` の確率が全体に押し上げられます。教育的には、「どの支援条件が、どの層の学習者にどの方略を促すか」を見るためのモデルとして理解すると分かりやすいです。ここで大事なのは、**RRR 表は参照カテゴリとの比較であり、研究質問としては予測確率図の方がそのまま読めます**という点です。
 
 心理言語学でも発想は同じです。例えば、語彙処理課題で反応タイプが `correct / omission / other error` のような複数カテゴリに分かれるなら、カテゴリに順序がない限り multinomial regression が自然です。
 
@@ -3479,6 +3982,8 @@ ord_coef_story_tbl |>
 #| eval: true
 #| label: fig-ordinal-coef
 #| fig-height: 4.2
+#| fig-cap: "順序ロジット（ordinal logit）の location 係数を累積オッズ比（cumulative odds ratio）で示した図です。破線は OR = 1 を示します。"
+#| fig-alt: "Treatment、Proficiency、Anxiety の累積オッズ比と信頼区間を横向きに示した係数図です。1を示す縦の破線があります。"
 
 ggplot(
   ord_coef_plot_tbl,
@@ -3515,6 +4020,8 @@ ord_po_tbl |>
 #| eval: true
 #| label: fig-ordinal-threshold
 #| fig-height: 4.3
+#| fig-cap: "順序ロジット（ordinal logit）の閾値（threshold / cutpoint）を潜在連続体上で読むための図。右へのシフトは高カテゴリの確率増加を意味します。"
+#| fig-alt: "潜在的な自己効力感の連続体上に2つの密度曲線と4本の閾値線が描かれています。高習熟度・介入条件の曲線が右側に位置します。"
 
 ggplot(ord_latent_demo, aes(x = x, y = density, color = profile)) +
   geom_line(linewidth = 1) +
@@ -3549,6 +4056,8 @@ ggplot(ord_latent_demo, aes(x = x, y = density, color = profile)) +
 #| eval: true
 #| label: fig-ordinal-pred
 #| fig-height: 4.8
+#| fig-cap: "順序ロジット（ordinal logit）から得た各評定カテゴリの予測確率（predicted category probabilities）。"
+#| fig-alt: "習熟度を横軸、予測確率を縦軸にした2面の折れ線図。Rating 1からRating 5までの確率曲線が介入条件別に示されています。"
 
 nd_ord <- tidyr::crossing(
   proficiency_sc = seq(-2.2, 2.2, length.out = 120),
@@ -3590,6 +4099,8 @@ ggplot(pred_ord, aes(x = proficiency_sc, y = probability, color = rating)) +
 #| eval: true
 #| label: fig-ordinal-high
 #| fig-height: 4.2
+#| fig-cap: "順序ロジット（ordinal logit）の結果を、上位2カテゴリに入る確率 Pr(Self-efficacy >= 4) として要約した図。"
+#| fig-alt: "習熟度に沿って、自己効力感が4以上になる予測確率をControlとStrategy feedbackの2条件で比較した折れ線図です。"
 
 ggplot(
   ord_high_prob,
@@ -3633,10 +4144,10 @@ ord_prob_examples |>
 
 実務的には、次の順で判断すると整理しやすくなります。
 
-1. 順序があるかないかを先に決める。
-2. 順序があるなら `clm()` を第一候補にする。
-3. `nominal_test()` で proportional odds の大きな破れがないか確認する。
-4. 前提が強く破れるなら、`clm(..., nominal = ~ predictor)` のような拡張、multinomial regression、または第7章の Bayesian ordinal model を検討する。
+1. 順序があるかないかを先に決めます。
+2. 順序があるなら `clm()` を第一候補にします。
+3. `nominal_test()` で proportional odds の大きな破れがないか確認します。
+4. 前提が強く破れるなら、`clm(..., nominal = ~ predictor)` のような拡張、multinomial regression、または第7章の Bayesian ordinal model を検討します。
 
 #### proportional odds assumption が怪しいとき {.unnumbered}
 
@@ -3720,6 +4231,8 @@ ord_po_compare_tbl |>
 #| eval: true
 #| label: fig-ordinal-po-relaxed
 #| fig-height: 4.5
+#| fig-cap: "比例オッズ仮定（proportional odds assumption）を緩めたときの予測確率比較。標準モデルと relaxed-threshold model の結論差を確認します。"
+#| fig-alt: "習熟度に沿ったPr(Self-efficacy >= 4)を、比例オッズモデルと閾値を緩めたモデルで比較した2面の折れ線図。"
 
 ggplot(
   ord_relaxed_plot_tbl,
@@ -3740,12 +4253,12 @@ ggplot(
 
 ### ゼロ過剰カウントと割合データ
 
-このセクションは、「平均だけでは足りない形のアウトカム」を扱います。  
+このセクションは、「平均だけでは足りない形のアウトカム」を扱います。
 ゼロが多すぎる回数データでは **ゼロ生成過程** を、0-1 の連続割合では **平均とばらつき** の両方を意識する必要があります。
 
 #### Zero-inflated / Hurdle モデル（ゼロ過剰カウント） {.unnumbered}
 
-SLA・教育データでは、「0 が多い」だけでなく、**なぜ 0 なのかが1通りではない**ことがあります。例えば、短いスピーキング課題で target clause の使用回数を数えると、
+SLA・教育データでは、「0 が多い」だけでなく、**なぜ 0 なのかの理由が1通りとは限りません**。例えば、短いスピーキング課題で target clause の使用回数を数えると、
 
 - 当該構文を**回避した**ために 0
 - 使うつもりはあったが、その短い課題では**たまたま 0**
@@ -3892,38 +4405,36 @@ zero_examples_tbl <- bind_rows(
       labels = c("Control", "Planning support")
     ),
     `Pr(any use)` = scales::percent(prob_any, accuracy = 1),
-    `Expected count` = round(expected_count, 2)
+    `Expected count (incl. zeros)` = round(expected_count, 2)
   ) |>
-  dplyr::select(model, proficiency, planning_support, `Pr(any use)`, `Expected count`)
+  dplyr::select(model, proficiency, planning_support, `Pr(any use)`, `Expected count (incl. zeros)`)
+
+zero_mu_nb <- predict(m_zero_nb, type = "response")
+zero_p0_nb <- dnbinom(0, mu = zero_mu_nb, size = m_zero_nb$theta)
+zero_mu_zinb <- as.numeric(predict(m_zero_zinb, type = "response"))
+zero_p0_zinb <- as.numeric(predict(m_zero_zinb, type = "prob", at = 0:1)[, 1])
+zero_mu_hurdle <- as.numeric(predict(m_zero_hurdle, type = "response"))
+zero_p0_hurdle <- as.numeric(predict(m_zero_hurdle, type = "prob", at = 0:1)[, 1])
 
 zero_diag_tbl <- tibble(
   model = c("Observed data", "NB-GLM", "Zero-inflated NB", "Hurdle NB"),
   zero_rate = c(
     mean(dat_zero$target_clause_count == 0),
-    mean(dnbinom(0, mu = predict(m_zero_nb, type = "response"), size = m_zero_nb$theta)),
-    mean(as.numeric(predict(m_zero_zinb, type = "prob", at = 0:1)[, 1])),
-    mean(as.numeric(predict(m_zero_hurdle, type = "prob", at = 0:1)[, 1]))
+    mean(zero_p0_nb),
+    mean(zero_p0_zinb),
+    mean(zero_p0_hurdle)
   ),
   mean_count = c(
     mean(dat_zero$target_clause_count),
-    mean(predict(m_zero_nb, type = "response")),
-    mean(as.numeric(predict(m_zero_zinb, type = "response"))),
-    mean(as.numeric(predict(m_zero_hurdle, type = "response")))
+    mean(zero_mu_nb),
+    mean(zero_mu_zinb),
+    mean(zero_mu_hurdle)
   ),
   mean_positive_count = c(
     mean(dat_zero$target_clause_count[dat_zero$target_clause_count > 0]),
-    mean(
-      predict(m_zero_nb, type = "response") /
-        pmax(1 - dnbinom(0, mu = predict(m_zero_nb, type = "response"), size = m_zero_nb$theta), 1e-8)
-    ),
-    mean(
-      as.numeric(predict(m_zero_zinb, type = "response")) /
-        pmax(1 - as.numeric(predict(m_zero_zinb, type = "prob", at = 0:1)[, 1]), 1e-8)
-    ),
-    mean(
-      as.numeric(predict(m_zero_hurdle, type = "response")) /
-        pmax(1 - as.numeric(predict(m_zero_hurdle, type = "prob", at = 0:1)[, 1]), 1e-8)
-    )
+    sum(zero_mu_nb) / sum(pmax(1 - zero_p0_nb, 1e-8)),
+    sum(zero_mu_zinb) / sum(pmax(1 - zero_p0_zinb, 1e-8)),
+    sum(zero_mu_hurdle) / sum(pmax(1 - zero_p0_hurdle, 1e-8))
   )
 )
 
@@ -3961,17 +4472,19 @@ zero_compare_tbl |>
 | Model part | Positive coefficient means | Practical interpretation |
 |---|---|---|
 | NB count model | larger expected count | more target-structure uses overall |
-| ZINB count part | larger expected count within the count process | once the learner is in the “can produce” process, they use the structure more often |
+| ZINB count part | larger expected count within the count process | in the non-structural-zero process, the latent expected count is higher; this process can still generate zeros |
 | ZINB zero part | **more structural zeros** | the learner is more likely to belong to the avoidance / never-use state |
 | Hurdle count part | larger positive counts after crossing the hurdle | once the learner starts using the structure, they produce more tokens |
 | Hurdle zero part | **higher probability of a non-zero count** | the learner is more likely to attempt the structure at all |
 
-この表で重要なのは、**zero part の符号の意味が ZINB と hurdle で同じではない**ことです。ZINB の zero part は「構造的ゼロ側」なので正の係数はゼロを増やします。hurdle の zero part は「0 を超える側」なので、正の係数はむしろ使用開始を促す方向に読みます。
+この表で重要なのは、**zero part の符号の意味が ZINB と hurdle で同じではない**という点です。ZINB の zero part は「構造的ゼロ側」なので正の係数はゼロを増やします。hurdle の zero part は「0 を超える側」なので、正の係数はむしろ使用開始を促す方向に読みます。
 
 ```{r}
 #| eval: true
 #| label: fig-zero-any
 #| fig-height: 4.5
+#| fig-cap: "ゼロ過剰カウント（zero-heavy counts）で、少なくとも1回使用する確率 Pr(any use) をモデル別に比較した図です。"
+#| fig-alt: "習熟度を横軸、少なくとも1回使用する確率を縦軸にした折れ線図。NB-GLM、Zero-inflated NB、Hurdle NB が計画支援条件別に比較されています。"
 
 ggplot(
   zero_pred_tbl,
@@ -3992,6 +4505,8 @@ ggplot(
 #| eval: true
 #| label: fig-zero-count
 #| fig-height: 4.5
+#| fig-cap: "ゼロ過剰カウント（zero-heavy counts）で、ゼロを含む無条件の期待使用回数（unconditional expected count）をモデル別に比較した図です。"
+#| fig-alt: "習熟度を横軸、ゼロを含む期待使用回数を縦軸にした折れ線図。NB-GLM、Zero-inflated NB、Hurdle NB が計画支援条件別に比較されています。"
 
 ggplot(
   zero_pred_tbl,
@@ -4000,10 +4515,10 @@ ggplot(
   geom_line(linewidth = 1) +
   labs(
     x = "Proficiency (z)",
-    y = "Expected target-clause count",
+    y = "Unconditional expected target-clause count",
     color = "Model",
     linetype = "Planning condition",
-    title = "Zero-heavy counts: expected number of uses"
+    title = "Zero-heavy counts: expected number of uses, including zeros"
   )
 ```
 
@@ -4035,6 +4550,8 @@ zero_diag_tbl |>
 #| eval: true
 #| label: fig-zero-diagnostics
 #| fig-height: 4.6
+#| fig-cap: "ゼロ過剰モデルの診断（diagnostics）。観測値のゼロ率、平均件数、正の件数平均をモデルがどの程度再現するかを比較します。"
+#| fig-alt: "ゼロ率、全体平均件数、正の件数平均の3指標について、各モデルの値を点で示し、観測値を破線で示したファセット図。"
 
 ggplot(
   dplyr::filter(zero_diag_plot_tbl, model != "Observed data"),
@@ -4061,13 +4578,13 @@ ggplot(
 
 **読み方のポイント**:
 
-- **Zero rate** が観測値に近い: ゼロの多さをうまく再現できている  
-- **Overall mean count** が近い: 全体の件数レベルを捉えている  
+- **Zero rate** が観測値に近い: ゼロの多さをうまく再現できている
+- **Overall mean count** が近い: 全体の件数レベルを捉えている
 - **Mean count among positives** が近い: 一度使い始めた後の件数も妥当
 
 たとえば NB が平均件数は合わせられても zero rate を外しているなら、「件数のばらつき」だけでは説明しきれず、**ゼロ生成過程を別に考える意義** があると読めます。逆に ZINB / hurdle を使っても dashed line に近づかないなら、二過程モデルの物語自体が弱い可能性があります。
 
-読み方は2段階です。まず `Pr(any use)` の図で、**使用するか否か** を見ます。次に `Expected count` の図で、**使うとしたら何回くらい出るか** を見ます。教育的には、planning support が「使い始めるハードル」を下げているのか、それとも「一度使い始めた後の件数」を増やしているのかを区別できるのが、この種のモデルの利点です。
+読み方は2段階です。まず `Pr(any use)` の図で、**少なくとも1回使用するか** を見ます。次に `Expected count (incl. zeros)` の表や期待件数の図で、ゼロも含めた**全体としての期待使用回数**を見ます。これは `E[Y]` であり、「使った人だけに限ると何回くらい出るか」（`E[Y | Y > 0]`）とは異なります。正の使用後の件数を読みたい場合は、上の診断表の `Mean count among positives` や hurdle model の count part を別に確認します。教育的には、planning support が「使い始めるハードル」を下げているのか、それとも「全体としての使用回数」を増やしているのかを区別できるのが、この種のモデルの利点です。
 
 実務ルールとしては、
 
@@ -4197,6 +4714,8 @@ beta_coef_tbl |>
 #| eval: true
 #| label: fig-beta-pred
 #| fig-height: 4.5
+#| fig-cap: "ベータ回帰（beta regression）による L2 使用割合の応答スケール予測（response-scale prediction）。"
+#| fig-alt: "Motivationを横軸、L2使用割合の予測値を縦軸にした折れ線図。ControlとStrategy trainingの2条件が比較されています。"
 
 ggplot(
   beta_pred_tbl,
@@ -4226,13 +4745,13 @@ beta_examples_tbl |>
 
 beta regression の実務ポイントは次の3つです。
 
-1. 比率が **試行数つきの成功率** なら binomial、**連続的な割合** なら beta を疑う  
-2. 係数は logit スケールでも、**本文では予測割合** で報告する  
+1. 比率が **試行数つきの成功率** なら binomial、**連続的な割合** なら beta を疑う
+2. 係数は logit スケールでも、**本文では予測割合** で報告する
 3. 0 や 1 がそのまま多いときは、`betareg` の extended-support beta (`dist = "xbetax"`) や zero/one-inflated beta を検討する
 
 #### 0 と 1 を含む割合への対処 {.unnumbered}
 
-古典的な beta regression は、応答が **厳密に `(0, 1)` の内部** にあることを前提にしています。したがって、授業中の L2 使用率が `0%` や `100%` として記録されると、そのままでは通常の beta 分布に入りません。`betareg` の公式ドキュメントでは、この場合に **extended-support beta (`dist = "xbetax"`)** が使えること、また境界値があるときはそれが自動選択されることが説明されています[@betaregpkg; @kosmidis2025xbetax]。
+古典的な beta regression は、応答が **厳密に `(0, 1)` の内部** にあることを前提にしています。したがって、授業中の L2 使用率が `0%` や `100%` として記録されると、そのままでは通常の beta 分布に入りません。`betareg` の公式ドキュメントでは、この場合に **extended-support beta (`dist = "xbetax"`)** が使えること、また境界値があるときはそれが自動選択されることが説明されています[@betaregpkg; @kosmidis2025xbetax]。ただし `xbetax` は境界に確率質量を持つ extended-support beta であり、0/1 が別の生成過程から出ることを明示的にモデル化する zero-one-inflated beta と同一ではありません。
 
 | Observed data shape | First choice | Why |
 |---|---|---|
@@ -4280,11 +4799,11 @@ beta_boundary_tbl |>
   knitr::kable(caption = "Boundary-value example for beta regression")
 ```
 
-ここでの実務的なポイントは、**境界値があるから即 binomial に戻るわけではない** ということです。分母つきの成功回数ではなく、あくまで連続割合として観測されているなら、まずは beta 系のモデルの中で境界値を扱える拡張を検討する方が自然です。
+ここでの実務的なポイントは、**境界値があるから即 binomial に戻るわけではありません** ということです。分母つきの成功回数ではなく、あくまで連続割合として観測されているなら、まずは beta 系のモデルの中で境界値を扱える拡張を検討する方が自然です。
 
 ### 高度な GAM とロバストな推定
 
-ここから先は、GLM の family 選択を越えて、**曲面・群別非線形・推定上の難しさ** を扱います。  
+ここから先は、GLM の family 選択を越えて、**曲面・群別非線形・推定上の難しさ** を扱います。
 本章の本線を理解した後に読むと、`mgcv` の発展的な使い方がつながりやすくなります。
 
 #### GAM の tensor product 交互作用（`te()` / `ti()`） {.unnumbered}
@@ -4378,6 +4897,8 @@ tensor_smooth_tbl |>
 #| label: fig-tensor-visgam
 #| fig-width: 7.2
 #| fig-height: 5.8
+#| fig-cap: "テンソル積 GAM（tensor-product GAM）の予測面（prediction surface）。語彙サイズと読解速度の非線形交互作用を正答確率の等高線で示します。"
+#| fig-alt: "語彙サイズと読解速度を2軸に取り、正答確率の高低を色と等高線で示した図です。高い確率の領域と低い確率の領域が曲面として表されています。"
 
 mgcv::vis.gam(
   m_tensor,
@@ -4405,6 +4926,8 @@ mgcv::vis.gam(
 #| eval: true
 #| label: fig-tensor-slices
 #| fig-height: 4.6
+#| fig-cap: "テンソル積 GAM（tensor-product GAM）の2次元効果を、読解速度水準別の1次元スライス（1D slices）として読む図。"
+#| fig-alt: "語彙サイズを横軸、正答確率を縦軸にし、読解速度が遅い・平均・速い場合の3本の曲線を比較した図です。"
 
 tensor_slice_grid <- tidyr::crossing(
   vocab_size_sc = seq(-2.2, 2.2, length.out = 180),
@@ -4443,8 +4966,8 @@ ggplot(tensor_slice_tbl, aes(x = vocab_size_sc, y = probability, color = reading
 
 要するに、2次元平滑面は次の順で読むと分かりやすいです。
 
-1. `summary()` の `ti(...)` 行で、非加法的な交互作用があるか確認する  
-2. `vis.gam()` で、どの領域が高確率・低確率かを俯瞰する  
+1. `summary()` の `ti(...)` 行で、非加法的な交互作用があるか確認する
+2. `vis.gam()` で、どの領域が高確率・低確率かを俯瞰する
 3. 断面図で、どの predictor の効果がどの条件で強まるかを具体的に言語化する
 
 ::: {.callout-tip}
@@ -4466,16 +4989,18 @@ gam(accuracy ~ L1_group + s(proficiency, by = L1_group),
 
 # ordered factor にすると「群間の差」の平滑項が直接得られる
 dat$L1_ordered <- ordered(dat$L1_group)
-gam(accuracy ~ L1_ordered + s(proficiency, by = L1_ordered),
+gam(accuracy ~ L1_ordered +
+      s(proficiency) +
+      s(proficiency, by = L1_ordered),
     family = binomial, data = dat, method = "REML")
 ```
 
 ::: {.callout-tip}
 #### `by=` のポイント
 
-- `by = factor`: 各群に独立した平滑項を当てはめる。群間で曲線の形が全く異なってもよい
-- `by = ordered(factor)`: 参照群からの**差分**として推定する。差分の平滑項が有意なら「群間で非線形パターンが異なる」と結論できる[@pedersen2019]
-- `by = numeric`: varying coefficient モデル。平滑項の強さが連続変数に比例する
+- `by = factor`: 各群に独立した平滑項を当てはめます。群間で曲線の形が全く異なっても問題ありません
+- `by = ordered(factor)`: 参照群の主平滑 `s(x)` を別に入れたうえで、参照群からの**差分**として推定します。差分の平滑項が有意なら「群間で非線形パターンが異なる」と結論できます[@pedersen2019]
+- `by = numeric`: varying coefficient モデルです。平滑項の強さが連続変数に比例します
 :::
 
 #### quasi-likelihood（過分散の最も簡単な対処） {.unnumbered}
@@ -4496,16 +5021,26 @@ summary(m_quasi)$dispersion  # φ が 1 に近ければ Poisson で十分
 
 #### 完全分離への対処（Firth のペナルティ付き推定） {.unnumbered}
 
-2値 GLM で「ある条件の全員が正解」のようなデータでは、係数が無限大に発散します（**完全分離**）。`brglm2` パッケージの Firth 法で対処できます。
+2値 GLM で「ある条件の全員が正解」のようなデータでは、係数が無限大に発散します（**完全分離**）。分離の検出には `detectseparation`、対処には `brglm2` の bias-reduced / Firth 型推定が使えます。
 
 ```r
-# 完全分離の検出
-brglm2::detect_separation(m_bin_glm)
+# 必要なら事前に install.packages(c("detectseparation", "brglm2"))
 
-# Firth のペナルティ付き推定
+# 完全分離の検出
+sep_fit <- glm(y ~ x, family = binomial, data = dat,
+               method = detectseparation::detect_separation)
+sep_fit$separation
+
+# Firth 型(mean bias reduction、Jeffreys 事前分布ペナルティ)による推定
+# type = "AS_mean" を明示する必要あり(デフォルトは設定に依存し、Firth ではない場合がある)
 m_firth <- glm(y ~ x, family = binomial, data = dat,
-               method = brglm2::brglmFit)
+               method = brglm2::brglmFit,
+               type = "AS_mean")          # ← Firth 型を明示
 ```
+
+::: {.callout-warning}
+`brglm2::brglmFit` には複数の bias 補正タイプがあります:**`type = "AS_mean"`** が Firth (1993) のペナルティ付き尤度に対応し、完全分離問題の標準的解です。**`type = "correction"`** は Cordeiro-McCullagh の事後補正(post-hoc correction)で、**完全分離は解消しません**。`type` を指定しないと環境次第で挙動が変わるため、論文用コードでは必ず明示してください。
+:::
 
 ::: {.callout-note}
 #### SLA で完全分離が起きやすい場面
@@ -4532,6 +5067,23 @@ m_firth <- glm(y ~ x, family = binomial, data = dat,
 
 これらのトピックは第7章（ベイズ推定）でも `brms` を通じて扱われます。
 :::
+
+## まとめと次に読む章
+
+ここまでお疲れさまでした。本章では GLM(`binomial` / `Poisson` / `Gamma`)と GAM(`mgcv::gam` の smooth)を、3 つのアウトカム型(2 値・カウント・正の連続)で実装し、診断・解釈・報告まで一通り辿ってきました。**「アウトカムの型に合う分布族とリンクを選ぶ」**という発想は、後続の混合効果モデル(第 6 章)・ベイズ回帰(第 7 章)・予測モデル(第 8 章)・メタ分析(第 17 章)で繰り返し登場します。
+
+要点を 3 つに絞ると:
+
+- **分布とリンク関数は研究目的で選ぶ**(0/1 → binomial、count → Poisson/NB、正の連続 → Gamma)
+- **係数は応答スケールに戻して報告する**(OR / IRR / 倍率だけでなく予測確率・期待カウント・期待値を併記)
+- **GAM は smooth で非線形を柔軟に捉えるが、`k` と `edf` を診断する**
+
+研究質問に応じて、次のステップとしては以下の章が候補になります。
+
+- **第 6 章 混合効果モデル**:同じ参加者・項目から複数観測がある場合(GLMM / GAMM)
+- **第 7 章 ベイズ推定**:小サンプル・事前情報の活用・完全分離問題への対処(`brms` で同じ family が使える)
+- **第 8 章 予測分析**:ロジスティック回帰の **分類性能評価**(ROC / AUC / キャリブレーション)
+- **第 17 章 メタ分析**:複数研究のオッズ比・発生率比の統合
 
 ## 発展学習（読書順）
 

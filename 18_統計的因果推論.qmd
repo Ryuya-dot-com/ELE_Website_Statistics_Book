@@ -4,7 +4,7 @@ prefer-html: true
 always_allow_html: true
 bibliography: references_causal_inference.bib
 nocite: |
-  @hernan2020, @imbens2015, @rosenbaum1983, @austin2011, @angrist2009, @pearl2009, @goodman-bacon2021
+  @hernan2020, @imbens2015, @rosenbaum1983, @austin2011, @angrist2009, @pearl2009, @goodman-bacon2021, @hudgens2008, @campbell2012cluster, @imai2009cluster
 ---
 
 ```{r}
@@ -29,6 +29,7 @@ required_packages <- c(
   "optmatch",
   "pacman",
   "rdrobust",
+  "rddensity",
   "rlang",
   "sandwich",
   "sensemakr",
@@ -49,37 +50,53 @@ if (length(missing_packages) > 0) {
 
 SLA・心理言語学の研究では、次のような問いに出会うことがよくあります。
 
-1. **自己選択と交絡**: 語彙学習アプリを自由利用にしたところ、利用者の語彙テスト成績は上がっていた。しかし、それはアプリの効果なのか、もともと学習意欲の高い学習者がアプリを選んだだけなのか？
-2. **ノンコンプライアンス**: 補習クラスにランダム割付したが、半数近くが欠席した。割付どおりに受講しなかった場合、どうやって介入の効果を評価すればよいか？
-3. **閾値を活かした自然実験**: プレースメントテストで一定スコア未満の学習者を補習クラスに配置する制度がある。この閾値の前後を比較することで、補習の因果効果を推定できないか？
+1. **自己選択と交絡**: 語彙学習アプリを自由利用にしたところ、利用者の語彙テスト成績は上がっていました。しかし、それはアプリの効果なのでしょうか。もともと学習意欲の高い学習者がアプリを選んだだけなのでしょうか。
+2. **ノンコンプライアンス**: 補習クラスにランダム割付しましたが、半数近くが欠席しました。割付どおりに受講しなかった場合、どうやって介入の効果を評価すればよいでしょうか。
+3. **閾値を活かした自然実験**: プレースメントテストで一定スコア未満の学習者を補習クラスに配置する制度があります。この閾値の前後を比較することで、補習の因果効果を推定できないでしょうか。
 
 これらはいずれも「介入群の成績が高かった」だけでは答えが出ない問題です。介入群と統制群が最初から異なる特徴（交絡）を持っている可能性があるため、単純な群間比較では**因果効果**を主張できません。2章の t 検定や3章の分散分析は群間差を検出しますが、「その差は介入のおかげか、それとも背景の違いのせいか」を区別する仕組みは持っていません。統計的因果推論は、この交絡問題を明示的に扱い、「何がどれだけ効いたのか」を推定するための枠組みです[@hernan2020; @imbens2015]。
 
 本章では、以下の流れで研究に必要な最小セットを解説します。
 
-1. 潜在アウトカムに基づく因果効果の定義（ATE/ATT）
-2. SUTVA・DAG・識別性など基礎概念の整理
-3. 単純比較の限界と回帰調整
-4. 傾向スコアによる層化解析と重み付け（IPW/ATT）
-5. バランシング診断（SMD・重み極端値・層内バランス）
-6. ノンコンプライアンスと操作変数法（IV/LATE）
-7. 回帰不連続デザイン（RD）と `rdrobust` の実装
-8. 欠測データへの対応と `mice` による多重代入
-9. Difference-in-Differences（DID）と多時点拡張
-10. 感度分析（未観測交絡の影響）
+1. Target Trial Emulation による研究デザインの明確化
+2. 潜在アウトカムに基づく因果効果の定義（ATE/ATT）
+3. SUTVA・DAG・識別性など基礎概念の整理
+4. 単純比較の限界と回帰調整
+5. 傾向スコアによる層化解析と重み付け（IPW/ATT）
+6. バランシング診断（SMD・重み極端値・層内バランス）
+7. ノンコンプライアンスと操作変数法（IV/LATE）
+8. 回帰不連続デザイン（RD）と `rdrobust` の実装
+9. 欠測データへの対応と `mice` による多重代入
+10. Difference-in-Differences（DID）と多時点拡張
+11. 感度分析（未観測交絡の影響）
 
 ### この章の到達目標
 
 本章を読み終えた後、以下のことができるようになることを目指します。
 
-1. 潜在アウトカム枠組みで ATE・ATT を定義し、研究目的に応じた estimand を選択できる
-2. DAG を描いて「何を調整すべきか」を判断し、コライダーや中間変数の誤調整を避けられる
-3. 傾向スコア（IPW・層化）でバランシング診断（SMD < 0.1）を確認しながら因果効果を推定できる
-4. ノンコンプライアンス（IV）・閾値ルール（RD）・前後比較（DID）の使い分けを説明できる
-5. `sensemakr` による感度分析を実行し、未観測交絡に対する頑健性を評価できる
+1. 潜在アウトカム枠組みで ATE・ATT を定義し、研究目的に応じた estimand を選択できます
+2. DAG を描いて「何を調整すべきか」を判断し、コライダーや中間変数の誤調整を避けられます
+3. 傾向スコア（IPW・層化）でバランシング診断（SMD < 0.1）を確認しながら因果効果を推定できます
+4. ノンコンプライアンス（IV）・閾値ルール（RD）・前後比較（DID）の使い分けを説明できます
+5. `sensemakr` による感度分析を実行し、未観測交絡に対する頑健性を評価できます
 
 ### 本章の位置づけ
 本章の目的は「因果推論の導入」であり、最先端の識別戦略を網羅することではありません。まずは、観察データで最低限必要な設計・推定・診断の流れを身につけることを重視します。
+
+### 研究デザイン別の対応表
+
+因果推論では、先に「どのデザインを模倣しているのか」を決めると迷いにくくなります。以下の表は、SLA・英語教育研究で頻出する状況と、本章で対応する節を対応させたものです。
+
+| 研究状況 | 典型例 | 最初に検討する方法 | 本章で重点的に見る診断 |
+|---|---|---|---|
+| 介入群を自己選択している | 学習アプリ利用者 vs 非利用者 | DAG, 傾向スコア, IPW | 共変量バランス、重みの極端値 |
+| 介入に割り付けたが受講しない人がいる | 補習クラスの欠席・途中離脱 | IV / LATE | 操作変数の関連性、除外制約の妥当性 |
+| 閾値で処置が決まる | プレースメント得点で補習割当 | RD | 閾値周辺の連続性、帯域幅 |
+| 処置前後の系列がある | 新カリキュラム導入前後の成績 | DID | 平行トレンド、同時期ショック |
+| 欠測・脱落が多い | 事後テスト未受験が多い | MI / IPW / 感度分析 | 欠測パターン、MNAR の可能性 |
+| 未観測交絡が心配 | 動機づけを測っていない | 感度分析 | どの程度の未観測交絡で結論が覆るか |
+
+どの方法でも、推定値だけではなく、設計上の仮定がどこまで妥当かを本文で説明してください。SLA 研究では完全なランダム化が難しい場面が多いため、「因果効果を証明した」ではなく、「この設計と仮定のもとで因果効果を推定した」と書く方が正確です。中断時系列分析（interrupted time series; ITS）は第13章の時系列分析と接続する発展的デザインとして位置づけ、本章では DID を中心に扱います。
 
 ## 観察データから因果を語るために：Target Trial Emulation
 
@@ -101,6 +118,41 @@ SLA・心理言語学の研究では、次のような問いに出会うこと�
 : Target Trial Emulation の設計要素 {#tbl-target-trial}
 
 この枠組みは、観察研究の設計段階で**分析前に**因果推論の前提を明示化するのに役立ちます。本章で扱う IPW、マッチング、DID などの手法はすべて、この「標的試験をどう模倣するか」という問いの答えとして位置づけられます。データ分析に入る前に、まず上の表を埋めることを習慣にすると、研究デザインの質が格段に向上します。
+
+### Time zero・処置開始・アウトカム窓を揃える
+
+Target Trial Emulation で特に重要なのは、**time zero**（追跡開始時点）を明確にすることです。SLA・英語教育の観察データでは、学期終了後に「アプリを10回以上使った学習者」を介入群と定義してしまうことがあります。しかし、この定義では、介入群に入るためには学期中に少なくとも10回アプリを使う期間を生き残る必要があります。途中で離脱した学習者や、早い時期に成績不振で利用をやめた学習者が統制群や除外対象に回ると、処置効果と選択バイアスが混ざります。
+
+因果推論では、処置、共変量、アウトカムの時間順序を次のように固定します。
+
+```{mermaid}
+%%| label: fig-time-zero-alignment
+%%| fig-cap: "Time alignment for causal inference in app-based SLA research"
+flowchart LR
+  A["Time zero<br>適格基準・ベースライン共変量"]
+  B["処置戦略の開始<br>アプリ利用方針・補習割付"]
+  C["追跡期間<br>学習ログ・出席・脱落"]
+  D["アウトカム測定<br>事後語彙テスト"]
+
+  A --> B --> C --> D
+
+  style A fill:#FFF3E0,stroke:#FF9800
+  style B fill:#E3F2FD,stroke:#2196F3
+  style C fill:#F3E5F5,stroke:#9C27B0
+  style D fill:#E8F5E9,stroke:#4CAF50
+```
+
+| 設計要素 | 望ましい定義 | 注意が必要な定義 |
+|:--|:--|:--|
+| Time zero | 学期開始日、割付日、アプリ利用可能日など、全員に共通する起点 | 学期末に利用者・非利用者を後から分類する |
+| ベースライン共変量 | time zero 以前に測定された習熟度、動機づけ、学習歴 | 処置開始後の学習時間や途中テストを交絡として調整する |
+| 処置 | 「利用を推奨された」「利用可能になった」「補習に割付された」など開始時点で定義できる戦略 | 「学期中に10回以上使った」など未来の行動で定義する |
+| アウトカム窓 | 処置開始後の同じ期間で測定する事後テスト | 処置前の期間や追跡期間の長さが混ざった指標 |
+| 脱落 | 脱落も追跡結果として記録し、欠測・選択の問題として扱う | 事後テスト受験者だけに限定して主解析を行う |
+
+: Time zero と測定時点の確認表 {#tbl-causal-time-zero-check}
+
+「アプリを10回以上使った効果」を知りたい場合でも、学期末に10回以上利用した人だけを処置群とするのではなく、time zero で定義できる処置戦略に翻訳します。たとえば「学期開始時にアプリ利用を推奨し、週1回以上の利用を促す方針」と定義すれば、利用しなかった学習者もノンコンプライアンスとして扱えます。この整理により、ITT、per-protocol、as-treated、IV/LATE のどれを推定しているのかが明確になります[@hernan2020; @angrist1996]。
 
 ## 因果効果をどう定義するか
 
@@ -142,6 +194,21 @@ $$
 ### SLA研究での使い分け
 「語彙学習アプリを利用した学習者にとっての効果」を知りたいときは ATT、「大学プログラム全体で導入した場合の平均効果」を知りたいときは ATE を主要 estimand とします。研究目的に応じて、最初にどちらを推定するか決めておくことが大切です。
 
+### 割付・受講・実際の曝露を分けて書く
+
+教育介入では、「割り付けた」「受講した」「実際に十分利用した」が一致しないことがあります。これらを同じ `treat` 変数で扱うと、推定対象が曖昧になります。
+
+| 解析名 | 処置変数の作り方 | 推定しているもの | 向いている問い | 主な注意点 |
+|:--|:--|:--|:--|:--|
+| ITT | 割付・推奨の有無 | 割付方針の効果 | プログラムとして導入する価値 | 受講率が低いと効果は小さく見える |
+| As-treated | 実際の受講・利用有無 | 実際に受けた処置との関連 | 実利用者の成績差を記述する | 自己選択交絡が戻りやすい |
+| Per-protocol | 事前に決めた遵守条件を満たすか | 方針通り実施された場合の効果 | 十分な曝露があった場合の効果 | 遵守条件が処置後情報なら選択バイアスに注意 |
+| IV / LATE | 割付を操作変数、受講を処置として使う | 割付で受講行動が変わった人への効果 | ノンコンプライアンスが多いRCT | LATE は全員への平均効果ではない |
+
+: 割付・受講・曝露に基づく estimand の違い {#tbl-causal-assignment-exposure-estimand}
+
+SLA 研究で「アプリ利用の効果」と書くときは、アプリを**推奨された効果**なのか、アプリを**実際に使った効果**なのか、一定以上の頻度で**継続利用した効果**なのかを分けてください。査読で問題になるのは、推定値の大小よりも、「その推定値がどの方針・どの母集団・どの時間窓に対応するのか」が曖昧な場合です。
+
 ### 識別性（identification）とは何か
 
 **識別性**とは、「観測データから、定義した因果 estimand を一意に表現できるか」という問題です。
@@ -173,6 +240,22 @@ SUTVA は次の2要素を含みます。
 | **No hidden versions of treatment（処置の一貫性）** | 同じ「介入」と呼ぶ処置の中身が実質的に複数存在しない |
 
 SLA 研究では、SUTVA はしばしば破れやすい点に注意が必要です。たとえば、クラス内で介入群の学習者が統制群の友人にアプリの使い方を教えると**干渉**が生じます。また「語彙指導あり」と定義していても、教師ごとに指導の質や量が大きく異なる場合は treatment の隠れたバージョンが存在することになります。
+
+### クラス・教師単位の介入で確認すること
+
+SLA・英語教育研究では、処置が個人に割り付けられるとは限りません。たとえば「あるクラスだけで新しい語彙指導を導入する」「ある教師がタスク中心指導を担当する」「学校単位でカリキュラムを変更する」といった研究では、実質的な処置単位は学習者ではなく、クラス・教師・学校です。クラスターランダム化試験の報告指針でも、割付単位、介入単位、アウトカム測定単位を明示することが重視されています[@campbell2012cluster]。
+
+| 確認項目 | 個人割付に近い例 | クラス・教師単位の例 | 分析上の含意 |
+|:--|:--|:--|:--|
+| 割付単位 | 学習者ごとにアプリ利用を割付 | クラスごとに教授法を割付 | 独立な情報量は学習者数よりクラス数に近い |
+| 処置の共有 | 自宅学習アプリを個人で使う | 同じ教師・教材・教室活動を共有 | 同じクラス内のアウトカムが相関しやすい |
+| 干渉 | 利用情報を共有しない | 学習方略・語彙知識がクラス内で広がる | SUTVA の no-interference が弱くなる |
+| 推定したい効果 | 個人が介入を受けた直接効果 | クラス全体を新方式にした効果 | direct effect と overall effect を混同しない |
+| 標準誤差 | 通常 SE で足りることがある | クラスター・ロバスト SE や階層モデルを検討 | p 値・CI が過度に楽観的になりやすい |
+
+: 教育介入で確認する処置単位と分析単位 {#tbl-causal-cluster-unit-map}
+
+干渉が完全には避けられない場合でも、「クラス内では干渉が起こりうるが、クラス間ではほぼ起こらない」と考えられるなら、**部分干渉**（partial interference）として設計を言語化できます[@hudgens2008]。この場合、研究上の関心は「個人が処置を受けた直接効果」だけではなく、「同じクラス内で処置を受ける学習者が増えることによる間接効果」や「クラス全体を処置条件にしたときの全体効果」に移ります。したがって、干渉は単なる迷惑要因ではなく、ピア学習や相互作用が理論的に重要なSLA研究では、効果の一部として扱うべき場合があります。
 
 ### DAG（有向非巡回グラフ）の役割
 
@@ -217,7 +300,7 @@ DAG に基づいて「どの変数を調整すべきか」を体系的に判断�
 変数集合 $\mathbf{Z}$ が処置 $T$ とアウトカム $Y$ の間のバックドア基準を満たすとは、以下の 2 条件が**同時に**成立することです。
 
 1. $\mathbf{Z}$ は $T$ の子孫を含まない（中間変数やコライダーを調整しない）
-2. $\mathbf{Z}$ で条件づけると、$T$ と $Y$ の間のすべてのバックドアパス（$T \leftarrow \cdots \rightarrow Y$）がブロックされる
+2. $\mathbf{Z}$ で条件づけると、$T$ と $Y$ の間のすべてのバックドアパス（$T \leftarrow \cdots \rightarrow Y$）がブロックされます
 
 バックドア基準を満たす $\mathbf{Z}$ で調整すれば、$T \to Y$ の因果効果を識別できます。
 
@@ -253,7 +336,7 @@ DAG に基づいて「どの変数を調整すべきか」を体系的に判断�
 |:--|:--|:--|:--|
 | ランダム化比較試験（RCT） | 介入群/統制群 | 割付のランダム性 | 群平均差・回帰 |
 | 観察データ（横断） | 介入有無 + 共変量 | 無交絡性・重なり | 回帰調整、傾向スコア重み付け |
-| 観察データ（横断） | 処置選択が自己選択を含む | 操作変数の外生性 | IV / Wald 推定 |
+| 有効な操作変数がある観察データ | 割付・制度・距離などが実受講を動かす | 関連性・外生性・排除制約・単調性 | IV / Wald 推定 |
 | 閾値ルールを用いる設計 | テストスコア近傍 | カットオフ近傍の連続性 | RD（`rdrobust`） |
 | 観察データ（前後比較） | 介入群/統制群 × 時点 | 平行トレンド | DID（差の差） |
 | 欠測を含む観察データ | 共変量にNA | MAR仮定 | 多重代入（`mice`） |
@@ -264,10 +347,10 @@ DAG に基づいて「どの変数を調整すべきか」を体系的に判断�
 
 ### 主なパッケージの役割
 
-- `MatchIt` / `optmatch` / `AIPW` / `did` / `rdrobust`: マッチング、full matching の最適化、二重に頑健な推定、差の差、回帰不連続を扱う。
-- `mice` / `sensemakr` / `cobalt`: 欠測データ、多変量感度分析、共変量バランス診断を担当する。
-- `tidyverse` / `broom` / `broom.helpers` / `gtsummary` / `DT`: データ整形、回帰出力の整形、要約表の補助メタデータ、結果表を支える。
-- `sandwich` / `lmtest` / `car` / `SuperLearner`: ロバスト標準誤差、検定、診断、柔軟な予測器の構成に使う。
+- `MatchIt` / `optmatch` / `AIPW` / `did` / `rdrobust`: マッチング、full matching の最適化、二重に頑健な推定、差の差、回帰不連続を扱います。
+- `mice` / `sensemakr` / `cobalt`: 欠測データ、多変量感度分析、共変量バランス診断を担当します。
+- `tidyverse` / `broom` / `broom.helpers` / `gtsummary` / `DT`: データ整形、回帰出力の整形、要約表の補助メタデータ、結果表を支えます。
+- `sandwich` / `lmtest` / `car` / `SuperLearner`: ロバスト標準誤差、検定、診断、柔軟な予測器の構成に使います。
 
 ```{r}
 #| eval: true
@@ -282,7 +365,7 @@ pacman::p_load(
   tidyverse, broom, DT,
   rdrobust, mice, did, sensemakr,
   cobalt, car, AIPW, gtsummary,
-  MatchIt, sandwich, lmtest, SuperLearner
+  MatchIt, optmatch, sandwich, lmtest, SuperLearner
 )
 
 # 7章と揃える可視化テーマ
@@ -321,11 +404,14 @@ fmt_p_apa <- function(p) {
 |:--|:--|:--|:--|
 | rdrobust | CRAN reference manual | [cran.r-project.org/package=rdrobust](https://cran.r-project.org/package=rdrobust) | `rdrobust()`/`rdplot()` の推定量と引数 |
 | rdrobust | R Journal paper | [rjournal.github.io/articles/RJ-2015-004/](https://rjournal.github.io/articles/RJ-2015-004/) | バンド幅選択とロバストCI |
+| rddensity | RD packages website | [rdpackages.github.io/rddensity/](https://rdpackages.github.io/rddensity/) | カットオフ付近の密度不連続検定 |
 | mice | JSS paper | [jstatsoft.org/article/view/v045i03](https://www.jstatsoft.org/article/view/v045i03) | 多重代入アルゴリズムと `pool()` の解釈 |
 | mice | amices.org reference | [amices.org/mice/reference](https://amices.org/mice/reference/index.html) | `md.pattern()`/`mice()`/`with()`/`pool()` の実装 |
 | did | did package website | [bcallaway11.github.io/did/](https://bcallaway11.github.io/did/) | `att_gt()`/`aggte()` による多時点DID |
 | MatchIt / optmatch | MatchIt vignettes | [kosukeimai.github.io/MatchIt/](https://kosukeimai.github.io/MatchIt/) | マッチング手法の選択と `matchit()` の引数。full matching では `optmatch` が必要 |
 | cobalt | cobalt vignettes | [ngreifer.github.io/cobalt/](https://ngreifer.github.io/cobalt/) | `bal.tab()` / `love.plot()` によるバランス診断 |
+| AIPW | AIPW package website | [yqzhong7.github.io/AIPW/](https://yqzhong7.github.io/AIPW/) | `$new()` / `$fit()` / `$summary()` と `k_split` による cross-fitting |
+| SuperLearner | CRAN package page | [cran.r-project.org/package=SuperLearner](https://cran.r-project.org/package=SuperLearner) | `SL.library` に指定できる learner と追加依存 |
 | sensemakr | sensemakr website | [carloscinelli.com/sensemakr/](https://carloscinelli.com/sensemakr/) | 未観測交絡への感度分析 |
 | sandwich | CRAN vignette | [cran.r-project.org/web/packages/sandwich/vignettes/sandwich.html](https://cran.r-project.org/web/packages/sandwich/vignettes/sandwich.html) | ロバスト分散推定量の計算 |
 | lmtest | CRAN | [cran.r-project.org/package=lmtest](https://cran.r-project.org/package=lmtest) | 線形回帰の診断的検定 |
@@ -341,16 +427,138 @@ fmt_p_apa <- function(p) {
 |:--|:--|:--|:--|
 | mice | `md.pattern()`, `mice()`, `with()`, `pool()` | 欠測パターン確認、多重代入、推定の統合 | `imp <- mice(dat, m = 10)` / `fit <- with(imp, lm(y ~ t + x))` / `pool(fit)` |
 | rdrobust | `rdrobust()`, `rdplot()` | RD推定と可視化 | `fit <- rdrobust(y, x, c = 0)` / `rdplot(y, x, c = 0)` |
+| rddensity | `rddensity()` | RD の密度不連続検定 | `rddensity(x, c = 0)` |
 | did | `att_gt()`, `aggte()` | 多時点DIDのATT推定 | `att <- att_gt(...)` / `aggte(att, type = 'dynamic')` |
 | sensemakr | `sensemakr()` | 未観測交絡への感度分析 | `sm <- sensemakr(lm_fit, treatment = 't')` |
 | MatchIt | `matchit()`, `match.data()` | マッチングによる前処理 | `m <- matchit(t ~ x, data = dat)` / `match.data(m)` |
 | cobalt | `bal.tab()`, `love.plot()` | バランス診断・Love plot | `bal.tab(m, un = TRUE)` / `love.plot(m)` |
+| AIPW | `AIPW$new()`, `$fit()`, `$summary()` | outcome model と PS model を組み合わせた二重ロバスト推定 | `AIPW$new(Y, A, W, Q.SL.library, g.SL.library, k_split = 5)` |
+| SuperLearner | `SuperLearner()` | 複数 learner のアンサンブル | `SL.library = c('SL.mean', 'SL.glm')` |
 | sandwich | `vcovHC()` | ロバスト標準誤差（ヘテロ分散一致推定量） | `vcovHC(fit, type = "HC1")` |
 | lmtest | `coeftest()` | ロバスト SE による検定 | `coeftest(fit, vcov = vcovHC(fit))` |
 | knitr | `knitr::kable()` | 整形済みの計算結果表 | `tbl |> knitr::kable(...)` |
 | DT | `datatable()` | 探索・検索用の表表示 | `DT::datatable(df)` |
 
 : 本章で使う主要パッケージと関数 {#tbl-causal-packages}
+
+### クラス単位介入の最小診断
+
+英語教育の介入研究では、学習者数が多く見えても、実際に独立な割付単位はクラス数だけという場面があります。たとえば 40 クラス × 25 名なら観測行は 1,000 行ありますが、介入を割り付けた単位がクラスであれば、処置効果の不確実性は 1,000 名分として扱えません。クラス内の学習者は同じ教師、教材、活動、教室内の相互作用を共有するため、アウトカムが相関しやすいからです。
+
+以下の例では、クラス単位で新しい語彙指導を割り付けた状況を作ります。推定値そのものは通常の回帰と同じですが、通常 SE とクラスター・ロバスト SE では不確実性の見積もりが変わります。`sandwich::vcovCL()` は、このようなクラスター化されたデータの標準誤差を計算するための実務的な選択肢です[@zeileis2006]。
+
+```{r}
+#| eval: true
+#| label: causal-cluster-se-sim
+#| include: false
+
+set.seed(2044)
+n_class <- 40
+n_per_class <- 25
+
+class_tbl <- tibble(
+  class_id = 1:n_class,
+  class_treat = sample(rep(c(0, 1), each = n_class / 2)),
+  teacher_quality = rnorm(n_class, 0, 1),
+  class_random_effect = rnorm(n_class, 0, 3.0)
+)
+
+cluster_trial <- tidyr::expand_grid(
+  class_id = 1:n_class,
+  student_in_class = 1:n_per_class
+) |>
+  left_join(class_tbl, by = "class_id") |>
+  mutate(
+    proficiency = rnorm(n(), 0, 1),
+    motivation = rnorm(n(), 0, 1),
+    score = 60 +
+      2.4 * class_treat +
+      3.0 * proficiency +
+      1.5 * motivation +
+      1.8 * teacher_quality +
+      class_random_effect +
+      rnorm(n(), 0, 5)
+  )
+
+cluster_fit <- lm(
+  score ~ class_treat + proficiency + motivation,
+  data = cluster_trial
+)
+
+cluster_naive <- broom::tidy(cluster_fit) |>
+  filter(term == "class_treat") |>
+  transmute(
+    method = "通常 SE（個人を独立と扱う）",
+    estimate,
+    se = std.error,
+    statistic,
+    p = p.value
+  )
+
+cluster_vcov <- sandwich::vcovCL(
+  cluster_fit,
+  cluster = ~ class_id,
+  type = "HC1"
+)
+
+cluster_ct <- lmtest::coeftest(cluster_fit, vcov. = cluster_vcov)
+
+cluster_robust <- tibble(
+  method = "クラスター・ロバスト SE（class_id）",
+  estimate = cluster_ct["class_treat", "Estimate"],
+  se = cluster_ct["class_treat", "Std. Error"],
+  statistic = cluster_ct["class_treat", "t value"],
+  p = cluster_ct["class_treat", "Pr(>|t|)"]
+)
+
+cluster_se_tbl <- bind_rows(cluster_naive, cluster_robust) |>
+  mutate(
+    ci_low = estimate - 1.96 * se,
+    ci_high = estimate + 1.96 * se,
+    p = fmt_p_apa(p)
+  )
+
+icc_design_tbl <- tibble(
+  icc = seq(0, 0.30, by = 0.01),
+  design_effect = 1 + (n_per_class - 1) * icc,
+  effective_n_ratio = 1 / design_effect
+)
+```
+
+```{r}
+#| eval: true
+#| label: causal-cluster-se-table
+
+cluster_se_tbl |>
+  mutate(
+    ci = paste0("[", round(ci_low, 3), ", ", round(ci_high, 3), "]"),
+    across(c(estimate, se, statistic), ~ round(.x, 3))
+  ) |>
+  dplyr::select(method, estimate, se, statistic, ci, p) |>
+  knitr::kable(caption = "クラス単位介入における通常 SE とクラスター・ロバスト SE の比較")
+```
+
+**読み方ガイド:** ここで比較している2行は、処置効果の推定値は同じですが、標準誤差の考え方が異なります。通常 SE は 1,000 名をほぼ独立な観測として扱います。一方、クラスター・ロバスト SE は、同じクラス内の学習者が似ている可能性を考慮します。クラス単位で処置を割り付けているのに通常 SE だけを報告すると、CI が狭くなりすぎ、p 値が小さく見えることがあります。なお、クラスター・ロバスト SE は不確実性の補正であり、交絡や干渉そのものを消す方法ではありません。
+
+```{r}
+#| eval: true
+#| label: causal-icc-design-effect-plot
+#| fig-cap: "Design effect and effective sample size ratio under classroom clustering"
+
+icc_design_tbl |>
+  ggplot(aes(x = icc, y = effective_n_ratio)) +
+  geom_line(color = "#1565C0", linewidth = 1) +
+  geom_hline(yintercept = 1, linetype = 2, color = "gray55") +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0, 1)) +
+  labs(
+    x = "ICC（クラス内相関）",
+    y = "有効サンプルサイズ比",
+    subtitle = paste0("Assuming ", n_per_class, " students per class")
+  )
+```
+
+この図は、ICC が大きくなるほど「見かけの人数」に対する有効な情報量が小さくなることを示しています。ICC = 0 ならクラス内相関がないので有効サンプルサイズ比は 100% です。しかし、ICC が少しでも大きくなると、同じクラス内の学習者が重複した情報を持つため、1,000 名という行数をそのまま独立なサンプル数として扱えません。SLA・英語教育研究でクラス、教師、学校が処置単位になる場合は、設計段階でクラス数、クラスサイズ、ICC、ペアマッチングや層化の可能性を検討してください[@imai2009cluster]。
 
 ### 4つの研究ストーリー（SLA・心理言語学の例）
 
@@ -361,10 +569,10 @@ fmt_p_apa <- function(p) {
 
 ある大学の英語プログラムで語彙学習アプリを任意利用にしたところ、学習意欲の高い学習者ほど利用する傾向がありました。さらに、L1 の語彙体系が英語に近い学習者（たとえばヨーロッパ言語母語話者）や、授業外でも多読をしている学習者ほどアプリを積極的に使う傾向もあります。そのまま平均差を取ると、アプリ効果と「もともとの違い」が混ざってしまいます。
 
-1. 交絡候補（プレースメントテスト得点・学習動機づけ・事前語彙テスト・L1背景など）を DAG で明示する。
-2. 傾向スコアを推定し、重み付けや層化で群の比較可能性を高める。
-3. 重み付け後の SMD（絶対値）と重みの極端値を必ず確認する。
-4. ATE か ATT かを先に決めて解釈する。
+1. 交絡候補（プレースメントテスト得点・学習動機づけ・事前語彙テスト・L1背景など）を DAG で明示します。
+2. 傾向スコアを推定し、重み付けや層化で群の比較可能性を高めます。
+3. 重み付け後の SMD（絶対値）と重みの極端値を必ず確認します。
+4. ATE か ATT かを先に決めて解釈します。
 
 この流れは `MatchIt` を含むチュートリアルで整理されています[@ho2011; @austin2011]。本章では「傾向スコアによる層化解析法および重み付け法」から読んでください。
 
@@ -372,10 +580,10 @@ fmt_p_apa <- function(p) {
 
 ライティングの訂正フィードバック（corrective feedback）研修にランダム割付しても、実際には「忙しくて研修に参加できなかった」「自分には不要だと判断した」という学習者が出ることは珍しくありません。`受講有無` をそのまま回帰すると自己選択が戻るため、割付変数を操作変数として使います。
 
-1. 第一段階（割付が受講率をどれだけ動かすか）を確認する。
-2. ITT（割付効果）と Wald 推定量を併記する。
-3. LATE が「割付で行動が変わる学習者（complier）」に限定される点を明示する。
-4. 排除制約の妥当性を、設計情報に基づいて言語化する。
+1. 第一段階（割付が受講率をどれだけ動かすか）を確認します。
+2. ITT（割付効果）と Wald 推定量を併記します。
+3. LATE が「割付で行動が変わる学習者（complier）」に限定される点を明示します。
+4. 排除制約の妥当性を、設計情報に基づいて言語化します。
 
 ノンコンプライアンスの解釈は古典的チュートリアルで詳しく扱われています[@angrist1996]。本章では「ノンコンプライアンスと操作変数法（IV）」を対応節とします。
 
@@ -383,10 +591,10 @@ fmt_p_apa <- function(p) {
 
 多くの大学英語プログラムでは、TOEFL ITP や独自のプレースメントテストで「基準点（たとえば500点）未満の学生は補習クラスに配置」という運用をしています。このとき、閾値直前直後の学習者（499点と501点）はほぼ同質とみなせるので、局所比較で補習の因果効果を推定できます。
 
-1. ランニング変数（テストスコア）の分布とカットオフ周辺のデータ密度を確認する。
-2. `rdrobust()` で conventional / bias-corrected / robust を併記する。
-3. `rdplot()` で閾値近傍の不連続を可視化する。
-4. 結果は「カットオフ近傍での局所効果」として解釈する。
+1. ランニング変数（テストスコア）の分布とカットオフ周辺のデータ密度を確認します。
+2. `rdrobust()` で conventional / bias-corrected / robust を併記します。
+3. `rdplot()` で閾値近傍の不連続を可視化します。
+4. 結果は「カットオフ近傍での局所効果」として解釈します。
 
 実装上の要点は `rdrobust` のチュートリアル論文で確認できます[@calonico2015rj; @calonico2014]。本章では「回帰不連続デザイン（RD）」を参照してください。
 
@@ -394,20 +602,36 @@ fmt_p_apa <- function(p) {
 
 SLA 研究では、学習動機づけ（AMTB や L2 Motivational Self System）、英語学習歴、海外滞在経験などの背景変数を質問紙で収集しますが、回答の欠落はほぼ必ず発生します。欠測があるまま complete-case だけを使うと、交絡調整の前提そのものが崩れる可能性があります。
 
-1. 欠測パターンを `md.pattern()` で確認する。
-2. 処置とアウトカムを含めて `mice()` で多重代入する。
-3. 各代入データで PS 推定と効果推定を行う（within 手順）。
-4. `pool()` または Rubin のルールで統合し、complete-case と比較する。
+1. 欠測パターンを `md.pattern()` で確認します。
+2. 処置とアウトカムを含めて `mice()` で多重代入します。
+3. 各代入データで PS 推定と効果推定を行います（within 手順）。
+4. `pool()` または Rubin のルールで統合し、complete-case と比較します。
 
 この手順は `mice` のチュートリアルと MI×PS の整理論文が参考になります[@vanbuuren2011; @leyrat2019; @nguyen2024]。本章では「統計的因果推論における欠測データ」から読んでください。
 :::
 
-## 本線：観察データから因果効果を近似する
+### 研究計画に落とし込むためのテンプレート
+
+因果推論では、分析手法を選ぶ前に「何を処置と呼び、いつから追跡し、誰に対するどの効果を推定するのか」を固定します。以下の表は、SLA・英語教育研究でよくある問いを、Target Trial Emulation と estimand に翻訳するためのひな形です。
+
+| 研究問い | Time zero | 処置戦略 | 主アウトカム | 主な交絡候補 | Estimand | 最低限の診断 |
+|:--|:--|:--|:--|:--|:--|:--|
+| 語彙アプリ推奨は語彙得点を上げるか | アプリ利用可能日 | 週1回以上の利用を推奨 vs 通常授業のみ | 8週後の語彙テスト | 事前語彙、習熟度、動機づけ、L1背景 | ATE または ATT | SMD、PS重なり、重み極端値 |
+| 補習割付は成績を改善するか | 補習割付日 | 補習に割付 vs 通常クラス | 学期末テスト | 事前成績、時間割制約、出席傾向 | ITT / LATE | 第一段階、除外制約、単調性 |
+| プレースメント閾値で補習効果を評価できるか | カットオフ判定日 | 閾値未満で補習配置 | 補習後テスト | カットオフ近傍の事前特性 | カットオフ近傍の局所効果 | 密度検定、共変量連続性、帯域幅 |
+| 新カリキュラム導入は伸びを変えるか | 導入前の基準時点 | 導入校/導入学部 vs 未導入群 | 複数時点の成績 | 学校・学部差、同時期改革 | ATT(g,t) / 集約ATT | 複数処置前時点、同時期ショック、クラスタ SE |
+| 事後テスト未受験が多い場合に効果を推定できるか | 介入開始日 | 介入 vs 統制 | 事後テストまたは脱落率 | 欠測に関わる背景変数、事前成績 | ATE / ATT | 欠測パターン、MI診断、感度分析 |
+
+: SLA・英語教育研究における因果推論計画テンプレート {#tbl-causal-research-plan-template}
+
+この表は分析後に埋めるものではなく、研究計画段階で埋めるものです。特に、介入後に測定された学習時間や事後動機づけは、交絡ではなく中間変数になり得ます。事前動機づけを交絡として調整する場合と、介入後の動機づけをメカニズムとして分析する場合を分けてください。
+
+## 本線：観察データによる因果効果の近似
 
 ここでは、ある大学の英語プログラムで語彙学習アプリを任意利用にした場合を想定します。アプリの利用（`treat`）が事後語彙テスト得点（`post_score`）に与える効果を推定するのが目的です。実際の観察研究と同様に、学習動機づけや初期習熟度が高い学習者ほどアプリを選びやすいようにデータを生成しています。
 
 ### この章で通して使うケース
-本章の主要セクション（回帰調整、PS法、AIPW、感度分析）では、同じ語彙学習ケースを一貫して使います。手法ごとの推定値の違いが比較しやすくなるように設計しています。変数の意味は下表のとおりです。`proficiency` はプレースメントテストの偏差値、`motivation` は動機づけ尺度の標準化得点、`baseline` は事前語彙テスト得点に対応します。
+本章の主要セクション（回帰調整、PS 法、AIPW、感度分析）では、同じ語彙学習ケースを一貫して使います。手法ごとの推定値の違いが比較しやすくなるように設計しています。変数の意味は下表のとおりです。`proficiency` はプレースメントテストの偏差値、`motivation` は動機づけ尺度の標準化得点、`baseline` は事前語彙テスト得点に対応します。
 
 | Variable | Role | Description |
 |:--|:--|:--|
@@ -507,7 +731,7 @@ m_ipw <- lm(post_score ~ treat, data = dat_obs, weights = w_ate)
 tbl_regression(
   m_ipw,
   include = "treat",
-  label = list(treat ~ "Treatment effect (ATE, IPW)"),
+  label = list(treat ~ "Treatment effect (ATE-IPW, 99th percentile clipped)"),
   estimate_fun = \(x) style_number(x, digits = 3),
   conf.level = 0.95
 ) |>
@@ -516,15 +740,31 @@ tbl_regression(
   modify_caption("IPW 推定結果（APAスタイル）")
 ```
 
-**読み方ガイド:** 表の `b` 列が IPW による ATE の推定値です。たとえば推定値が 3.5 であれば「アプリ利用により語彙テスト得点が平均 3.5 点高い」という因果効果を示します。95% CI に 0 が含まれなければ、統計的に有意と判断します。ただし、この推定は重み付け後のバランスが十分であることが前提です。次のステップでバランスを確認します。
+**読み方ガイド:** 表の `b` 列が IPW による ATE の推定値です。たとえば推定値が 3.5 であれば、「重み付け後の比較可能性と識別仮定のもとで、アプリ利用により語彙テスト得点が平均 3.5 点高い」と解釈します。95% CI に 0 が含まれない場合でも、結論は重み付け後のバランス、重なり、欠測処理、未観測交絡の仮定に依存します。次のステップでバランスを確認します。
 
 ### 重みのクリッピング（trimming）
-PS が 0 や 1 に極端に近い個体では、IPW の重み $1/\hat{e}(X)$ が非常に大きくなり、推定値が少数の観測に引きずられます。上のコードでは `pmin(w, quantile(w, 0.99))` として 99 パーセンタイルで重みを切り詰め（クリッピング）、分散の爆発を防いでいます。クリッピングの閾値（95th, 97th, 99th など）を変えて推定値が安定しているかを確認することが推奨されます。
+PS が 0 や 1 に極端に近い個体では、IPW の重み $1/\hat{e}(X)$ が非常に大きくなり、推定値が少数の観測に引きずられます。上のコードでは `pmin(w, quantile(w, 0.99))` として 99 パーセンタイルで重みを切り詰め（クリッピング）、分散の爆発を抑えています。ただし、重みのクリッピングは分散を下げる代わりに、厳密な ATE から少しずれた「切り詰め後の重みが定義する比較」に近づく可能性があります。したがって、クリッピング閾値（95th, 97th, 99th など）は事前に決め、未クリップ重みや別閾値との感度分析も併記します。
+
+### 安定化重み (stabilized weights)
+
+クリッピングと並んで、極端な重みを抑制する標準的手法が **安定化重み (stabilized weights)** です [@robinshernan2000]。通常の IPW 重みは
+
+$$
+w_i = \frac{1}{\hat{e}(X_i)} \quad (T_i = 1), \qquad w_i = \frac{1}{1 - \hat{e}(X_i)} \quad (T_i = 0)
+$$
+
+ですが、安定化重みは分子に**周辺処置確率** $\Pr(T = t)$ を掛けて
+
+$$
+sw_i = \frac{\Pr(T = T_i)}{\hat{e}(X_i)^{T_i}\,\bigl(1 - \hat{e}(X_i)\bigr)^{1-T_i}}
+$$
+
+と定義します。この変換により、重みの平均が 1 付近に保たれ、極端値の影響が緩和されます (@robinshernan2000; @hernan2020 第 12 章)。実装は `WeightIt::weightit(..., stabilize = TRUE)` または `ipw::ipwpoint()` が標準で、推定対象 (ATE) は変わらず効率だけが向上します。クリッピングと安定化は併用可能で、感度分析として「未クリップ + 安定化」「クリップ + 安定化」「クリップのみ」の 3 通りで結論が変わらないことを確認するのが推奨されます。
 
 ### IPW の標準誤差に関する注意
-上のコードでは `lm(..., weights = w_ate)` でモデルベースの標準誤差を算出していますが、この SE は傾向スコアの推定段階の不確実性を反映していません。厳密には `sandwich::vcovHC()` によるロバスト SE やブートストラップ SE を使うべきです。本章では概念の理解を優先して簡略化していますが、実際の論文報告ではロバスト SE を使用してください。
+上のコードでは `lm(..., weights = w_ate)` でモデルベースの標準誤差を算出しています。この SE は、重み付けによって生じるヘテロ分散や、極端な重みの影響に対して脆弱です。また、通常の `lm()` や `sandwich::vcovHC()` は、推定済みの傾向スコア重みを固定値として扱うため、傾向スコア推定そのものの不確実性を十分には反映しません。実際の論文報告では、少なくともヘテロ分散ロバスト SE を示し、必要に応じてブートストラップ、M-estimation、パッケージが提供する専用の分散推定を検討します。
 
-以下では、上の警告を受けて、モデルベース SE とロバスト SE を比較する具体的な実装を示します。
+以下では、モデルベース SE と HC1 ロバスト SE を比較します。ここでの HC1 は「等分散性を仮定しない SE」であり、PS 推定段階の不確実性まで完全に取り込む方法ではありません。
 
 ```{r}
 #| eval: true
@@ -551,10 +791,10 @@ tibble(
   knitr::kable(caption = "標準誤差の比較：モデルベース vs ロバスト")
 ```
 
-**読み方ガイド:** 推定値（$b$）は同じですが、標準誤差が異なります。ロバスト SE は等分散性の仮定を緩和し、傾向スコアの推定段階の不確実性にも部分的に対処します。IPW の文脈では、重みの分散が大きいほど両者の差が広がります。
+**読み方ガイド:** 推定値（$b$）は同じですが、標準誤差が異なります。ロバスト SE は等分散性の仮定を緩和しますが、傾向スコアを推定した段階の不確実性を十分に反映するものではありません。IPW の文脈では、重みの分散が大きいほど両者の差が広がります。重みが極端な場合やサンプルが小さい場合は、SE の種類だけでなく、重なり、重みの切り詰め、estimand の変更可能性も一緒に報告してください。
 
 ### 実務での推奨：sandwich パッケージ
-`sandwich::vcovHC()` は Huber-White のヘテロ分散一致推定量を計算します[@zeileis2006]。IPW 推定では最低でも HC1（または HC3）を使用するのが標準的です。`lmtest::coeftest()` と組み合わせると、ロバストな検定統計量と $p$ 値を直接得られます。
+`sandwich::vcovHC()` は Huber-White のヘテロ分散一致推定量を計算します[@zeileis2006]。IPW 推定では、モデルベース SE だけでなく HC1（または HC3）を併記すると、重み付き回帰の不確実性をより保守的に評価できます。ただし、PS 推定過程を含めた分散推定が必要な研究では、ブートストラップや M-estimation など、設計に合った方法を別途検討してください。`lmtest::coeftest()` と組み合わせると、ロバストな検定統計量と $p$ 値を直接得られます。
 
 ### 重み付け前後のバランス確認（SMD）
 
@@ -630,6 +870,8 @@ $$
 #| label: causal-vif-demo
 #| include: false
 
+set.seed(2045)
+
 # 説明用に強い相関を持つ共変量を1つ追加
 dat_vif_demo <- dat_obs |>
   mutate(proficiency_clone = proficiency + rnorm(n(), 0, 0.05))
@@ -665,6 +907,8 @@ vif_tbl |>
 #| eval: true
 #| label: causal-vif-rho-plot
 #| fig-cap: "VIF and SE inflation with increasing correlation"
+
+set.seed(2046)
 
 sim_vif_path <- function(rho, n = 1500) {
   x1 <- rnorm(n)
@@ -777,10 +1021,10 @@ ps_method_compare <- tibble(
   method = c(
     "True effect (simulation truth)",
     "PS stratification (5 strata)",
-    "IPW (ATE weights)",
+    "IPW (ATE weights, 99th pct clipped)",
     "True effect (simulation truth)",
     "PS stratification (5 strata)",
-    "IPW (ATT weights)"
+    "IPW (ATT weights, 99th pct clipped)"
   ),
   estimate = c(
     true_ate,
@@ -920,7 +1164,7 @@ strata_balance_tbl <- strata_smd |>
 ess <- function(w) (sum(w)^2) / sum(w^2)
 
 weight_diag_tbl <- tibble(
-  scheme = c("ATE weight", "ATT weight"),
+  scheme = c("ATE weight (99th pct clipped)", "ATT weight (99th pct clipped)"),
   ess = c(ess(dat_obs$w_ate), ess(dat_obs$w_att)),
   max_weight = c(max(dat_obs$w_ate), max(dat_obs$w_att)),
   p_weight_gt10 = c(mean(dat_obs$w_ate > 10), mean(dat_obs$w_att > 10))
@@ -1005,6 +1249,34 @@ strata_balance_tbl |>
   knitr::kable(caption = "層化後バランス（層内SMD）")
 ```
 
+### 傾向スコア診断をどう判定するか
+
+傾向スコア分析では、効果推定値より先に診断結果を読みます。特に重要なのは、(1) **推定対象**（ATE / ATT / ATC / overlap population）、(2) **重なり**、(3) **共変量バランス**、(4) **重みの安定性**の4点です。処置をよく予測する傾向スコアモデルが、因果推論にとって常に良いモデルとは限りません。目的は処置割付の予測精度を最大化することではなく、比較したい集団において処置群と統制群の共変量分布をそろえることです[@austin2011; @ho2011; @greifer2024]。
+
+| 診断 | 何を見るか | 注意信号 | 次に検討すること |
+|:--|:--|:--|:--|
+| Estimand | ATE / ATT / ATC のどれを目標にしているか | 研究目的と重み・マッチング設定が一致しない | 先に対象集団を言語化し、`estimand` と重み式をそろえる |
+| PS の重なり | 処置群・統制群の PS 分布が同じ範囲にあるか | 一方の群だけが PS 0.9 以上、または 0.1 以下に集中する | 解析対象の限定、ATT への変更、overlap weight、追加データ収集を検討する |
+| SMD | 調整後の絶対 SMD が十分小さいか | 主要交絡で SMD が 0.1 を超える | PS モデルの再指定、非線形項・交互作用、マッチング手法の変更を検討する |
+| 重み | 最大重み、極端重みの割合、ESS | 少数の観測が推定値を支配する | 安定化重み、トリミング、フルマッチング、estimand の見直しを行う |
+| 分散比 | 連続共変量の分散が極端に違わないか | 平均はそろっているが分布幅が大きく異なる | SMD だけでなく分布図・分散比を併記する |
+
+: 傾向スコア診断の判定ポイント {#tbl-ps-diagnostics-decision}
+
+**読み方ガイド:** Love plot では、調整後の点が 0.1 の破線より左側にあるかをまず確認します。ただし、0.1 は機械的な合格ラインではなく、主要な交絡変数ではより厳しく見ることがあります。PS 分布図では、処置群と統制群が比較可能な範囲にあるかを確認します。重み診断では、ESS が元のサンプルサイズに比べて大きく落ち込んでいないか、最大重みが少数の観測に推定値を依存させていないかを見ます。診断が不十分な場合は、効果推定値を先に解釈せず、推定対象や設計そのものを見直します。
+
+#### 診断結果に応じた実務上の分岐
+
+PS 診断で問題が見つかったときは、「統計モデルを少し複雑にする」だけで解決しようとしない方が安全です。とくに重なり不足はデータの設計上の問題なので、モデル指定だけでは比較可能な反実仮想を作れないことがあります。実務上は次の順に考えると整理しやすくなります。
+
+1. 研究目的に照らして ATE が本当に必要かを確認します。利用者に対する効果が目的なら ATT の方が自然な場合があります。
+2. 共変量バランスが悪い場合は、DAG 上の交絡変数が抜けていないか、非線形項や交互作用が必要かを確認します。
+3. 重みが極端な場合は、安定化重み、トリミング、overlap weight、フルマッチングを比較します。
+4. それでも重なりが乏しい場合は、共通サポート内に解析対象を限定し、一般化できる対象集団が狭くなることを明示します。
+5. どの対応をしても診断が改善しない場合は、観察データだけではその因果質問に十分答えられない可能性を報告します。
+
+この判断は、SLA・英語教育研究でも重要です。たとえば、留学経験者と非経験者を比較する研究で、留学経験者がほぼ高習熟・高SES・高動機づけの学習者に限られている場合、全学習者を対象とする ATE はデータから強く外挿されます。この状況では、「留学した学習者にとっての効果」（ATT）や、比較可能な範囲に限定した効果として解釈する方が誠実です。
+
 ### マッチング（matching）による前処理
 
 ここまで IPW（重み付け）と層化（サブグループ化）を見てきました。傾向スコア法の第三のアプローチが**マッチング**です。マッチングでは、処置群の各個体に対して傾向スコアが類似した統制群の個体を「対」として選び、バランスの取れた擬似実験データを構築します[@ho2011]。IPW が重みで母集団全体のバランスを調整するのに対し、マッチングは類似した対を選ぶことでサンプルを絞り込むアプローチです。
@@ -1029,16 +1301,18 @@ m_nn <- matchit(
   data = dat_obs,
   method = "nearest",
   distance = "glm",
+  estimand = "ATT",
   caliper = 0.2,
   replace = FALSE
 )
 
-# フルマッチング（全観測を使い切る）
+# フルマッチング（全観測を使い切り、ATEを目標にする）
 m_full <- matchit(
   treat ~ proficiency + motivation + baseline,
   data = dat_obs,
   method = "full",
-  distance = "glm"
+  distance = "glm",
+  estimand = "ATE"
 )
 
 # マッチ済みデータの取得
@@ -1127,7 +1401,7 @@ tibble(
   knitr::kable(caption = "マッチング手法別の推定結果")
 ```
 
-**読み方ガイド:** 1:1 最近傍マッチングはサンプルサイズが減る（マッチできなかった個体を除外する）ため、推定の精度がやや低下しますが、バイアスの除去が直感的です。フルマッチングは全観測を保持するため、精度と効率のバランスに優れます。いずれも真の効果（シミュレーションで設定した値）に近い推定値が得られているかを確認してください。
+**読み方ガイド:** 1:1 最近傍マッチングはサンプルサイズが減る（マッチできなかった個体を除外する）ため、推定の精度がやや低下しますが、バイアスの除去が直感的です。フルマッチングは全観測を保持するため、精度と効率のバランスに優れます。いずれも真の効果（シミュレーションで設定した値）に近い推定値が得られているかを確認してください。なお、上表の SE と p 値はマッチ済みデータに対する簡略な重み付き回帰に基づきます。実データでは、マッチングで作られたペア・サブクラス・重みを反映した分散推定、ブートストラップ、またはマッチング手法に合う推論手順を併用してください。
 
 :::
 
@@ -1136,34 +1410,54 @@ tibble(
 
 ### 二重ロバスト推定（AIPW）
 
-ここまで、回帰調整（アウトカムモデルに依存）、IPW（傾向スコアモデルに依存）、マッチング（類似した対の選択）を見てきました。AIPW（Augmented Inverse Probability Weighting）は、回帰調整と IPW を組み合わせた推定法です。どちらか一方のモデルが正しく指定されていれば一致性が期待できるため、「二重ロバスト」（doubly robust）と呼ばれます[@bang2005]。モデル誤指定に対する保険が効く分、実践的に推奨されることが多い手法です。
+ここまで、回帰調整（アウトカムモデルに依存）、IPW（傾向スコアモデルに依存）、マッチング（類似した対の選択）を見てきました。AIPW（Augmented Inverse Probability Weighting）は、アウトカムモデル $Q(X)=E(Y \mid A, X)$ と傾向スコアモデル $g(X)=P(A=1 \mid X)$ を組み合わせた推定法です。交換可能性・重なり・一貫性などの識別仮定が成り立ち、$Q$ または $g$ の少なくとも一方が正しく指定されていれば一致性が期待できるため、「二重ロバスト」（doubly robust）と呼ばれます[@robins1994; @bang2005]。
+
+ただし、二重ロバスト性は「どんなデータでも正しい」という意味ではありません。未観測交絡、重なり不足、処置後変数の調整、測定誤差、両モデルの同時誤指定には対応できません。また、機械学習を用いて $Q$ や $g$ を柔軟に推定する場合、同じデータで複雑な予測器を学習し、そのまま効果推定に使うと過学習によるバイアスが残ることがあります。この問題に対応する代表的な工夫が **cross-fitting** です[@chernozhukov2018dml]。
+
+### 二重ロバスト性が意味すること・しないこと
+
+| 読み方 | 適切な理解 | 不適切な理解 |
+|:--|:--|:--|
+| 片方のモデルが正しければよい | $Q$ または $g$ のどちらか一方が十分正しければ一致性が期待できる | どちらのモデルも雑でよい |
+| 機械学習を使える | 非線形性や交互作用を柔軟に近似できる | 予測性能が高ければ因果推論も自動的に妥当になる |
+| cross-fitting | 過学習と推論バイアスを抑えるため、学習用データと評価用データを分ける | サンプルサイズ不足や重なり不足を解決する |
+| 推定値の比較 | 回帰調整・IPW・AIPWの推定値が近いかを見る | AIPWが他手法より常に優れているとみなす |
+| 診断 | PS分布・極端重み・共変量バランスを引き続き確認する | AIPWなのでPS診断は不要と考える |
+
+: AIPW の二重ロバスト性の解釈 {#tbl-aipw-dr-interpretation}
+
+**読み方ガイド:** AIPW は、回帰調整と IPW の弱点を補う有力な推定量ですが、設計上の仮定を肩代わりするものではありません。SLA・英語教育研究で使う場合は、(a) どの共変量を $Q$ と $g$ に入れたか、(b) PS の重なりが十分か、(c) cross-fitting を使ったか、(d) 推定値が回帰調整・IPW・マッチングと大きく矛盾しないかをセットで確認します。
 
 ### AIPW パッケージの R6 クラス構文
-`AIPW` パッケージは R6 クラスを使用しており、`$new()` → `$fit()` → `$summary()` のチェーン呼び出しで推定を実行します。`Q.SL.library` はアウトカムモデル（$\mu_1(X), \mu_0(X)$）、`g.SL.library` は傾向スコアモデル（$e(X)$）に使用するアルゴリズムを指定します。`"SL.glm"` は GLM 単体ですが、`c("SL.glm", "SL.ranger")` のようにアンサンブル（SuperLearner）を指定すると、より柔軟なモデリングが可能です。
+`AIPW` パッケージは R6 クラスを使用しており、`$new()` → `$fit()` → `$summary()` のチェーン呼び出しで推定を実行します。`Q.SL.library` はアウトカムモデル（$\mu_1(X), \mu_0(X)$）、`g.SL.library` は傾向スコアモデル（$e(X)$）に使用するアルゴリズムを指定します。`k_split = 1` なら cross-fitting なし、`k_split >= 2` ならデータを分割して nuisance models を学習・評価します。公式ドキュメントでも cross-fitting の使用が推奨されています。
+
+`"SL.glm"` は GLM 単体です。`SuperLearner` は複数の learner を候補として組み合わせる仕組みで、古典的な Super Learner 論文では、交差検証リスクに基づいて候補 learner をアンサンブルする考え方が整理されています[@vanderlaan2007superlearner]。ただし、`"SL.ranger"` や `"SL.glmnet"` などを使うには、それぞれ対応する追加パッケージが必要です。本章の実行例ではレンダーの安定性を優先し、GLM を使った cross-fitting 例に留めます。
 
 ```{r}
 #| eval: true
 #| label: causal-aipw-setup
 #| include: false
 
-#### 基本：GLM 単体で推定
+set.seed(2049)
+
+#### 基本：GLM 単体 + 5-fold cross-fitting で推定
 aipw_obj <- AIPW::AIPW$new(
   Y = dat_obs$post_score,
   A = dat_obs$treat,
   W = dat_obs |> dplyr::select(proficiency, motivation, baseline),
   Q.SL.library = "SL.glm",
   g.SL.library = "SL.glm",
-  k_split = 1,
+  k_split = 5,
   verbose = FALSE
 )
 
-#### 発展：SuperLearner アンサンブルを使う場合（コメントを外して実行）
+#### 発展：SuperLearner アンサンブルを使う場合（追加依存を確認してから実行）
 # aipw_ensemble <- AIPW::AIPW$new(
 #   Y = dat_obs$post_score,
 #   A = dat_obs$treat,
 #   W = dat_obs |> select(proficiency, motivation, baseline),
-#   Q.SL.library = c("SL.glm", "SL.ranger", "SL.nnet"),
-#   g.SL.library = c("SL.glm", "SL.ranger"),
+#   Q.SL.library = c("SL.mean", "SL.glm"),
+#   g.SL.library = c("SL.mean", "SL.glm"),
 #   k_split = 5,       # 5-fold cross-fitting で過適合を抑制
 #   verbose = FALSE
 # )
@@ -1187,7 +1481,7 @@ aipw_compare_tbl <- tibble(
     "True effect (simulation truth)",
     "Regression adjustment",
     "IPW (ATE)",
-    "PS matching (full)",
+    "PS matching (full, ATE)",
     "PS stratification (5 strata)",
     "AIPW (doubly robust)"
   ),
@@ -1243,7 +1537,9 @@ aipw_compare_tbl |>
   knitr::kable(caption = "AIPWを含むATE推定値の比較（APAスタイル）")
 ```
 
-**読み方ガイド:** この表は、単純回帰、IPW、AIPW の3手法で ATE を並べて比較しています。AIPW は二重ロバスト推定量であり、アウトカムモデルか傾向スコアモデルのどちらか一方が正しく指定されていれば一致推定量になるという利点があります。各手法の推定値が真値（シミュレーションで設定した効果量）に近いか、95% CI の幅はどの程度か、手法間で推定値が一致しているかを確認してください。
+**読み方ガイド:** この表は、回帰調整、IPW、フルマッチング、層化、AIPW で ATE を並べて比較しています。`MatchIt` では既定の `estimand` が ATT なので、ATE 比較に入れる場合は上のコードのように `estimand = "ATE"` を明示します。AIPW は二重ロバスト推定量であり、アウトカムモデルか傾向スコアモデルのどちらか一方が正しく指定されていれば一致性が期待されるという利点があります。各手法の推定値が真値（シミュレーションで設定した効果量）に近いか、95% CI の幅はどの程度か、手法間で推定値が一致しているかを確認してください。
+
+AIPW の結果は、単独で「最終結論」として扱うより、回帰調整、IPW、マッチングと並べて読む方が安全です。AIPW だけが大きく異なる場合、二重ロバスト性が働いている可能性もありますが、PS の重なり不足、極端な重み、outcome model の外挿、cross-fitting の分割による不安定性も疑います。小標本のSLA研究では、learner を増やしすぎると推定が不安定になることがあるため、GLM、スプライン、少数の事前に選んだ learner から始め、推定値の安定性を確認します。
 
 #### 可視化
 
@@ -1285,12 +1581,14 @@ aipw_compare_tbl |>
 
 ### 1) 重なり（positivity）不足の可視化
 
-まず、傾向スコアの重なり（overlap）が十分な場合と不十分な場合を比較します。たとえば、アプリ利用者の大半が上級者で、非利用者の大半が初級者という極端な自己選択が起きると、重なりが不十分になります。この場合、処置群と統制群がほぼ別集団になり、IPW の重みが極端化します。
+まず、傾向スコアの重なり（overlap）が十分な場合と不十分な場合を比較します。たとえば、アプリ利用者の大半が高習熟者で、非利用者の大半が低習熟者という極端な自己選択が起きると、重なりが不十分になります。この場合、処置群と統制群がほぼ別集団になり、IPW の重みが極端化します。
 
 ```{r}
 #| eval: true
 #| label: causal-overlap-scenarios
 #| include: false
+
+set.seed(2047)
 
 simulate_overlap <- function(n = 2000, slope = 1, label = "Good overlap") {
   x <- rnorm(n)
@@ -1672,7 +1970,7 @@ iv_result_tbl |>
   knitr::kable(caption = "ノンコンプライアンス下での推定値比較")
 ```
 
-**読み方ガイド:** 3つの推定法を比較してください。(1) Naive as-treated は実際に受講した人と受講しなかった人を単純比較したもので、ノンコンプライアンスと自己選択バイアスの両方を含みます。(2) ITT は割付（Z）によるアウトカムの差で、「割付の効果」を推定しますが「実受講の効果」ではありません。(3) Wald IV（LATE）は割付を操作変数として用い、遵守者（complier）における処置効果を推定します。Wald 推定値が真値に近ければ、操作変数が適切に機能している証拠です。
+**読み方ガイド:** 3つの推定法を比較してください。(1) Naive as-treated は実際に受講した人と受講しなかった人を単純比較したもので、ノンコンプライアンスと自己選択バイアスの両方を含みます。(2) ITT は割付（Z）によるアウトカムの差で、「割付の効果」を推定しますが「実受講の効果」ではありません。(3) Wald IV（LATE）は割付を操作変数として用い、遵守者（complier）における処置効果を推定します。シミュレーションでは真値を知っているため推定値の近さを確認できますが、実データでは真値は観測できません。第一段階の強さ、LATE の対象者、除外制約・外生性・単調性の設計上の根拠を本文で説明します。
 
 #### 第一段階（操作変数の強さ）
 
@@ -1711,12 +2009,21 @@ iv_dat |>
 ```
 :::
 
-### IV の3つの核心仮定
-IV が有効に機能するには、(1) **関連性**（割付 `Z` が実受講 `D` を動かす）、(2) **外生性**（`Z` は未観測交絡と独立）、(3) **排除制約**（`Z` は `D` を通じてのみ `Y` に影響する）の3条件が必要です。特に (3) は検定できないため、研究デザインの段階で論拠を示す必要があります。
+### IV / LATE の4つの核心仮定
+IV で LATE を解釈するには、(1) **関連性**（割付 `Z` が実受講 `D` を動かす）、(2) **外生性**（`Z` は未観測交絡と独立）、(3) **排除制約**（`Z` は `D` を通じてのみ `Y` に影響する）、(4) **単調性**（割付によって受講しにくくなる defier がいない）の4条件が必要です[@angrist1996]。特に外生性、排除制約、単調性はデータだけでは検定できないため、研究デザインの段階で論拠を示す必要があります。
+
+| 仮定 | 内容 | SLA・英語教育での確認例 |
+|:--|:--|:--|
+| 関連性 | 割付が実受講を十分に動かす | 補習割付群の受講率が統制群より明確に高い |
+| 外生性 | 割付が未観測交絡と独立 | 割付がランダム、または閾値・制度で決まる |
+| 排除制約 | 割付は受講を通じてのみ成績に影響 | 補習通知だけで不安・自習時間・教師対応が変わらないか検討する |
+| 単調性 | defier がいない | 割り付けられたことで、かえって受講を避ける集団が実質的にいないか確認する |
+
+: IV / LATE の主要仮定 {#tbl-iv-late-assumptions}
 
 ### 回帰不連続デザイン（RD）・カーネル密度推定・RDプロット
 
-RD は「カットオフ直前直後の学習者はほぼ同質」という局所比較を使って因果効果を識別するデザインです[@imbens2008; @calonico2014]。SLA・言語教育の文脈では、プレースメントテスト（TOEFL ITP、IELTS、大学独自テストなど）のスコアが一定の閾値を下回った学習者を補習クラスに配置する制度が典型的な適用場面です。閾値のすぐ上と下の学習者は能力がほぼ同じと考えられるため、RCT に近い比較が可能になります。
+RD は「カットオフ直前直後の学習者はほぼ同質」という局所比較を使って因果効果を識別するデザインです[@imbens2008; @lee2010rd; @calonico2014]。SLA・言語教育の文脈では、プレースメントテスト（TOEFL ITP、IELTS、大学独自テストなど）のスコアが一定の閾値を下回った学習者を補習クラスに配置する制度が典型的な適用場面です。閾値のすぐ上と下の学習者は能力がほぼ同じと考えられるため、RCT に近い比較が可能になります。
 
 ### `rdrobust` のバンド幅選択とカーネル
 
@@ -1741,9 +2048,26 @@ n_rd <- 2500
 running <- runif(n_rd, -1.5, 1.5)
 treat_rd <- if_else(running >= 0, 1, 0)
 tau_rd_true <- 3.0
-outcome_rd <- 55 + 3.5 * running + 1.2 * running^2 + tau_rd_true * treat_rd + rnorm(n_rd, 0, 2)
 
-rd_dat <- tibble(running, treat = treat_rd, outcome = outcome_rd)
+proficiency_pre_rd <- 55 + 4 * running + rnorm(n_rd, 0, 4)
+motivation_pre_rd <- 0.1 + 0.35 * running + rnorm(n_rd, 0, 0.8)
+l1_distance_rd <- 0.4 + 0.2 * running + rnorm(n_rd, 0, 0.6)
+outcome_rd <- 55 +
+  3.5 * running +
+  1.2 * running^2 +
+  0.20 * proficiency_pre_rd +
+  0.60 * motivation_pre_rd +
+  tau_rd_true * treat_rd +
+  rnorm(n_rd, 0, 2)
+
+rd_dat <- tibble(
+  running,
+  treat = treat_rd,
+  outcome = outcome_rd,
+  proficiency_pre = proficiency_pre_rd,
+  motivation_pre = motivation_pre_rd,
+  l1_distance = l1_distance_rd
+)
 
 rd_fit <- rdrobust::rdrobust(y = rd_dat$outcome, x = rd_dat$running, c = 0)
 rd_tbl <- tibble(
@@ -1762,6 +2086,42 @@ rd_density_df <- bind_rows(
   tibble(x = dens_left$x, y = dens_left$y, side = "Left of cutoff"),
   tibble(x = dens_right$x, y = dens_right$y, side = "Right of cutoff")
 )
+
+rd_covariate_labels <- c(
+  proficiency_pre = "Pre-placement proficiency",
+  motivation_pre = "Pre-treatment motivation",
+  l1_distance = "L1-English distance index"
+)
+
+rd_covariate_balance_tbl <- purrr::imap_dfr(
+  rd_covariate_labels,
+  \(label, var) {
+    fit <- rdrobust::rdrobust(y = rd_dat[[var]], x = rd_dat$running, c = 0)
+    tibble(
+      covariate = label,
+      estimate = fit$coef[3, 1],
+      se = fit$se[3, 1],
+      ci_low = fit$ci[3, 1],
+      ci_high = fit$ci[3, 2],
+      p_value = fit$pv[3, 1]
+    )
+  }
+)
+
+rd_covariate_plot_df <- rd_dat |>
+  dplyr::select(running, all_of(names(rd_covariate_labels))) |>
+  pivot_longer(-running, names_to = "covariate", values_to = "value") |>
+  mutate(
+    covariate = dplyr::recode(covariate, !!!rd_covariate_labels),
+    bin = cut(running, breaks = seq(-1.5, 1.5, by = 0.15), include.lowest = TRUE)
+  ) |>
+  group_by(covariate, bin) |>
+  summarise(
+    running_mid = mean(running),
+    mean_value = mean(value),
+    n = dplyr::n(),
+    .groups = "drop"
+  )
 ```
 
 ::: {.panel-tabset}
@@ -1785,9 +2145,9 @@ rd_tbl |>
 |:--|:--|:--|
 | Conventional | 局所多項式回帰の標準推定値 | バイアスを無視した参考値 |
 | Bias-corrected | 高次多項式（次数 `q`）でバイアスを補正した推定値 | 点推定は改善されるが SE が過小 |
-| Robust | バイアス補正 + 補正由来の追加変動を SE に反映 | **論文ではこの行を報告する** |
+| Robust | バイアス補正 + 補正由来の追加変動を SE に反映 | **論文ではこの行を中心に報告する** |
 
-Robust 行は @calonico2014 が推奨する推定量で、信頼区間のカバレッジが正しくなります。
+Robust 行は @calonico2014 のロバスト・バイアス補正に基づく推論で、従来法より信頼区間のカバレッジ改善を意図したものです。点推定だけでなく、使用したバンド幅、カーネル、ロバスト CI を合わせて報告します。
 
 #### カーネル密度推定
 
@@ -1820,6 +2180,59 @@ rd_density_df |>
   )
 ```
 
+#### 事前共変量の連続性
+
+RD では、処置前に決まっている共変量がカットオフで不連続に変わらないことも重要な補助診断です。たとえば、補習割当の閾値直前直後で、事前習熟度、動機づけ、L1背景が急に変わっているなら、「閾値近傍の学習者はほぼ同質」という解釈が弱くなります。
+
+```{r}
+#| eval: true
+#| label: causal-rd-covariate-balance-table
+
+rd_covariate_balance_tbl |>
+  mutate(
+    ci = paste0("[", round(ci_low, 3), ", ", round(ci_high, 3), "]"),
+    across(c(estimate, se), ~ round(.x, 3)),
+    p_value = fmt_p_apa(p_value)
+  ) |>
+  dplyr::select(covariate, estimate, se, ci, p_value) |>
+  knitr::kable(caption = "RDカットオフにおける事前共変量の不連続性診断")
+```
+
+この表では、事前共変量をアウトカムの代わりにして `rdrobust()` を実行しています。推定値がゼロ付近で、CI がゼロを含み、効果量としても小さければ、カットオフ周辺でその共変量は連続的と解釈しやすくなります。ただし、ここで有意差がないことは「完全なバランスの証明」ではありません。複数の共変量、密度検定、制度運用の記録を合わせて判断します。
+
+```{r}
+#| eval: true
+#| label: causal-rd-covariate-balance-plot
+#| fig-cap: "Predetermined covariate means around the RD cutoff"
+
+rd_covariate_plot_df |>
+  ggplot(aes(x = running_mid, y = mean_value)) +
+  geom_point(aes(size = n), color = "#1565C0", alpha = 0.75) +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "#263238", linewidth = 0.7) +
+  geom_vline(xintercept = 0, linetype = 2, color = "gray40") +
+  facet_wrap(~ covariate, scales = "free_y") +
+  scale_size_continuous(range = c(1.5, 4), guide = "none") +
+  labs(x = "Running variable", y = "Binned mean") +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
+```
+
+**読み方ガイド:** 各パネルで、カットオフ（縦の破線）を境に事前共変量の平均が急に跳ねていないかを見ます。左右で滑らかにつながっていれば、RD の連続性仮定と整合的です。逆に、カットオフで事前習熟度や動機づけが明確に跳ねている場合、スコア操作、例外的な配置、異なる募集・受講行動が混ざっている可能性を検討します。
+
 #### RDプロット
 
 以下の `rdplot()` では `p = 1`（局所線形）を指定しています。局所線形推定は境界バイアスが小さく安定的であり、RD の標準的選択です。`rdrobust()` の既定も `p = 1` です。
@@ -1840,13 +2253,13 @@ rdrobust::rdplot(
 )
 ```
 
-**読み方ガイド:** `rdrobust` の推定結果では、Conventional（従来法）と Robust（バイアス補正＋頑健 CI）の2行を確認します。論文報告には Robust 行を使うのが一般的です。推定値はカットオフ付近の局所的処置効果（LATE）を表し、たとえば推定値が 2.0 であれば「カットオフをぎりぎり超えた/下回った学習者間で約 2.0 点の差がある」ことを意味します。95% CI に 0 を含まなければ統計的に有意です。カーネル密度プロットでは、カットオフの左右で密度の不連続的な「段差」がないことを確認してください。段差がある場合、スコア操作（sorting）の疑いがあります。
+**読み方ガイド:** `rdrobust` の推定結果では、Conventional（従来法）と Robust（バイアス補正＋頑健 CI）の2行を確認します。論文報告には Robust 行を使うのが一般的です。sharp RD の推定値は、カットオフ付近で処置が切り替わることによる局所的処置効果を表します。たとえば推定値が 2.0 であれば「カットオフをぎりぎり超えた/下回った学習者間で約 2.0 点の差がある」ことを意味します。これはカットオフから遠い学習者全体への平均効果ではありません。95% CI に 0 を含まない場合でも、密度の不連続、共変量の不連続、例外的な配置ルールがないかを合わせて確認してください。カーネル密度プロットでは、カットオフの左右で密度の不連続的な「段差」がないことを確認します。段差がある場合、スコア操作（sorting）の疑いがあります。
 
 ### ファジー RD
 カットオフルールが厳密に守られない場合（例: 基準点以上でも自主的に補習に参加する学習者がいる）は**ファジー RD**が適切です。`rdrobust()` では `fuzzy` 引数に実際の処置変数を渡すことで対応できます（`rdrobust(y, x, c = 0, fuzzy = treat)`）。この場合の推定量は IV/LATE と同様に、カットオフ付近の遵守者における局所的処置効果を表します。
 
 ### カットオフ操作の検定（McCrary test）
-RD デザインの妥当性は「個体がカットオフを操作できない」という前提に依存します。この仮定を間接的に検証するのが **McCrary test**（密度の不連続検定）です。上のカーネル密度プロットで左右の密度に「段差」がないことを視覚的に確認するのが第一歩ですが、形式的な検定には `rddensity` パッケージの `rddensity()` 関数（`rddensity(rd_dat$running, c = 0)`）が利用できます。$p$ 値が大きければ（例: $p > .05$）、操作の証拠はないと判断します。詳細は [rddensity パッケージの vignette](https://rdpackages.github.io/rddensity/) を参照してください。
+RD デザインの妥当性は「個体がカットオフを操作できない」という前提に依存します。この仮定を間接的に検証するのが **McCrary test**（密度の不連続検定）です。上のカーネル密度プロットで左右の密度に「段差」がないことを視覚的に確認するのが第一歩ですが、形式的な検定には `rddensity` パッケージの `rddensity()` 関数（`rddensity(rd_dat$running, c = 0)`）が利用できます。$p$ 値が大きい場合（例: $p > .05$）は密度不連続の明確な証拠がない、という読み方に留めます。操作不可能性が証明されたわけではないため、制度上の例外、再受験、裁量的配置、カットオフ付近の欠測も合わせて確認します。詳細は [rddensity パッケージの vignette](https://rdpackages.github.io/rddensity/) を参照してください。
 
 :::
 
@@ -1861,17 +2274,27 @@ SLA 研究では、背景質問紙（動機づけ・学習歴・海外滞在経�
 欠測を無視して complete-case だけを使うと、少なくとも2つの問題が起きます。
 
 1. 推定対象集団が「欠測のない群」に変わってしまう
-2. 欠測と処置・アウトカムが関連すると、交絡調整が崩れる
+2. 欠測と処置・アウトカムが関連すると、交絡調整が崩れます
 
 欠測メカニズムは通常、MCAR/MAR/MNAR で整理します[@rubin1976]。`mice` は主に MAR（Missing At Random）を前提にした方法です。
 
-### 欠測とPS法を統合する原則
+| 欠測メカニズム | SLA・英語教育研究での例 | 分析上の含意 |
+|:--|:--|:--|
+| MCAR | 教室移動時の配布ミスで一部の背景質問紙だけが失われた | complete-case のバイアスは比較的小さいが、精度は下がる |
+| MAR | 事後テスト得点や処置群への割付が、動機づけ尺度の無回答と関連する | 観測済みの処置・アウトカム・補助変数を代入モデルに含め、MI で不確実性を反映する |
+| MNAR | 動機づけが低い学習者ほど、その動機づけ項目に回答しにくい | 標準的な MI だけでは十分でない可能性があり、感度分析や欠測機構の明示が必要 |
+
+: 欠測メカニズムと因果推論での注意点 {#tbl-causal-missing-mechanism}
+
+ここでの要点は、欠測処理を「前処理の掃除」として扱わないことです。交絡変数の欠測は、推定対象集団・交絡調整・標準誤差のすべてに影響します。したがって、欠測率だけでなく、欠測が処置群・アウトカム・主要背景変数とどのように関連しているかを確認します。
+
+### 欠測と PS 法を統合する原則
 
 欠測共変量がある PS 解析では、次の順番が推奨されます。
 
 1. 共変量を多重代入する（処置・アウトカムを代入モデルへ含める）
 2. 各代入データごとに PS 推定と効果推定を行う
-3. Rubin のルールで推定値を統合する
+3. Rubin のルールで推定値を統合します
 
 この「within」手順は理論的整合性が高く、一般に推奨されます[@leyrat2019; @nguyen2024]。一方で、代入後の PS を単純平均して1つの PS にまとめる「across」手順は注意が必要です。
 
@@ -1881,6 +2304,24 @@ T = \bar{U} + \left(1+\frac{1}{m}\right)B
 $$
 
 ここで $Q_k$ は各代入データの推定値、$\bar{U}$ は平均分散、$B$ は代入間分散です（Rubin のルール）。
+
+| モデル・手順 | 含める変数 | 含めない変数 | 理由 |
+|:--|:--|:--|:--|
+| 代入モデル | 処置、アウトカム、交絡共変量、欠測・アウトカムを予測する補助変数 | 識別子だけの変数、事後にしか定義されない不要な変数 | 代入値が分析モデルと整合し、処置–アウトカム関係を壊さないようにする |
+| PS モデル | 処置前の交絡共変量 | アウトカム、処置後変数、処置の結果として生じる変数 | PS は「処置を受ける確率」を処置前情報でモデル化するため |
+| 効果モデル | 処置、必要に応じて重み・マッチング・追加共変量 | 推定対象を変えてしまう不要な調整変数 | 各代入データで同じ estimand を推定し、Rubin のルールで統合するため |
+
+: MI × PS での変数役割の分担 {#tbl-mi-ps-variable-roles}
+
+この分担が特に重要です。代入モデルにアウトカムを含めることは、欠測共変量をより適切に復元し、分析モデルとの整合性を保つために推奨されます。一方、PS モデルにアウトカムを含めることは、処置前情報だけで処置割付をモデル化するという PS の目的に反します。
+
+| 統合方法 | 何をするか | 主分析としての位置づけ |
+|:--|:--|:--|
+| Complete-case + PS | 欠測のない観測だけでPSを推定する | 欠測が処置・アウトカムと関連しない根拠がある場合を除き、主分析にはしにくい |
+| MI + PS（within） | 各代入データでPS推定・効果推定を行い、推定値と分散を統合する | 一般に推奨される基本手順 |
+| MI + averaged PS（across） | 各代入データのPSを平均してから1回だけ効果推定する | 不確実性や estimand の扱いが曖昧になりやすいため、感度分析として扱う |
+
+: 欠測共変量を含む PS 解析の統合方法 {#tbl-mi-ps-integration-choice}
 
 ```{r}
 #| eval: true
@@ -1948,6 +2389,18 @@ missing_rate_tbl <- mis_dat |>
   ) |>
   pivot_longer(everything(), names_to = "variable", values_to = "missing_rate")
 
+missing_x_diag_tbl <- mis_dat |>
+  mutate(x_missing = if_else(is.na(x), "x missing", "x observed")) |>
+  group_by(x_missing) |>
+  summarise(
+    n = n(),
+    p_treated = mean(treat),
+    mean_y = mean(y),
+    sd_y = sd(y),
+    mean_z = mean(z),
+    .groups = "drop"
+  )
+
 mice_method <- mice::make.method(mis_dat)
 mice_method["x"] <- "pmm"
 
@@ -1965,13 +2418,19 @@ imp_demo <- mice::mice(
   seed = 2041
 )
 
-imp_demo_pool <- with(imp_demo, lm(y ~ treat + x + z)) |>
-  mice::pool() |>
-  summary() |>
+imp_demo_fit <- with(imp_demo, lm(y ~ treat + x + z))
+imp_demo_pool_obj <- mice::pool(imp_demo_fit)
+
+imp_demo_pool_diag <- imp_demo_pool_obj$pooled |>
+  as_tibble() |>
+  transmute(term, riv, lambda, fmi)
+
+imp_demo_pool <- summary(imp_demo_pool_obj) |>
   mutate(
     ci = paste0("[", round(estimate - 1.96 * std.error, 3), ", ", round(estimate + 1.96 * std.error, 3), "]"),
     p = fmt_p_apa(p.value)
-  )
+  ) |>
+  left_join(imp_demo_pool_diag, by = "term")
 
 mice_method_tbl <- tibble(variable = names(mice_method), method = unname(mice_method))
 
@@ -2015,6 +2474,13 @@ within_pool <- mice::pool.scalar(
   n = nrow(mis_dat),
   k = 1
 )
+
+within_ipw_trace_tbl <- within_ipw_res |>
+  mutate(
+    se = sqrt(u),
+    ci_low = q - 1.96 * se,
+    ci_high = q + 1.96 * se
+  )
 
 cc_ps_dat <- mis_dat |>
   dplyr::filter(!is.na(x))
@@ -2118,6 +2584,17 @@ missing_rate_tbl |>
 
 ```{r}
 #| eval: true
+#| label: causal-missing-by-group-table
+
+missing_x_diag_tbl |>
+  mutate(across(c(p_treated, mean_y, sd_y, mean_z), ~ round(.x, 3))) |>
+  knitr::kable(caption = "xの欠測有無による処置・アウトカム・観測共変量の違い")
+```
+
+この表では、`x` が欠測している行と観測されている行で、処置割合やアウトカム平均が異なるかを確認しています。差が大きい場合、complete-case は「欠測のない学習者」に分析対象を変えるだけでなく、処置群と統制群の比較可能性も変えてしまう可能性があります。
+
+```{r}
+#| eval: true
 #| label: causal-mice-mdpattern
 
 md_pat_df <- as.data.frame(mice::md.pattern(mis_dat, plot = FALSE)) |>
@@ -2148,6 +2625,7 @@ md_pat_df |>
 : `mice` の predictorMatrix（1=予測子として使用）
 
 上の行列では、各**行**が代入対象の変数（ターゲット）、各**列**が予測変数を表します。値が 1 なら「この列の変数を行の変数の代入モデルに使う」、0 なら「使わない」です（対角は常に 0）。たとえば、コード上の `mice_pred["x", ] <- c(id=0, y=1, treat=1, x=0, z=1)` は「`x` を代入する際に `y`, `treat`, `z` を予測子として使い、`id` は使わない」という設定です。重要なのは、`treat`（処置変数）と `y`（アウトカム）を代入モデルに含めることです。これを省くと、代入値が処置–アウトカムの関係を反映せず、推定にバイアスが生じます（congeniality 条件の違反）。
+ただし、`method` が空欄の変数は代入対象ではないため、その行の predictorMatrix は実際には使われません。上の例では `x` が主な代入対象であり、`y` と `treat` は `x` の代入を助ける予測子として使っています。
 
 #### 推定値比較
 
@@ -2172,6 +2650,23 @@ mi_ps_compare_tbl |>
   mutate(across(c(estimate, se), ~ round(.x, 3))) |>
   knitr::kable(caption = "欠測共変量を含むPS解析: within vs across")
 ```
+
+```{r}
+#| eval: true
+#| label: causal-missing-within-ipw-table
+
+within_ipw_trace_tbl |>
+  transmute(
+    imputation = m,
+    estimate = q,
+    se,
+    ci = paste0("[", round(ci_low, 3), ", ", round(ci_high, 3), "]")
+  ) |>
+  mutate(across(c(estimate, se), ~ round(.x, 3))) |>
+  knitr::kable(caption = "within approach: 各代入データでのIPW推定値")
+```
+
+within approach では、この表のように各代入データで別々に PS と処置効果を推定します。最終的な推定値は、単純な平均だけではなく、各代入データ内の分散と代入間のばらつきの両方を使って統合します。
 
 ```{r}
 #| eval: true
@@ -2220,12 +2715,16 @@ imp_demo_pool |>
     std.error,
     statistic,
     df,
+    riv,
+    fmi,
     ci,
     p
   ) |>
-  mutate(across(c(estimate, std.error, statistic, df), ~ round(.x, 3))) |>
-  knitr::kable(caption = "`mice` + `pool()` の統合結果（APAスタイル）")
+  mutate(across(c(estimate, std.error, statistic, df, riv, fmi), ~ round(.x, 3))) |>
+  knitr::kable(caption = "`mice` + `pool()` の統合結果（Rubin のルール）")
 ```
+
+`pool()` の `summary()` は係数表を返しますが、欠測による不確実性の診断量（`riv`, `lambda`, `fmi`）は `pool()` が返すオブジェクトの `pooled` 要素に入っています。本章ではその情報を結合して、推定値・SE・自由度と同じ表で確認できるようにしています。
 
 `pool()` の出力（`summary()` 前のオブジェクト）には、Rubin のルールに基づく以下の列が含まれます。
 
@@ -2276,9 +2775,11 @@ imp_mean_tbl |>
 :::
 
 ### 欠測とPSの統合で避けたいこと
-1. 欠測を含む共変量を complete-case のみで処理して、推定対象集団の変化を無視する
-2. 傾向スコアそのものを先に固定してから代入し、共変量の不確実性を反映しない
-3. 代入モデルに処置やアウトカムを入れずに、交絡構造を壊す
+1. 欠測を含む共変量を complete-case のみで処理して、推定対象集団の変化を無視します
+2. 傾向スコアそのものを先に固定してから代入し、共変量の不確実性を反映しません
+3. 代入モデルに処置やアウトカムを入れずに、交絡構造を壊します
+4. 代入後の PS を平均した across approach を、within approach と同じ不確実性評価として扱います
+5. PS モデルにアウトカムや処置後変数を入れ、処置前の比較可能性という PS の目的を崩します
 
 `mice` の基本手順: (1) 欠測パターン確認 → (2) 代入モデル仕様決定 → (3) `mice()` で多重代入 → (4) `with()` で分析 → (5) `pool()` で統合。
 
@@ -2324,7 +2825,8 @@ tbl_regression(
   modify_caption("DID 推定結果（APAスタイル）")
 ```
 
-**読み方ガイド:** `treat_group:post` 行が DID 推定量（交互作用項）です。推定値はたとえば 2.6 であれば「アプリ導入校では非導入校に比べ、導入後にテスト得点が平均 2.6 点多く上昇した」ことを意味します。この推定が妥当であるためには、介入がなかった場合に両群が同じトレンドをたどるという平行トレンド仮定が成り立つ必要があります。次のプロットで事前トレンドが平行に近いかを視覚的に確認します。
+**読み方ガイド:** `treat_group:post` 行が DID 推定量（交互作用項）です。推定値はたとえば 2.6 であれば「アプリ導入校では非導入校に比べ、導入後にテスト得点が平均 2.6 点多く上昇した」ことを意味します。この推定が妥当であるためには、介入がなかった場合に両群が同じトレンドをたどるという平行トレンド仮定が成り立つ必要があります。ただし、この単純例は Pre/Post の2時点だけなので、介入前トレンドを経験的に確認することはできません。次のプロットは DID の「差の差」の構造を可視化するための図であり、平行トレンドの確認には複数の処置前時点を含むデータが必要です。
+この最小例の表は、DID 係数の読み方を示すための通常回帰です。学校・クラス・学習者パネルでは、標準誤差を学校や個体でクラスタ化する、または `did` パッケージのブートストラップ信頼帯を使うなど、依存構造に合った不確実性評価を行います。
 
 ```{r}
 #| eval: true
@@ -2359,13 +2861,134 @@ did_panel |>
   )
 ```
 
+### 複数の処置前時点での平行トレンド確認
+
+平行トレンド仮定は、介入がなかった場合の処置群と統制群の平均アウトカムが同じ方向に動いていた、という反実仮想に関する仮定です。2時点DIDではこの仮定をデータから直接確認できません。介入前に複数時点の成績がある場合は、処置前だけを使って群間の傾きが大きく違わないかを図と表で確認します。
+
+以下では、一部の学部で新カリキュラムを導入した状況を想定します。`time = 0` が導入時点で、`time < 0` が処置前、`time >= 0` が処置後です。
+
+```{r}
+#| eval: true
+#| label: causal-did-pretrend-setup
+#| include: false
+
+set.seed(2048)
+n_school_pre <- 80
+did_pre_times <- -3:2
+
+did_pre_panel <- tidyr::expand_grid(
+  school = 1:n_school_pre,
+  time = did_pre_times
+) |>
+  mutate(
+    treat_group = if_else(school <= n_school_pre / 2, 1, 0),
+    post = if_else(time >= 0, 1, 0)
+  )
+
+did_pre_school <- tibble(
+  school = 1:n_school_pre,
+  school_fe = rnorm(n_school_pre, 0, 3.5),
+  cohort_strength = rnorm(n_school_pre, 0, 1.0)
+)
+
+did_pre_panel <- did_pre_panel |>
+  left_join(did_pre_school, by = "school") |>
+  mutate(
+    untreated_trend = 0.9 * time + 0.08 * time^2,
+    treatment_effect = if_else(post == 1, 2.2 + 0.35 * time, 0),
+    score = 62 +
+      2.0 * treat_group +
+      school_fe +
+      cohort_strength +
+      untreated_trend +
+      treat_group * treatment_effect +
+      rnorm(n(), 0, 2.2)
+  )
+
+did_pre_mean_tbl <- did_pre_panel |>
+  group_by(treat_group, time) |>
+  summarise(mean_score = mean(score), .groups = "drop") |>
+  mutate(group = if_else(treat_group == 1, "Treatment", "Control"))
+
+did_pre_only <- did_pre_panel |>
+  filter(time < 0)
+
+pretrend_fit <- lm(score ~ treat_group * time, data = did_pre_only)
+pretrend_vcov <- sandwich::vcovCL(pretrend_fit, cluster = ~ school, type = "HC1")
+pretrend_ct <- lmtest::coeftest(pretrend_fit, vcov. = pretrend_vcov)
+
+pretrend_tbl <- tibble(
+  term = "Treatment group × time (pre-period slope difference)",
+  estimate = pretrend_ct["treat_group:time", "Estimate"],
+  se = pretrend_ct["treat_group:time", "Std. Error"],
+  statistic = pretrend_ct["treat_group:time", "t value"],
+  p_value = pretrend_ct["treat_group:time", "Pr(>|t|)"]
+) |>
+  mutate(
+    ci_low = estimate - 1.96 * se,
+    ci_high = estimate + 1.96 * se
+  )
+```
+
+```{r}
+#| eval: true
+#| label: causal-did-pretrend-plot
+#| fig-cap: "Pre-treatment trends for DID with multiple pre-periods"
+
+did_pre_mean_tbl |>
+  ggplot(aes(x = time, y = mean_score, group = group, color = group)) +
+  geom_vline(xintercept = -0.5, linetype = 2, color = "gray50") +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  scale_color_manual(values = c("Treatment" = "#2196F3", "Control" = "#9E9E9E")) +
+  scale_x_continuous(breaks = did_pre_times) +
+  labs(
+    x = "Time relative to curriculum introduction",
+    y = "Mean score",
+    color = NULL,
+    subtitle = "Dashed line indicates the introduction point"
+  ) +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
+```
+
+```{r}
+#| eval: true
+#| label: causal-did-pretrend-table
+
+pretrend_tbl |>
+  mutate(
+    ci = paste0("[", round(ci_low, 3), ", ", round(ci_high, 3), "]"),
+    across(c(estimate, se, statistic), ~ round(.x, 3)),
+    p_value = fmt_p_apa(p_value)
+  ) |>
+  dplyr::select(term, estimate, se, statistic, ci, p_value) |>
+  knitr::kable(caption = "処置前期間における群間トレンド差の診断")
+```
+
+**読み方ガイド:** 図では、縦の破線より左側（処置前）で処置群と統制群の線が大きく開いたり交差したりしていないかを確認します。表の交互作用項は、処置前期間における群間の傾き差を要約したものです。推定値がゼロ付近で CI がゼロを含む場合、平行トレンド仮定と整合的です。ただし、これは仮定の証明ではありません。処置前時点が少ない場合、測定誤差が大きい場合、同時期の制度変更がある場合は、図と制度情報を合わせて慎重に解釈します。
+
 ### DIDで必ず確認すべき点
-- 介入前の時系列で、処置群と統制群のトレンドが概ね平行か
+- 複数の介入前時点がある場合、処置群と統制群のトレンドが概ね平行か
 - 介入時点に、他の大きな制度変更やショックが重なっていないか
 - 標準誤差の算出でクラスタ（学校・自治体など）を考慮すべきか
 
 ### クラスタ SE と同時信頼帯
-学校や自治体単位でデータがクラスタ化されている場合、`att_gt()` では `clustervars = "school"` のように指定します（`bstrap = TRUE` が既定で有効）。また、イベントスタディ図で表示される信頼帯は同時信頼帯（`cband = TRUE`、既定）であり、全イベント時点を同時にカバーします。各時点の CI よりも幅が広くなりますが、「事前トレンドが全時点で同時にゼロか」を検定するにはこちらが適切です。
+学校や自治体単位でデータがクラスタ化されている場合、標準誤差のクラスタ指定を確認します。`did::att_gt()` の `clustervars` は最大2変数まで指定でき、そのうち1つは `idname` と同じである必要があります。たとえば学校単位のパネルで `idname = "school"` としているなら `clustervars = "school"`、学習者パネルで学校にもクラスタ化したいなら `clustervars = c("id", "school")` のように指定します（`bstrap = TRUE` が必要）。また、イベントスタディ図で表示される信頼帯は同時信頼帯（`cband = TRUE`、既定）であり、全イベント時点を同時にカバーします。各時点の CI よりも幅が広くなりますが、「事前期間の推定値が同時にゼロ付近に収まるか」を検討するにはこちらが適切です。
 
 ### 多時点・段階導入への拡張（`did::att_gt`）
 
@@ -2413,7 +3036,10 @@ att_gt_fit <- did::att_gt(
   gname = "g",
   data = did_multi,
   panel = TRUE,
-  est_method = "dr"
+  est_method = "dr",
+  bstrap = TRUE,
+  cband = TRUE,
+  clustervars = "id"
 )
 
 dyn_fit <- did::aggte(att_gt_fit, type = "dynamic")
@@ -2503,11 +3129,22 @@ did_dyn_tbl |>
 ```
 :::
 
-**読み方ガイド:** 多時点 DID の「集約 ATT」は、全処置グループ・全期間を通した平均的処置効果です。「イベントタイム ATT」タブでは、介入からの経過時間ごとの効果がわかります。イベントスタディ図で注目すべきは2点です。(1) 介入前（event time < 0）の推定値がゼロ付近に収まっていれば、平行トレンド仮定の間接的な証拠になります。(2) 介入後（event time ≥ 0）で推定値が有意にゼロから離れていれば、処置効果の存在を示唆します。事前期間で信頼区間がゼロを含まない場合は、平行トレンド仮定が疑わしいため、DID の解釈に注意が必要です。
+**読み方ガイド:** 多時点 DID の「集約 ATT」は、全処置グループ・全期間を通した平均的処置効果です。「イベントタイム ATT」タブでは、介入からの経過時間ごとの効果がわかります。イベントスタディ図で注目すべきは2点です。(1) 介入前（event time < 0）の推定値がゼロ付近に収まっていれば、平行トレンド仮定と整合的な補助証拠になります。(2) 介入後（event time ≥ 0）の推定値が一貫してゼロから離れていれば、処置効果の存在を示唆します。事前期間で信頼区間がゼロを含まない場合は、平行トレンド仮定が疑わしいため、DID の解釈に注意が必要です。
 
 ### 感度分析（未観測交絡）
 
 因果推論では「観測した交絡変数をすべて調整した」と主張しても、「測定していない変数が交絡している可能性は？」という疑問は常に残ります。査読でもこの点はほぼ必ず問われます。感度分析は、未観測交絡がどの程度強ければ推定結果が覆るかを定量的に示す手法です。ここでは `sensemakr` を用いて、回帰調整モデルの頑健性を定量化します[@cinelli2020]。
+
+`sensemakr` は、線形回帰モデルの処置係数に対する**未観測交絡による omitted variable bias** を評価する道具です。したがって、本節の例は `post_score ~ treat + proficiency + motivation + baseline` という回帰調整モデルに対する感度分析です。IPW、マッチング、AIPW、DID、RD のすべての識別仮定をまとめて検証するものではありません。PS 法や AIPW を主解析にする場合でも、調整済み回帰に対する補助的な感度分析として提示する、または各デザインに合った感度分析を別途検討する、という位置づけにしてください。
+
+| 問い | `sensemakr` で答えやすいこと | `sensemakr` だけでは答えにくいこと |
+|:--|:--|:--|
+| 未観測交絡 | 未観測変数が処置・アウトカム双方とどの程度強く関連すれば推定値がゼロになるか | 未観測交絡が実際に存在しないことの証明 |
+| ベンチマーク | 既知の強い共変量と比べて、仮想交絡がどの程度強ければ結論が変わるか | ベンチマーク共変量の選択が妥当かどうかの自動判断 |
+| 推定対象 | 線形回帰の処置係数の頑健性 | IPW重み、DIDの平行トレンド、RDのカットオフ操作可能性の検証 |
+| 報告 | RV値、ベンチマーク境界、調整後推定値を本文に示す | 「感度分析をしたので因果効果が証明された」という主張 |
+
+: `sensemakr` で評価できることと限界 {#tbl-sensemakr-scope}
 
 ```{r}
 #| eval: true
@@ -2520,7 +3157,7 @@ sens_obj <- sensemakr::sensemakr(
   model = sens_fit,
   treatment = "treat",
   benchmark_covariates = "proficiency",
-  kd = 1
+  kd = c(0.25, 0.5, 0.75, 1)
 )
 
 sens_stats_tbl <- sens_obj$sensitivity_stats |>
@@ -2535,12 +3172,15 @@ sens_stats_tbl <- sens_obj$sensitivity_stats |>
 
 sens_bounds_tbl <- sens_obj$bounds |>
   transmute(
-    bound_label,
+    benchmark_strength = bound_label,
     r2dz.x,
     r2yz.dx,
     adjusted_estimate,
     adjusted_lower_CI,
     adjusted_upper_CI
+  ) |>
+  mutate(
+    benchmark_strength = factor(benchmark_strength, levels = benchmark_strength)
   )
 
 sens_rv_tbl <- tibble(
@@ -2550,7 +3190,9 @@ sens_rv_tbl <- tibble(
 ```
 
 ### ベンチマーク共変量と `kd` の選び方
-`benchmark_covariates` には、アウトカムとの関連が強い重要な交絡変数を指定します。ここでは `proficiency`（事前習熟度）を選んでいます。これは「もし未観測交絡が事前習熟度と同程度に処置・アウトカム双方に影響するなら、推定はどう変わるか」をシミュレートするためです。`kd = 1` は「ベンチマークと同等の強さ」を意味し、`kd = 2` なら 2 倍の強さを想定します。対となる `ky`（アウトカム側のスケーリング）は既定で `kd` と同値になります。ベンチマークには、研究で最も強力と考えられる交絡変数を選ぶのが原則です。
+`benchmark_covariates` には、アウトカムとの関連が強い重要な交絡変数を指定します。ここでは `proficiency`（事前習熟度）を選んでいます。これは「もし未観測交絡が事前習熟度と同程度に処置・アウトカム双方に影響するなら、推定はどう変わるか」を見るためです。`kd = 1` は「ベンチマークと同等の強さ」、`kd = 0.5` は「ベンチマークの半分の強さ」を意味します。対となる `ky`（アウトカム側のスケーリング）は既定で `kd` と同値になります。ベンチマークには、研究で最も強力と考えられる交絡変数を選ぶのが原則です。
+
+SLA・英語教育研究では、事前習熟度、動機づけ、SES、学習時間、教師経験などが候補になります。重要なのは、「測っていない何か」を抽象的に置くのではなく、「既に測っている強い共変量と比べてどれくらい強い未観測交絡が必要か」を説明することです。
 
 ::: {.panel-tabset}
 #### 感度指標
@@ -2578,6 +3220,48 @@ sens_bounds_tbl |>
 ```
 
 上の表の列の意味は次のとおりです。`r2dz.x`（表中 "R2(U~T|X)"）は、仮想的な未観測交絡 U が処置 T の残差分散をどれだけ説明するか（観測共変量 X で条件付き）を表します。`r2yz.dx`（表中 "R2(U~Y|T,X)"）は、U がアウトカム Y の残差分散をどれだけ説明するか（T と X で条件付き）です。`adjusted_estimate` は、その強さの交絡が存在した場合の調整済み処置効果です。調整後の CI がゼロを含まなければ、そのレベルの交絡に対して結果は頑健と判断できます。
+
+#### ベンチマーク図
+
+```{r}
+#| eval: true
+#| label: causal-sensitivity-benchmark-plot
+#| fig-cap: "Adjusted treatment effect under benchmarked unobserved confounding"
+
+sens_bounds_tbl |>
+  ggplot(aes(x = benchmark_strength, y = adjusted_estimate)) +
+  geom_hline(yintercept = 0, linetype = 2, color = "gray45") +
+  geom_hline(yintercept = coef(sens_fit)[["treat"]], linetype = 3, color = "#2196F3") +
+  geom_pointrange(
+    aes(ymin = adjusted_lower_CI, ymax = adjusted_upper_CI),
+    color = "#FF9800",
+    linewidth = 0.7
+  ) +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Adjusted treatment effect",
+    subtitle = "Blue dotted line: original adjusted estimate; gray dashed line: null effect"
+  ) +
+  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
+```
+
+**読み方ガイド:** ベンチマーク表と図では、仮想的な未観測交絡が `proficiency` の 0.25 倍、0.5 倍、0.75 倍、1倍の強さを持つ場合に、推定値がどの程度変化するかを見ます。0.25倍や0.5倍でも推定値がゼロに近づく場合、結果はかなり脆弱です。一方、既知の強い共変量と同程度の交絡を仮定しても結論が大きく変わらない場合、未観測交絡に対して比較的頑健と説明できます。ただし、どの強さの未観測交絡が現実的かは、研究領域の知識に基づいて判断します。
 
 #### 可視化
 
@@ -2615,7 +3299,29 @@ sens_rv_tbl |>
 
 :::
 
-## レポートテンプレート
+### 設計別の感度分析ツール
+
+`sensemakr` は **線形回帰調整モデル**に対する未観測交絡感度分析の枠組みです [@cinelli2020]。設計が異なれば、適切な感度分析ツールも変わります。
+
+| 設計 | 主要ツール (R) | 一次出典 | 何を問うか |
+|:--|:--|:--|:--|
+| 回帰調整 (linear OLS) | `sensemakr::sensemakr()` | @cinelli2020 | 観測共変量の説明力に対して、未観測交絡が何倍強ければ結論が覆るか (RV) |
+| マッチング | `rbounds::psens()`, `sensitivitymv` | @rosenbaum2002 | Rosenbaum の感度パラメータ $\Gamma$: 処置確率比が観測共変量で説明できる範囲を超えた場合の上下限 p 値 |
+| 任意の二値処置・二値/連続アウトカム | `EValue::evalues.OLS()` / `evalues.RR()` | @vanderweeleding2017 | E-value: 推定された関連を未観測交絡だけで説明するために、未観測交絡が処置・アウトカム双方とどれだけ強く関連している必要があるか (RR スケールの最小値) |
+| IPW / DR | bootstrap-based + `sensemakr` (近似) | — | 重み付け後のバランスと未観測交絡の組み合わせ感度 |
+| RD | プラセボ・帯域幅・共変量検定 | @calonico2014 | 設計内蔵の感度として `rdrobust` の bias-corrected CI |
+| DID | placebo test, Goodman-Bacon decomposition, event study | @goodman-bacon2021 | 平行トレンド逸脱の代替シナリオ |
+
+実務上は、**主分析の手法に対応するツール**を最低 1 つ実行し、可能なら 2 つ以上の感度分析を併記して、結論がどの程度頑健かを多角的に示すのが理想です。E-value は report が簡潔で査読者に伝わりやすく、Rosenbaum $\Gamma$ はマッチング系の論文で広く受け入れられています。
+
+## 報告テンプレート（論文・報告書向け）
+
+L2 / 教育研究では、観察データに基づく因果効果の報告は以下の汎用ガイドラインを併用すると、再現性・査読時の合意形成に資します。
+
+- **STROBE** [@vonelm2007strobe]: 観察研究 (cohort, case-control, cross-sectional) の報告 22 項目チェックリスト。本章で扱う傾向スコア・IV・RD・DID 等の観察研究設計に直接適用できます
+- **TIDieR** [@hoffmann2014tidier]: 介入の **記述** に必要な 12 項目 (Why / What / Who / Where / When / How much / Tailoring など)。介入研究で「どんな処置だったか」を再現可能に書くためのテンプレート
+
+これらは Norris et al. 2015 の L2 一般ガイドラインを補完する **デザイン特化の報告基準**で、Methods セクション執筆時に各項目を自己チェックすることを推奨します。
 
 論文・報告書では、少なくとも以下の6点を明示します。
 
@@ -2625,6 +3331,18 @@ sens_rv_tbl |>
 4. **診断**: バランス（SMD）、重みの極端値、第一段階強度、RD カットオフ近傍の妥当性、事前トレンド確認
 5. **欠測処理**: complete-case か、多重代入（`mice`）か、その前提（MAR の妥当性根拠）
 6. **感度分析**: 仕様変更に対する推定値の頑健性（`sensemakr` の RV 値など）
+
+次の表は、結果節で何を1文に含めるかを手法別に整理したものです。推定値の大小だけでなく、**どの仮定に依存している推定値か**を同じ段落で示すと、読み手が結果の射程を判断しやすくなります。
+
+| 手法 | 結果文に含める要素 | 避けたい書き方 |
+|:---|:---|:---|
+| IPW / マッチング | estimand、PS 共変量、バランス、重み/マッチ率、ロバスト SE | 「PS で調整したので因果効果である」とだけ書く |
+| AIPW | outcome model、propensity model、cross-fitting の有無 | 二重ロバスト性を「必ず正しい」という意味で書く |
+| IV | 操作変数、第一段階、LATE、除外制約の議論 | ATE と同じ母集団効果として書く |
+| RD | running variable、カットオフ、帯域幅、密度検定、局所効果 | カットオフから遠い学習者にも一般化する |
+| DID | 処置群・統制群、事前トレンド、クラスタ SE、処置タイミング | 平行トレンドを図示せず前後差だけで解釈する |
+| MI × PS | 欠測機構、代入モデル、within/across の選択、FMI | complete-case と同じ前提で扱う |
+| 感度分析 | ベンチマーク共変量、RV、結論が覆る条件 | 感度分析を「前提の証明」として書く |
 
 ### 手法別の報告チェックリスト
 
@@ -2639,7 +3357,28 @@ sens_rv_tbl |>
 - [ ] 重みの分布（IPW の場合：極端な重みの有無、トリミングの有無）
 - [ ] マッチングの場合：手法（nearest / full / optimal）、キャリパー幅、マッチ率
 - [ ] Estimand の明示（ATE vs ATT）と選択理由[@greifer2024]
-- [ ] 感度分析（`sensemakr` の RV 値、E-value など）
+- [ ] 感度分析（本章では `sensemakr` の RV 値を中心に報告）
+
+##### PS 法の報告文例
+
+> 事前習熟度、動機づけ、事前語彙得点を用いて傾向スコアを推定し、語彙学習アプリ利用の ATE を IPW により推定しました。重み付け後、すべての共変量の絶対 SMD は 0.10 未満であり、Love plot でも主要交絡変数のバランス改善が確認されました。PS 分布には大きな非重なりは見られず、最大重みと有効サンプルサイズから、少数の観測が推定値を支配している兆候は限定的でした。重み付き回帰では、アプリ利用は事後語彙得点の上昇と関連していました。なお、ロバスト SE はヘテロ分散に対処するために用いましたが、傾向スコア推定段階の不確実性を完全に反映するものではないため、推定値の解釈は重なりとバランス診断を前提とします。
+
+この文例では、推定値の前に、estimand、共変量、バランス、重なり、重み診断を示しています。結果節では係数や CI だけを報告するのではなく、「どの比較をどの程度妥当な比較に近づけたのか」を1段落内で説明してください。マッチングの場合は、`IPW` を `1:1最近傍マッチング` や `フルマッチング` に置き換え、マッチ率、除外された観測数、キャリパー幅を追加します。
+
+#### AIPW / SuperLearner
+
+- [ ] Outcome model（$Q$）と propensity score model（$g$）に入れた共変量
+- [ ] 使用した learner（例: `SL.glm`、`SL.mean`、追加パッケージを要する learner）
+- [ ] Cross-fitting の有無と fold 数（例: `k_split = 5`）
+- [ ] PS の重なり、極端重み、共変量バランス
+- [ ] 回帰調整・IPW・マッチングとの推定値比較
+- [ ] 二重ロバスト性の限界（未観測交絡や重なり不足は解決しないこと）
+
+##### AIPW の報告文例
+
+> AIPW 推定では、事前習熟度、動機づけ、事前語彙得点を outcome model と propensity score model の双方に含めました。`AIPW` パッケージを用い、`SL.glm` を learner とする 5-fold cross-fitting（`k_split = 5`）で ATE を推定しました。AIPW 推定値は、回帰調整、IPW、フルマッチングによる推定値と同程度であり、PS 分布と重み診断にも深刻な不安定性は見られませんでした。二重ロバスト推定量は outcome model または propensity score model の一方が十分に指定されていれば一致性が期待できますが、未観測交絡や重なり不足を解消するものではないため、推定値は上記の識別仮定と診断結果を前提として解釈しました。
+
+SuperLearner を使う場合は、単に「機械学習を用いた」と書かず、候補 learner、cross-fitting の fold 数、追加パッケージ、チューニングの扱い、推定値が learner 選択にどの程度敏感かを報告します。サンプルサイズが小さい場合、複雑な learner を多数入れるより、事前に妥当な少数の learner に限定し、通常の回帰調整・IPWとの整合性を確認する方が読み手に伝わりやすくなります。
 
 #### 操作変数法（IV）
 
@@ -2663,6 +3402,35 @@ sens_rv_tbl |>
 - [ ] クラスターロバスト SE の使用（個体・時点のクラスタリング）
 - [ ] 処置群・統制群の選択基準と外的妥当性の議論
 
+#### MI × PS
+
+- [ ] 欠測率だけでなく、欠測が処置・アウトカム・主要共変量と関連しているか
+- [ ] 欠測メカニズムの想定（MCAR/MAR/MNAR）と MAR を置く根拠
+- [ ] 代入モデルに含めた変数（処置、アウトカム、交絡共変量、補助変数）
+- [ ] PS モデルに含めた変数（処置前交絡共変量のみ）
+- [ ] 代入データ数 `m`、反復回数 `maxit`、代入法、predictorMatrix の概要
+- [ ] within approach か across approach か、主分析として採用した理由
+- [ ] `pool()`/`pool.scalar()` による統合方法、`riv` や `fmi` の確認
+- [ ] complete-case 解析との比較と、推定対象集団の違い
+
+##### MI × PS の報告文例
+
+> 背景質問紙の動機づけ尺度に欠測があったため、欠測パターンを確認したうえで多重代入を行いました。欠測は処置群と事後語彙得点に関連していたため、complete-case 解析だけでは推定対象集団が変化し、交絡調整も不十分になる可能性がありました。代入モデルには、処置、事後語彙得点、事前習熟度、動機づけ、事前語彙得点を含め、`mice` により `m = 20` の代入データを作成しました。各代入データで処置前共変量に基づく傾向スコアを推定し、IPW による ATE を推定した後、Rubin のルールで推定値と分散を統合しました。結果は complete-case 解析と方向は一致しましたが、標準誤差と信頼区間は多重代入後の方が大きく、欠測による不確実性が推定に反映されました。`fmi` は主要係数で高くなかったため、代入データ数は本解析には十分と判断しました。ただし、MNAR の可能性は完全には排除できないため、欠測機構に関する解釈は MAR 仮定に依存します。
+
+この文例では、欠測処理を「データ数を増やす作業」としてではなく、因果効果推定の一部として報告しています。特に、代入モデルにアウトカムを含めたこと、PS モデルにはアウトカムを入れなかったこと、各代入データで PS と効果を推定したことを明示します。
+
+#### 感度分析
+
+- [ ] どの主解析モデルに対する感度分析か（例: 回帰調整モデルの `treat` 係数）
+- [ ] ベンチマーク共変量の選択理由（なぜ強い交絡変数とみなせるか）
+- [ ] RV(q = 1) と RV(alpha = .05) の解釈
+- [ ] ベンチマーク強度（例: 0.5x、1x）ごとの調整後推定値
+- [ ] 「未観測交絡がないことの証明」ではないことの明記
+
+##### 感度分析の報告文例
+
+> 未観測交絡に対する頑健性を評価するため、回帰調整モデルの処置係数について `sensemakr` による感度分析を行いました。ベンチマーク共変量には、処置選択と事後語彙得点の双方に強く関連すると考えられる事前習熟度を用いました。RV(q = 1) は、推定値をゼロにするために必要な未観測交絡の強さを示し、RV(alpha = .05) は統計的有意性を覆すために必要な強さを示します。事前習熟度の半分程度の強さを持つ未観測交絡を仮定しても推定値の方向は維持されましたが、同程度の強さを仮定すると結論は不安定になりました。したがって、本結果は弱い未観測交絡には一定の頑健性を示す一方、事前習熟度に匹敵する未測定要因が存在する場合には慎重な解釈が必要です。
+
 :::
 
 ## まとめ
@@ -2670,7 +3438,7 @@ sens_rv_tbl |>
 - 因果推論は「モデルを当てること」より、**反実仮想をどう近似するか**を明示する営みです。観察研究の設計段階で **Target Trial Emulation** の 7 要素を明示化すると、分析の前提が整理されます。
 - DAG を描き、**バックドア基準**に基づいて調整変数を選択することが、交絡調整の出発点です。
 - 観察データでは、単純比較ではなく、交絡調整（層化・重み付け・マッチング）と診断をセットで実施します。
-- IPW では**ロバスト標準誤差**（`sandwich::vcovHC()`）を使用し、傾向スコア推定段階の不確実性に対処してください。
+- IPW では重なり、SMD、極端重み、ESS を先に診断します。`sandwich::vcovHC()` はヘテロ分散には対処しますが、傾向スコア推定段階の不確実性を十分に反映する方法ではありません。
 - 平均効果（ATE）だけでなく、**効果の異質性**（HTE）を PS 層別分析や交互作用項で探索することで、「誰に効くのか」の洞察が得られます。
 - ノンコンプライアンスがある場合は、割付を活かした IV 推定（LATE）が有効です。
 - RD ではカットオフ近傍の局所比較と操作可能性検定、欠測データでは多重代入の前提確認が重要です。
@@ -2678,4 +3446,14 @@ sens_rv_tbl |>
 - どの手法を使う場合でも、感度分析で「結論がどの程度頑健か」を示すことが求められます。
 - 論文報告では、本章の**手法別チェックリスト**を活用し、estimand・識別仮定・診断結果を漏れなく記述してください。
 
-次章では、介入効果の推定とは別軸として、学習者の異質性を探索するためのクラスタリングを扱います。
+## 次に読む章
+
+- **予測と因果の違いを実例で確認したい場合**: 第8章で、予測性能・閾値・キャリブレーションを確認してください。
+- **学習者の異質性を介入前に探索したい場合**: 第19章で、クラスタリングによるサブグループ探索を扱います。
+- **反復測定や項目反復を含む効果推定に戻る場合**: 第6章で、GLMMによる依存構造の扱いを確認してください。
+- **時系列的な介入効果や自己相関が問題になる場合**: 第13章・第13b章で、時点・系列・自己相関の扱いを確認してください。
+
+## 参考文献
+
+::: {#refs}
+:::

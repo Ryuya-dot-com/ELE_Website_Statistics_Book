@@ -15,6 +15,8 @@ bibliography:
 required_packages <- c(
   "DT",
   "InteractionPoweR",
+  "MASS",
+  "boot",
   "broom",
   "dominanceanalysis",
   "dplyr",
@@ -27,9 +29,9 @@ required_packages <- c(
   "interactions",
   "knitr",
   "lmtest",
-  "pacman",
   "performance",
   "purrr",
+  "ragg",
   "sandwich",
   "sjPlot",
   "tibble",
@@ -46,18 +48,23 @@ if (length(missing_packages) > 0) {
 
 ## はじめに
 
-本章では、英語教育データを想定して、**重回帰分析（`lm`）**と
+本章へようこそ。ここでは英語教育データを想定して、**重回帰分析（`lm`）**と
 **Simple Slope Analysis（交互作用の下位検定）**を実装します。
 読者は回帰分析の基本を既習として、次の問いに答えられることを目標にします。
 
 - 学習方法の効果は、学習者の proficiency によって変わるか。
-- その差は、Immediate/Delayed のどちらで大きいか。
+- その差は、Individual/Collaborative のどちらで大きいか。
 - 交互作用を、係数・図・下位検定で整合的に説明できるか。
+
+本章の主線は、`Score_Recall ~ Treatment * LearningMode * Proficiency + Aptitude`
+です。つまり、Writing と Glossing の差が Proficiency によって変わるか、さらにその
+変わり方が Individual/Collaborative で異なるかを、1つの回帰モデルで確認します。
 
 ::: {.callout-tip}
 ### この章の到達目標
 
 - 連続変数を含む交互作用モデルを、理論先行で仕様化できる。
+- 2水準要因の sum coding では係数が「半差」になることを説明できる。
 - `emtrends()` と `emmeans()` を使い分けて simple slope を報告できる。
 - 診断、ロバストSE、CVを使って「推定の頑健性」を説明できる。
 :::
@@ -80,19 +87,21 @@ if (length(missing_packages) > 0) {
 5. 図示と報告テンプレートで、結果を再現可能に記述。
 
 ::: {.callout-tip}
-### 最短ルート（20分）
+### 中核となる読み筋
 
-1. `m_theory` を実行して `summary()` を確認する。  
-2. `emtrends()` で傾き差（simple slope）を確認する。  
-3. `emmip()` で図を見て、方向と大きさを言語化する。  
-4. 余力があれば `check_model()` と HC3 で頑健性を確認する。  
+論文や報告書で交互作用付き回帰の主要結果を提示するための最低限の流れです。
+
+1. `m_theory` を実行して `summary()` を確認する。
+2. `emtrends()` で傾き差（simple slope）を確認する。
+3. `emmip()` で図を見て、方向と大きさを言語化する。
+4. 余力があれば `check_model()` と HC3 で頑健性を確認する。
 
 最初は「有意かどうか」だけでなく、**方向（正/負）** と **教育的に意味のある差か** を優先して読む。
 :::
 
 ## 統計チュートリアル文献との接続（回帰中心）
 
-本章は、SLA理論の紹介よりも**重回帰分析の実装手順**に焦点を置きます。  
+本章は、SLA理論の紹介よりも**重回帰分析の実装手順**に焦点を置きます。
 とくに次のチュートリアル文献を実務ガイドとして参照します。
 
 - 交互作用の下位検定（simple slope / Johnson–Neyman）:
@@ -149,7 +158,7 @@ if (length(missing_packages) > 0) {
 | 線形モデルの推定 | `lm()` | R公式: `stats::lm` [@rstatslm] |
 | 設計行列の確認 | `model.matrix()` / `contr.sum()` | R公式: `model.matrix`, `contrast` [@rstatsmodelmatrix; @rstatscontrast] |
 | 連続変数の標準化 | `scale()` | R公式: `base::scale` [@rbasescale] |
-| 予測値と信頼区間 | `predict(..., interval = \"confidence\")` | R公式: `predict.lm` [@rstatspredictlm] |
+| 予測値と信頼区間 | `predict(..., interval = "confidence")` | R公式: `predict.lm` [@rstatspredictlm] |
 | simple slope / 条件付き平均差 | `emtrends()`, `emmeans()` | emmeans docs [@emmeansemtrends; @emmeansbasics; @emmeanspkg] |
 | HC3 ロバストSE | `sandwich::vcovHC()` + `lmtest::coeftest()` | パッケージdocs + 理論 [@sandwichpkg; @lmtestpkg; @mackinnon1985; @longervin2000] |
 | 交差検証（補助） | `boot::cv.glm()` | boot docs [@bootpkg] |
@@ -157,6 +166,12 @@ if (length(missing_packages) > 0) {
 | 交互作用の検出力設計 | `InteractionPoweR` + シミュレーション | チュートリアル論文・パッケージ [@baranger2023; @brownabulela2025; @interactionpowerpkg] |
 
 ## OLS の土台: BLUE と前提条件
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本節(BLUE / ガウス・マルコフ仮定 / OLS の前提条件)は、回帰分析の理論的基礎です。**初読では上記「中核となる読み筋」に従って `m_theory` の実行・`emtrends()` の解釈にすぐ進む**こともできます。後で診断や論文執筆の段階で戻ってきても理解できる構成にしています。
+:::
+
 
 `lm()` は、観測値 $y_i$ と予測値 $\hat y_i$ のずれを二乗して足した
 **残差平方和**を最小にする推定量です[@rstatslm; @cohen2003]。
@@ -200,7 +215,7 @@ Gauss-Markov の枠組みでは、OLS は **BLUE**
 | 線形性 | 係数の意味 | 直線で表せない関係を無理に平均化し、傾きが歪む | residual vs fitted, 予測線 |
 | 条件付き平均ゼロ `E(\varepsilon \mid X)=0` | 係数の不偏性 | 交絡・逆因果・欠落変数で係数自体が偏る | 研究計画で担保、理論で点検 |
 | 完全共線性がない | 推定可能性 | `X'X` が反転できず、係数が一意に決まらない | `model.matrix()`, VIF |
-| 独立性 | 標準誤差・`p` 値 | SE が小さく出やすく、過剰に有意になりやすい | 研究デザイン、`check_autocorrelation()` |
+| 独立性 | 標準誤差・`p` 値 | SE が小さく出やすく、過剰に有意になりやすい | 研究デザイン、クラスタ構造、補助的に `check_autocorrelation()` |
 | 等分散性 | 効率・SE | 係数は残っても SE と CI が不安定になる | `check_heteroscedasticity()`, HC3 |
 | 残差の近似正規性 | 小標本の推論 | `t`/`F` の近似が乱れ、CI の端が不安定になる | QQ plot, `check_normality()` |
 | 影響点が少数に支配されない | 結果の安定性 | 数点で係数の符号や大きさが変わる | leverage, Cook's distance |
@@ -216,15 +231,28 @@ Gauss-Markov の枠組みでは、OLS は **BLUE**
 ### 独立性は「検定する」より「設計で確保する」
 
 この章の主ケースは **1参加者1行の between-subjects データ**なので、
-独立性は主として研究計画から担保されます。  
+独立性は主として研究計画から担保されます。
 もし同じ参加者を複数時点で測ったり、同じ項目に複数人が回答したりするなら、
 それは「残差診断で様子を見る」問題ではなく、**モデルのレベルを上げるべき設計上の問題**
 です。したがって、その場合は `lm()` の章に留まらず、混合効果モデルへ進む必要があります
 [@cunnings2012; @brysbaert2018]。
 
+同じことは、`LearningMode = Collaborative` が実際にはペア・グループ・クラス単位の活動を意味する場合にも当てはまります。
+1参加者1行でも、同じ協同グループや同じ教師・クラスに属する参加者の残差が似るなら、
+通常の `lm()` の標準誤差は小さく出やすくなります。
+その場合は、グループ/クラスをランダム効果として入れるか、少なくともクラスタロバスト標準誤差で確認します。
+
 ## データの準備
 
-この章では **1参加者1行** のデータを使います。`Treatment` と `Time` はともに between-subjects の要因として扱い、`Score_Recall` を主たる目的変数、`Score_Recognition` を補助的な別アウトカムとして保持します。反復測定や項目反復を含む設計では、このまま `lm()` を当てず、混合効果モデルへ進むべきです。
+この章では **1参加者1行** のデータを使います。`Treatment` と `LearningMode` はともに between-subjects の要因として扱い、`Score_Recall` を主たる目的変数、`Score_Recognition` を補助的な別アウトカムとして保持します。ここでの `LearningMode` は「個人で取り組むか、協同で取り組むか」を表す割り付け条件であり、直後/遅延のような反復測定時点ではありません。反復測定、項目反復、協同グループやクラスによるクラスタを含む設計では、このまま `lm()` を当てず、混合効果モデルやクラスタロバスト推論へ進むべきです。
+
+::: {.callout-important}
+### `Time` を主ケースに入れない理由
+
+`Time` は通常、同じ参加者の pre/post/delayed などの反復測定を示します。本文の主ケースは `lm()` の基礎を扱うため、独立な1行データに限定し、2つ目のカテゴリ要因は `LearningMode` として定義します。`Immediate` / `Delayed` のような時点を扱う場合は、本章後半の差分得点回帰、または第6章の混合効果モデルに進みます。
+:::
+
+なお、ここでの `Treatment` は研究上の処置・指導条件を表す変数名です。後半で扱う **Treatment coding** はカテゴリ変数のコントラスト方式名であり、処置条件そのものとは区別して読みます。
 
 ### 主なパッケージの役割
 
@@ -239,38 +267,93 @@ Gauss-Markov の枠組みでは、OLS は **BLUE**
 #| message: false
 #| warning: false
 
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
-pacman::p_load(
-  tidyverse,
-  performance,
-  effectsize,
-  emmeans,
-  sjPlot,
-  broom,
-  gt,
-  DT,
-  ggrepel,
-  dominanceanalysis,
-  ggridges
+required_packages <- c(
+  "DT", "InteractionPoweR", "MASS", "boot", "broom",
+  "dominanceanalysis", "dplyr", "effectsize", "emmeans",
+  "ggrepel", "ggridges", "glue", "gt", "interactions",
+  "knitr", "lmtest", "performance", "purrr", "ragg",
+  "sandwich", "sjPlot", "tibble", "tidyr", "tidyverse"
 )
 
-theme_set(theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(
-      face = "bold",
-      size = rel(1.0),
-      lineheight = 1.04,
-      margin = margin(b = 6)
-    ),
-    plot.subtitle = element_text(
-      size = rel(0.92),
-      lineheight = 1.04,
-      margin = margin(b = 8)
-    ),
-    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ))
-theme_update(legend.position = "bottom")
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages) > 0) {
+  stop(
+    "Install required packages before rendering: ",
+    paste(missing_packages, collapse = ", ")
+  )
+}
+
+library(tidyverse)
+library(performance)
+library(effectsize)
+library(emmeans)
+library(sjPlot)
+library(broom)
+library(gt)
+library(DT)
+library(ggrepel)
+library(dominanceanalysis)
+library(ggridges)
+
+book_theme <- function(base_size = 12) {
+  theme_bw(base_size = base_size, base_family = "sans") +
+    theme(
+      plot.title.position = "plot",
+      plot.title = element_text(
+        face = "bold",
+        size = rel(1.0),
+        lineheight = 1.04,
+        margin = margin(b = 6)
+      ),
+      plot.subtitle = element_text(
+        size = rel(0.92),
+        lineheight = 1.04,
+        margin = margin(b = 8)
+      ),
+      plot.margin = margin(t = 10, r = 14, b = 10, l = 10),
+      legend.position = "bottom"
+    )
+}
+
+theme_set(book_theme())
+
+apa_p <- function(p) {
+  dplyr::case_when(
+    is.na(p) ~ NA_character_,
+    p < .001 ~ "< .001",
+    TRUE ~ sub("^0", "", sprintf("%.3f", p))
+  )
+}
+
+apa_p_text <- function(p) {
+  p_fmt <- apa_p(p)
+  ifelse(startsWith(p_fmt, "<"), paste("p", p_fmt), paste("p =", p_fmt))
+}
+
+apa_num <- function(x, digits = 2) {
+  formatted <- sprintf(paste0("%.", digits, "f"), x)
+  formatted <- sub("^-0\\.", "-.", formatted)
+  sub("^0\\.", ".", formatted)
+}
+
+term_label <- function(term) {
+  dplyr::case_match(
+    term,
+    "(Intercept)" ~ "Intercept",
+    "Treatment1" ~ "Treatment: Glossing vs. Writing half-difference",
+    "LearningMode1" ~ "Learning mode: Individual vs. Collaborative half-difference",
+    "Proficiency" ~ "Proficiency",
+    "Aptitude" ~ "Aptitude",
+    "Treatment1:LearningMode1" ~ "Treatment x Learning mode (sum-coded 1/4 diff-in-diff)",
+    "Treatment1:Proficiency" ~ "Treatment x Proficiency half-slope difference",
+    "LearningMode1:Proficiency" ~ "Learning mode x Proficiency half-slope difference",
+    "Treatment1:LearningMode1:Proficiency" ~ "Treatment x Learning mode x Proficiency (sum-coded 1/4 slope diff-in-diff)",
+    .default = term
+  )
+}
 
 plot_check_model_separate <- function(
   model,
@@ -286,22 +369,7 @@ plot_check_model_separate <- function(
 
   purrr::iwalk(diagnostic_plots, function(p, nm) {
     p_out <- p +
-      theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(
-      face = "bold",
-      size = rel(1.0),
-      lineheight = 1.04,
-      margin = margin(b = 6)
-    ),
-    plot.subtitle = element_text(
-      size = rel(0.92),
-      lineheight = 1.04,
-      margin = margin(b = 8)
-    ),
-    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ) +
+      book_theme() +
       theme(
         legend.position = "bottom",
         plot.title = element_text(face = "bold", size = 12),
@@ -318,15 +386,15 @@ plot_check_model_separate <- function(
 set.seed(2024)
 
 # 条件設定
-n_participants <- 120
+n_participants <- 240
 treatments <- c("Glossing", "Writing")
-times <- c("Immediate", "Delayed")
-n_per_cell <- n_participants / (length(treatments) * length(times))
+learning_modes <- c("Individual", "Collaborative")
+n_per_cell <- n_participants / (length(treatments) * length(learning_modes))
 
 # 今回は lm の章なので、1参加者1条件の between-subjects データを作る
 wide_scores <- crossing(
   Treatment = factor(treatments, levels = treatments),
-  Time = factor(times, levels = times),
+  LearningMode = factor(learning_modes, levels = learning_modes),
   Rep = seq_len(n_per_cell)
 ) |>
   mutate(
@@ -356,13 +424,14 @@ wide_scores <- wide_scores |>
       pmax(
         round(
           7.0 +
-            2.1 * (Treatment == "Writing") -
-            1.2 * (Time == "Delayed") +
+            2.1 * (Treatment == "Writing") +
+            1.2 * (LearningMode == "Collaborative") +
             1.3 * prof_z_gen +
             0.6 * apt_z_gen +
             1.0 * (Treatment == "Writing") * prof_z_gen -
-            0.5 * (Time == "Delayed") * prof_z_gen +
-            0.4 * (Treatment == "Writing") * (Time == "Delayed") +
+            0.5 * (LearningMode == "Collaborative") * prof_z_gen +
+            0.4 * (Treatment == "Writing") * (LearningMode == "Collaborative") +
+            1.6 * (Treatment == "Writing") * (LearningMode == "Collaborative") * prof_z_gen +
             score_errors[, 1]
         ),
         0
@@ -373,13 +442,14 @@ wide_scores <- wide_scores |>
       pmax(
         round(
           8.8 +
-            1.6 * (Treatment == "Writing") -
-            0.8 * (Time == "Delayed") +
+            1.6 * (Treatment == "Writing") +
+            0.8 * (LearningMode == "Collaborative") +
             1.0 * prof_z_gen +
             0.4 * apt_z_gen +
             0.7 * (Treatment == "Writing") * prof_z_gen -
-            0.3 * (Time == "Delayed") * prof_z_gen +
-            0.3 * (Treatment == "Writing") * (Time == "Delayed") +
+            0.3 * (LearningMode == "Collaborative") * prof_z_gen +
+            0.3 * (Treatment == "Writing") * (LearningMode == "Collaborative") +
+            1.0 * (Treatment == "Writing") * (LearningMode == "Collaborative") * prof_z_gen +
             score_errors[, 2]
         ),
         0
@@ -393,9 +463,14 @@ wide_scores |>
   knitr::kable(caption = "Data Overview: First 10 Rows of the Simulated Dataset")
 ```
 
+この toy data では、得点を0から15の範囲に丸めています。
+本章では `Score_Recall` を近似的な連続アウトカムとして `lm()` で扱いますが、
+実データで床効果・天井効果が強い場合や、取り得る値が極端に少ない場合は注意が必要です。
+その場合は、線形回帰の診断、HC3、感度分析に加えて、順序モデル・カウントモデル・混合効果モデルなども候補になります。
+
 ## 回帰係数と因果解釈
 
-重回帰係数は、**そのままでは因果効果ではありません**。  
+重回帰係数は、**そのままでは因果効果ではありません**。
 まずは「他の変数を一定にしたときの条件付き関連」として読むのが基本です
 [@hernan2020; @imbens2015; @angrist2009]。
 
@@ -407,7 +482,7 @@ wide_scores |>
 - 各群で比較可能な学習者が存在する
 - モデルの関数形が極端に誤っていない
 
-言い換えると、回帰式を少し複雑にしただけでは因果にはなりません。  
+言い換えると、回帰式を少し複雑にしただけでは因果にはなりません。
 特に SLA では、`motivation`、`prior proficiency`、`teacher quality`、
 `self-selection into treatment` のような変数が、介入にも成績にも関わりやすいため、
 **条件付き平均ゼロ** `E(\varepsilon \mid X)=0` はかなり強い前提です。
@@ -443,11 +518,12 @@ $$
 \approx \tau + \gamma \frac{\operatorname{Cov}(T, U)}{\operatorname{Var}(T)}
 $$
 
-だけずれます。  
+だけずれます。
 つまり、**Outcome に効く変数**で、なおかつ **Treatment と相関する変数**を落としたときに、
 omitted variable bias が生じます[@cinelli2020; @angrist2009]。
 
 ```{r}
+#| label: ch4-auto-001
 #| eval: true
 causal_demo_n <- 600
 
@@ -489,20 +565,24 @@ causal_coef_tbl <- bind_rows(
 ```
 
 ```{r}
+#| label: ch4-auto-002
 #| eval: true
 #| fig-width: 8.2
 #| fig-height: 4.6
+#| fig-cap: "交絡の直感的確認（confounding check）: Treatment群と比較群でMotivation分布が異なる例"
+#| fig-alt: "Motivationを横軸にした密度図。Treatment割り付けが1の学習者は、0の学習者よりMotivationが高い側に分布している。"
 
 ggplot(causal_demo, aes(x = Motivation, fill = factor(Treatment))) +
   geom_density(alpha = 0.35) +
+  scale_fill_discrete(labels = c("0 = comparison", "1 = treatment")) +
   labs(
     title = "Why Naive Regression Is Biased",
     subtitle = "Treated learners are more motivated on average in this toy example",
     x = "Motivation (confounder)",
     y = "Density",
-    fill = "Treatment"
+    fill = "Treatment assignment"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -521,18 +601,21 @@ ggplot(causal_demo, aes(x = Motivation, fill = factor(Treatment))) +
   theme(legend.position = "bottom")
 ```
 
-この図では、`Treatment = 1` の学習者の方が `Motivation` が高い側へ寄っています。  
+この図では、`Treatment = 1` の学習者の方が `Motivation` が高い側へ寄っています。
 もし `Motivation` が成績にも効くなら、未調整の `Treatment` 係数には
 **介入効果 + 動機づけ差** が一緒に入ってしまいます。
 
 ```{r}
+#| label: ch4-auto-003
 #| eval: true
 #| fig-width: 7.8
 #| fig-height: 4.2
+#| fig-cap: "欠落交絡による係数バイアス（omitted variable bias）: 未調整モデルと調整モデルの比較"
+#| fig-alt: "未調整モデルと調整モデルのTreatment係数を点と信頼区間で示す図。調整モデルの推定値が真の効果を示す破線に近い。"
 
 ggplot(causal_coef_tbl, aes(x = estimate, y = Model)) +
   geom_vline(xintercept = 2.5, linetype = "dashed", color = "#1D4ED8", linewidth = 0.8) +
-  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.18, linewidth = 0.8, color = "#555555") +
+  geom_errorbar(aes(xmin = conf.low, xmax = conf.high), orientation = "y", width = 0.18, linewidth = 0.8, color = "#555555") +
   geom_point(size = 2.8, color = "#B22222") +
   labs(
     title = "Treatment Coefficient With and Without Confounder Adjustment",
@@ -540,7 +623,7 @@ ggplot(causal_coef_tbl, aes(x = estimate, y = Model)) +
     x = "Estimated treatment effect",
     y = NULL
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -559,6 +642,7 @@ ggplot(causal_coef_tbl, aes(x = estimate, y = Model)) +
 ```
 
 ```{r}
+#| label: ch4-auto-004
 #| eval: true
 causal_coef_tbl |>
   transmute(
@@ -593,25 +677,30 @@ z変換は、係数を「**1 SD 増加あたりの変化量**」として読め�
 交互作用の解釈を安定化します[@aiken1991; @cohen2003]。`scale()` は平均中心化と標準化を行う公式関数です[@rbasescale]。
 
 ```{r}
+#| label: ch4-auto-005
 #| eval: true
 wide_scores <- wide_scores |>
   mutate(
     Proficiency = as.numeric(scale(Proficiency)),
     Aptitude = as.numeric(scale(Aptitude)),
     Treatment = factor(Treatment, levels = treatments),
-    Time = factor(Time, levels = times)
+    LearningMode = factor(LearningMode, levels = learning_modes)
   )
 ```
 
 ### コントラスト（カテゴリカル）
 
 2水準要因を sum coding（-1, +1）にすると、
-主効果は「他変数平均化後の平均差」として読みやすくなります。コントラスト行列の定義は `contrast` ドキュメントに準拠します[@rstatscontrast]。
+係数は「他変数平均化後の平均との差」を表しやすくなります。
+ただし、係数そのものは差ではなく、1つの2水準要因なら**半差**、
+2つの2水準要因をまたぐ差の差なら**4分の1**になります。
+コントラスト行列の定義は `contrast` ドキュメントに準拠します[@rstatscontrast]。
 
 ```{r}
+#| label: ch4-auto-006
 #| eval: true
 contrasts(wide_scores$Treatment) <- contr.sum(2)
-contrasts(wide_scores$Time) <- contr.sum(2)
+contrasts(wide_scores$LearningMode) <- contr.sum(2)
 ```
 
 ### モデル式
@@ -620,17 +709,40 @@ contrasts(wide_scores$Time) <- contr.sum(2)
 
 $$
 \begin{aligned}
-\mathbb{E}[Y] &= \beta_0 + \beta_1\,\text{Trt} + \beta_2\,\text{Time}
+\mathbb{E}[Y] &= \beta_0 + \beta_1\,\text{Trt} + \beta_2\,\text{LearningMode}
 + \beta_3\,Z_{\text{Prof}} + \beta_4\,Z_{\text{Apt}} \\
-&\quad + \beta_5(\text{Trt}\times\text{Time})
+&\quad + \beta_5(\text{Trt}\times\text{LearningMode})
 + \beta_6(\text{Trt}\times Z_{\text{Prof}})
-+ \beta_7(\text{Time}\times Z_{\text{Prof}})
++ \beta_7(\text{LearningMode}\times Z_{\text{Prof}}) \\
+&\quad + \beta_8(\text{Trt}\times\text{LearningMode}\times Z_{\text{Prof}})
 \end{aligned}
 $$
 
 - $Y$ は `Score_Recall`。
-- `Trt` と `Time` は sum coding。
-- $\beta_6$ が「Treatment による Proficiency 傾き差」（主要関心）。
+- `Trt` と `LearningMode` は sum coding。
+- $\beta_6$ は、LearningModeを平均化したときの **Glossing - Writing** のProficiency傾き差の半分。
+- $\beta_8$ は、Writing - Glossing のProficiency傾き差が `Collaborative - Individual` でどれだけ変わるか、その4分の1。
+
+::: {.callout-important}
+### sum coding係数は「差そのもの」ではない
+
+この章では `contr.sum(2)` を使うため、`Treatment1` は Glossing = +1、Writing = -1 です。
+したがって、`Treatment1:Proficiency` は Writing - Glossing の傾き差そのものではなく、
+Glossing - Writing の**半分**です。報告では、係数表をそのまま読まず、
+`emtrends()` の contrast で **Writing - Glossing** に変換した値を主に示します。
+
+さらに `LearningMode1` は Individual = +1、Collaborative = -1 です。
+このため、3要因係数 `Treatment1:LearningMode1:Proficiency` は、
+実質的な傾き差の差そのものではありません。現在の符号化では、
+
+$$
+[(W-G)_{\text{Collaborative}} - (W-G)_{\text{Individual}}] = 4\beta_8
+$$
+
+です。つまり、3要因係数 `b` を本文で報告するときは
+「sum-coded coefficient」と明記し、実質解釈は `4b` または
+`emtrends()`/`L\beta` で作った slope-difference-in-differences を使います。
+:::
 
 ### 設計行列の可視化（`model.matrix`）
 
@@ -639,37 +751,38 @@ $$
 設計行列の生成規則自体は `model.matrix` の公式仕様に依拠します[@rstatsmodelmatrix]。
 
 ```{r}
+#| label: ch4-auto-007
 #| eval: true
 design_dummy <- tidyr::crossing(
   Treatment = factor(treatments, levels = treatments),
-  Time = factor(times, levels = times),
+  LearningMode = factor(learning_modes, levels = learning_modes),
   Proficiency = 0,
   Aptitude = 0
 )
 
 contrasts(design_dummy$Treatment) <- contrasts(wide_scores$Treatment)
-contrasts(design_dummy$Time) <- contrasts(wide_scores$Time)
+contrasts(design_dummy$LearningMode) <- contrasts(wide_scores$LearningMode)
 
 X_dummy <- model.matrix(
-  ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude,
+  ~ Treatment * LearningMode * Proficiency + Aptitude,
   data = design_dummy
 )
 
 design_matrix_preview <- as_tibble(X_dummy) |>
-  mutate(Treatment = design_dummy$Treatment, Time = design_dummy$Time, .before = 1)
+  mutate(Treatment = design_dummy$Treatment, LearningMode = design_dummy$LearningMode, .before = 1)
 
 invisible(NULL)
 ```
 
 `Proficiency = 0`, `Aptitude = 0` に固定しているので、`Treatment1:Proficiency`、
-`Time1:Proficiency`、`Aptitude` 列はすべて 0 になります。
+`LearningMode1:Proficiency`、`Aptitude` 列はすべて 0 になります。
 
-| Treatment | Time | `(Intercept)` | `Treatment1` | `Time1` | `Treatment1:Time1` |
+| Treatment | LearningMode | `(Intercept)` | `Treatment1` | `LearningMode1` | `Treatment1:LearningMode1` |
 |:--|:--|--:|--:|--:|--:|
-| Glossing | Immediate | 1 | 1 | 1 | 1 |
-| Glossing | Delayed | 1 | 1 | -1 | -1 |
-| Writing | Immediate | 1 | -1 | 1 | -1 |
-| Writing | Delayed | 1 | -1 | -1 | 1 |
+| Glossing | Individual | 1 | 1 | 1 | 1 |
+| Glossing | Collaborative | 1 | 1 | -1 | -1 |
+| Writing | Individual | 1 | -1 | 1 | -1 |
+| Writing | Collaborative | 1 | -1 | -1 | 1 |
 
 : Design Matrix Preview (2x2, `Proficiency = Aptitude = 0`)
 
@@ -677,10 +790,11 @@ invisible(NULL)
 |:--|:--|
 | `(Intercept)` | 全条件の平均（sum coding下） |
 | `Treatment1` | Treatment の sum coding 列（Glossing = +1, Writing = -1） |
-| `Time1` | Time の sum coding 列（Immediate = +1, Delayed = -1） |
-| `Treatment1:Time1` | Treatment × Time の差の差 |
-| `Treatment1:Proficiency` | Treatment による Proficiency 傾き差 |
-| `Time1:Proficiency` | Time による Proficiency 傾き差 |
+| `LearningMode1` | LearningMode の sum coding 列（Individual = +1, Collaborative = -1） |
+| `Treatment1:LearningMode1` | Treatment × LearningMode の差の差の4分の1 |
+| `Treatment1:Proficiency` | Treatment による Proficiency 傾き差の半分 |
+| `LearningMode1:Proficiency` | LearningMode による Proficiency 傾きの半差 |
+| `Treatment1:LearningMode1:Proficiency` | Treatmentの傾き差がLearningModeで変わる量の4分の1 |
 | `Aptitude` | Aptitude の主効果 |
 
 : 係数項と設計行列列の対応
@@ -693,8 +807,9 @@ invisible(NULL)
 Schad et al. (2020) の考え方とも整合します[@schad2020]。
 
 ```{r}
+#| label: ch4-auto-008
 #| eval: true
-theory_formula <- Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude
+theory_formula <- Score_Recall ~ Treatment * LearningMode * Proficiency + Aptitude
 
 X_theory <- model.matrix(
   theory_formula,
@@ -718,19 +833,20 @@ invisible(NULL)
 |:--|--:|:--|
 | `(Intercept)` | 0 | `(Intercept)` |
 | `Treatment1` | 1 | `Treatment` |
-| `Time1` | 2 | `Time` |
+| `LearningMode1` | 2 | `LearningMode` |
 | `Proficiency` | 3 | `Proficiency` |
 | `Aptitude` | 4 | `Aptitude` |
-| `Treatment1:Time1` | 5 | `Treatment:Time` |
+| `Treatment1:LearningMode1` | 5 | `Treatment:LearningMode` |
 | `Treatment1:Proficiency` | 6 | `Treatment:Proficiency` |
-| `Time1:Proficiency` | 7 | `Time:Proficiency` |
+| `LearningMode1:Proficiency` | 7 | `LearningMode:Proficiency` |
+| `Treatment1:LearningMode1:Proficiency` | 8 | `Treatment:LearningMode:Proficiency` |
 
 : `model.matrix()` の `assign` 属性
 
 | Factor | Contrast | Level coding |
 |:--|:--|:--|
 | `Treatment` | `contr.sum(2)` | Glossing = +1, Writing = -1 |
-| `Time` | `contr.sum(2)` | Immediate = +1, Delayed = -1 |
+| `LearningMode` | `contr.sum(2)` | Individual = +1, Collaborative = -1 |
 
 : `model.matrix()` の `contrasts` 属性
 
@@ -751,8 +867,9 @@ Schad et al. (2020) が強調する実務ポイントは、
 ```{r}
 #| eval: true
 #| label: coding-invariance-setup
+#| warning: false
 
-coding_formula <- Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude
+coding_formula <- Score_Recall ~ Treatment * LearningMode * Proficiency + Aptitude
 
 centered_contrast <- function(levels_vec) {
   matrix(
@@ -762,25 +879,25 @@ centered_contrast <- function(levels_vec) {
   )
 }
 
-fit_with_coding <- function(trt_contr, time_contr, label) {
+fit_with_coding <- function(trt_contr, mode_contr, label) {
   dat <- wide_scores |>
     mutate(
       Treatment = factor(Treatment, levels = treatments),
-      Time = factor(Time, levels = times)
+      LearningMode = factor(LearningMode, levels = learning_modes)
     )
   contrasts(dat$Treatment) <- trt_contr
-  contrasts(dat$Time) <- time_contr
+  contrasts(dat$LearningMode) <- mode_contr
 
   fit <- lm(coding_formula, data = dat)
 
   grid <- tidyr::crossing(
     Treatment = factor(treatments, levels = treatments),
-    Time = factor(times, levels = times),
+    LearningMode = factor(learning_modes, levels = learning_modes),
     Proficiency = seq(min(dat$Proficiency), max(dat$Proficiency), length.out = 80),
     Aptitude = 0
   )
   contrasts(grid$Treatment) <- trt_contr
-  contrasts(grid$Time) <- time_contr
+  contrasts(grid$LearningMode) <- mode_contr
 
   pred <- bind_cols(grid, tibble(fit = as.numeric(predict(fit, newdata = grid)))) |>
     mutate(Coding = label)
@@ -793,19 +910,19 @@ fit_with_coding <- function(trt_contr, time_contr, label) {
 
 fit_sum <- fit_with_coding(
   trt_contr = contr.sum(2),
-  time_contr = contr.sum(2),
+  mode_contr = contr.sum(2),
   label = "Sum (-1/+1)"
 )
 
 fit_treatment <- fit_with_coding(
   trt_contr = contr.treatment(2),
-  time_contr = contr.treatment(2),
+  mode_contr = contr.treatment(2),
   label = "Treatment (0/1)"
 )
 
 fit_centered <- fit_with_coding(
   trt_contr = centered_contrast(treatments),
-  time_contr = centered_contrast(times),
+  mode_contr = centered_contrast(learning_modes),
   label = "Centered (-0.5/+0.5)"
 )
 
@@ -814,11 +931,11 @@ coding_coef_tbl <- bind_rows(fit_sum$coef_tbl, fit_treatment$coef_tbl, fit_cente
 
 ref_pred_tbl <- coding_pred_tbl |>
   dplyr::filter(Coding == "Sum (-1/+1)") |>
-  dplyr::select(Treatment, Time, Proficiency, Aptitude, fit_ref = fit)
+  dplyr::select(Treatment, LearningMode, Proficiency, Aptitude, fit_ref = fit)
 
 coding_pred_diff_tbl <- coding_pred_tbl |>
   dplyr::filter(Coding != "Sum (-1/+1)") |>
-  dplyr::left_join(ref_pred_tbl, by = c("Treatment", "Time", "Proficiency", "Aptitude")) |>
+  dplyr::left_join(ref_pred_tbl, by = c("Treatment", "LearningMode", "Proficiency", "Aptitude")) |>
   dplyr::mutate(abs_diff = abs(fit - fit_ref)) |>
   dplyr::group_by(Coding) |>
   dplyr::summarise(
@@ -860,7 +977,10 @@ invisible(NULL)
 ### 予測値の不変性
 
 ```{r}
+#| label: ch4-auto-009
 #| eval: true
+#| fig-cap: "符号化方式を変えても予測線が一致することの確認（prediction invariance across codings）"
+#| fig-alt: "Proficiencyを横軸、予測Score_Recallを縦軸にした線グラフ。符号化方式別の線が各TreatmentとLearningModeパネルで重なっている。"
 coding_pred_diff_tbl |>
   knitr::kable(caption = "Prediction Invariance Check (vs Sum Coding)", digits = 10)
 
@@ -869,14 +989,14 @@ ggplot(
   aes(x = Proficiency, y = fit, color = Coding, linetype = Coding)
 ) +
   geom_line(linewidth = 0.8) +
-  facet_grid(Time ~ Treatment) +
+  facet_grid(LearningMode ~ Treatment) +
   labs(
     title = "Predicted Lines Under Different Codings",
     subtitle = "Overlapping lines confirm predictions are invariant to coding",
     x = "Proficiency (z)",
     y = "Predicted Score_Recall"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -897,6 +1017,7 @@ ggplot(
 ### 係数の可変性（解釈単位の違い）
 
 ```{r}
+#| label: ch4-auto-010
 #| eval: true
 coding_coef_tbl |>
   dplyr::select(Coding, term, estimate, std.error, p.value, conf.low, conf.high) |>
@@ -906,11 +1027,14 @@ coding_coef_tbl |>
 
 ### dominance analysis は coding で変わるか
 
-**同じ model term を比較単位にする限り、full-rank な coding を変えても dominance weight は不変**です。  
-理由は単純で、dominance analysis は各サブモデルの `R^2` 改善量を比較するため、
-同じモデル空間ならサブモデルの当てはまりも不変だからです[@budescu1993; @azen2003; @schad2020; @dominanceanalysispkg]。
+**同じ階層的な model term を比較単位にする限り、full-rank な coding を変えても予測値は不変**です。
+一方、dominance analysis は多数のサブモデルを比較するため、交互作用を含むモデルでは
+「どの項をセットで入れるか」によって解釈が変わります。ここでは補助的な確認として示し、
+主要な交互作用の大きさは後で示す $\Delta R^2$ と partial $f^2$ を優先して読みます
+[@budescu1993; @azen2003; @schad2020; @dominanceanalysispkg]。
 
 ```{r}
+#| label: ch4-auto-011
 #| eval: true
 coding_dominance_tbl |>
   knitr::kable(caption = "Dominance Weights Across Coding Schemes", digits = 6)
@@ -920,9 +1044,12 @@ coding_dominance_diff_tbl |>
 ```
 
 ```{r}
+#| label: ch4-auto-012
 #| eval: true
 #| fig-width: 8.8
 #| fig-height: 4.8
+#| fig-cap: "符号化方式ごとの優越度比較（dominance weights across codings）: 補助的な感度確認"
+#| fig-alt: "モデル項ごとのgeneral dominance weightを符号化方式別の点で示す図。点が近いほど符号化方式による違いが小さい。"
 
 ggplot(
   coding_dominance_tbl,
@@ -931,12 +1058,12 @@ ggplot(
   geom_point(size = 2.4, position = position_dodge(width = 0.35)) +
   labs(
     title = "Dominance Weights Across Coding Schemes",
-    subtitle = "Overlapping points indicate term-level dominance is invariant to coding",
+    subtitle = "Use as a sensitivity check; focal interaction size is reported via delta R-squared",
     x = "General dominance weight",
     y = "Model term",
     color = "Coding"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -976,9 +1103,10 @@ ggplot(
 `lm()` の推定対象・重み・欠測処理の挙動は R 公式ドキュメントに準拠します[@rstatslm]。
 
 ```{r}
+#| label: ch4-auto-013
 #| eval: true
 m_theory <- lm(
-  Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude,
+  Score_Recall ~ Treatment * LearningMode * Proficiency + Aptitude,
   data = wide_scores
 )
 broom::tidy(m_theory, conf.int = TRUE) |>
@@ -988,8 +1116,9 @@ broom::tidy(m_theory, conf.int = TRUE) |>
 ### 探索的モデル（補助）
 
 ```{r}
+#| label: ch4-auto-014
 #| eval: true
-m_full <- lm(Score_Recall ~ Treatment * Time * Proficiency * Aptitude, data = wide_scores)
+m_full <- lm(Score_Recall ~ Treatment * LearningMode * Proficiency * Aptitude, data = wide_scores)
 m_step <- step(m_full, direction = "both", trace = 0)
 
 broom::tidy(m_step, conf.int = TRUE) |>
@@ -1002,14 +1131,23 @@ performance::compare_performance(m_theory, m_step)
 **仮説検証の主軸には置かない**のが安全です[@babyak2004; @rstatsstep]。
 AIC/BICやCVは「判断補助」として使い、最終モデルは理論根拠で固定します
 [@burnham2002]。
+
+交互作用モデルでは、もう1つ注意が必要です。通常の `step()` は、
+上位交互作用を残しながら下位項を落とすような非階層モデルを選び得ます。
+階層性の原則を守るなら、上位交互作用を含めるときは対応する下位項も保持する、という制約を別途置きます。
 :::
 
 ### 交差検証（補助）
 
 `cv.glm()` によるK-fold CV は `boot` の標準実装を使用します[@bootpkg]。
+ここで比較しているのは、全データで決まった式を固定した後の予測誤差です。
+`step()` による変数選択手順そのものの外部妥当性を評価するには、
+各foldの訓練データ内で `step()` をやり直す nested CV が必要です。
 
 ```{r}
+#| label: ch4-auto-015
 #| eval: true
+#| warning: false
 if (requireNamespace("boot", quietly = TRUE)) {
   set.seed(2024)
   cv_theory <- boot::cv.glm(
@@ -1025,7 +1163,7 @@ if (requireNamespace("boot", quietly = TRUE)) {
   )$delta[1]
 
   tibble(
-    Model = c("Theory-first", "Stepwise"),
+    Model = c("Theory-first fixed formula", "Stepwise-selected fixed formula"),
     CV_MSE = c(cv_theory, cv_step)
   )
 } else {
@@ -1044,12 +1182,13 @@ if (requireNamespace("boot", quietly = TRUE)) {
 **どの前提が係数に効き、どの前提が SE や `p` 値に効くのか**を分けて読みます。
 本章の実務順序は次の通りです。
 
-1. まず独立性を研究デザインで確認する  
-2. 次に residual vs fitted で線形性と等分散性を見る  
-3. その後に QQ plot で残差正規性を見る  
+1. まず独立性を研究デザインで確認する
+2. 次に residual vs fitted で線形性と等分散性を見る
+3. その後に QQ plot で残差正規性を見る
 4. 最後に共線性と影響点を確認し、結論が少数ケースに依存しないかを見る
 
 ```{r}
+#| label: ch4-auto-016
 #| eval: true
 diagnostic_aug_tbl <- broom::augment(m_theory, data = wide_scores) |>
   mutate(
@@ -1063,7 +1202,7 @@ diagnostic_aug_tbl <- broom::augment(m_theory, data = wide_scores) |>
 
 influence_top_tbl <- diagnostic_aug_tbl |>
   dplyr::select(
-    Participant, Treatment, Time, Score_Recall, .fitted, .resid,
+    Participant, Treatment, LearningMode, Score_Recall, .fitted, .resid,
     leverage, rstudent, cooks_d, flagged
   ) |>
   arrange(desc(cooks_d)) |>
@@ -1081,7 +1220,7 @@ influence_top_tbl <- diagnostic_aug_tbl |>
 | VIF / collinearity | 1 に近い | 高い VIF、広い CI、符号不安定 | 傾き解釈が不安定 |
 | Leverage / Cook's D | 少数点が突出しない | 高 leverage + 大残差 | 数点に結論が依存する |
 
-読み方の要点は、**「どれか1つでも少し崩れたら即アウト」ではない**ということです。  
+読み方の要点は、**「どれか1つでも少し崩れたら即アウト」ではない**ということです。
 たとえば、軽い非正規性は大標本では深刻でないことが多い一方、独立性違反や強い非線形性は、
 係数解釈そのものを壊しやすいです。したがって、優先順位は
 `独立性・線形性 > 等分散性 > 正規性` の順で考えると実務的です。
@@ -1089,22 +1228,26 @@ influence_top_tbl <- diagnostic_aug_tbl |>
 ### 総合診断
 
 ```{r}
+#| label: ch4-auto-017
 #| eval: true
 #| fig-width: 10
 #| fig-height: 4.8
+#| fig-cap: "回帰診断図（regression diagnostics）: 線形性、等分散性、外れ値、正規性、共線性の確認"
+#| fig-alt: "複数の診断図が順に表示され、残差、QQプロット、外れ値、共線性などを視覚的に確認できる。"
 
 plot_check_model_separate(m_theory, model_name = "m_theory")
 ```
 
-この図群では、まず **Residuals vs Fitted** を見ます。  
-ここで曲線が見えるなら、`Proficiency` の効果が直線で表せていない可能性があります。  
-扇形なら、予測値の大きさによって誤差分散が変わっているので、HC3 の必要性が高まります。  
+この図群では、まず **Residuals vs Fitted** を見ます。
+ここで曲線が見えるなら、`Proficiency` の効果が直線で表せていない可能性があります。
+扇形なら、予測値の大きさによって誤差分散が変わっているので、HC3 の必要性が高まります。
 QQ plot はその後に見れば十分で、点が多少ずれていても、残差構造に強い系統パターンが
 なければ OLS 自体が無効になるわけではありません。
 
 ### 等分散性・正規性・独立性
 
 ```{r}
+#| label: ch4-auto-018
 #| eval: true
 performance::check_heteroscedasticity(m_theory)
 performance::check_normality(m_theory)
@@ -1122,14 +1265,15 @@ performance::check_autocorrelation(m_theory)
 ### 多重共線性
 
 ```{r}
+#| label: ch4-auto-019
 #| eval: true
 performance::check_collinearity(m_theory)
 model_performance(m_theory)
 ```
 
 多重共線性は、係数を「有意かどうか」で読むときより、
-**符号や大きさがどれだけ安定しているか**を見るときに重要です。  
-VIF が高いと、モデル全体の `R^2` は高くても、各係数の CI は広くなりやすく、
+**符号や大きさがどれだけ安定しているか**を見るときに重要です。
+VIF が高いと、モデル全体の $R^2$ は高くても、各係数の CI は広くなりやすく、
 同じ理論を別サンプルで推定したときに符号が揺れやすくなります。
 特に交互作用項は主効果項と相関しやすいので、標準化や明示的なコーディング確認が効きます
 [@aiken1991; @cohen2003]。
@@ -1137,9 +1281,12 @@ VIF が高いと、モデル全体の `R^2` は高くても、各係数の CI �
 ### 影響点と高 leverage ケース
 
 ```{r}
+#| label: fig-influence-diagnostics
 #| eval: true
 #| fig-width: 8.5
 #| fig-height: 4.8
+#| fig-cap: "影響点診断（influence diagnostics）: leverage、studentized residual、Cook's distance"
+#| fig-alt: "leverageを横軸、studentized residualを縦軸にした散布図。Cook's distanceが大きい点ほど大きく表示され、上位ケースにラベルが付く。"
 
 ggplot(
   diagnostic_aug_tbl,
@@ -1153,7 +1300,6 @@ ggplot(
       arrange(desc(cooks_d)) |>
       slice_head(n = 5),
     aes(label = Participant),
-    family = "HiraginoSans-W3",
     nudge_y = 0.12,
     size = 3,
     box.padding = 0.25,
@@ -1171,7 +1317,7 @@ ggplot(
     size = "Cook's D",
     color = "Flagged"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1190,15 +1336,52 @@ ggplot(
 ```
 
 ```{r}
+#| label: ch4-auto-021
 #| eval: true
 influence_top_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
   knitr::kable(caption = "Top Cases by Cook's Distance")
 ```
 
-この図は、**横軸が leverage、縦軸が残差、点の大きさが Cook's distance** です。  
-右にある点は「説明変数空間で珍しい」ケース、上下に外れた点は「予測から大きく外れる」ケースです。  
-とくに問題なのは、その両方を兼ねる点です。  
+### Added Variable Plot:各予測子の純粋な寄与を見る
+
+**Added variable plot(AVP、別名 partial regression plot)** は、ある予測子 $X_j$ の係数が実際にデータの中でどのような関係を表しているかを **「他の予測子を統制した残差空間」** で確認する古典的な診断図です(Cook & Weisberg 1999; Fox 2016)。各予測子について:
+
+- **横軸**:$X_j$ を他のすべての予測子で回帰して得た残差($X_j$ のうち、他で説明されない部分)
+- **縦軸**:$Y$ を他のすべての予測子(ただし $X_j$ を除く)で回帰した残差
+- **直線の傾き**:重回帰モデルでの $X_j$ の係数 $\hat\beta_j$ と一致する
+
+これにより、「**$X_j$ が他の予測子を統制した上でどれだけ Y を説明しているか**」が散布図として視覚化できます。**外れ値・影響点・非線形性**もこの空間で発見しやすくなります。
+
+```{r}
+#| label: fig-added-variable-plot
+#| eval: true
+#| fig-width: 9
+#| fig-height: 6
+#| fig-cap: "Added Variable Plot(各予測子の partial regression):横軸 = 当該予測子を他で回帰した残差、縦軸 = Y を他で回帰した残差。直線の傾きは重回帰係数と一致する。"
+#| fig-alt: "8 つの予測子(主効果と交互作用項)それぞれについて、partial residual の散布図と回帰直線を 4×2 グリッドで示した図。各パネルの右上に係数の点推定値が表示される。"
+if (requireNamespace("car", quietly = TRUE)) {
+  car::avPlots(m_theory, ask = FALSE, layout = c(2, 4))
+} else {
+  message("car パッケージ未インストール — Added Variable Plot をスキップ")
+}
+```
+
+**Added Variable Plot の読み方**:
+
+- **直線が水平に近い**:その予測子は他を統制した上で Y への寄与が小さい
+- **直線が急傾斜**:その予測子は他を統制した後でも強く Y を説明する
+- **散らばりが直線から大きく外れる**:非線形性の可能性 → 多項式項やスプライン(第 5 章 GAM)を検討
+- **特定の点が極端に飛び抜けている**:**leverage と Cook's D で flag した点**と一致するか確認 → influence diagnostics と組み合わせて読む
+
+::: {.callout-tip}
+#### Influence diagnostics と AVP の組み合わせ
+Cook's D が大きい点は **どの予測子の AVP でも端に位置する**ことが多いので、**AVP で「飛び抜けた点」を見つける → Cook's D で確認 → 感度分析(その点を除いて再フィット)** という流れが診断の王道です。`car::influencePlot()` も同じ目的で使えます。
+:::
+
+影響点診断プロット(@fig-influence-diagnostics 相当)では、**横軸が leverage、縦軸が studentized residual、点の大きさが Cook's distance** です。
+右にある点は「説明変数空間で珍しい」ケース、上下に外れた点は「予測から大きく外れる」ケースで、
+とくに問題なのは、その両方を兼ねる点です。
 ただし、ここでの実務ルールは単純です。
 
 - まずデータ入力ミスやスコアリングミスがないか確認する
@@ -1208,6 +1391,7 @@ influence_top_tbl |>
 ### ロバスト標準誤差（HC3）
 
 ```{r}
+#| label: ch4-auto-022
 #| eval: true
 if (requireNamespace("sandwich", quietly = TRUE) && requireNamespace("lmtest", quietly = TRUE)) {
   hc3 <- sandwich::vcovHC(m_theory, type = "HC3")
@@ -1220,7 +1404,7 @@ if (requireNamespace("sandwich", quietly = TRUE) && requireNamespace("lmtest", q
 等分散性に懸念がある場合、HC3 は実務的な頑健化として有効です
 [@mackinnon1985; @longervin2000]。実装APIは `sandwich` と `lmtest` の公式仕様に従います[@sandwichpkg; @lmtestpkg]。
 
-ここでの重要点は、HC3 は **係数を別の値に変える手法ではない**ということです。  
+ここでの重要点は、HC3 は **係数を別の値に変える手法ではない**ということです。
 主に変わるのは標準誤差、信頼区間、`p` 値であり、
 「等分散を仮定したときの推論がどれだけ脆いか」を確認するために使います。
 したがって、OLS と HC3 の結論が大きくずれないなら、
@@ -1233,6 +1417,7 @@ if (requireNamespace("sandwich", quietly = TRUE) && requireNamespace("lmtest", q
 ```{r}
 #| eval: true
 #| label: results-setup
+#| warning: false
 
 coef_main_tbl <- broom::tidy(m_theory, conf.int = TRUE)
 std_coef_tbl <- effectsize::standardize_parameters(m_theory)
@@ -1246,14 +1431,32 @@ effect_size_tbl <- tibble(
   f2 = r2_val / (1 - r2_val)
 )
 
+m_reduced_three_way <- lm(
+  Score_Recall ~ Treatment * LearningMode + Treatment * Proficiency + LearningMode * Proficiency + Aptitude,
+  data = wide_scores
+)
+
+# 注:本章では `anova(reduced, full)` による「項を 1 つだけ落とす検定」で
+# 三次交互作用の有意性を評価しています。これは sum coding + 釣り合いセル下では
+# car::Anova(m_full, type = "III") と等価で、Type III SS と一致します。
+# 第 2 章「不均衡デザインでの Type I/II/III SS」を参照してください。
+r2_reduced <- as.numeric(performance::r2(m_reduced_three_way)$R2)
+three_way_effect_tbl <- tibble(
+  Effect = "Treatment x LearningMode x Proficiency",
+  R2_full = r2_val,
+  R2_reduced = r2_reduced,
+  Delta_R2 = r2_val - r2_reduced,
+  partial_f2 = (r2_val - r2_reduced) / (1 - r2_val)
+)
+
 pred_grid <- tidyr::crossing(
   Treatment = factor(treatments, levels = treatments),
-  Time = factor(times, levels = times),
+  LearningMode = factor(learning_modes, levels = learning_modes),
   Proficiency = seq(min(wide_scores$Proficiency), max(wide_scores$Proficiency), length.out = 80),
   Aptitude = 0
 )
 contrasts(pred_grid$Treatment) <- contrasts(wide_scores$Treatment)
-contrasts(pred_grid$Time) <- contrasts(wide_scores$Time)
+contrasts(pred_grid$LearningMode) <- contrasts(wide_scores$LearningMode)
 
 pred_ci <- predict(m_theory, newdata = pred_grid, interval = "confidence")
 pred_df <- bind_cols(pred_grid, as_tibble(pred_ci))
@@ -1264,7 +1467,7 @@ pred_df_pi <- bind_cols(pred_grid, as_tibble(pred_pi))
 interval_width_tbl <- pred_df |>
   transmute(
     Treatment,
-    Time,
+    LearningMode,
     Proficiency,
     ci_width = upr - lwr
   ) |>
@@ -1272,13 +1475,13 @@ interval_width_tbl <- pred_df |>
     pred_df_pi |>
       transmute(
         Treatment,
-        Time,
+        LearningMode,
         Proficiency,
         pi_width = upr - lwr
       ),
-    by = c("Treatment", "Time", "Proficiency")
+    by = c("Treatment", "LearningMode", "Proficiency")
   ) |>
-  group_by(Treatment, Time) |>
+  group_by(Treatment, LearningMode) |>
   summarise(
     mean_ci_width = mean(ci_width),
     mean_pi_width = mean(pi_width),
@@ -1288,12 +1491,12 @@ interval_width_tbl <- pred_df |>
 
 surface_grid <- tidyr::crossing(
   Treatment = factor(treatments, levels = treatments),
-  Time = factor(times, levels = times),
+  LearningMode = factor(learning_modes, levels = learning_modes),
   Proficiency = seq(min(wide_scores$Proficiency), max(wide_scores$Proficiency), length.out = 60),
   Aptitude = seq(min(wide_scores$Aptitude), max(wide_scores$Aptitude), length.out = 60)
 )
 contrasts(surface_grid$Treatment) <- contrasts(wide_scores$Treatment)
-contrasts(surface_grid$Time) <- contrasts(wide_scores$Time)
+contrasts(surface_grid$LearningMode) <- contrasts(wide_scores$LearningMode)
 
 surface_pred_df <- bind_cols(
   surface_grid,
@@ -1301,7 +1504,7 @@ surface_pred_df <- bind_cols(
 )
 
 surface_gap_df <- surface_pred_df |>
-  dplyr::select(Treatment, Time, Proficiency, Aptitude, fit) |>
+  dplyr::select(Treatment, LearningMode, Proficiency, Aptitude, fit) |>
   pivot_wider(names_from = Treatment, values_from = fit) |>
   dplyr::mutate(Writing_minus_Glossing = Writing - Glossing)
 
@@ -1343,7 +1546,7 @@ if (robust_available) {
 }
 
 interaction_terms <- names(coef(m_theory))[
-  grepl("Treatment.*:Proficiency|Time.*:Proficiency", names(coef(m_theory)))
+  grepl("Treatment.*:Proficiency|LearningMode.*:Proficiency", names(coef(m_theory)))
 ]
 
 bootstrap_available <- requireNamespace("boot", quietly = TRUE)
@@ -1353,9 +1556,9 @@ if (bootstrap_available && length(interaction_terms) > 0) {
   boot_stat_interaction <- function(data, indices) {
     d <- data[indices, , drop = FALSE]
     d$Treatment <- factor(d$Treatment, levels = treatments)
-    d$Time <- factor(d$Time, levels = times)
+    d$LearningMode <- factor(d$LearningMode, levels = learning_modes)
     contrasts(d$Treatment) <- contrasts(wide_scores$Treatment)
-    contrasts(d$Time) <- contrasts(wide_scores$Time)
+    contrasts(d$LearningMode) <- contrasts(wide_scores$LearningMode)
 
     fit_b <- lm(formula(m_theory), data = d)
 
@@ -1369,13 +1572,14 @@ if (bootstrap_available && length(interaction_terms) > 0) {
   boot_interaction <- boot::boot(
     data = wide_scores,
     statistic = boot_stat_interaction,
-    R = 500
+    R = 2000,
+    strata = interaction(wide_scores$Treatment, wide_scores$LearningMode, drop = TRUE)
   )
 
   boot_mat <- as_tibble(boot_interaction$t, .name_repair = "minimal")
   colnames(boot_mat) <- interaction_terms
 
-  boot_ci_tbl <- purrr::map_dfr(interaction_terms, function(tm) {
+  boot_ci_tbl <- purrr::map(interaction_terms, function(tm) {
     vals <- boot_mat[[tm]]
     vals <- vals[is.finite(vals)]
     tibble(
@@ -1386,7 +1590,8 @@ if (bootstrap_available && length(interaction_terms) > 0) {
       boot_ci_high = if (length(vals) > 0) unname(quantile(vals, 0.975)) else NA_real_,
       boot_valid_R = length(vals)
     )
-  })
+  }) |>
+    purrr::list_rbind()
 } else {
   boot_ci_tbl <- tibble(
     term = interaction_terms,
@@ -1436,6 +1641,26 @@ robust_inference_tbl <- ols_focus_tbl |>
   dplyr::left_join(hc3_focus_tbl, by = "term") |>
   dplyr::left_join(boot_ci_tbl, by = "term")
 
+robust_inference_apa_tbl <- robust_inference_tbl |>
+  dplyr::transmute(
+    Predictor = term_label(term),
+    `OLS b [95% CI]` = paste0(
+      apa_num(ols_estimate, 3),
+      " [", apa_num(ols_ci_low, 3), ", ", apa_num(ols_ci_high, 3), "]"
+    ),
+    `OLS p` = apa_p(ols_p),
+    `HC3 b [95% CI]` = paste0(
+      apa_num(hc3_estimate, 3),
+      " [", apa_num(hc3_ci_low, 3), ", ", apa_num(hc3_ci_high, 3), "]"
+    ),
+    `HC3 p` = apa_p(hc3_p),
+    `Bootstrap mean [percentile 95% CI]` = paste0(
+      apa_num(boot_estimate, 3),
+      " [", apa_num(boot_ci_low, 3), ", ", apa_num(boot_ci_high, 3), "]"
+    ),
+    `Valid bootstrap R` = boot_valid_R
+  )
+
 dominance_tbl <- dominanceanalysis::averageContribution(
   dominanceanalysis::dominanceAnalysis(m_theory)
 )$r2 |>
@@ -1449,6 +1674,7 @@ invisible(NULL)
 ### 主要係数
 
 ```{r}
+#| label: ch4-auto-023
 #| eval: true
 coef_main_tbl |>
   knitr::kable(caption = "Theory-Driven Model: Coefficient Summary", digits = 3)
@@ -1461,34 +1687,49 @@ tab_model(m_theory)
 ### 標準化係数と効果量
 
 ```{r}
+#| label: ch4-auto-024
 #| eval: true
 std_coef_tbl |>
   knitr::kable(caption = "Standardized Parameters", digits = 3)
 
 effect_size_tbl |>
   knitr::kable(caption = "Model-Level Effect Size (R², adjusted R², f²)", digits = 3)
+
+three_way_effect_tbl |>
+  knitr::kable(caption = "主要3要因交互作用の効果量（effect size for the focal three-way interaction）: reduced modelとの差", digits = 4)
 ```
+
+主報告では、得点単位で解釈できる非標準化係数 `b` を優先します。
+標準化係数は補助的な比較指標であり、因子を含む交互作用では「平均差そのもの」と読まないようにします。
 
 ### 補助分析: Dominance Analysis
 
 `dominance analysis` は、各予測子や交互作用項が
-**モデル全体の説明力（ここでは `R^2`）にどれだけ寄与しているか**を、
-全サブモデル比較の平均改善量として整理する方法です[@budescu1993; @azen2003]。  
+**モデル全体の説明力（ここでは $R^2$）にどれだけ寄与しているか**を、
+全サブモデル比較の平均改善量として整理する方法です[@budescu1993; @azen2003]。
 これは、`標準化βが大きい = いちばん重要` と単純化しにくい場面、
-とくに予測子同士が相関している場面で有用です。  
+とくに予測子同士が相関している場面で有用です。
 一方で、ここでの「重要」は **因果的重要性ではなく、説明力への寄与**です
 [@mizumoto2022]。
+また、交互作用を含むモデルでは、dominance analysis は多数のサブモデルを平均するため、
+必ずしも「下位項を含めてから上位交互作用を追加する」という階層的な検定順序を守りません。
+したがって、本章では focal interaction の効果量は `Delta_R2` と partial `f^2` を主に読み、
+dominance weights は探索的な補助情報として扱います。
 
 ```{r}
+#| label: ch4-auto-025
 #| eval: true
 dominance_tbl |>
   knitr::kable(caption = "General Dominance Weights for Model Terms", digits = 3)
 ```
 
 ```{r}
+#| label: ch4-auto-026
 #| eval: true
 #| fig-width: 8.2
 #| fig-height: 4.6
+#| fig-cap: "一般的優越度（general dominance weights）: モデル項ごとのR²への平均寄与"
+#| fig-alt: "モデル項を縦軸、general dominance weightを横軸にした横棒グラフ。各棒の末尾に寄与量が表示される。"
 
 ggplot(dominance_tbl, aes(x = reorder(term, general_dominance), y = general_dominance)) +
   geom_col(fill = "#2C7FB8", alpha = 0.9) +
@@ -1501,7 +1742,7 @@ ggplot(dominance_tbl, aes(x = reorder(term, general_dominance), y = general_domi
     x = "Model term",
     y = "General dominance"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1529,7 +1770,7 @@ ggplot(dominance_tbl, aes(x = reorder(term, general_dominance), y = general_domi
   **どの項がモデル全体の説明力に強く寄与しているか**を読む
 
 したがって、`dominance analysis` は
-**係数解釈と予測重視の発想の橋渡し**として有効です。  
+**係数解釈と予測重視の発想の橋渡し**として有効です。
 ただし、交互作用項の dominance weight が大きくても、
 それは「モデレーションが説明力を増やしている」という意味であって、
 その項が因果的に最重要だという意味ではありません。
@@ -1539,19 +1780,20 @@ ggplot(dominance_tbl, aes(x = reorder(term, general_dominance), y = general_domi
 `plot_model(type = "pred")` は `sjPlot` が内部で `predict.lm` 相当の予測を整理した表示です[@sjplotpkg; @rstatspredictlm]。
 
 ```{r}
+#| label: ch4-auto-027
 #| eval: true
 plot_model(
   m_theory,
   type = "pred",
-  terms = c("Proficiency", "Treatment", "Time")
+  terms = c("Proficiency", "Treatment", "LearningMode")
 ) +
   labs(
     x = "Proficiency (z)",
     y = "Predicted score",
-    color = "Treatment / Time",
-    fill = "Treatment / Time"
+    color = "Treatment / LearningMode",
+    fill = "Treatment / LearningMode"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1573,9 +1815,12 @@ plot_model(
 ### 生データ + 予測線 + 信頼帯
 
 ```{r}
+#| label: ch4-auto-028
 #| eval: true
 #| fig-width: 9
 #| fig-height: 4.8
+#| fig-cap: "観測値とモデル予測線（observed data and model-based predictions）: LearningMode別のTreatment × Proficiency"
+#| fig-alt: "ProficiencyとScore_Recallの散布図に、Treatment別の予測線と信頼帯が重ねられている。IndividualとCollaborativeの2パネルで表示される。"
 
 ggplot(wide_scores, aes(x = Proficiency, y = Score_Recall, color = Treatment)) +
   geom_point(alpha = 0.12, size = 1) +
@@ -1591,7 +1836,7 @@ ggplot(wide_scores, aes(x = Proficiency, y = Score_Recall, color = Treatment)) +
     aes(y = fit, group = Treatment),
     linewidth = 1.0
   ) +
-  facet_wrap(~ Time) +
+  facet_wrap(~ LearningMode) +
   labs(
     title = "Observed Data and Model-Based Predictions",
     x = "Proficiency (z)",
@@ -1599,7 +1844,7 @@ ggplot(wide_scores, aes(x = Proficiency, y = Score_Recall, color = Treatment)) +
     color = "Treatment",
     fill = "Treatment"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1625,15 +1870,18 @@ ggplot(wide_scores, aes(x = Proficiency, y = Score_Recall, color = Treatment)) +
 後者は誤差分散を含むため、通常は前者より広くなります。
 
 ```{r}
+#| label: ch4-auto-029
 #| eval: true
 #| fig-width: 8.2
 #| fig-height: 4.4
+#| fig-cap: "信頼区間と予測区間（confidence interval vs. prediction interval）の違い"
+#| fig-alt: "WritingかつIndividual条件の予測線に、平均応答の信頼区間と新規観測の予測区間が重ねられている。予測区間の方が広い。"
 
 pred_focus_ci <- pred_df |>
-  dplyr::filter(Treatment == "Writing", Time == "Immediate")
+  dplyr::filter(Treatment == "Writing", LearningMode == "Individual")
 
 pred_focus_pi <- pred_df_pi |>
-  dplyr::filter(Treatment == "Writing", Time == "Immediate")
+  dplyr::filter(Treatment == "Writing", LearningMode == "Individual")
 
 ggplot(pred_focus_ci, aes(x = Proficiency, y = fit)) +
   geom_ribbon(
@@ -1650,11 +1898,11 @@ ggplot(pred_focus_ci, aes(x = Proficiency, y = fit)) +
   geom_line(linewidth = 1.0, color = "#1D4ED8") +
   labs(
     title = "Confidence Interval vs Prediction Interval",
-    subtitle = "Writing × Immediate (gray = prediction, blue = confidence)",
+    subtitle = "Writing × Individual (gray = prediction, blue = confidence)",
     x = "Proficiency (z)",
     y = "Predicted Score_Recall"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1673,6 +1921,7 @@ ggplot(pred_focus_ci, aes(x = Proficiency, y = fit)) +
 ```
 
 ```{r}
+#| label: ch4-auto-030
 #| eval: true
 interval_width_tbl |>
   knitr::kable(caption = "Interval Width Summary (PI is expected to be wider)", digits = 3)
@@ -1680,13 +1929,15 @@ interval_width_tbl |>
 
 ### 推論の頑健化（OLS / HC3 / Bootstrap）
 
-交互作用係数について、通常のOLS推論に加えて HC3 とブートストラップ百分位CIを併記します
+Proficiencyを含む主要交互作用係数について、通常のOLS推論に加えて HC3 とブートストラップ百分位CIを併記します
 [@sandwichpkg; @lmtestpkg; @bootpkg]。
+ここでは2x2実験セル内の比率を保つため、Treatment × LearningMode セルで層化した bootstrap を使います。
 
 ```{r}
+#| label: ch4-auto-031
 #| eval: true
-robust_inference_tbl |>
-  knitr::kable(caption = "Robust Inference for Interaction Terms", digits = 4)
+robust_inference_apa_tbl |>
+  knitr::kable(caption = "Robust Inference for Focal Proficiency Interaction Terms")
 ```
 
 この表は、**係数の値そのもの**よりも、
@@ -1697,7 +1948,8 @@ robust_inference_tbl |>
 - `OLS` と `HC3` で `p` 値や CI が大きくずれる:
   通常の SE が楽観的だった可能性がある
 - `Bootstrap` でも方向が一致する:
-  結論が標本分布の近似方法に強く依存していない
+  結論が標本分布の近似方法に強く依存していない。
+  教材内では再現性と実行時間のバランスから `R = 2000` とし、論文では必要に応じてさらに増やします。
 
 したがって、最も信頼できるのは
 **OLS, HC3, Bootstrap の3つが同じ方向を指す**ときです。
@@ -1707,14 +1959,25 @@ robust_inference_tbl |>
 ### 2D予測面（Proficiency × Aptitude）
 
 ```{r}
+#| label: ch4-auto-032
 #| eval: true
 #| fig-width: 9.2
 #| fig-height: 5.6
+#| fig-cap: "2次元予測面（two-dimensional prediction surface）: Proficiency × Aptitude"
+#| fig-alt: "ProficiencyとAptitudeの平面上に予測Scoreを色で示すヒートマップ。TreatmentとLearningModeの4パネルで表示される。"
 
 ggplot(surface_pred_df, aes(x = Proficiency, y = Aptitude, fill = fit)) +
   geom_raster() +
-  geom_contour(aes(z = fit), color = "white", alpha = 0.55, bins = 8, linewidth = 0.25) +
-  facet_grid(Time ~ Treatment) +
+  geom_contour(
+    data = surface_pred_df,
+    aes(x = Proficiency, y = Aptitude, z = fit),
+    inherit.aes = FALSE,
+    color = "white",
+    alpha = 0.55,
+    bins = 8,
+    linewidth = 0.25
+  ) +
+  facet_grid(LearningMode ~ Treatment) +
   scale_fill_gradient(low = "#f5f0e1", high = "#224870") +
   labs(
     title = "Predicted Surface: Proficiency × Aptitude",
@@ -1722,7 +1985,7 @@ ggplot(surface_pred_df, aes(x = Proficiency, y = Aptitude, fill = fit)) +
     y = "Aptitude (z)",
     fill = "Predicted\nScore"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1743,20 +2006,25 @@ ggplot(surface_pred_df, aes(x = Proficiency, y = Aptitude, fill = fit)) +
 ### 処置差ヒートマップ（Writing - Glossing）
 
 ```{r}
+#| label: ch4-auto-033
 #| eval: true
 #| fig-width: 8.8
 #| fig-height: 4.8
+#| fig-cap: "処置差の予測面（treatment effect surface）: Writing - Glossing"
+#| fig-alt: "ProficiencyとAptitudeの平面上にWritingからGlossingを引いた予測差を色で示すヒートマップ。LearningMode別に2パネルで表示される。"
 
 ggplot(surface_gap_df, aes(x = Proficiency, y = Aptitude, fill = Writing_minus_Glossing)) +
   geom_raster() +
   geom_contour(
-    aes(z = Writing_minus_Glossing),
+    data = surface_gap_df,
+    aes(x = Proficiency, y = Aptitude, z = Writing_minus_Glossing),
+    inherit.aes = FALSE,
     color = "black",
     bins = 7,
     linewidth = 0.25,
     alpha = 0.45
   ) +
-  facet_wrap(~ Time) +
+  facet_wrap(~ LearningMode) +
   scale_fill_gradient2(
     low = "#2f4b7c",
     mid = "#f7f7f7",
@@ -1767,9 +2035,9 @@ ggplot(surface_gap_df, aes(x = Proficiency, y = Aptitude, fill = Writing_minus_G
     title = "Treatment Effect Surface (Writing - Glossing)",
     x = "Proficiency (z)",
     y = "Aptitude (z)",
-    fill = "Diff"
+    fill = "Writing - Glossing"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -1790,6 +2058,7 @@ ggplot(surface_gap_df, aes(x = Proficiency, y = Aptitude, fill = Writing_minus_G
 ### OLS と HC3 の比較
 
 ```{r}
+#| label: ch4-auto-034
 #| eval: true
 if (robust_available) {
   robust_compare_tbl |>
@@ -1800,12 +2069,70 @@ if (robust_available) {
 }
 ```
 
-この比較表では、`estimate` がほぼ同じで `SE` だけが動いていることを確認してください。  
+この比較表では、`estimate` がほぼ同じで `SE` だけが動いていることを確認してください。
 それが、HC3 が「モデルを別物に変える」のではなく、
-**同じ係数に対して、より保守的な不確実性評価を与える**手法だという意味です。
+**同じ係数に対して、等分散仮定を緩めた漸近的に妥当な分散推定を与える**手法だという意味です(必ずしも OLS SE より大きいとは限らず、低レバレッジでは小さくなることもあります — @mackinnon1985 は HC3 が小標本で最良の MSE を示すと報告し、@longervin2000 は実務指針として `n < 250` の標本では HC3 を既定にすべきと推奨しています)。
+:::
+
+::: {.callout-note}
+#### Heteroscedasticity-consistent SE ファミリー(HC0-HC3)
+`sandwich::vcovHC()` の `type` 引数で 4 種の HC SE を選べます。実務上は HC3 が標準ですが、それぞれの位置付けを把握しておくとよいでしょう。
+
+| タイプ | 補正 | 性質 | 推奨度 |
+|---|---|---|---|
+| **HC0** | White (1980) のオリジナル | 小標本で SE が下方バイアス | 大標本(n > 250)以外は非推奨 |
+| **HC1** | HC0 × $n/(n-k)$ の自由度補正 | Stata デフォルト | 妥協案 |
+| **HC2** | レバレッジ $h_{ii}$ で補正 | 仮想的な等分散時に不偏 | OK |
+| **HC3** | $1/(1-h_{ii})^2$ で補正(jackknife 近似) | 小標本で最良(MacKinnon & White 1985) | **推奨** |
+
+```r
+# 4 種を並べて比較
+sandwich::vcovHC(m_theory, type = "HC0") |> diag() |> sqrt()
+sandwich::vcovHC(m_theory, type = "HC1") |> diag() |> sqrt()
+sandwich::vcovHC(m_theory, type = "HC2") |> diag() |> sqrt()
+sandwich::vcovHC(m_theory, type = "HC3") |> diag() |> sqrt()
+```
+
+**重要な注意**:`coeftest(m, vcov = vcovHC(m, type = "HC3"))` は `qt(0.975, df.residual)` を t 分布の分位として使いますが、HC3 は本来漸近的な手法で、**高レバレッジ設計では Bell-McCaffrey 補正や cluster-bootstrap dfs** がより適切です [@imbens2016]。
+:::
+
+::: {.callout-important}
+#### クラスター構造があるときは Cluster-Robust SE(CR2)
+本章のサンプルデータは `LearningMode = Collaborative` 群でも 1 参加者 1 行構造に揃えていますが、**実データでは Collaborative 学習は同じ pair / group / class に学習者が入れ子になっている**ことが多く、独立性仮定が破れます。SLA・教育研究のクラスベース介入では特に頻出です。
+
+その場合の標準的解は **Cluster-Robust SE (CR0-CR2)** です。R では `clubSandwich::vcovCR()` + `coef_test()` で実装できます。
+
+```r
+library(clubSandwich)
+
+# 想定:データに ClassID(または PairID)列がある場合
+m_cluster <- lm(Score_Recall ~ Treatment * LearningMode * Proficiency + Aptitude,
+                data = wide_scores_with_class)
+
+# CR2(小標本補正版、Satterthwaite df = Bell-McCaffrey 流の近似)
+clubSandwich::coef_test(m_cluster,
+                         vcov = "CR2",
+                         cluster = wide_scores_with_class$ClassID)
+```
+
+**判断基準**:1 クラスに 2 人以上入っているなら CR2 を主報告にしてください。CR0 は素朴版(小標本で過小評価)、CR1 は自由度補正のみ、**CR2 は Bell-McCaffrey 補正で小標本でも妥当** [@pustejovsky2018]。HC3 と CR2 を OLS と並べて 3 列で報告すると、推定の頑健性を多角的に示せます。
 :::
 
 ## Simple Slope Analysis
+
+::: {.callout-warning}
+#### 交互作用と「分析の分かれ道」(garden of forking paths)
+交互作用分析は、**研究者の自由度(researcher degrees of freedom)が最も入り込みやすい領域**として知られています [@gelman2014garden; @simmons2011]。Gelman & Loken (2014) は「事後にモデレータを変更する」「有意になる SD 切片を選ぶ」「サブグループを見て事後に分け直す」などの選択肢が連鎖することで、**研究者本人が p-hacking と気付かないまま偽陽性が膨らむ**ことを示しています。
+
+交互作用分析でやりがちな QRP(questionable research practices):
+
+- **事後にモデレータを変える**:有意でなければ別の連続変数に切り替える
+- **SD 切片の選び直し**:±1 SD で有意でなければ ±0.5 SD などに変える
+- **サブグループの後付け定義**:データを見てから「この層で見ると…」と切り出す
+- **共変量の事後追加・削除**:結果が変わるまで covariate を入れ替える
+
+**対処**:本章で示した **`emtrends()` の planned contrasts**(事前に定義した条件で評価)+ **`emmeans` の Holm 補正**は、これらの罠を構造的に回避します。さらに、研究計画段階で**事前登録**(OSF, AsPredicted, IRIS)に「主要な交互作用 + プローブ条件 + 多重補正法」を明記しておけば、再現性確保に大きく貢献します。
+:::
 
 交互作用の下位検定では、何を推定するかを分けて考えます。
 
@@ -1834,47 +2161,58 @@ if (robust_available) {
 
 slopes_prof <- emtrends(
   m_theory,
-  pairwise ~ Treatment | Time,
+  ~ Treatment | LearningMode,
   var = "Proficiency"
 )
 
 slopes_prof_emtrends_tbl <- summary(
-  slopes_prof$emtrends,
+  slopes_prof,
   infer = c(TRUE, TRUE)
 ) |>
   as.data.frame()
 
 slopes_prof_contrasts_tbl <- summary(
-  slopes_prof$contrasts,
+  contrast(
+    slopes_prof,
+    method = list("Writing - Glossing" = c(-1, 1)),
+    by = "LearningMode"
+  ),
   infer = c(TRUE, TRUE),
-  adjust = "holm"
+  adjust = "none"
 ) |>
-  as.data.frame()
+  as.data.frame() |>
+  mutate(p_holm_family = p.adjust(p.value, method = "holm"))
 
 rg_prof <- ref_grid(m_theory, at = list(Proficiency = c(-1, 0, 1)))
-emm_treat_prof <- emmeans(rg_prof, pairwise ~ Treatment | Proficiency)
+emm_treat_prof <- emmeans(rg_prof, ~ Treatment | LearningMode * Proficiency)
 emm_treat_prof_tbl <- summary(
-  emm_treat_prof$contrasts,
+  contrast(
+    emm_treat_prof,
+    method = list("Writing - Glossing" = c(-1, 1)),
+    by = c("LearningMode", "Proficiency")
+  ),
   infer = c(TRUE, TRUE),
-  adjust = "holm"
+  adjust = "none"
 ) |>
-  as.data.frame()
+  as.data.frame() |>
+  mutate(p_holm_family = p.adjust(p.value, method = "holm"))
 
 coef_vec <- coef(m_theory)
 trt_codes <- contrasts(wide_scores$Treatment)[, 1]
-time_codes <- contrasts(wide_scores$Time)[, 1]
+mode_codes <- contrasts(wide_scores$LearningMode)[, 1]
 
 manual_slopes_tbl <- tidyr::crossing(
   Treatment = names(trt_codes),
-  Time = names(time_codes)
+  LearningMode = names(mode_codes)
 ) |>
   mutate(
     trt_code = trt_codes[Treatment],
-    time_code = time_codes[Time],
+    mode_code = mode_codes[LearningMode],
     trend_manual = unname(
       coef_vec["Proficiency"] +
         trt_code * coef_vec["Treatment1:Proficiency"] +
-        time_code * coef_vec["Time1:Proficiency"]
+        mode_code * coef_vec["LearningMode1:Proficiency"] +
+        trt_code * mode_code * coef_vec["Treatment1:LearningMode1:Proficiency"]
     )
   )
 
@@ -1882,112 +2220,136 @@ slope_formula_check_tbl <- slopes_prof_emtrends_tbl |>
   mutate(
     trend_est = .data[[names(slopes_prof_emtrends_tbl)[grepl("trend", names(slopes_prof_emtrends_tbl))][1]]]
   ) |>
-  dplyr::select(Treatment, Time, trend_est, SE) |>
+  dplyr::select(Treatment, LearningMode, trend_est, SE) |>
   left_join(
     manual_slopes_tbl |>
-      dplyr::select(Treatment, Time, trend_manual),
-    by = c("Treatment", "Time")
+      dplyr::select(Treatment, LearningMode, trend_manual),
+    by = c("Treatment", "LearningMode")
   ) |>
   mutate(abs_diff = abs(trend_est - trend_manual))
 
+manual_slope_contrast_tbl <- manual_slopes_tbl |>
+  dplyr::select(LearningMode, Treatment, trend_manual) |>
+  tidyr::pivot_wider(names_from = Treatment, values_from = trend_manual) |>
+  mutate(contrast_manual = Writing - Glossing)
+
 slope_contrast_formula_tbl <- slopes_prof_contrasts_tbl |>
-  tidyr::separate(contrast, into = c("left_group", "right_group"), sep = " - ", remove = FALSE) |>
-  left_join(
-    manual_slopes_tbl |>
-      dplyr::select(Time, Treatment, trend_manual),
-    by = c("Time", "left_group" = "Treatment")
-  ) |>
-  rename(left_trend = trend_manual) |>
-  left_join(
-    manual_slopes_tbl |>
-      dplyr::select(Time, Treatment, trend_manual),
-    by = c("Time", "right_group" = "Treatment")
-  ) |>
-  rename(right_trend = trend_manual) |>
+  left_join(manual_slope_contrast_tbl, by = "LearningMode") |>
   mutate(
-    contrast_manual = left_trend - right_trend,
     abs_diff = abs(estimate - contrast_manual)
   ) |>
-  dplyr::select(Time, contrast, estimate, contrast_manual, abs_diff, p.value)
+  dplyr::select(LearningMode, contrast, estimate, contrast_manual, abs_diff, p.value)
 
 invisible(NULL)
 ```
 
 ```{r}
+#| label: ch4-auto-035
 #| eval: true
 slopes_prof_emtrends_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
-  knitr::kable(caption = "Simple Slopes by Treatment and Time")
+  knitr::kable(caption = "群別の単純傾斜（simple slopes）: Treatment × LearningMode 別のProficiency傾き")
 
 slopes_prof_contrasts_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
-  knitr::kable(caption = "Slope Differences (Holm-adjusted)")
+  knitr::kable(caption = "傾き差（slope differences）: LearningMode別のWriting - Glossing")
 ```
+
+この表では、推定値が正なら「Proficiencyが高いほどWriting条件の伸びがGlossing条件より大きい」と読みます。
+2つのLearningModeで推定値を見比べると、Writing効果のproficiency依存性がどちらで強いかを直接確認できます。
+`p.value` は各 planned contrast の未調整値、`p_holm_family` はこの表に出ている planned contrasts 全体を1つの family とみなした Holm 補正値です。
 
 ### 3) 条件付き平均差（-1SD, 0, +1SD）
 
 ```{r}
+#| label: ch4-auto-036
 #| eval: true
 emm_treat_prof_tbl |>
   mutate(across(where(is.numeric), ~ round(., 3))) |>
-  knitr::kable(caption = "Conditional Group Differences by Proficiency")
+  knitr::kable(caption = "条件付き平均差（conditional mean differences）: LearningModeとProficiency水準別のWriting - Glossing")
 ```
+
+この表は、傾き差を「具体的な得点差」に戻して読むための表です。
+`Proficiency = -1, 0, +1` の各水準で、Writing - Glossing がどれだけ変わるかを
+LearningMode別に確認します。
+ここでも `p.value` は未調整値、`p_holm_family` は表内の planned contrasts 全体に対する Holm 補正値です。
 
 ### 4) 可視化（傾き差フォレスト + 条件付き平均）
 
 ```{r}
+#| label: ch4-auto-037
 #| eval: true
 #| fig-width: 8
 #| fig-height: 3.8
+#| fig-cap: "単純傾斜差のフォレストプロット（forest plot of simple-slope differences）: LearningMode別のWriting - Glossing"
+#| fig-alt: "LearningMode別にWriting - GlossingのProficiency傾き差を点と信頼区間で示す図。0を示す縦線が基準として表示される。"
 
 ggplot(
   slopes_prof_contrasts_tbl,
-  aes(x = estimate, y = Time, xmin = lower.CL, xmax = upper.CL)
+  aes(x = estimate, y = LearningMode, xmin = lower.CL, xmax = upper.CL)
 ) +
   geom_vline(xintercept = 0, linetype = 2, linewidth = 0.5) +
   geom_pointrange(size = 0.6) +
   labs(
-    title = "Slope Difference (Glossing - Writing) Across Time",
-    x = "Estimated slope difference",
+    title = "LearningMode別のProficiency傾き差",
+    subtitle = "正の値はWritingの傾きがGlossingより大きいことを示す",
+    x = "Writing - Glossing の傾き差",
     y = NULL
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(
-      face = "bold",
-      size = rel(1.0),
-      lineheight = 1.04,
-      margin = margin(b = 6)
-    ),
-    plot.subtitle = element_text(
-      size = rel(0.92),
-      lineheight = 1.04,
-      margin = margin(b = 8)
-    ),
-    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  )
+  book_theme()
 ```
 
 ```{r}
+#| label: ch4-auto-038
 #| eval: true
-emmip(rg_prof, Treatment ~ Proficiency, CIs = TRUE) +
+emmip(rg_prof, Treatment ~ Proficiency | LearningMode, CIs = TRUE) +
   labs(
-    title = "Conditional Means Across Proficiency Levels",
+    title = "Proficiency水準別の条件付き平均",
     x = "Proficiency (z)",
     y = "Predicted Score_Recall"
   )
 ```
 
+::: {.callout-tip}
+#### 現代的な並列ツール:`marginaleffects`
+`emmeans` / `emmip` と並んで、近年(2023+)急速に標準化しているのが **`marginaleffects` パッケージ** [@arelbundock2024marginaleffects] です。`marginaleffects::avg_slopes()` / `avg_comparisons()` / `plot_predictions()` の 3 関数で、**simple slopes・条件付き平均差・予測図を統一 API で書ける**のが利点です。同じ結果を 2 つのツールで再現できると、論文投稿時の再現性確認や査読対応が楽になります。
+
+```{r}
+#| label: fig-marginaleffects-parallel
+#| eval: false
+#| fig-cap: "marginaleffects::plot_predictions() による並列確認:emmip と同じ予測線が得られる。"
+#| fig-alt: "Treatment × LearningMode × Proficiency の予測 Recall 線を 2 群並列に描いた図。emmip 出力と同じパターンが marginaleffects::plot_predictions() で再現される。"
+library(marginaleffects)
+
+# (1) 同じ予測線を marginaleffects で描く(emmip と同等)
+plot_predictions(m_theory,
+                 condition = list("Proficiency", "Treatment", "LearningMode"))
+
+# (2) Simple slope 差を avg_slopes() で取り出す(emtrends と同等)
+avg_slopes(m_theory,
+           variables = "Proficiency",
+           by = c("Treatment", "LearningMode"))
+
+# (3) 条件付き平均差を avg_comparisons() で取り出す(emmeans の pairs と同等)
+avg_comparisons(m_theory,
+                variables = list(Treatment = "pairwise"),
+                by = "LearningMode",
+                p_adjust = "holm")
+```
+
+**判断基準**:`emmeans` は依然として「カテゴリカル要因の対比較・推定周辺平均」の王道で、`marginaleffects` は「混合効果モデル・GLM・ベイズ・機械学習モデル」までを **同じ API で**扱える点が強み(`brms`, `lme4`, `glm`, `lavaan`, さらには `tidymodels` まで対応)。本章では `emmeans` を主軸にしつつ、**論文の Robustness セクションで marginaleffects 出力も併記**するとさらに頑健です。
+:::
+
 ### 5) 仕様検証（手計算 vs `emtrends`）
 
-`emtrends()` は参照グリッド上の傾きを返します[@emmeansemtrends]。  
+`emtrends()` は参照グリッド上の傾きを返します[@emmeansemtrends]。
 ここでは、回帰係数から導く傾き式
-$\\beta_{Prof} + c_{Trt}\\beta_{Trt\\times Prof} + c_{Time}\\beta_{Time\\times Prof}$ と比較し、
+$\beta_{Prof} + c_{Trt}\beta_{Trt\times Prof} + c_{LearningMode}\beta_{LearningMode\times Prof} + c_{Trt}c_{LearningMode}\beta_{Trt\times LearningMode\times Prof}$ と比較し、
 設計行列ベースの手計算と一致することを確認します
 [@preacher2006; @schad2020]。
 
 ```{r}
+#| label: ch4-auto-039
 #| eval: true
 slope_formula_check_tbl |>
   knitr::kable(caption = "Simple Slopes: emtrends vs Manual Formula", digits = 6)
@@ -2001,12 +2363,21 @@ slope_contrast_formula_tbl |>
 ### 参考: Johnson-Neyman 法
 
 Johnson-Neyman 法は、**連続 × 連続**の交互作用で「有意領域」を連続的に示す手法です
-[@bauer2005; @interactionspkg]。
+[@bauer2005; @interactionspkg]。±1 SD のような任意の点で simple slope を切り取る代わりに、**モデレータの全範囲にわたって、focal predictor の傾きが有意になる区間**を 1 枚の図で示せます。
+
+本章の主分析はカテゴリカル要因（Treatment, LearningMode）を含むため、主要な報告は
+`emtrends()` と条件付き平均差を使います。以下は、連続 × 連続の交互作用を扱う場合の
+別デモであり、主モデルの `Treatment × LearningMode × Proficiency` の結果ではありません。
 
 ```{r}
+#| label: fig-johnson-neyman
 #| eval: true
+#| fig-width: 7
+#| fig-height: 4.5
+#| fig-cap: "Johnson-Neyman 区間図(Johnson-Neyman plot):横軸はモデレータ(Aptitude)、縦軸は focal predictor(Proficiency)の条件付き傾き ± 95% CI。CI が 0 をまたぐ範囲が灰色領域、有意な範囲が色付き領域。"
+#| fig-alt: "横軸 Aptitude、縦軸 Proficiency の条件付き傾きを示す折れ線とその 95% 信頼区間バンド。CI が 0 を含む範囲は『non-significant』として灰色で塗られ、CI が 0 を超える範囲は色付きで強調される。"
 if (requireNamespace("interactions", quietly = TRUE)) {
-  m_jn <- lm(Score_Recall ~ Treatment + Time + Proficiency * Aptitude, data = wide_scores)
+  m_jn <- lm(Score_Recall ~ Treatment + LearningMode + Proficiency * Aptitude, data = wide_scores)
   interactions::johnson_neyman(
     m_jn,
     pred = Proficiency,
@@ -2020,12 +2391,50 @@ if (requireNamespace("interactions", quietly = TRUE)) {
 }
 ```
 
-## 一般線形仮説（`Lβ`）で効果を統一する
+**Johnson-Neyman 図の読み方**:
+
+- **縦軸**は focal predictor (Proficiency) の **条件付き傾き**(モデレータ Aptitude 各値での傾き)
+- **中央の太線**は推定値、**周囲の帯**は 95% CI
+- **CI が 0 をまたぐ領域**は「Aptitude のこの範囲では Proficiency の効果は有意でない」を意味する
+- **CI が 0 を超える領域**は「Aptitude のこの範囲では Proficiency の効果は有意」を意味する
+- **観測データの範囲** (rug plot や `inside.outside` 引数で表示)を必ず確認 — 観測範囲外の境界値は外挿になるため解釈しない
+
+::: {.callout-warning}
+#### Johnson-Neyman の多重比較問題と対処
+J-N は本質的に「モデレータの連続値で多重に検定している」ため、Type I エラーが膨張します [@esarey2018]。`interactions::johnson_neyman()` には `control.fdr = TRUE` 引数があり、Esarey & Sumner (2018) の **False Discovery Rate (FDR) 補正**を適用できます。論文報告時には **必ず control.fdr = TRUE で再計算**して併記すると安全です。
+
+```r
+interactions::johnson_neyman(
+  m_jn, pred = Proficiency, modx = Aptitude,
+  alpha = 0.05, control.fdr = TRUE  # FDR 補正を有効化
+)
+```
+
+また、3 way 交互作用では J-N の有用性は限定的です(Bauer & Curran 2005 が指摘)。本章のような Treatment × LearningMode × Proficiency 構造では、`emtrends()` + `emmeans()` の planned contrasts の方が解釈しやすくなります。
+:::
+
+## 一般線形仮説（$L\beta$）で効果を統一する
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本節は `emmeans` / `emtrends` の結果を **手計算で再現**して仕組みを理解するための発展節です。**初読では「Simple Slope Analysis」の `emtrends()` / `emmeans()` 出力を読めれば実用上は十分**で、本節は「`emmeans` が裏で何をしているのか」を厳密に確認したい時に戻ってください。
+:::
+
+::: {.callout-note}
+#### $L\beta$ の直感:重みベクトルで係数を組み合わせる
+$L$ は **行ベクトル(または行列)で、係数ベクトル $\boldsymbol{\beta}$ から「研究で問いたい一つの量」(平均差・傾き・差の差など)を取り出す重み**です。例えば:
+
+- $L = (0, 1, 0, \dots)$ → $L\boldsymbol{\beta} = \beta_1$(2 番目の係数そのもの)
+- $L = (0, 0, 1, -1, 0)$ → $L\boldsymbol{\beta} = \beta_2 - \beta_3$(2 つの係数の差)
+
+推定値は $\hat\theta = L\hat{\boldsymbol{\beta}}$、分散は $\widehat{\text{Var}}(\hat\theta) = L \hat V L^\top$ です。これだけ覚えておけば、本節の数式の流れが追えます。
+:::
+
 
 `emmeans` / `emtrends` の出力は、どちらも線形関数
 $\hat{\theta}=L\hat{\beta}$ と分散
 $Var(\hat{\theta}) = L\hat{V}L^\top$
-で表せます。  
+で表せます。
 ここでは「平均差」「傾き差」「差の差」を同じ計算器で扱い、
 Preacher et al. (2006) の条件付き効果計算を一般化します[@preacher2006; @schad2020]。
 
@@ -2035,9 +2444,10 @@ Preacher et al. (2006) の条件付き効果計算を一般化します[@preache
 
 | 仮説 | 内容 | 代表的な研究質問 |
 |---|---|---|
-| H1 | Writing - Glossing の平均差（Immediate, Proficiency=0） | 処置効果はあるか |
-| H2 | Writing - Glossing の Proficiency 傾き差（Immediate） | モデレーションはあるか |
-| H3 | 処置効果の Time 差（差の差） | Immediate と Delayed で処置効果が変わるか |
+| H1 | Writing - Glossing の平均差（Individual, Proficiency=0, Aptitude=0） | 処置効果はあるか |
+| H2 | Writing - Glossing の Proficiency 傾き差（Individual, Aptitude=0） | モデレーションはあるか |
+| H3 | Writing - Glossing 平均差の LearningMode 差（Collaborative - Individual, Proficiency=0, Aptitude=0） | 処置効果がLearningModeで変わるか |
+| H4 | Writing - Glossing 傾き差の LearningMode 差（Collaborative - Individual, Aptitude=0） | 3要因交互作用はあるか |
 
 ### `Lβ` 実装（推定値・SE・CI）
 
@@ -2047,20 +2457,20 @@ Preacher et al. (2006) の条件付き効果計算を一般化します[@preache
 
 design_terms <- delete.response(terms(m_theory))
 
-design_row <- function(treatment, time, proficiency, aptitude = 0) {
+design_row <- function(treatment, learning_mode, proficiency, aptitude = 0) {
   new <- tibble(
     Treatment = factor(treatment, levels = treatments),
-    Time = factor(time, levels = times),
+    LearningMode = factor(learning_mode, levels = learning_modes),
     Proficiency = proficiency,
     Aptitude = aptitude
   )
   contrasts(new$Treatment) <- contrasts(wide_scores$Treatment)
-  contrasts(new$Time) <- contrasts(wide_scores$Time)
+  contrasts(new$LearningMode) <- contrasts(wide_scores$LearningMode)
   as.numeric(model.matrix(design_terms, data = new))
 }
 
-slope_row <- function(treatment, time, h = 1e-5) {
-  (design_row(treatment, time, h) - design_row(treatment, time, -h)) / (2 * h)
+slope_row <- function(treatment, learning_mode, h = 1e-5) {
+  (design_row(treatment, learning_mode, h) - design_row(treatment, learning_mode, -h)) / (2 * h)
 }
 
 lin_test <- function(L, hypothesis) {
@@ -2085,22 +2495,29 @@ lin_test <- function(L, hypothesis) {
   )
 }
 
-L_mean_immediate <- design_row("Writing", "Immediate", 0) -
-  design_row("Glossing", "Immediate", 0)
+L_mean_individual <- design_row("Writing", "Individual", 0) -
+  design_row("Glossing", "Individual", 0)
 
-L_slope_immediate <- slope_row("Writing", "Immediate") -
-  slope_row("Glossing", "Immediate")
+L_slope_individual <- slope_row("Writing", "Individual") -
+  slope_row("Glossing", "Individual")
 
 L_diff_in_diff <- (
-  design_row("Writing", "Immediate", 0) - design_row("Glossing", "Immediate", 0)
+  design_row("Writing", "Collaborative", 0) - design_row("Glossing", "Collaborative", 0)
 ) - (
-  design_row("Writing", "Delayed", 0) - design_row("Glossing", "Delayed", 0)
+  design_row("Writing", "Individual", 0) - design_row("Glossing", "Individual", 0)
+)
+
+L_slope_diff_in_diff <- (
+  slope_row("Writing", "Collaborative") - slope_row("Glossing", "Collaborative")
+) - (
+  slope_row("Writing", "Individual") - slope_row("Glossing", "Individual")
 )
 
 glh_tbl <- bind_rows(
-  lin_test(L_mean_immediate, "H1: Mean diff at Immediate (Writing - Glossing)"),
-  lin_test(L_slope_immediate, "H2: Slope diff at Immediate (Writing - Glossing)"),
-  lin_test(L_diff_in_diff, "H3: Difference-in-differences across Time")
+  lin_test(L_mean_individual, "H1: Mean diff at Individual (Writing - Glossing)"),
+  lin_test(L_slope_individual, "H2: Slope diff at Individual (Writing - Glossing)"),
+  lin_test(L_diff_in_diff, "H3: Mean difference-in-differences (Collaborative - Individual)"),
+  lin_test(L_slope_diff_in_diff, "H4: Slope-difference-in-differences (Collaborative - Individual)")
 )
 
 glh_tbl |>
@@ -2110,45 +2527,99 @@ glh_tbl |>
 ### `emmeans` / `emtrends` との一致確認
 
 ```{r}
+#| label: ch4-auto-041
 #| eval: true
 emm_mean0 <- emmeans(
   ref_grid(m_theory, at = list(Proficiency = 0)),
-  ~ Treatment | Time
+  ~ Treatment | LearningMode
 )
 emm_mean_contrast <- contrast(
   emm_mean0,
   method = list("Writing-Glossing" = c(-1, 1)),
-  by = "Time"
+  by = "LearningMode"
 )
-emm_mean_immediate <- summary(emm_mean_contrast, infer = c(TRUE, TRUE)) |>
+emm_mean_contrast_tbl <- summary(emm_mean_contrast, infer = c(TRUE, TRUE)) |>
+  as.data.frame()
+emm_mean_individual <- summary(emm_mean_contrast, infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
-  dplyr::filter(Time == "Immediate")
+  dplyr::filter(LearningMode == "Individual")
+emm_mean_diff_learning_mode_tbl <- summary(
+  contrast(
+    emm_mean_contrast,
+    method = list("Collaborative - Individual" = c(-1, 1)),
+    by = "contrast"
+  ),
+  infer = c(TRUE, TRUE)
+) |>
+  as.data.frame()
 
-emm_slope <- emtrends(m_theory, ~ Treatment | Time, var = "Proficiency")
+emm_slope <- emtrends(m_theory, ~ Treatment | LearningMode, var = "Proficiency")
 emm_slope_contrast <- contrast(
   emm_slope,
   method = list("Writing-Glossing" = c(-1, 1)),
-  by = "Time"
+  by = "LearningMode"
 )
-emm_slope_immediate <- summary(emm_slope_contrast, infer = c(TRUE, TRUE)) |>
+emm_slope_contrast_tbl <- summary(emm_slope_contrast, infer = c(TRUE, TRUE)) |>
+  as.data.frame()
+emm_slope_individual <- summary(emm_slope_contrast, infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
-  dplyr::filter(Time == "Immediate")
+  dplyr::filter(LearningMode == "Individual")
 
-glh_validation_tbl <- tibble(
-  Quantity = c(
-    "H1 Mean diff (Immediate, Writing - Glossing)",
-    "H2 Slope diff (Immediate, Writing - Glossing)"
+emm_slope_diff_learning_mode_tbl <- summary(
+  contrast(
+    emm_slope_contrast,
+    method = list("Collaborative - Individual" = c(-1, 1)),
+    by = "contrast"
   ),
-  Lbeta_Estimate = c(
-    glh_tbl$Estimate[glh_tbl$Hypothesis == "H1: Mean diff at Immediate (Writing - Glossing)"],
-    glh_tbl$Estimate[glh_tbl$Hypothesis == "H2: Slope diff at Immediate (Writing - Glossing)"]
+  infer = c(TRUE, TRUE)
+) |>
+  as.data.frame()
+
+glh_validation_keys <- tibble(
+  Quantity = c(
+    "H1 Mean diff (Individual, Writing - Glossing)",
+    "H2 Slope diff (Individual, Writing - Glossing)",
+    "H3 Mean diff-in-diff (Collaborative - Individual)",
+    "H4 Slope diff-in-diff (Collaborative - Individual)"
+  ),
+  Hypothesis = c(
+    "H1: Mean diff at Individual (Writing - Glossing)",
+    "H2: Slope diff at Individual (Writing - Glossing)",
+    "H3: Mean difference-in-differences (Collaborative - Individual)",
+    "H4: Slope-difference-in-differences (Collaborative - Individual)"
   ),
   emmeans_or_emtrends = c(
-    emm_mean_immediate$estimate[1],
-    emm_slope_immediate$estimate[1]
+    emm_mean_individual$estimate[1],
+    emm_slope_individual$estimate[1],
+    emm_mean_diff_learning_mode_tbl$estimate[1],
+    emm_slope_diff_learning_mode_tbl$estimate[1]
   ),
-  abs_diff = abs(Lbeta_Estimate - emmeans_or_emtrends)
+  emmeans_SE = c(
+    emm_mean_individual$SE[1],
+    emm_slope_individual$SE[1],
+    emm_mean_diff_learning_mode_tbl$SE[1],
+    emm_slope_diff_learning_mode_tbl$SE[1]
+  ),
+  emmeans_p = c(
+    emm_mean_individual$p.value[1],
+    emm_slope_individual$p.value[1],
+    emm_mean_diff_learning_mode_tbl$p.value[1],
+    emm_slope_diff_learning_mode_tbl$p.value[1]
+  )
 )
+
+glh_validation_tbl <- glh_validation_keys |>
+  left_join(glh_tbl, by = "Hypothesis") |>
+  transmute(
+    Quantity,
+    Lbeta_Estimate = Estimate,
+    Lbeta_SE = SE,
+    Lbeta_p = p,
+    emmeans_or_emtrends,
+    emmeans_SE,
+    emmeans_p,
+    abs_diff = abs(Lbeta_Estimate - emmeans_or_emtrends)
+  )
 
 glh_validation_tbl |>
   knitr::kable(caption = "Cross-check: Lβ vs emmeans/emtrends", digits = 8)
@@ -2163,30 +2634,37 @@ glh_validation_tbl |>
 #### 手順A: simple slope（カテゴリ × 連続）
 
 ```{r}
+#| label: ch4-auto-042
 #| eval: true
 slopes_bauer <- emtrends(
   m_theory,
-  pairwise ~ Treatment | Time,
+  ~ Treatment | LearningMode,
   var = "Proficiency"
 )
 
 # 各条件での傾き
-summary(slopes_bauer$emtrends, infer = c(TRUE, TRUE))
+summary(slopes_bauer, infer = c(TRUE, TRUE))
 
-# 傾き差（交互作用の実質的検定）
-summary(slopes_bauer$contrasts, infer = c(TRUE, TRUE), adjust = "holm")
+# Writing - Glossing の傾き差（交互作用の実質的検定）
+contrast(
+  slopes_bauer,
+  method = list("Writing - Glossing" = c(-1, 1)),
+  by = "LearningMode"
+) |>
+  summary(infer = c(TRUE, TRUE), adjust = "holm")
 ```
 
 判定の目安:
-- `slopes_bauer$contrasts` の p が有意なら、群間で傾きが異なる。
+- `Writing - Glossing` の傾き差が有意なら、群間でProficiencyの効き方が異なる。
 - 推定値の符号で、どちらの群の傾きが強いかを判断する。
 
 #### 手順B: J-N（連続 × 連続）
 
 ```{r}
+#| label: ch4-auto-043
 #| eval: true
 if (requireNamespace("interactions", quietly = TRUE)) {
-  m_bauer_jn <- lm(Score_Recall ~ Treatment + Time + Proficiency * Aptitude, data = wide_scores)
+  m_bauer_jn <- lm(Score_Recall ~ Treatment + LearningMode + Proficiency * Aptitude, data = wide_scores)
   jn_bauer <- interactions::johnson_neyman(
     m_bauer_jn,
     pred = Proficiency,
@@ -2211,17 +2689,18 @@ Preacher et al. (2006) の流れに合わせ、条件付き効果を係数と分
 [@preacher2006]。
 
 $$
-\hat{\\tau}(z)=\hat{\\beta}_{T}+z\hat{\\beta}_{T\\times Z},\quad
-SE\\{\\hat{\\tau}(z)\\}=\\sqrt{Var(\\hat{\\beta}_{T})+z^2Var(\\hat{\\beta}_{T\\times Z})+2zCov(\\hat{\\beta}_{T},\\hat{\\beta}_{T\\times Z})}
+\hat{\tau}(z) = \hat{\beta}_{T} + z\hat{\beta}_{T \times Z}, \quad
+SE\{\hat{\tau}(z)\} = \sqrt{\mathrm{Var}(\hat{\beta}_{T}) + z^2 \mathrm{Var}(\hat{\beta}_{T \times Z}) + 2z\, \mathrm{Cov}(\hat{\beta}_{T}, \hat{\beta}_{T \times Z})}
 $$
 
 ```{r}
+#| label: ch4-auto-044
 #| eval: true
 dat_preacher <- wide_scores |>
   mutate(Treatment01 = relevel(factor(Treatment), ref = "Glossing"))
 
 m_preacher <- lm(
-  Score_Recall ~ Treatment01 * Proficiency + Time + Aptitude,
+  Score_Recall ~ Treatment01 * Proficiency + LearningMode + Aptitude,
   data = dat_preacher
 )
 
@@ -2250,15 +2729,22 @@ calc_conditional_effect <- function(z, model,
   )
 }
 
-manual_conditional <- purrr::map_dfr(c(-1, 0, 1), calc_conditional_effect, model = m_preacher)
+manual_conditional <- purrr::map(c(-1, 0, 1), calc_conditional_effect, model = m_preacher) |>
+  purrr::list_rbind()
 manual_conditional
 ```
 
 ```{r}
+#| label: ch4-auto-045
 #| eval: true
 # emmeans による同等の確認（条件付き群差）
 rg_preacher <- ref_grid(m_preacher, at = list(Proficiency = c(-1, 0, 1)))
-emmeans(rg_preacher, pairwise ~ Treatment01 | Proficiency)
+emm_preacher <- emmeans(rg_preacher, ~ Treatment01 | Proficiency)
+contrast(
+  emm_preacher,
+  method = list("Writing - Glossing" = c(-1, 1)),
+  by = "Proficiency"
+)
 ```
 
 判定の目安:
@@ -2271,6 +2757,7 @@ Hayes & Montoya (2017) の要点は、3水準以上のカテゴリ変数でも
 「条件付き効果 + 多重比較」を系統的に示すことです[@hayesmontoya2017]。
 
 ```{r}
+#| label: ch4-auto-046
 #| eval: true
 set.seed(2024)
 n_multi <- 360
@@ -2300,17 +2787,37 @@ broom::tidy(m_hayes, conf.int = TRUE) |>
 ```
 
 ```{r}
+#| label: ch4-auto-047
 #| eval: true
 # モデレータ水準ごとの群差（多重比較補正）
 rg_hayes <- ref_grid(m_hayes, at = list(Proficiency = c(-1, 0, 1)))
-emmeans(rg_hayes, pairwise ~ Treatment3 | Proficiency, adjust = "holm")
+emm_hayes <- emmeans(rg_hayes, ~ Treatment3 | Proficiency)
+contrast(
+  emm_hayes,
+  method = list(
+    "Writing - Glossing" = c(-1, 1, 0),
+    "Retrieval - Glossing" = c(-1, 0, 1),
+    "Retrieval - Writing" = c(0, -1, 1)
+  ),
+  by = "Proficiency",
+  adjust = "holm"
+)
 
 # 群ごとの Proficiency 傾き差
-slopes_hayes <- emtrends(m_hayes, pairwise ~ Treatment3, var = "Proficiency")
-summary(slopes_hayes$contrasts, infer = c(TRUE, TRUE), adjust = "holm")
+slopes_hayes <- emtrends(m_hayes, ~ Treatment3, var = "Proficiency")
+contrast(
+  slopes_hayes,
+  method = list(
+    "Writing - Glossing" = c(-1, 1, 0),
+    "Retrieval - Glossing" = c(-1, 0, 1),
+    "Retrieval - Writing" = c(0, -1, 1)
+  ),
+  adjust = "holm"
+)
 ```
 
 ```{r}
+#| label: ch4-auto-048
 #| eval: true
 emmip(rg_hayes, Treatment3 ~ Proficiency, CIs = TRUE)
 ```
@@ -2320,6 +2827,11 @@ emmip(rg_hayes, Treatment3 ~ Proficiency, CIs = TRUE)
 - 次に「傾き差が有意か」を確認し、平均差と傾き差を分けて報告する。
 
 ### 4. Baranger/Brown: 交互作用 power 分析
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本節以下のシミュレーションベース検定力分析は、**実際に研究計画を立てる段階**で参照する内容です。初読では「交互作用は主効果より大きな N が必要」という事実だけ覚えれば十分で、具体的な計算は研究設計時に戻ってきてください。
+:::
 
 以下は、チュートリアル論文で示される代表値を用いた設計例です。
 
@@ -2337,6 +2849,7 @@ emmip(rg_hayes, Treatment3 ~ Proficiency, CIs = TRUE)
 ```{r}
 #| eval: true
 #| label: power-analysis-setup
+#| warning: false
 
 interaction_power_available <- requireNamespace("InteractionPoweR", quietly = TRUE)
 
@@ -2442,110 +2955,151 @@ simulate_mmr <- function(n, beta_x1 = 0.25, beta_x2 = 0.20, beta_int = 0.10, sig
   tibble(y, x1, x2)
 }
 
-power_delta_r2 <- function(n, nsim = 150, beta_int = 0.10) {
-  p_vals <- replicate(nsim, {
+power_delta_r2 <- function(n, nsim = 250, beta_int = 0.10) {
+  sim_stats <- replicate(nsim, {
     d <- simulate_mmr(n = n, beta_int = beta_int)
     m0 <- lm(y ~ x1 + x2, data = d)
     m1 <- lm(y ~ x1 * x2, data = d)
-    anova(m0, m1)$`Pr(>F)`[2]
+    r2_0 <- summary(m0)$r.squared
+    r2_1 <- summary(m1)$r.squared
+    delta_r2 <- r2_1 - r2_0
+    c(
+      p_value = anova(m0, m1)$`Pr(>F)`[2],
+      delta_r2 = delta_r2,
+      partial_f2 = delta_r2 / (1 - r2_1)
+    )
   })
-  mean(p_vals < 0.05, na.rm = TRUE)
+
+  sim_tbl <- as_tibble(t(sim_stats))
+  power <- mean(sim_tbl$p_value < 0.05, na.rm = TRUE)
+  se_mc <- sqrt(power * (1 - power) / nsim)
+
+  tibble(
+    power = power,
+    se_mc = se_mc,
+    power_ci_low = pmax(0, power - 1.96 * se_mc),
+    power_ci_high = pmin(1, power + 1.96 * se_mc),
+    mean_delta_r2 = mean(sim_tbl$delta_r2, na.rm = TRUE),
+    median_delta_r2 = median(sim_tbl$delta_r2, na.rm = TRUE),
+    mean_partial_f2 = mean(sim_tbl$partial_f2, na.rm = TRUE),
+    n_sim = nsim
+  )
 }
 
 set.seed(2024)
-power_grid <- tibble(N = seq(120, 320, by = 20)) |>
-  mutate(power = purrr::map_dbl(N, power_delta_r2, nsim = 150, beta_int = 0.10))
+power_grid <- tibble(N = seq(120, 1040, by = 80)) |>
+  mutate(result = purrr::map(N, power_delta_r2, nsim = 250, beta_int = 0.10)) |>
+  tidyr::unnest(result)
 
-power_min80 <- power_grid |>
-  dplyr::filter(power >= 0.80) |>
-  dplyr::slice_head(n = 1)
+power_min80 <- if (any(power_grid$power >= 0.80)) {
+  power_grid |>
+    dplyr::filter(power >= 0.80) |>
+    dplyr::slice_head(n = 1) |>
+    mutate(Note = "First grid point reaching 80% power")
+} else {
+  power_grid |>
+    dplyr::slice_max(power, n = 1, with_ties = FALSE) |>
+    mutate(Note = "80% power not reached in this grid; extend N")
+}
 
-power_by_coding_binary <- function(contrast_fun, label, nsim = 120) {
-  p_coef <- numeric(nsim)
-  p_term <- numeric(nsim)
+simulate_binary_power_data <- function(n = 120) {
+  trt <- factor(rep(c("Glossing", "Writing"), each = n / 2), levels = c("Glossing", "Writing"))
+  prof <- as.numeric(scale(rnorm(n)))
+  y <- 5 + 0.8 * prof + 0.4 * (trt == "Writing") * prof + rnorm(n, sd = 2)
+  tibble(y = y, Treatment = trt, Proficiency = prof)
+}
 
-  for (i in seq_len(nsim)) {
-    n <- 120
-    trt <- factor(rep(c("Glossing", "Writing"), each = n / 2), levels = c("Glossing", "Writing"))
-    prof <- as.numeric(scale(rnorm(n)))
-    y <- 5 + 0.8 * prof + 0.4 * (trt == "Writing") * prof + rnorm(n, sd = 2)
+analyze_binary_coding <- function(d, contrast_fun, label, sim_id) {
+  d <- d
+  contrasts(d$Treatment) <- contrast_fun(2)
 
-    d <- tibble(y = y, Treatment = trt, Proficiency = prof)
-    contrasts(d$Treatment) <- contrast_fun(2)
-
-    fit_full <- lm(y ~ Treatment * Proficiency, data = d)
-    fit_red <- lm(y ~ Treatment + Proficiency, data = d)
-    coef_tab <- coef(summary(fit_full))
-
-    p_coef[i] <- coef_tab[grep(":", rownames(coef_tab))[1], "Pr(>|t|)"]
-    p_term[i] <- anova(fit_red, fit_full)$`Pr(>F)`[2]
-  }
+  fit_full <- lm(y ~ Treatment * Proficiency, data = d)
+  fit_red <- lm(y ~ Treatment + Proficiency, data = d)
+  coef_tab <- coef(summary(fit_full))
 
   bind_rows(
     tibble(
+      sim_id = sim_id,
       Scenario = "2-level factor: same 1-df interaction",
       Coding = label,
       Test = "Coefficient-level test",
-      p_value = p_coef
+      p_value = coef_tab[grep(":", rownames(coef_tab))[1], "Pr(>|t|)"]
     ),
     tibble(
+      sim_id = sim_id,
       Scenario = "2-level factor: same 1-df interaction",
       Coding = label,
       Test = "Omnibus term test",
-      p_value = p_term
+      p_value = anova(fit_red, fit_full)$`Pr(>F)`[2]
     )
   ) |>
     mutate(significant = p_value < 0.05)
 }
 
-power_by_coding_multicat <- function(contrast_fun, label, nsim = 120) {
-  p_first_coef <- numeric(nsim)
-  p_term <- numeric(nsim)
+power_by_coding_binary <- function(nsim = 120) {
+  purrr::map(seq_len(nsim), function(i) {
+    d <- simulate_binary_power_data()
+    bind_rows(
+      analyze_binary_coding(d, contr.treatment, "Treatment coding", i),
+      analyze_binary_coding(d, contr.sum, "Sum coding", i)
+    )
+  }) |>
+    purrr::list_rbind()
+}
 
-  for (i in seq_len(nsim)) {
-    n <- 180
-    g <- factor(rep(c("A", "B", "C"), each = n / 3), levels = c("A", "B", "C"))
-    x <- as.numeric(scale(rnorm(n)))
-    y <- 5 +
-      ifelse(g == "B", 0.8, ifelse(g == "C", 1.0, 0)) +
-      0.8 * x +
-      ifelse(g == "C", 0.5 * x, ifelse(g == "B", 0.2 * x, 0)) +
-      rnorm(n, sd = 2)
+simulate_multicat_power_data <- function(n = 180) {
+  g <- factor(rep(c("A", "B", "C"), each = n / 3), levels = c("A", "B", "C"))
+  x <- as.numeric(scale(rnorm(n)))
+  y <- 5 +
+    ifelse(g == "B", 0.8, ifelse(g == "C", 1.0, 0)) +
+    0.8 * x +
+    ifelse(g == "C", 0.5 * x, ifelse(g == "B", 0.2 * x, 0)) +
+    rnorm(n, sd = 2)
+  tibble(y = y, Group = g, X = x)
+}
 
-    d <- tibble(y = y, Group = g, X = x)
-    contrasts(d$Group) <- contrast_fun(3)
+analyze_multicat_coding <- function(d, contrast_fun, label, sim_id) {
+  d <- d
+  contrasts(d$Group) <- contrast_fun(3)
 
-    fit_full <- lm(y ~ Group * X, data = d)
-    fit_red <- lm(y ~ Group + X, data = d)
-    coef_tab <- coef(summary(fit_full))
-
-    p_first_coef[i] <- coef_tab[grep(":", rownames(coef_tab))[1], "Pr(>|t|)"]
-    p_term[i] <- anova(fit_red, fit_full)$`Pr(>F)`[2]
-  }
+  fit_full <- lm(y ~ Group * X, data = d)
+  fit_red <- lm(y ~ Group + X, data = d)
+  coef_tab <- coef(summary(fit_full))
 
   bind_rows(
     tibble(
+      sim_id = sim_id,
       Scenario = "3-level factor: coefficient vs omnibus term",
       Coding = label,
       Test = "First coefficient only",
-      p_value = p_first_coef
+      p_value = coef_tab[grep(":", rownames(coef_tab))[1], "Pr(>|t|)"]
     ),
     tibble(
+      sim_id = sim_id,
       Scenario = "3-level factor: coefficient vs omnibus term",
       Coding = label,
       Test = "Omnibus term test",
-      p_value = p_term
+      p_value = anova(fit_red, fit_full)$`Pr(>F)`[2]
     )
   ) |>
     mutate(significant = p_value < 0.05)
+}
+
+power_by_coding_multicat <- function(nsim = 120) {
+  purrr::map(seq_len(nsim), function(i) {
+    d <- simulate_multicat_power_data()
+    bind_rows(
+      analyze_multicat_coding(d, contr.treatment, "Treatment coding", i),
+      analyze_multicat_coding(d, contr.sum, "Sum coding", i)
+    )
+  }) |>
+    purrr::list_rbind()
 }
 
 set.seed(2024)
 coding_power_raw_tbl <- bind_rows(
-  power_by_coding_binary(contr.treatment, "Treatment coding"),
-  power_by_coding_binary(contr.sum, "Sum coding"),
-  power_by_coding_multicat(contr.treatment, "Treatment coding"),
-  power_by_coding_multicat(contr.sum, "Sum coding")
+  power_by_coding_binary(nsim = 120),
+  power_by_coding_multicat(nsim = 120)
 )
 
 coding_power_tbl <- coding_power_raw_tbl |>
@@ -2568,14 +3122,19 @@ invisible(NULL)
 #### 文献ベースの目標N（80%/90%）
 
 ```{r}
+#| label: ch4-auto-049
 #| eval: true
 pwr_targets |>
-  knitr::kable(caption = "Target Sample Size by Scenario", digits = 3)
+  knitr::kable(caption = "Target Sample Size by Scenario (grid-based search)", digits = 3)
 ```
+
+この表の `N_for_80` と `N_for_90` は、探索グリッド上で最初に基準を超えた値です。
+厳密な必要サンプルサイズではなく、設計段階で使う目安として読みます。
 
 #### 文献ベースのパワー曲線
 
 ```{r}
+#| label: ch4-auto-050
 #| eval: true
 if (interaction_power_available) {
   ggplot(pwr_lit, aes(x = N, y = pwr, color = Scenario)) +
@@ -2599,6 +3158,7 @@ if (interaction_power_available) {
 #### 解析解 vs モンテカルロ（Baranger強交互作用）
 
 ```{r}
+#| label: ch4-auto-051
 #| eval: true
 pwr_compare_tbl |>
   knitr::kable(caption = "Analytic vs Monte Carlo Power Check", digits = 3)
@@ -2607,11 +3167,17 @@ pwr_compare_tbl |>
 #### ΔR²シミュレーション（Brown/MMR対応）
 
 ```{r}
+#| label: ch4-auto-052
 #| eval: true
 power_min80 |>
   knitr::kable(caption = "Minimum N for 80% Power (ΔR² approach)", digits = 3)
 
+power_grid |>
+  dplyr::select(N, power, power_ci_low, power_ci_high, mean_delta_r2, mean_partial_f2, n_sim) |>
+  knitr::kable(caption = "ΔR² Simulation Grid: Power, Monte Carlo CI, and Effect Size", digits = 3)
+
 ggplot(power_grid, aes(x = N, y = power)) +
+  geom_ribbon(aes(ymin = power_ci_low, ymax = power_ci_high), alpha = 0.18) +
   geom_line() +
   geom_point() +
   geom_hline(yintercept = 0.80, linetype = 2, color = "red") +
@@ -2619,28 +3185,33 @@ ggplot(power_grid, aes(x = N, y = power)) +
   labs(
     title = "Power Curve for Interaction Detection (ΔR² approach)",
     x = "Sample Size (N)",
-    y = "Power"
+    y = "Power",
+    subtitle = "Ribbon = Monte Carlo 95% interval"
   )
 ```
 
 #### コーディングと power はどう関係するか
 
 ```{r}
+#| label: ch4-auto-053
 #| eval: true
 coding_power_tbl |>
   knitr::kable(caption = "Power and Coding: Same Term vs Same Coefficient", digits = 3)
 ```
 
 ```{r}
+#| label: ch4-auto-054
 #| eval: true
 #| fig-width: 9.2
 #| fig-height: 4.8
+#| fig-cap: "符号化方式ごとの検出力比較（power comparison across codings）"
+#| fig-alt: "推定検出力を点、モンテカルロ95%区間を横線で示す図。符号化方式と検定単位ごとに比較される。"
 
 ggplot(
   coding_power_tbl,
   aes(x = power, y = interaction(Scenario, Test, lex.order = TRUE), color = Coding)
 ) +
-  geom_errorbarh(aes(xmin = ci_low, xmax = ci_high), height = 0.15, position = position_dodge(width = 0.45)) +
+  geom_errorbar(aes(xmin = ci_low, xmax = ci_high), orientation = "y", width = 0.15, position = position_dodge(width = 0.45)) +
   geom_point(size = 2.4, position = position_dodge(width = 0.45)) +
   geom_vline(xintercept = 0.80, linetype = 2, color = "grey55") +
   labs(
@@ -2650,7 +3221,7 @@ ggplot(
     y = NULL,
     color = "Coding"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -2670,9 +3241,12 @@ ggplot(
 ```
 
 ```{r}
+#| label: ch4-auto-055
 #| eval: true
 #| fig-width: 9.2
 #| fig-height: 5.8
+#| fig-cap: "シミュレーションp値分布（distribution of simulated p-values）: 符号化と検定単位の比較"
+#| fig-alt: "p値分布をridge plotで示す図。.05の基準線が赤い破線として表示され、条件ごとのp値分布が比較される。"
 
 ggplot(
   coding_power_raw_tbl,
@@ -2693,7 +3267,7 @@ ggplot(
     y = NULL,
     fill = "Coding"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -2713,7 +3287,8 @@ ggplot(
 ```
 
 この tab では、表だけでなく
-**点区間図で power の大きさを、ridge plot で p 値分布の違いを**確認します。  
+**点区間図で power の大きさを、ridge plot で p 値分布の違いを**確認します。
+coding 比較は、同じ乱数で作った同一データセットに Treatment coding と sum coding を両方当てる paired simulation として実装しています。
 実務上の読み方は次の通りです。
 
 - **2水準要因**:
@@ -2736,9 +3311,9 @@ ggplot(
 
 | Step | What to check | Decision rule |
 |:--|:--|:--|
-| 1. 交互作用係数 | `summary(m_theory)` の `Treatment × Proficiency` | `p < .05` かつ符号が理論と整合 |
-| 2. Simple slope | `summary(slopes_bauer$contrasts)` | 傾き差の有意性を確認 |
-| 3. 条件付き平均差 | `emmeans(... | Proficiency)` | `-1SD/0/+1SD` の差を比較 |
+| 1. 交互作用係数 | `summary(m_theory)` の `Treatment × LearningMode × Proficiency` | `p < .05` かつ符号が理論と整合 |
+| 2. Simple slope | `slopes_prof_contrasts_tbl` | LearningMode別のWriting - Glossing傾き差を確認 |
+| 3. 条件付き平均差 | `emm_treat_prof_tbl` | LearningMode別に`-1SD/0/+1SD` の差を比較 |
 | 4. 図の整合 | `emmip()` | 線の交差・傾き方向が統計結果と一致 |
 | 5. 頑健性 | `check_model()` と HC3 | 結論が大きく変わらない |
 
@@ -2746,7 +3321,7 @@ ggplot(
 
 ## 拡張: within-subjects の場合
 
-ここまでは **1参加者1行の between-subjects 回帰**として説明してきました。  
+ここまでは **1参加者1行の between-subjects 回帰**として説明してきました。
 ただし、同じ参加者を `Immediate` と `Delayed` のように**複数時点で繰り返し測定**する場合は、そのまま long データに `lm()` を当てると独立性仮定が崩れます。
 
 この章の射程で整理すると、次のようになります。
@@ -2758,12 +3333,13 @@ ggplot(
 | 3時点以上の反復測定 | 原則として不十分 | 混合効果モデルへ |
 | 項目反復・参加者反復が両方ある | 原則として不十分 | 混合効果モデルへ |
 
-要するに、**2時点だけ**で研究関心が「どれだけ変化したか」にあるなら、`Delayed - Immediate` の差分得点を目的変数にして `lm()` へ落とせます。  
+要するに、**2時点だけ**で研究関心が「どれだけ変化したか」にあるなら、`Delayed - Immediate` の差分得点を目的変数にして `lm()` へ落とせます。
 一方、3時点以上の成長曲線、欠測を含む反復測定、項目反復を伴うデータでは、差分得点だけでは情報を潰しすぎるため、混合効果モデルを優先します [@cunnings2012; @brysbaert2018]。
 
 ### 2時点 within-subjects のミニ例
 
 以下では、`Treatment` は between-subjects、`Time` は within-subjects として、同一参加者を `Immediate` と `Delayed` で追跡する toy data を作ります。ここで知りたいのは、「**変化量が Proficiency によって調整されるか**」です。
+その研究質問に合わせて、生成式にも `Treatment x Time x Proficiency` を入れます。
 
 ```{r}
 #| eval: true
@@ -2772,6 +3348,7 @@ ggplot(
 set.seed(2025)
 
 n_within <- 120
+time_points <- c("Immediate", "Delayed")
 
 within_participants <- tibble(
   Participant = factor(seq_len(n_within)),
@@ -2783,7 +3360,7 @@ within_participants <- tibble(
 
 within_long <- tidyr::crossing(
   Participant = within_participants$Participant,
-  Time = factor(times, levels = times)
+  Time = factor(time_points, levels = time_points)
 ) |>
   left_join(within_participants, by = "Participant")
 
@@ -2803,6 +3380,7 @@ within_long <- within_long |>
             0.7 * (Treatment == "Writing") * prof_z_within -
             0.6 * (Time == "Delayed") * prof_z_within +
             0.4 * (Treatment == "Writing") * (Time == "Delayed") +
+            0.9 * (Treatment == "Writing") * (Time == "Delayed") * prof_z_within +
             u_participant +
             rnorm(n(), 0, 1.7)
         ),
@@ -2839,9 +3417,12 @@ within_wide |>
 ### 変化量を見る図
 
 ```{r}
+#| label: ch4-auto-056
 #| eval: true
 #| fig-width: 8.6
 #| fig-height: 4.8
+#| fig-cap: "2時点反復測定の変化軌跡（within-subjects trajectories）: 個人変化と群平均"
+#| fig-alt: "ImmediateからDelayedへの個人ごとの変化を細い線、Treatment別の平均変化を太い線で示す図。"
 
 sampled_ids <- within_long |>
   distinct(Participant, Treatment) |>
@@ -2873,7 +3454,7 @@ ggplot(within_plot_tbl, aes(x = Time, y = Score, group = Participant, color = Tr
     x = "Time",
     y = "Score"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -2914,6 +3495,7 @@ $$
 となり、`Treatment × Proficiency` は「**変化量のモデレーション**」として読めます。
 
 ```{r}
+#| label: ch4-auto-057
 #| eval: true
 m_within_change <- lm(
   Change ~ Treatment * Proficiency + Aptitude,
@@ -2928,28 +3510,37 @@ broom::tidy(m_within_change, conf.int = TRUE) |>
 ### 変化量に対する simple slope
 
 ```{r}
+#| label: ch4-auto-058
 #| eval: true
 within_slopes <- emtrends(
   m_within_change,
-  pairwise ~ Treatment,
+  ~ Treatment,
   var = "Proficiency"
 )
 
-summary(within_slopes$emtrends, infer = c(TRUE, TRUE)) |>
+within_slope_contrast <- contrast(
+  within_slopes,
+  method = list("Writing - Glossing" = c(-1, 1))
+)
+
+summary(within_slopes, infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
   knitr::kable(caption = "Simple Slopes on Change Scores")
 
-summary(within_slopes$contrasts, infer = c(TRUE, TRUE)) |>
+summary(within_slope_contrast, infer = c(TRUE, TRUE)) |>
   as.data.frame() |>
   mutate(across(where(is.numeric), ~ round(.x, 3))) |>
   knitr::kable(caption = "Treatment Difference in Proficiency Slopes for Change Scores")
 ```
 
 ```{r}
+#| label: ch4-auto-059
 #| eval: true
 #| fig-width: 7.8
 #| fig-height: 4.8
+#| fig-cap: "変化量のモデレーション（moderation of change scores）: ProficiencyとTreatment"
+#| fig-alt: "Proficiencyを横軸、Delayed minus ImmediateのChangeを縦軸にした散布図。Treatment別の回帰線と信頼帯が表示される。"
 
 ggplot(within_wide, aes(x = Proficiency, y = Change, color = Treatment)) +
   geom_point(alpha = 0.25, size = 1.7) +
@@ -2960,7 +3551,7 @@ ggplot(within_wide, aes(x = Proficiency, y = Change, color = Treatment)) +
     x = "Proficiency (z)",
     y = "Change score (Delayed - Immediate)"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
+  book_theme() +
   theme(
     plot.title.position = "plot",
     plot.title = element_text(
@@ -2987,7 +3578,7 @@ ggplot(within_wide, aes(x = Proficiency, y = Change, color = Treatment)) +
 
 ### どこまで `lm` で行けるか
 
-2時点の within-subjects なら、差分得点回帰は実務的に有効です。  
+2時点の within-subjects なら、差分得点回帰は実務的に有効です。
 ただし、次の条件ではこの単純化は急に苦しくなります。
 
 - **3時点以上**: `Immediate`, `Mid`, `Delayed` を 1つの差分へ潰すと軌跡情報が消える
@@ -2995,19 +3586,20 @@ ggplot(within_wide, aes(x = Proficiency, y = Change, color = Treatment)) +
 - **項目反復がある**: 参加者内だけでなく項目内相関も無視してしまう
 - **時点ごとの傾き差そのものが主題**: long 形式でのランダム効果モデルの方が自然
 
-このため、within-subjects についての本章の結論は次の1文です。  
+このため、within-subjects についての本章の結論は次の1文です。
 **2時点だけで変化量が主題なら change-score regression で `lm` に落とせる。そうでなければ混合効果モデルへ進む。**
 
 ## 投稿用出力（APA/JML 体裁）
 
 ::: {.panel-tabset}
 
-### Table A: 記述統計（Treatment × Time）
+### Table A: 記述統計（Treatment × LearningMode）
 
 ```{r}
+#| label: ch4-auto-060
 #| eval: true
 submission_desc_tbl <- wide_scores |>
-  dplyr::group_by(Treatment, Time) |>
+  dplyr::group_by(Treatment, LearningMode) |>
   dplyr::summarise(
     N = n(),
     Mean = mean(Score_Recall),
@@ -3018,81 +3610,111 @@ submission_desc_tbl <- wide_scores |>
   )
 
 submission_desc_tbl |>
-  knitr::kable(caption = "Table A. Descriptive Statistics by Treatment and Time", digits = 3)
+  knitr::kable(caption = "Table A. Descriptive Statistics by Treatment and LearningMode", digits = 3)
 ```
 
 ### Table B: 主要係数 + 頑健推論
 
 ```{r}
+#| label: ch4-auto-061
 #| eval: true
 submission_coef_tbl <- coef_main_tbl |>
-  dplyr::select(term, estimate, std.error, conf.low, conf.high, p.value)
+  transmute(
+    Predictor = term_label(term),
+    b = apa_num(estimate, 3),
+    SE = apa_num(std.error, 3),
+    t = apa_num(statistic, 2),
+    df = df.residual(m_theory),
+    p = apa_p(p.value),
+    `95% CI` = paste0("[", apa_num(conf.low, 3), ", ", apa_num(conf.high, 3), "]")
+  )
+
+submission_fit_tbl <- tibble(
+  N = nobs(m_theory),
+  df_model = length(coef(m_theory)) - 1,
+  df_residual = df.residual(m_theory),
+  R2 = apa_num(r2_val, 3),
+  R2_adjusted = apa_num(r2_adj, 3),
+  focal_Delta_R2 = apa_num(three_way_effect_tbl$Delta_R2, 4),
+  focal_partial_f2 = apa_num(three_way_effect_tbl$partial_f2, 4)
+)
 
 submission_coef_tbl |>
-  knitr::kable(caption = "Table B1. OLS Coefficients with 95% CI", digits = 4)
+  knitr::kable(caption = "Table B1. OLS係数（OLS coefficients）: APA形式の主要係数表")
 
-robust_inference_tbl |>
-  knitr::kable(caption = "Table B2. Robust Inference for Interaction Terms (HC3 / Bootstrap)", digits = 4)
+submission_fit_tbl |>
+  knitr::kable(caption = "Table B2. モデル適合と主要交互作用の効果量（model fit and focal interaction effect size）")
+
+robust_inference_apa_tbl |>
+  knitr::kable(caption = "Table B3. 頑健推論（robust inference）: Proficiencyを含む主要交互作用のHC3と層化Bootstrap")
 ```
 
 ### Figure A: 交互作用図（投稿用）
 
 ```{r}
+#| label: ch4-auto-062
 #| eval: true
 #| fig-width: 8.8
 #| fig-height: 4.8
+#| fig-cap: "投稿用交互作用図（publication-ready interaction plot）: Proficiency、Treatment、LearningModeによる予測Recall"
+#| fig-alt: "Proficiencyを横軸、予測Recall得点を縦軸にした図。Treatment別の線と信頼帯がLearningMode別パネルで表示される。"
 
-ggplot(pred_df, aes(x = Proficiency, y = fit, color = Treatment, fill = Treatment)) +
+ggplot(pred_df, aes(x = Proficiency, y = fit, color = Treatment, fill = Treatment, linetype = Treatment)) +
   geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.18, color = NA) +
   geom_line(linewidth = 1.1) +
-  facet_wrap(~ Time) +
+  facet_wrap(~ LearningMode) +
   scale_color_manual(values = c("Glossing" = "#1f78b4", "Writing" = "#e31a1c")) +
   scale_fill_manual(values = c("Glossing" = "#1f78b4", "Writing" = "#e31a1c")) +
+  scale_linetype_manual(values = c("Glossing" = "solid", "Writing" = "longdash")) +
   labs(
-    title = "Figure A. Predicted Recall by Proficiency, Treatment, and Time",
+    title = "ProficiencyとTreatmentの交互作用図",
+    subtitle = "LearningMode別の予測Recall得点",
     x = "Proficiency (z)",
-    y = "Predicted Recall Score"
+    y = "Predicted Recall Score",
+    linetype = "Treatment"
   ) +
-  theme_bw(base_size = 12, base_family = "HiraginoSans-W3") +
-  theme(
-    plot.title.position = "plot",
-    plot.title = element_text(
-      face = "bold",
-      size = rel(1.0),
-      lineheight = 1.04,
-      margin = margin(b = 6)
-    ),
-    plot.subtitle = element_text(
-      size = rel(0.92),
-      lineheight = 1.04,
-      margin = margin(b = 8)
-    ),
-    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
-  ) +
-  theme(legend.position = "bottom")
+  book_theme()
 ```
 
 ### 本文ドラフト（そのまま貼れる形）
 
 ```{r}
+#| label: ch4-auto-063
 #| eval: true
 #| results: asis
-interaction_row <- coef_main_tbl |>
-  dplyr::filter(term == "Treatment1:Proficiency") |>
+three_way_row <- coef_main_tbl |>
+  dplyr::filter(term == "Treatment1:LearningMode1:Proficiency") |>
   slice(1)
 
-slope_row <- slopes_prof_contrasts_tbl |>
-  dplyr::filter(Time == "Immediate") |>
+slope_individual_row <- slopes_prof_contrasts_tbl |>
+  dplyr::filter(LearningMode == "Individual") |>
   slice(1)
+
+slope_collaborative_row <- slopes_prof_contrasts_tbl |>
+  dplyr::filter(LearningMode == "Collaborative") |>
+  slice(1)
+
+slope_diff_row <- glh_tbl |>
+  dplyr::filter(Hypothesis == "H4: Slope-difference-in-differences (Collaborative - Individual)") |>
+  slice(1)
+
+mode_direction <- if (slope_diff_row$Estimate > 0) {
+  "larger under Collaborative learning than under Individual learning"
+} else {
+  "larger under Individual learning than under Collaborative learning"
+}
 
 text_block <- glue::glue(
-  "A theory-driven linear model (sum coding for Treatment/Time; z-scored covariates) ",
-  "showed a Treatment × Proficiency interaction, b = {round(interaction_row$estimate, 3)}, ",
-  "95% CI [{round(interaction_row$conf.low, 3)}, {round(interaction_row$conf.high, 3)}], ",
-  "p = {format.pval(interaction_row$p.value, digits = 3)}. ",
-  "Simple-slope contrast at Immediate (Writing - Glossing) was ",
-  "{round(slope_row$estimate * (-1), 3)} (95% CI [{round(slope_row$upper.CL * (-1), 3)}, {round(slope_row$lower.CL * (-1), 3)}], ",
-  "p = {format.pval(slope_row$p.value, digits = 3)}), indicating stronger proficiency-related gains under Writing."
+  "A theory-driven linear model (sum coding for Treatment/LearningMode; z-scored covariates) ",
+  "tested whether the Writing-Glossing slope difference varied by learning mode. ",
+  "The three-way interaction coefficient was b = {apa_num(three_way_row$estimate, 3)}, ",
+  "95% CI [{apa_num(three_way_row$conf.low, 3)}, {apa_num(three_way_row$conf.high, 3)}], ",
+  "{apa_p_text(three_way_row$p.value)}. ",
+  "The Writing - Glossing proficiency slope difference was {apa_num(slope_individual_row$estimate, 3)} ",
+  "under Individual learning and {apa_num(slope_collaborative_row$estimate, 3)} under Collaborative learning. ",
+  "The slope-difference-in-differences was {apa_num(slope_diff_row$Estimate, 3)}, ",
+  "95% CI [{apa_num(slope_diff_row$CI_low, 3)}, {apa_num(slope_diff_row$CI_high, 3)}], ",
+  "{apa_p_text(slope_diff_row$p)}, suggesting that the Writing - Glossing proficiency slope difference was {mode_direction}."
 )
 
 knitr::asis_output(text_block)
@@ -3110,9 +3732,9 @@ knitr::asis_output(text_block)
 coef_report <- broom::tidy(m_theory, conf.int = TRUE)
 
 key_interaction <- coef_report |>
-  dplyr::filter(term == "Treatment1:Proficiency") |>
+  dplyr::filter(term == "Treatment1:LearningMode1:Proficiency") |>
   transmute(
-    Indicator = "Treatment × Proficiency (β)",
+    Indicator = "Treatment x LearningMode x Proficiency (b)",
     Estimate = estimate,
     CI_low = conf.low,
     CI_high = conf.high,
@@ -3120,26 +3742,40 @@ key_interaction <- coef_report |>
   )
 
 key_slope <- slopes_prof_contrasts_tbl |>
-  dplyr::filter(Time == "Immediate") |>
   transmute(
-    Indicator = "Simple slope difference (Immediate)",
+    Indicator = paste0("Writing - Glossing slope difference (", LearningMode, ")"),
     Estimate = estimate,
     CI_low = lower.CL,
     CI_high = upper.CL,
     p = p.value
   )
 
-bind_rows(key_interaction, key_slope) |>
-  mutate(across(where(is.numeric), ~ round(., 3))) |>
-  knitr::kable(caption = "Report-Ready Key Statistics")
+key_slope_diff <- glh_tbl |>
+  dplyr::filter(Hypothesis == "H4: Slope-difference-in-differences (Collaborative - Individual)") |>
+  transmute(
+    Indicator = "Slope-difference-in-differences (Collaborative - Individual)",
+    Estimate = Estimate,
+    CI_low = CI_low,
+    CI_high = CI_high,
+    p = p
+  )
+
+bind_rows(key_interaction, key_slope, key_slope_diff) |>
+  mutate(
+    Estimate = apa_num(Estimate, 3),
+    CI = paste0("[", apa_num(CI_low, 3), ", ", apa_num(CI_high, 3), "]"),
+    p = apa_p(p)
+  ) |>
+  dplyr::select(Indicator, Estimate, CI, p) |>
+  knitr::kable(caption = "報告用主要統計量（report-ready key statistics）")
 ```
 
-- モデル: `lm(Score_Recall ~ Treatment * Time + Treatment * Proficiency + Time * Proficiency + Aptitude)`
-- コーディング: `Treatment/Time` は sum coding、`Proficiency/Aptitude` は z 変換。
+- モデル: `lm(Score_Recall ~ Treatment * LearningMode * Proficiency + Aptitude)`
+- コーディング: `Treatment/LearningMode` は sum coding、`Proficiency/Aptitude` は z 変換。
 - 当てはまり: $R^2$、調整 $R^2$、AIC/BIC（必要ならCV指標）。
-- 主要効果: 各係数の $\beta$, SE, t, p, 95% CI。
-- 交互作用: `Treatment × Proficiency` の係数と、`emtrends()` による傾き差。
-- 下位検定: `Proficiency = -1, 0, +1` での条件付き群差。
+- 主要効果: 各係数の $b$, SE, t, p, 95% CI。
+- 交互作用: `Treatment × LearningMode × Proficiency` の係数、LearningMode別のWriting - Glossing傾き差。
+- 下位検定: `Proficiency = -1, 0, +1` かつLearningMode別での条件付き群差。
 - 診断: 等分散性・正規性・共線性・ロバストSEの結果。
 - 実質解釈: 「高 proficiency 層ほど Writing 効果が増幅」など、教育的意味を1文で明示。
 
@@ -3147,13 +3783,13 @@ bind_rows(key_interaction, key_slope) |>
 
 以下の3文セットで書くと、統計結果とSLA理論の接続が明確になります。
 
-1. **統計的記述**: 「`Treatment × Proficiency` は有意であった（β = ..., 95% CI [..., ...]）。」
-2. **条件付き解釈**: 「simple slope では、`Proficiency = +1SD` で Writing 優位が確認された。」
+1. **統計的記述**: 「`Treatment × LearningMode × Proficiency` は有意であった（b = ..., 95% CI [..., ...]）。」
+2. **条件付き解釈**: 「LearningMode別のsimple slopeでは、Writing - Glossing の傾き差は ... で大きかった。」
 3. **理論的含意**: 「このパターンは、学習者要因が処置効果を調整する ATI の見立てと整合的である
    [@li2015]。」
 
 補足として、コントラスト設計に踏み込んだ厳密解釈は第2章で扱います
-（本章では運用上の最小要件に絞ります）。
+（本章では運用上の最小要件に絞ります）。L2 研究としての効果量解釈には、Cohen の伝統的目安に加えて Plonsky & Oswald [-@plonsky2014] の SLA 専用参照値 (群間 *d*: .40 / .70 / 1.00; 相関 *r*: .25 / .40 / .60) を併記すると、分野慣行に即した記述ができます。報告書式は *Language Learning* の Open Methods ガイドライン [@norris2015] に準拠すれば、再現性に必要な情報の漏れを防げます。
 
 ## 実データへ移すときの注意
 
@@ -3163,6 +3799,10 @@ bind_rows(key_interaction, key_slope) |>
 - したがって本章は「交互作用解釈の基礎」と位置づけ、設計に応じて第6章へ接続してください。
 
 ## まとめ
+
+ここまでお疲れさまでした。本章では `lm()` による重回帰モデレーション分析の基本を、理論先行のモデル定義から simple slope 分析・診断・ロバスト SE・CV まで一通り辿ってきました。**「交互作用は係数表だけでなく図と下位検定で読む」**という発想は、後続の混合効果モデル(第6章)・GLM/GAM(第5章)・ベイズ回帰(第7章)でも繰り返し登場します。
+
+要点は次の 3 点です。
 
 - 理論先行でモデルを定義し、`step()` は探索補助に限定する。
 - simple slope は `emtrends()`、条件付き平均差は `emmeans()` で分けて報告する。

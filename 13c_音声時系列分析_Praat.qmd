@@ -4,7 +4,7 @@ prefer-html: true
 always_allow_html: true
 bibliography: references_timeseries.bib
 nocite: |
-  @hyndman2021, @shin2016, @shumway2017, @ortega2005, @verspoor2008, @gu2015, @debot2007, @turner2021, @bernal2017, @li2025, @fant1960, @boersma2023, @thomas2007, @cohen1988_ts, @hillenbrand1995, @flege1995, @dejong2009, @derwing2009, @saito2022, @bores2023rpraat, @coretta2023speakr
+  @hyndman2021, @shin2016, @shumway2017, @ortega2005, @verspoor2008, @gu2015, @debot2007, @turner2021, @bernal2017, @li2025, @fant1960, @boersma2023, @thomas2007, @cohen1988_ts, @hillenbrand1995, @flege1995, @dejong2009, @derwing2009, @saito2016, @bores2023rpraat, @coretta2023speakr
 ---
 
 ```{r}
@@ -18,22 +18,32 @@ required_packages <- c(
   "knitr",
   "lme4",
   "mgcv",
-  "pacman",
   "patchwork",
   "phonTools",
   "purrr",
+  "ragg",
   "rPraat",
   "rlang",
   "seewave",
-  "speakr",
   "tidyselect",
   "tidyverse",
   "tuneR"
 )
 
+optional_packages <- c("speakr")
+
 missing_packages <- setdiff(required_packages, rownames(installed.packages()))
 if (length(missing_packages) > 0) {
   install.packages(missing_packages, repos = "https://cloud.r-project.org")
+}
+
+missing_optional_packages <- setdiff(optional_packages, rownames(installed.packages()))
+if (length(missing_optional_packages) > 0) {
+  message(
+    "Optional packages not installed: ",
+    paste(missing_optional_packages, collapse = ", "),
+    ". They are only needed for optional sections."
+  )
 }
 ```
 
@@ -44,20 +54,29 @@ if (length(missing_packages) > 0) {
 #| message: false
 #| warning: false
 #| include: false
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
-
-pacman::p_load(
-  tidyverse,
-  DT,
-  tuneR,
-  seewave,
-  rPraat,
-  phonTools,
-  lme4,
-  mgcv,
-  ggrepel,
-  patchwork
+#| cache: false
+runtime_packages <- c(
+  "tidyverse", "DT", "tuneR", "seewave", "rPraat",
+  "phonTools", "lme4", "mgcv", "ggrepel", "patchwork", "ragg"
 )
+
+missing_runtime_packages <- runtime_packages[
+  !vapply(runtime_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_runtime_packages) > 0) {
+  stop(
+    "Install required packages before rendering this chapter: ",
+    paste(missing_runtime_packages, collapse = ", "),
+    call. = FALSE
+  )
+}
+
+invisible(lapply(
+  setdiff(runtime_packages, "ragg"),
+  library,
+  character.only = TRUE
+))
 
 theme_speech <- function(base_size = 12) {
   theme_bw(base_size = base_size, base_family = "HiraginoSans-W3") +
@@ -80,6 +99,39 @@ theme_speech <- function(base_size = 12) {
 }
 
 theme_set(theme_speech())
+
+render_local_audio_enabled <- function() {
+  identical(tolower(Sys.getenv("RENDER_LOCAL_AUDIO", "false")), "true")
+}
+
+render_inspection_table <- function(data, caption = NULL, page_length = 10,
+                                    static_rows = 10, digits = NULL) {
+  display_data <- data
+
+  if (!is.null(digits)) {
+    display_data <- display_data |>
+      mutate(across(where(is.numeric), \(x) round(x, digits)))
+  }
+
+  if (knitr::is_html_output() && requireNamespace("DT", quietly = TRUE)) {
+    DT::datatable(
+      display_data,
+      caption = caption,
+      rownames = FALSE,
+      escape = TRUE,
+      options = list(
+        pageLength = page_length,
+        lengthChange = FALSE,
+        scrollX = TRUE
+      )
+    )
+  } else {
+    display_data |>
+      head(static_rows) |>
+      knitr::kable(caption = caption)
+  }
+}
+
 set.seed(2024)
 
 ```
@@ -90,17 +142,29 @@ set.seed(2024)
 
 ### 主なパッケージの役割
 
-- `tuneR`・`seewave`・`phonTools`: 波形、スペクトル、F0、フォルマントなどの音響特徴量を扱う。
+- `tuneR`・`seewave`・`phonTools`: 波形、スペクトル、F0、フォルマントなどの音響特徴量を扱います。
 - `rPraat`: Praat で保存した `TextGrid` / `Pitch` / `Formant` を R に読み込む橋渡しであり、**読むだけなら Praat 本体が常時起動している必要はありません**。
-- `lme4`・`mgcv`: 後半の LMM / GAMM による統計モデル化を担当する。
-- `patchwork`・`ggrepel`: 複数図の合成と、母音空間などでラベルが重なる図の可読性調整を補助する。
+- `lme4`・`mgcv`: 後半の LMM / GAMM による統計モデル化を担当します。
+- `patchwork`・`ggrepel`: 複数図の合成と、母音空間などでラベルが重なる図の可読性調整を補助します。
 
 ### 追加の前提
 
 - `speakr` は **追加要件つきのオプション**です。パッケージのインストールに加えて、ローカルに Praat 実行ファイルが必要です。
 - `data/audio/*.wav` や `audio_dataset/*` を使う実例は、ファイルが存在しない場合にスキップされるか、生成コマンドを案内する形にしています。章全体を追うだけなら必須ではありません。
+- 公開用レンダーでは、ローカルの実録音やファイル名が出力に混入しないよう、`data/audio` と `audio_dataset` の一括処理は既定でスキップします。手元データで試す場合だけ、環境変数 `RENDER_LOCAL_AUDIO=true` を設定して実行します。
 
 したがって、最初は `tuneR` / `seewave` / `rPraat` の節を中心に読み、Praat スクリプトを R からバッチ実行したくなった段階で `speakr` 節に進むのが安全です。
+
+### 表の表示方針
+
+本文で読む分類表・設定表・報告表は静的な表として示し、manifest・処理ログ・file hash・token / trajectory のプレビューなど、行を探す作業が中心になる表だけ HTML 版で操作可能にします。PDF や静的出力では、同じ表を先頭行の `knitr::kable()` として表示します。
+
+| 表の種類 | 表示 | 理由 | 本章での例 |
+|---|---|---|---|
+| 概念・判断基準の表 | 静的表 | 本文の順に読めばよく、検索や並べ替えは不要 | 音響特徴量の扱い、パッケージ選択ガイド |
+| 設定・報告用の表 | 静的表 | 読者が値と根拠を確認する表であり、行数も少ない | Praat 設定レジストリ、感度確認計画、モデル式レジストリ |
+| データ点検用の表 | HTML では操作可能、静的出力では先頭行 | 録音 ID、欠落、失敗理由、外れ値候補を探す用途が中心 | manifest、処理ログ、file hash、token / trajectory preview |
+| 集計結果の表 | 静的表 | 結論や処理状況を短く読む表なので、固定表示の方が本文と対応しやすい | data contract、欠測率、保存済み表の行数 |
 
 ## はじめに
 
@@ -108,36 +172,38 @@ set.seed(2024)
 
 本章は、次の順に進みます。
 
-1. 周期波・スペクトル・フォルマントといった音響音声学の基本を理解する。
-2. `tuneR` / `seewave` で波形・スペクトログラム・F0・スペクトルを扱う。
-3. `Praat` / `rPraat` / `speakr` の役割分担を理解する。
-4. `TextGrid` やフォルマント抽出結果を、LMM / GAMM / 時系列的な見方へ接続する。
+1. 周期波・スペクトル・フォルマントといった音響音声学の基本を理解します。
+2. `tuneR` / `seewave` で波形・スペクトログラム・F0・スペクトルを扱います。
+3. `Praat` / `rPraat` / `speakr` の役割分担を理解します。
+4. `TextGrid` やフォルマント抽出結果を、LMM / GAMM / 時系列的な見方へ接続します。
 
-### 3つの読者ルート
+### 4つの読者ルート
 
-- **最短理解**: [17.2 マクロ→ミクロ](#sec-macro-micro) → [17.3 音響音声学の基礎](#sec-acoustic-basics) → [17.6 Praat / rPraat ガイド](#sec-praat-r-guide) → [17.7 実データ連携](#sec-textgrid-template)
-- **Praat 実務**: [17.6 Praat / rPraat ガイド](#sec-praat-r-guide) → [17.7 TextGrid と F1/F2 抽出](#sec-textgrid-template) → [17.8 報告テンプレート](#sec-report-templates)
-- **統計モデル**: [17.3 音響概念の整理](#sec-acoustic-basics) → [17.6 音響概念を Praat オブジェクトへ翻訳](#sec-acoustic-to-praat) → [17.7 実データ連携](#sec-textgrid-template)
+- **最短理解**: [マクロ→ミクロ](#sec-macro-micro) → [音響音声学の基礎](#sec-acoustic-basics) → [Praat / rPraat ガイド](#sec-praat-r-guide) → [実データ連携](#sec-textgrid-template)
+- **Praat 実務**: [Praat / rPraat ガイド](#sec-praat-r-guide) → [TextGrid と F1/F2 抽出](#sec-textgrid-template) → [報告テンプレート](#sec-report-templates)
+- **統計モデル**: [音響概念の整理](#sec-acoustic-basics) → [音響概念を Praat オブジェクトへ翻訳](#sec-acoustic-to-praat) → [実データ連携](#sec-textgrid-template)
+- **補助演習**: [Appendix: gTTSで教材用音声を作成する](#sec-gtts-appendix) → [TextGrid と F1/F2 抽出](#sec-textgrid-template)
 
 ### 学習ルートと優先度
 
 | 節 | 優先度 | 読む目的 |
 |---|---|---|
-| `17.2` マクロ時系列からミクロ時系列へ | **必修** | この章が時系列分析の本の中で何をしているかを掴む |
-| `17.3` 音響音声学の基礎語彙〜F0推定 | **必修** | 周期波・スペクトル・F0・フォルマントの最小語彙を身につける |
-| `17.4` Rでwav処理入門 | **必修** | `tuneR` / `seewave` の基本操作を体験する |
-| `17.6` Praat ユーザーのための R パッケージガイド | **実務** | `Praat`・`rPraat`・`speakr` の役割分担を理解する |
-| `17.7` TextGrid と F1/F2 抽出 | **実務** | 研究データに近いワークフローへ接続する |
-| `17.5` 生成データパイプライン | **発展** | バッチ処理や再現可能パイプラインを見たい読者向け |
-| `17.6.10` speakr | **発展** | Praat スクリプトを R から実行したい読者向け |
-| `17.8` 報告テンプレート集 | **補助** | 書き方のひな形が欲しいときに参照する |
+| [マクロ時系列からミクロ時系列へ](#sec-macro-micro) | **必修** | この章が時系列分析の本の中で何をしているかを掴む |
+| [音響音声学の基礎語彙〜F0推定](#sec-acoustic-basics) | **必修** | 周期波・スペクトル・F0・フォルマントの最小語彙を身につける |
+| [Rでwav処理入門](#sec-wav-r) | **必修** | `tuneR` / `seewave` の基本操作を体験する |
+| [Praat ユーザーのための R パッケージガイド](#sec-praat-r-guide) | **実務** | `Praat`・`rPraat`・`speakr` の役割分担を理解する |
+| [TextGrid と F1/F2 抽出](#sec-textgrid-template) | **実務** | 研究データに近いワークフローへ接続する |
+| [生成データパイプライン](#sec-native-pipeline) | **発展** | バッチ処理や再現可能パイプラインを見たい読者向け |
+| [speakr](#sec-speakr-guide) | **発展** | Praat スクリプトを R から実行したい読者向け |
+| [報告テンプレート集](#sec-report-templates) | **補助** | 書き方のひな形が欲しいときに参照する |
+| [Appendix: gTTSで教材用音声を作成する](#sec-gtts-appendix) | **補助** | TextGrid 注釈や manifest 作成を練習するための音声を用意する |
 
 ### この章の到達目標
 
-1. 音声波形を「高頻度の時系列データ」として説明できる。
-2. 周期波・スペクトル・スペクトログラム・F0・倍音・フォルマントの関係を、図を使って解釈できる。
-3. `Praat` と `rPraat` の役割分担を理解し、どの作業を GUI で行い、どの作業を R に渡すべきか説明できる。
-4. duration / F0 / intensity / formants を、LMM・GAMM・縦断時系列のいずれで扱うべきか判断できる。
+1. 音声波形を「高頻度の時系列データ」として説明できます。
+2. 周期波・スペクトル・スペクトログラム・F0・倍音・フォルマントの関係を、図を使って解釈できます。
+3. `Praat` と `rPraat` の役割分担を理解し、どの作業を GUI で行い、どの作業を R に渡すべきか説明できます。
+4. duration / F0 / intensity / formants を、LMM・GAMM・縦断時系列のいずれで扱うべきか判断できます。
 
 ### 最初に区別したい用語
 
@@ -148,6 +214,52 @@ set.seed(2024)
 | **harmonics** と **formants** | `harmonics` は F0 の整数倍に並ぶピーク列、`formants` は声道の共鳴による強調帯域です。 |
 | **Pitch** と **PitchTier** | `Pitch` はフレームごとの候補を複数持つ Praat オブジェクト、`PitchTier` は「1本に決めたF0輪郭の点列」です。`rPraat` では前者を `pitch.read()`、後者を `pt.read()` で読みます。 |
 | **Intensity** と **IntensityTier** | `Intensity` は sampled contour、`IntensityTier` は点列として扱う強度輪郭です。`rPraat::it.read()` が読むのは後者です。 |
+
+### 前2章との接続
+
+本章は「時系列分析」の章ですが、音声波形にそのまま ARIMA を当てる章ではありません。前2章で扱った発想を、音声研究の分析単位へ移し替える章です。
+
+| 前2章での概念 | 音声章での対応 | 実務上の扱い |
+|---|---|---|
+| 自己相関 | 声帯振動の周期性、F0 推定 | ACF のピークを F0 の直感的説明に使う。実データでは Praat / seewave の推定値を品質確認する |
+| 残差自己相関 | trajectory model の取り残し | GAMM 後に残差 ACF を見て、bin 幅、AR(1)、factor-smooth を検討する |
+| 縦断の `Time` | `session`, `month`, `pre/post` | 同一参加者の変化として LMM / GLMM / GAMM に入れる |
+| トークン内時間 | `time_norm` | 1つの母音・語・発話区間の内部時間。縦断の `Time` とは別に扱う |
+| 観測単位 | 週次スコア1点、月次平均1点 | `token_table` では1トークン1行、`trajectory_table` では1トークン内の1時点が1行 |
+
+この対応を先に押さえておくと、`Time` を within-participant factor として入れる場面と、`time_norm` を smooth として入れる場面を分けやすくなります。たとえば Pre/Post の母音変化なら、`session` は参加者内で変動する固定効果・ランダム傾き候補です。一方、同じ母音トークンの中で F2 がどのように動くかを見るなら、`time_norm` は GAMM の `s(time_norm, ...)` に入る連続時間です。
+
+### 音声分析で最初に作る分析契約 {#sec-speech-analysis-contract}
+
+音声分析では、録音ファイルから統計モデルまでの距離が長くなります。したがって、分析を始める前に「何を1行として扱うか」「どの時間軸を見るか」「どの抽出設定を主分析にするか」を短い表として固定しておくと、後から判断がぶれにくくなります。本章では、これを**分析契約（analysis contract）**と呼びます。
+
+| 決めること | 明記する内容 | 実例 |
+|---|---|---|
+| 分析単位（analysis unit） | 1行が何を表すかを決めます | 録音1本、発話区間1つ、母音トークン1つ、トークン内の1時点 |
+| 時間軸（time axis） | 絶対時間、トークン内時間、縦断時間を分けます | `time_s`、`time_norm`、`session`、`month` |
+| 注釈単位（annotation tier） | TextGrid のどの tier と boundary rule を使うかを決めます | `word` tier の母音区間、無音区間は除外、20 ms 未満は点検 |
+| 音響抽出（acoustic extraction） | Praat / seewave の主要設定を記録します | pitch floor / ceiling、formant ceiling、window length、time step |
+| 変換（transformation） | モデルに渡す前の尺度変換を決めます | duration の対数化、F0 の semitone 化、F1/F2 の話者内正規化 |
+| 品質管理（quality control） | 欠測化、外れ値、再推定のルールを決めます | F0 の halving / doubling、formant jump、voiced proportion |
+| モデル入力（model-ready table） | どの表を主分析に使うかを決めます | `token_table`、`trajectory_table`、縦断 summary table |
+| 再現性（provenance） | ファイル対応、バージョン、設定変更を残します | file manifest、batch log、Praat script、R session info |
+
+初心者にとって重要なのは、**音声ファイルそのものを直接モデルに入れるわけではない**という点です。音声波形から、TextGrid による区間、F0、formants、intensity、duration などを抽出し、研究質問に合う表へ整えてからモデル化します。経験者にとって重要なのは、抽出設定が完全に中立ではないため、主要な結論が設定変更にどの程度依存するかを感度分析（sensitivity analysis）で確認することです。
+
+### 研究質問から表を選ぶ最短表 {#sec-speech-table-choice}
+
+音声研究では、同じ録音から複数の表を作れます。ただし、研究質問に合わない表を使うと、行数だけが増えて独立サンプル数を過大評価する危険があります。最初は次の対応で考えると整理しやすくなります。
+
+| 研究質問 | 主に使う表 | 主要列 | まず検討するモデル | 注意点 |
+|---|---|---|---|---|
+| 発話時間、VOT、pause duration は条件で異なりますか | `token_table` | `duration_ms`, `log_duration`, `condition`, `speaker_id`, `item_id` | LMM、Gamma GLMM、lognormal model | duration は右に歪みやすいため、対数化または正値分布を検討します |
+| F0 median や intensity mean は条件で異なりますか | `token_table` | `F0_median`, `F0_st`, `intensity_mean`, `voiced_prop` | LMM、ロバスト回帰 | 無声区間が多いトークンでは F0 の代表値が不安定になります |
+| 母音の F1/F2 midpoint は群や時点で異なりますか | `token_table` | `F1_mid`, `F2_mid`, `F1_z`, `F2_z`, `vowel` | LMM、多変量モデル | 話者差が大きいため、話者内正規化と formant ceiling の確認が必要です |
+| F0 contour や formant transition の形が異なりますか | `trajectory_table` | `time_norm`, `F0_st`, `F1_z`, `F2_z`, `token_id` | GAMM、functional data analysis、state-space model | `time_norm` は持続時間差を取り除くため、duration は別に扱います |
+| 有声・無声、発話状態、沈黙状態の遷移を見たいですか | state / trajectory table | `time_s`, `state`, `speaker_id`, `condition` | GLMM、HMM、state-space model | 状態ラベルの作り方を先に固定します |
+| 週・月ごとの発音指標の変化を見たいですか | longitudinal summary table | `month`, `speaker_id`, `mean_F2_z`, `accuracy`, `n_tokens` | ARIMA、ITS、LMM、SSM | 集計前のトークン数と除外率も報告します |
+
+この表は、モデル選択を機械的に決めるためのものではありません。分析単位を間違えないための入口です。たとえば `trajectory_table` は行数が非常に多くなりますが、同じトークン内の点は強く依存しています。そのため、「10,000行あるから十分なサンプルサイズがある」とは解釈しません。設計上の情報量は、話者数、項目数、トークン数、トークン内の自己相関、欠測率を合わせて評価します。
 
 ## マクロ時系列からミクロ時系列へ：テストスコアから音声波形へ {#sec-macro-micro}
 
@@ -160,7 +272,7 @@ set.seed(2024)
 | Sampling rate | 1/week or 1/month | 16,000/second |
 | Autocorrelation reveals... | Score dependency (AR structure) | F0: fundamental frequency (pitch) |
 | Periodicity | Academic calendar (exams) | Vocal fold vibration |
-| Decomposition | Trend + seasonal + remainder | Source (F0) + `dplyr::filter(formants)` + noise |
+| Decomposition | Trend + seasonal + remainder | Source (F0) + filter (formants) + noise |
 | Stationarity needed for... | ARIMA modeling | Spectral analysis within a frame |
 
 : Macro vs. micro time series: conceptual parallels
@@ -177,7 +289,7 @@ set.seed(2024)
 1. **L2発音研究**：学習者と母語話者の母音空間（F1/F2散布図）を比較 — @flege1995 の Speech Learning Model (SLM) は、L1とL2の母音がフォルマント空間上で近いほど習得が困難であると予測しています
 2. **韻律研究**：F0のcontour（抑揚パターン）を流暢性の指標として分析
 3. **スピーキング流暢性研究**：ポーズの数・長さ・分布、発話速度（syllables per second）、調音速度（articulation rate）など、Praatのスクリプト [@dejong2009] で自動測定可能な指標を分析
-4. **縦断的研究**：学習者の音響特徴を時間経過で追跡 — これはまさに「マクロな時系列」と「ミクロな時系列」の交差点。@saito2022 は、L2発音の理解容易性 (comprehensibility) と分節音・超分節音の音響特徴との関係を検討しています
+4. **縦断的研究**：学習者の音響特徴を時間経過で追跡 — これはまさに「マクロな時系列」と「ミクロな時系列」の交差点。@saito2016 は、L2発音の理解容易性 (comprehensibility) と分節音・超分節音の音響特徴との関係を検討しています
 
 #### スピーキング研究における目的変数の例
 
@@ -220,7 +332,7 @@ set.seed(2024)
 
 ### 音響音声学の基礎語彙
 
-#### まず4つの概念だけ確認する
+#### まず4つの概念だけ確認します
 
 | 用語 | 一言でいうと | 音声研究での典型例 |
 |---|---|---|
@@ -576,11 +688,27 @@ ggplot(transition_tbl, aes(x = Time_ms, y = Hz, color = Syllable)) +
 |---|---|---|---|---|
 | **持続時間** | ms; 音素・母音・音節・ポーズごとに1値 | 正の連続変数。右裾が長くなりやすい | 対数変換、話速の共変量化 | LMM / GLMM、Gamma・lognormal 混合モデル [@dejong2009; @baayen2008crossed] |
 | **F0 / ピッチ** | Hz または semitone; トークン平均または時系列 | 連続変数。1値にも輪郭にもできる | 無声区間の除外、半音変換、話者内中心化 | 要約値なら LMM、輪郭なら GAMM / SSM [@cole2019; @wieling2018gamm] |
-| **インテンシティ** | dB; トークン平均または時系列 | 連続変数。録音条件の影響を受けやすい | セッション内・話者内の基準化 | LMM、輪郭比較なら GAMM [@cole2019; @saito2022] |
+| **インテンシティ** | dB; トークン平均または時系列 | 連続変数。録音条件の影響を受けやすい | セッション内・話者内の基準化 | LMM、輪郭比較なら GAMM [@cole2019; @saito2016] |
 | **有声 / 無声・VOT** | voiced/unvoiced ラベル、または ms | 二値状態列、または連続時間指標 | 厳密な注釈、言語ごとの境界定義 | ラベルならロジスティック混合モデルや HMM、VOT なら LMM / Gamma 系 [@lisker1964; @abramson2017; @dmitrieva2015] |
 | **フォルマント遷移** | F1/F2/F3 の多時点測定 | 輪郭データ、機能データ、縦方向の反復測定 | 時間正規化、平滑化、必要なら onset/midpoint/offset の要約 | GAMM / FDA / SSM。数点要約なら LMM [@hillenbrand1995; @wieling2018gamm; @soskuthy2021gamm] |
 
 要するに、**1トークンから1つの数値**を得るなら混合効果モデル、**1トークンから1本の曲線**を得るなら GAMM や状態空間モデル、**時間順に状態が切り替わる**こと自体を研究したいなら HMM が出発点になります。@baayen2008crossed は話者と項目の交差乱効果を持つ LMM の重要性を整理しており、@wieling2018gamm と @soskuthy2021gamm は、formant や pitch の輪郭を単純な線形回帰で潰してしまうと重要な時間構造を落としてしまうことを明示しています。
+
+#### 音響音声学でよく使う可視化
+
+音響音声学の図は、単に結果をきれいに見せるためではなく、**何をどこから測ったか**と**その測定を信頼してよいか**を示す役割を持ちます。先行研究を読むときも、自分の論文で図を作るときも、次の対応を意識すると見通しがよくなります。
+
+| 図 | 何を示すか | 代表的な用途 | 読むときの注意 |
+|---|---|---|---|
+| waveform + TextGrid | 音声区間、release、vowel interval、pause の境界 | duration, VOT, pause の測定根拠 | 境界定義とラベル体系が本文と一致しているか |
+| spectrogram + formant tracks | 周波数成分の時間変化と F1/F2/F3 | 母音、共調音、フォルマント遷移 | formant track が倍音やノイズを追っていないか |
+| F0 / intensity contour | 韻律・強調・抑揚の時間変化 | prominence, focus, intonation, fluency | 無声区間、倍音跳躍、録音ゲインの影響 |
+| F1-F2 vowel space | 母音カテゴリ間の距離と重なり | L2母音、方言差、年齢・性別差 | 軸反転、話者正規化、楕円の意味 |
+| formant / F0 trajectory | 1トークン内の動的変化 | 二重母音、共調音、調音・音響軌跡 | midpoint だけでは見えない時間構造 |
+| GAMM smooth + individual trajectories | 条件別の曲線差と個体差 | 動的音声分析、L1/L2比較 | smooth だけでなく元データの散らばりを見る |
+| residual ACF / diagnostic plot | モデルに残った時間依存 | GAMM, ARIMA, SSM の診断 | 隣接時点の依存を無視していないか |
+
+@hillenbrand1995 のような母音研究では F1-F2 空間と duration / spectral change が中心になり、@cole2019 のような prominence 研究では F0・intensity・duration など複数 cue の可視化が重要になります。@wieling2018gamm と @soskuthy2021gamm のような動的音声分析では、個別軌跡、条件別 smooth、差分曲線、自己相関診断を組み合わせて読むのが自然です。
 
 #### 端的に述べると
 
@@ -602,20 +730,20 @@ SLA と心理言語学では、同じ音響特徴量でも問いの立て方が�
 |---|---|---|---|
 | **持続時間** | 発話速度、ポーズ、母音長が流暢性や comprehensibility とどう関係するか | 長短や timing が語認識・韻律知覚にどう使われるか | 1トークン1値にして LMM / GLMM で比較することが多い [@dejong2009; @derwing2009] |
 | **F0 / ピッチ** | イントネーション、文末上昇、強調位置が学習とともにどう変わるか | 聞き手が prominence や focus をどの音響手がかりで判断するか | 要約値なら LMM、輪郭なら GAMM。知覚研究では cue weighting のモデル化も行う [@cole2019; @wieling2018gamm] |
-| **インテンシティ** | 強調の置き方や朗読の prosody が理解しやすさにどう関係するか | prominence 判断で intensity が F0 や duration とどう組み合わさるか | 単独ではなく F0・duration と同時に解釈するのが普通 [@cole2019; @saito2022] |
+| **インテンシティ** | 強調の置き方や朗読の prosody が理解しやすさにどう関係するか | prominence 判断で intensity が F0 や duration とどう組み合わさるか | 単独ではなく F0・duration と同時に解釈するのが普通 [@cole2019; @saito2016] |
 | **VOT / 有声性** | L2 学習者が /b-p/ や /d-t/ の対立をどれだけ安定して作れるか | 聞き手が voicing を VOT や onset F0 からどう推定するか | VOT を連続値で、voiced/unvoiced をカテゴリで扱い分ける [@lisker1964; @abramson2017; @dmitrieva2015] |
 | **フォルマント遷移** | L2 母音・二重母音・共調音パターンが母語話者とどう異なるか | 聞き手が母音カテゴリや子音手がかりを時間変化からどう利用するか | midpoint だけなら LMM、軌跡なら GAMM / FDA / SSM [@hillenbrand1995; @wieling2018gamm; @soskuthy2021gamm] |
 
 SLA の実例としては、`duration` やポーズ長から流暢性をみる研究、`F0` と `intensity` から英語らしい prominence をみる研究、`VOT` や `F1/F2` から分節音習得をみる研究が典型です。心理言語学の実例としては、聞き手が **複数の手がかりをどのように統合して判断するか** を問う研究が多く、prominence 研究では `F0 + intensity + duration`、voicing 研究では `VOT + onset F0`、母音研究では `steady-state formants + formant transitions` のような組み合わせがよく問題になります。つまり、心理言語学では「手がかりの利用」、SLA では「その手がかりを産出・制御できるか」が前景化しやすい、と整理すると分かりやすいです。
 
-もう少し具体的に言うと、@dejong2009 は Praat スクリプトで**音節核と発話速度**を自動計測し、流暢性研究で timing 指標をどう抽出できるかを示しました。@saito2022 は L2 音声の comprehensibility / accentedness をめぐる研究文脈の中で、**分節的手がかりと超分節的手がかりを切り分けて考える重要性**を明確にしています。心理言語学側では、@cole2019 が `F0`, `intensity`, `phone-rate` などの音響手がかりを組み合わせて、聞き手の **prominence 判断** をロジスティック回帰でモデル化しています。つまり、「どの指標を測るか」は単なる測定技術の問題ではなく、**どの認知過程や学習過程を仮定しているか** と直結しています。
+もう少し具体的に言うと、@dejong2009 は Praat スクリプトで**音節核と発話速度**を自動計測し、流暢性研究で timing 指標をどう抽出できるかを示しました。@saito2016 は L2 音声の comprehensibility / accentedness をめぐる研究文脈の中で、**分節的手がかりと超分節的手がかりを切り分けて考える重要性**を明確にしています。心理言語学側では、@cole2019 が `F0`, `intensity`, `phone-rate` などの音響手がかりを組み合わせて、聞き手の **prominence 判断** をロジスティック回帰でモデル化しています。つまり、「どの指標を測るか」は単なる測定技術の問題ではなく、**どの認知過程や学習過程を仮定しているか** と直結しています。
 
 #### 基本的な判断基準
 
-- **音素ごと・語ごとに1値**しか使わないなら、まずは LMM / GLMM を考える
-- **F0 contour やフォルマント遷移**をそのまま比較したいなら、GAMM を第一候補にする
+- **音素ごと・語ごとに1値**しか使わないなら、まずは LMM / GLMM を考えます
+- **F0 contour やフォルマント遷移**をそのまま比較したいなら、GAMM を第一候補にします
 - **voiced / unvoiced の切り替わり**や発話状態の推移そのものが関心なら、HMM や状態空間モデルまで視野に入れる
-- **同じ学習者を何か月も追う**なら、各録音から集約した音響指標を前2章の時系列モデルへ橋渡しできる
+- **同じ学習者を何か月も追う**なら、各録音から集約した音響指標を前2章の時系列モデルへ橋渡しできます
 
 ### ソース–フィルタ・モデルとは
 
@@ -802,6 +930,266 @@ ggplot(spectro_tbl, aes(x = time, y = freq_khz, fill = amp_db)) +
 
 /i/ ではF1が低くF2が高いため、2つのフォルマント帯域が大きく離れています。/a/ ではF1が高くF2が比較的低いため、帯域が近接しています。このパターンの違いが母音の「音色」を決定し、音声学の**母音四角形**における位置に対応します。
 
+#### Praat風の統合可視化
+
+実際の音響音声学論文では、波形、スペクトログラム、F0、フォルマント、TextGrid 区間を別々に見るだけでなく、**同じ時間軸上に並べて**「どの区間を測ったのか」を確認します。以下は合成 /i/ を使った模式図ですが、実データでは Praat の画面確認と同じ役割を R 側で再現する図になります。
+
+```{r praat_style_integrated_view}
+#| eval: true
+#| fig-height: 7.2
+#| fig-width: 9
+
+vowel_duration <- max(wave_plot_tbl$Time[wave_plot_tbl$Vowel == "/i/"])
+
+praat_wave_tbl <- wave_plot_tbl |>
+  dplyr::filter(Vowel == "/i/")
+
+praat_spec_tbl <- spectro_tbl |>
+  dplyr::filter(vowel == "/i/")
+
+praat_formant_tracks <- tidyr::expand_grid(
+  time = seq(0, vowel_duration, length.out = 120),
+  track = factor(c("F1", "F2", "F3"), levels = c("F1", "F2", "F3"))
+) |>
+  mutate(
+    freq_khz = case_when(
+      track == "F1" ~ 0.30,
+      track == "F2" ~ 2.20,
+      TRUE ~ 3.00
+    )
+  )
+
+praat_f0_tbl <- tibble(
+  time = seq(0, vowel_duration, length.out = 120),
+  F0_Hz = 120
+)
+
+praat_textgrid_tbl <- tibble(
+  xmin = 0.08,
+  xmax = 0.42,
+  ymin = 0,
+  ymax = 1,
+  label = "vowel: /i/"
+)
+
+p_wave_integrated <- ggplot(praat_wave_tbl, aes(x = Time, y = Amplitude)) +
+  geom_line(color = "grey25", linewidth = 0.35) +
+  geom_rect(
+    data = praat_textgrid_tbl,
+    aes(xmin = xmin, xmax = xmax, ymin = -Inf, ymax = Inf),
+    inherit.aes = FALSE,
+    fill = "#c6dbef",
+    alpha = 0.22
+  ) +
+  labs(
+    title = "Waveform",
+    x = NULL,
+    y = "Amplitude"
+  ) +
+  theme_speech(10) +
+  theme(legend.position = "none")
+
+p_spec_integrated <- ggplot(praat_spec_tbl, aes(x = time, y = freq_khz, fill = amp_db)) +
+  geom_raster() +
+  geom_line(
+    data = praat_formant_tracks,
+    aes(x = time, y = freq_khz, color = track),
+    inherit.aes = FALSE,
+    linewidth = 0.8
+  ) +
+  scale_fill_viridis_c(option = "C") +
+  scale_color_manual(values = c(F1 = "#fdae6b", F2 = "#9ecae1", F3 = "#fdd0a2")) +
+  labs(
+    title = "Spectrogram with formant tracks",
+    x = NULL,
+    y = "Frequency (kHz)",
+    fill = "Amp.",
+    color = NULL
+  ) +
+  theme_speech(10) +
+  theme(legend.position = "right")
+
+p_f0_integrated <- ggplot(praat_f0_tbl, aes(x = time, y = F0_Hz)) +
+  geom_line(color = "#238b45", linewidth = 0.9) +
+  scale_y_continuous(limits = c(80, 180)) +
+  labs(
+    title = "F0 track",
+    x = NULL,
+    y = "F0 (Hz)"
+  ) +
+  theme_speech(10) +
+  theme(legend.position = "none")
+
+p_textgrid_integrated <- ggplot() +
+  geom_rect(
+    data = praat_textgrid_tbl,
+    aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+    fill = "#fee8c8",
+    color = "#e6550d",
+    linewidth = 0.5
+  ) +
+  geom_text(
+    data = praat_textgrid_tbl,
+    aes(x = (xmin + xmax) / 2, y = 0.5, label = label),
+    size = 3.5
+  ) +
+  scale_x_continuous(limits = c(0, vowel_duration)) +
+  scale_y_continuous(limits = c(0, 1), breaks = NULL) +
+  labs(
+    title = "TextGrid interval",
+    x = "Time (s)",
+    y = NULL
+  ) +
+  theme_speech(10) +
+  theme(legend.position = "none")
+
+(p_wave_integrated / p_spec_integrated / p_f0_integrated / p_textgrid_integrated) +
+  patchwork::plot_layout(heights = c(1.0, 2.3, 1.0, 0.8)) +
+  patchwork::plot_annotation(
+    title = "Praat-style integrated view for one vowel token",
+    subtitle = "Waveform, spectrogram, F0, formant tracks, and annotation interval on the same time axis"
+  )
+```
+
+この図の役割は、測定結果を主張する前に、**測定対象の区間と音響トラックが整合しているか**を確認することです。実データでは、F0 が無声区間で途切れていないか、フォルマント線が明らかに別の倍音を追っていないか、TextGrid の境界が分析したい音声区間を覆っているかをここで点検します。
+
+#### 測定値の品質管理: F0 とフォルマント
+
+音声データでは、推定値をそのまま統計モデルへ渡す前に、**測定値として信頼できるか**を確認します。特に F0 とフォルマントは、見た目には数値が入っていても、音声学的には追跡に失敗していることがあります。
+
+| 問題 | 典型的な見え方 | よくある原因 | 対応 |
+|---|---|---|---|
+| F0 halving | 本来の F0 の約半分に急落する | 自己相関法が2周期分を1周期として読む | 話者に合う pitch floor / ceiling を再設定し、該当区間を確認する |
+| F0 doubling | 本来の F0 の約2倍に跳ねる | 倍音を F0 として読む | pitch ceiling、voicing threshold、無声区間の扱いを確認する |
+| F0 の不連続 | 隣接フレームで急に上下する | 無声区間、きしみ声、背景雑音、短すぎる窓 | トラックを図で確認し、必要なら補間せず欠測として扱う |
+| formant ceiling の不適合 | F1/F2 が不自然に高い・低い、F1/F2 が接近しすぎる | 最大フォルマント周波数、LPC次数、話者差 | 話者群に合わせて ceiling を変え、複数設定で確認する |
+| formant track jump | 隣接フレームで F1/F2 が急に飛ぶ | 倍音・ノイズ・隣接フォルマントを追跡 | スペクトログラムに重ねて確認し、区間単位で除外・再推定を判断する |
+
+重要なのは、フラグを立てた点を機械的に削除することではありません。フラグは**手動確認が必要な候補**です。論文では、推定値を除外したか、再推定したか、欠測として扱ったかを、分析前に定めたルールとして報告します。
+
+```{r acoustic_qc_flags}
+#| eval: true
+#| fig-height: 6.8
+#| fig-width: 9
+
+set.seed(1705)
+
+qc_tbl <- tibble(
+  time = seq(0, 1, length.out = 160),
+  f0_ref = 145 + 22 * sin(2 * pi * time) - 8 * time,
+  F1_ref = 510 + 70 * sin(pi * time),
+  F2_ref = 1750 - 230 * time + 45 * sin(2 * pi * time)
+) |>
+  mutate(
+    f0_hz = f0_ref + rnorm(n(), 0, 2.5),
+    F1 = F1_ref + rnorm(n(), 0, 18),
+    F2 = F2_ref + rnorm(n(), 0, 35),
+    f0_hz = case_when(
+      between(time, 0.34, 0.42) ~ f0_hz / 2,
+      between(time, 0.68, 0.74) ~ f0_hz * 2,
+      TRUE ~ f0_hz
+    ),
+    F2 = case_when(
+      between(time, 0.46, 0.53) ~ F2 - 650,
+      between(time, 0.80, 0.86) ~ F2 + 520,
+      TRUE ~ F2
+    )
+  ) |>
+  mutate(
+    f0_median = median(f0_hz, na.rm = TRUE),
+    f0_jump = abs(log(f0_hz / lag(f0_hz))) > log(1.45),
+    F2_jump = abs(F2 - lag(F2)) > 260,
+    flag_f0 = case_when(
+      f0_hz < 0.65 * f0_median ~ "halving candidate",
+      f0_hz > 1.55 * f0_median ~ "doubling candidate",
+      replace_na(f0_jump, FALSE) ~ "abrupt jump",
+      TRUE ~ "OK"
+    ),
+    flag_formant = case_when(
+      F1 < 200 | F1 > 1000 ~ "F1 range",
+      F2 < 700 | F2 > 3000 ~ "F2 range",
+      F2 < F1 + 350 ~ "F1/F2 too close",
+      replace_na(F2_jump, FALSE) ~ "F2 jump",
+      TRUE ~ "OK"
+    )
+  )
+
+qc_f0_plot <- ggplot(qc_tbl, aes(x = time, y = f0_hz)) +
+  geom_line(color = "grey35", linewidth = 0.55) +
+  geom_line(aes(y = f0_ref), color = "#238b45", linewidth = 0.7, linetype = "dashed") +
+  geom_point(
+    data = dplyr::filter(qc_tbl, flag_f0 != "OK"),
+    aes(color = flag_f0),
+    size = 2
+  ) +
+  scale_color_manual(
+    values = c(
+      "abrupt jump" = "#756bb1",
+      "doubling candidate" = "#d94801",
+      "halving candidate" = "#08519c"
+    )
+  ) +
+  labs(
+    title = "F0 quality-control plot",
+    subtitle = "Dashed line is the intended contour; colored points mark frames for manual inspection",
+    x = NULL,
+    y = "F0 (Hz)",
+    color = NULL
+  ) +
+  theme_speech(10)
+
+qc_formant_long <- qc_tbl |>
+  select(time, F1, F2, flag_formant) |>
+  pivot_longer(
+    cols = c(F1, F2),
+    names_to = "formant",
+    values_to = "hz"
+  )
+
+qc_formant_plot <- ggplot(qc_formant_long, aes(x = time, y = hz, color = formant)) +
+  geom_line(linewidth = 0.65) +
+  geom_point(
+    data = dplyr::filter(qc_formant_long, flag_formant != "OK"),
+    aes(shape = flag_formant),
+    color = "black",
+    size = 2
+  ) +
+  scale_color_manual(values = c(F1 = "#fdae6b", F2 = "#3182bd")) +
+  labs(
+    title = "Formant quality-control plot",
+    subtitle = "Black points mark jumps, implausible proximity, or range problems",
+    x = "Normalized time within token",
+    y = "Frequency (Hz)",
+    color = NULL,
+    shape = NULL
+  ) +
+  theme_speech(10)
+
+qc_f0_plot / qc_formant_plot +
+  patchwork::plot_annotation(
+    title = "Quality-control flags should trigger inspection, not automatic deletion"
+  )
+```
+
+```{r acoustic_qc_summary}
+#| eval: true
+
+bind_rows(
+  qc_tbl |>
+    count(flag_f0, name = "n_frames") |>
+    transmute(target = "F0", flag = flag_f0, n_frames),
+  qc_tbl |>
+    count(flag_formant, name = "n_frames") |>
+    transmute(target = "Formants", flag = flag_formant, n_frames)
+) |>
+  arrange(target, desc(n_frames)) |>
+  knitr::kable(
+    caption = "Example frame-level QC summary before manual inspection"
+  )
+```
+
+この例では、F0 の半減・倍増、F2 のジャンプ、F1/F2 の接近を意図的に混ぜています。実データでも同じ発想で、まずフレーム単位・トークン単位でフラグを立て、次にスペクトログラムと TextGrid に戻って確認します。除外する場合は、`flag == "OK"` だけを残すのではなく、**どのフラグをどのルールで扱ったか**を表に残しておくと、査読時に説明しやすくなります。
+
 #### 平均スペクトル
 
 `meanspec()` はスペクトログラムの各フレームを平均化して、全体としてどの周波数帯にエネルギーが集まっているかを示します。時間方向の細かい変動を捨てる代わりに、**調波列とフォルマント帯域の位置関係**が読みやすくなります。
@@ -905,15 +1293,83 @@ bind_rows(synth_vowels, ref_vowels) |>
 
 本章の合成母音（赤）が、@hillenbrand1995 の英語母音基準値（青）とおおむね同じ領域に位置していることが確認できます。L2発音研究では、学習者の産出した母音をこの空間にプロットし、母語話者分布との距離やオーバーラップを定量化します。
 
+母音空間を研究論文で示すときは、平均点だけでなく、トークンのばらつきとカテゴリの重なりを見せることが多いです。次の図は、L1 群と L2 群の母音トークンを模擬し、68% 楕円を重ねた例です。実データでは、Hz のまま描く図と、Lobanov などで話者正規化した図を分けて示すと、音響差と話者差を混同しにくくなります。
+
+```{r vowel_space_group_ellipse}
+#| eval: true
+#| fig-height: 5.5
+#| fig-width: 8
+
+set.seed(1704)
+
+vowel_targets <- tibble(
+  Group = rep(c("L1 reference", "L2 learners"), each = 4),
+  vowel = rep(c("/i/", "/ɪ/", "/æ/", "/ɑ/"), times = 2),
+  F1_mu = c(342, 427, 588, 768, 360, 455, 650, 730),
+  F2_mu = c(2322, 2034, 1952, 1333, 2240, 1900, 1720, 1280),
+  F1_sd = c(35, 45, 60, 70, 55, 70, 85, 90),
+  F2_sd = c(110, 130, 160, 145, 150, 180, 210, 180)
+)
+
+vowel_tokens <- pmap_dfr(vowel_targets, function(Group, vowel, F1_mu, F2_mu, F1_sd, F2_sd) {
+  tibble(
+    Group = Group,
+    vowel = vowel,
+    F1 = rnorm(45, F1_mu, F1_sd),
+    F2 = rnorm(45, F2_mu, F2_sd)
+  )
+})
+
+vowel_means <- vowel_tokens |>
+  group_by(Group, vowel) |>
+  summarise(
+    F1 = mean(F1),
+    F2 = mean(F2),
+    .groups = "drop"
+  )
+
+ggplot(vowel_tokens, aes(x = F2, y = F1, color = vowel)) +
+  geom_point(alpha = 0.28, size = 1.4) +
+  stat_ellipse(level = 0.68, linewidth = 0.75, type = "norm") +
+  geom_point(
+    data = vowel_means,
+    aes(x = F2, y = F1),
+    shape = 21,
+    fill = "white",
+    size = 3,
+    stroke = 0.8
+  ) +
+  ggrepel::geom_text_repel(
+    data = vowel_means,
+    aes(label = vowel),
+    family = "HiraginoSans-W3",
+    size = 4,
+    min.segment.length = 0,
+    seed = 1704,
+    show.legend = FALSE
+  ) +
+  facet_wrap(~ Group) +
+  scale_x_reverse(name = "F2 (Hz)") +
+  scale_y_reverse(name = "F1 (Hz)") +
+  labs(
+    title = "Research-style vowel space plot with token dispersion",
+    subtitle = "68% ellipses show within-category spread; axes follow phonetic convention",
+    color = "Vowel"
+  ) +
+  theme_speech(12)
+```
+
+楕円が大きいほど、その母音カテゴリ内の散らばりが大きいことを示します。楕円が重なる場合は、カテゴリ境界が音響的に近い、または学習者群で弁別が安定していない可能性があります。ただし、楕円の重なりだけで知覚上の混同を断定することはできません。知覚実験、語彙条件、話者差、正規化方法と合わせて解釈します。
+
 ### 後続の例のための .wav ファイルを用意する
 
 ```{r make_vowel_wav}
 #| eval: true
+#| cache: false
 # Preferred: generate via Python utility
 #   python3 audio_generation.py --emit-vowels i --outdir data/audio --sample-rate 16000 --duration-ms 2000
 # Fallback: show an instruction if the file is missing
 if (!file.exists('data/audio/vowel_i.wav')) {
-  if (!dir.exists('data/audio')) dir.create('data/audio', recursive = TRUE)
   message("Missing data/audio/vowel_i.wav. Run: python3 audio_generation.py --emit-vowels i --outdir data/audio --sample-rate 16000 --duration-ms 2000")
 } else {
   message("Found data/audio/vowel_i.wav")
@@ -938,15 +1394,15 @@ F0を推定するには、波形の中から「繰り返しの周期」を検出
 
 音声信号のスペクトルには、F0の**倍音列**（$f_0, 2f_0, 3f_0, \ldots$）が**等間隔**に並んでいます。たとえばF0 = 120 Hz なら、120, 240, 360, 480 Hz ... に倍音がある。この等間隔パターンは、対数スペクトル上では**周期的な成分**になります。逆FFTを取ることで、この周期性に対応するピークが「ケフレンシ」（quefrency, 単位は秒）軸上に現れます。そのピーク位置の逆数がF0です（例：ケフレンシ 0.00833秒 → $1/0.00833 = 120$ Hz）。
 
-ケプストラムの利点は、ソース–フィルタ・モデルと直結している点です。ソース（声帯振動）とフィルタ（声道共鳴）は時間領域では**畳み込み**ですが、対数スペクトル領域では**足し算**に変わります。逆FFT後、低ケフレンシ成分はフォルマント（声道の緩やかなスペクトル包絡）に対応し、高ケフレンシのピークがF0（倍音列の等間隔パターン）に対応します。つまり、ケプストラムはソースとフィルタを**自動的に分離**します。
+ケプストラムの利点は、ソース–フィルタ・モデルと直結している点です。ソース（声帯振動）とフィルタ（声道共鳴）は時間領域では**畳み込み**ですが、対数スペクトル領域では**足し算**に変わります。逆FFT後、低ケフレンシ成分はフォルマント（声道の緩やかなスペクトル包絡）に対応し、高ケフレンシのピークがF0（倍音列の等間隔パターン）に対応します。ただし、これは完全な自動分離というより、F0に関わる周期成分とスペクトル包絡を別の軸で見やすくする表現です。実データでは雑音、無声区間、声質、窓長の影響を受けるため、推定値は波形・スペクトログラム・F0 contour と合わせて点検します。
 
 以下のコードでは、自己相関法とケプストラム法をそれぞれ関数として実装し、合成母音に適用します。
 
 **コードの読み方のポイント**：
 
-- `acf(...)$acf[-1]`：自己相関関数を計算し、ラグ0（常に1.0）を除外。残りのラグの中から音声のF0範囲（`fmin`〜`fmax`）に対応するラグを探索
-- `pmax(Mod(X), 1e-6)`：FFTの振幅が0になるとlog(0)が−∞になるため、微小値（$10^{-6}$）で下限をクリップ
-- `fmin=60, fmax=300`：この学習用デモで置いた探索帯域。合成母音の真の F0 = 120 Hz を安全に含むように設定している
+- `acf(...)$acf[-1]`：自己相関関数を計算し、ラグ0（常に1.0）を除外します。残りのラグの中から音声のF0範囲（`fmin`〜`fmax`）に対応するラグを探索します
+- `pmax(Mod(X), 1e-6)`：FFTの振幅が0になるとlog(0)が−∞になるため、微小値（$10^{-6}$）で下限をクリップします
+- `fmin=60, fmax=300`：この学習用デモで置いた探索帯域です。合成母音の真の F0 = 120 Hz を安全に含むように設定しています
 
 ```{r f0_estimation}
 #| eval: true
@@ -1200,9 +1656,9 @@ plot_spectrum(vw_a, fs) + labs(title='Spectrum of synthetic /a/')
 **典型的なワークフロー**：
 
 1. `tuneR::readWave()` で .wav ファイルを読み込む
-2. `seewave::oscillo()` で波形を表示し、目的の区間を確認する
-3. `seewave::fund()` でF0トラック（F0の時間変化）を算出する
-4. `phonTools::lpc()` でLPCスペクトル包絡を推定し、フォルマント位置を確認する
+2. `seewave::oscillo()` で波形を表示し、目的の区間を確認します
+3. `seewave::fund()` でF0トラック（F0の時間変化）を算出します
+4. `phonTools::lpc()` でLPCスペクトル包絡を推定し、フォルマント位置を確認します
 
 ```{r wav_real_example}
 #| eval: true
@@ -1259,9 +1715,9 @@ if (file.exists("data/audio/vowel_i.wav")) {
 
 音声分析の第一歩は、.wav ファイルを R に読み込んで基本情報を確認することです。以下のコードでは、`tuneR::readWave()` でファイルを読み込み、3つの前処理を行います。
 
-- **`mono()`**：ステレオ録音の場合、左チャンネルだけを取り出してモノラル化する（分析は1チャンネルで行うため）
-- **`normalize()`**：振幅を 16-bit 整数範囲に正規化する（`unit = '16'` で ±32767 に、`center = TRUE` で直流成分を除去）
-- **`downsample()`**：サンプリングレートを 16 kHz に統一する（もとの録音が 44.1 kHz や 48 kHz の場合に、計算量を減らしつつフォルマント分析に十分な帯域を維持する）
+- **`mono()`**：ステレオ録音の場合、左チャンネルだけを取り出してモノラル化します（分析は1チャンネルで行うためです）
+- **`normalize()`**：振幅を 16-bit 整数範囲に正規化します（`unit = '16'` で ±32767 に、`center = TRUE` で直流成分を除去します）
+- **`downsample()`**：サンプリングレートを 16 kHz に統一します（もとの録音が 44.1 kHz や 48 kHz の場合に、計算量を減らしつつフォルマント分析に十分な帯域を維持するためです）
 
 ```{r wav_intro}
 #| eval: true
@@ -1385,7 +1841,7 @@ if (exists('w_ds')) {
 | **duration** | 音声の長さ（秒） | 持続母音: 0.5–2秒、単語: 0.3–1秒 |
 | **RMS** | 振幅の実効値（音量の指標） | 正規化後は 0–1 の範囲。0.01未満は無音に近い |
 | **ZCR** | 波形がゼロを横切る頻度 | 有声音（母音）で低く、無声摩擦音（/s/）で高い |
-| **Spectral centroid** | スペクトルの「重心」周波数（Hz） | 明るい音色ほど高い。母音 /i/ > /a/ が一般的 |
+| **Spectral centroid** | スペクトルの「重心」周波数（Hz） | 明るい音色ほど高いです。母音 /i/ > /a/ が一般的 |
 | **Spectral spread** | スペクトルの広がり（Hz） | 広いほど多様な周波数成分を含む |
 | **Spectral skewness** | スペクトルの歪度 | 正なら低周波側にエネルギーが偏る |
 
@@ -1471,7 +1927,19 @@ if (exists('w_ds')) {
   w_bp <- ffilter(w_cut, f = w_ds@samp.rate, from = 300, to = 8000,
                   bandpass = TRUE, output = 'Wave')
 
-  writeWave(w_bp, 'data/audio/vowel_i_proc.wav')
+  out_path <- file.path(tempdir(), "vowel_i_proc.wav")
+  writeWave(w_bp, out_path)
+
+  tibble(
+    object = "processed demo wav",
+    output = "tempdir()/vowel_i_proc.wav",
+    duration_sec = length(w_bp@left) / w_bp@samp.rate,
+    sample_rate_hz = w_bp@samp.rate
+  ) |>
+    knitr::kable(
+      caption = "Processed demo wav saved outside the project directory",
+      digits = 3
+    )
 } else {
   message('Skip edit/save: w_ds not available')
 }
@@ -1487,7 +1955,12 @@ if (exists('w_ds')) {
 
 ```{r wav_batch}
 #| eval: true
-files <- list.files('data/audio', pattern = '\\.(wav|WAV)$', full.names = TRUE)
+#| cache: false
+files <- if (render_local_audio_enabled()) {
+  list.files('data/audio', pattern = '\\.(wav|WAV)$', full.names = TRUE)
+} else {
+  character()
+}
 
 summarise_wav <- function(path){
   w <- readWave(path) |> mono('left') |> tuneR::normalize(unit='16', center=TRUE)
@@ -1499,13 +1972,17 @@ summarise_wav <- function(path){
   data.frame(file = basename(path), duration = dur, zcr = zcr_v, rms = rmsv, centroid = cen)
 }
 
-tbl <- map_dfr(files, summarise_wav)
-write.csv(tbl, 'audio_summary.csv', row.names = FALSE)
-tbl |>
-  knitr::kable(
-    caption = 'Audio files: descriptive stats',
-    digits = 3
-  )
+if (length(files) > 0) {
+  tbl <- map_dfr(files, summarise_wav)
+  write.csv(tbl, file.path(tempdir(), "audio_summary.csv"), row.names = FALSE)
+  tbl |>
+    knitr::kable(
+      caption = 'Audio files: descriptive stats',
+      digits = 3
+    )
+} else {
+  message("Skip wav_batch: set RENDER_LOCAL_AUDIO=true to process local wav files")
+}
 ```
 
 PraatやELANなどの標準ツールとRを組み合わせると、**特徴量抽出 → 統計解析（GLMM/ベイズ）**を一貫して再現可能にできます。Rでは`tidyverse`で表整形、`lme4`/`brms`で推定、`emmeans`/`ggeffects`で解釈・図示が定番です。
@@ -1528,11 +2005,25 @@ PraatやELANなどの標準ツールとRを組み合わせると、**特徴量�
 
 ```{r audio_dataset_pipeline}
 #| eval: true
+#| cache: false
 # このコードは存在チェックを行うため、ビルド環境に音声がなくても安全に動きます
-if (file.exists("audio_dataset/metadata/metadata.csv")) {
+if (file.exists("audio_dataset/metadata/metadata.csv") && render_local_audio_enabled()) {
 
   # 1) メタデータ読み込み
   md <- read.csv("audio_dataset/metadata/metadata.csv", stringsAsFactors = FALSE)
+  existing_audio <- file.exists(md$filepath)
+
+  if (!all(existing_audio)) {
+    message(
+      "Skip missing audio files listed in metadata: ",
+      paste(head(md$filepath[!existing_audio], 5), collapse = ", ")
+    )
+    md <- md[existing_audio, , drop = FALSE]
+  }
+
+  if (nrow(md) == 0) {
+    message("Skip audio_dataset_pipeline: metadata has no available audio files")
+  } else {
 
   # 2) 前処理：モノラル化→正規化
   read_mono_norm <- function(path) {
@@ -1560,9 +2051,13 @@ if (file.exists("audio_dataset/metadata/metadata.csv")) {
       w, f = w@samp.rate, ovlp = 50, from = from, to = to,
       threshold = 5, fmax = fmax, plot = FALSE
     )
-    # fund() は行列を返す: 最終列がF0値
-    vals <- as.numeric(out[, ncol(out)])
-    if (length(vals)) median(vals, na.rm = TRUE) else NA_real_
+    if (is.null(out) || NROW(out) == 0) return(NA_real_)
+
+    # fund() は行列を返す。周波数列は kHz 相当なので Hz に戻してから集約する。
+    vals_hz <- as.numeric(out[, ncol(out)]) * 1000
+    vals_hz <- if_else(is.finite(vals_hz) & vals_hz > 0, vals_hz, NA_real_)
+
+    if (any(!is.na(vals_hz))) median(vals_hz, na.rm = TRUE) else NA_real_
   }
 
   # 5) 1レコードの特徴抽出
@@ -1575,7 +2070,14 @@ if (file.exists("audio_dataset/metadata/metadata.csv")) {
     } else {
       f0_median(w, fmax = 350)
     }
-    dplyr::bind_cols(as_tibble(rec), stats, tibble(f0 = f0))
+    as_tibble(rec) |>
+      dplyr::mutate(
+        duration = stats$duration,
+        rms = stats$rms,
+        zcr = stats$zcr,
+        centroid = stats$centroid,
+        f0 = f0
+      )
   }
 
   # 6) すべての行に適用して結合
@@ -1602,11 +2104,12 @@ if (file.exists("audio_dataset/metadata/metadata.csv")) {
                    sd_f0   = sd(f0, na.rm = TRUE), .groups = "drop") |>
     knitr::kable(caption = "Sentence: F0 summary (by type)")
 
-  # 9) 保存
-  write.csv(features, "audio_dataset/metadata/audio_features.csv", row.names = FALSE)
+  # 9) 保存例。レンダー時に入力データ配下を書き換えないよう tempdir() に出す。
+  write.csv(features, file.path(tempdir(), "audio_features.csv"), row.names = FALSE)
+  }
 
 } else {
-  message("audio_dataset が見つかりませんでした。先に Python の audio_generation.py を実行してください。")
+  message("Skip audio_dataset_pipeline: set RENDER_LOCAL_AUDIO=true after preparing audio_dataset")
 }
 ```
 
@@ -1615,9 +2118,9 @@ if (file.exists("audio_dataset/metadata/metadata.csv")) {
 次に、**文タイプ別の F0 要約表**では、`sentence_type` ごとに平均 `F0` と分散がどう違うかを見ます。ここで差が大きければ、そのまま「文タイプを固定効果に入れる」候補になりますし、差が小さければ不要な複雑化を避ける判断材料になります。つまり、この2表は最終分析ではなく、**どの変数をモデルに渡すかを決めるための探索的サマリー**として読むのが適切です。
 
 #### GLMM への橋渡し
-保存した `audio_features.csv` を `metadata.csv` と結合し、話者（Participant）やアイテム（Item）を乱効果にしてGLMM/階層ベイズへ展開できます。F0やフォルマントは**連続**、正誤は**二値**として第6章のレシピがそのまま適用できます。
+保存した `audio_features.csv` を `metadata.csv` と結合し、話者（Participant）やアイテム（Item）を乱効果にして混合効果モデルや階層ベイズへ展開できます。F0やフォルマントは**連続**なので LMM や Gaussian 系モデル、正誤や有声/無声は**二値**なのでロジスティック GLMM が出発点になります。第6章の混合モデルと検出力シミュレーションの考え方を、目的変数の型に合わせて読み替えます。
 
-### 音響概念を Praat / rPraat の作業に翻訳する {#sec-acoustic-to-praat}
+## 音響概念を Praat / rPraat の作業に翻訳する {#sec-acoustic-to-praat}
 
 ここまでで見てきた `duration`, `F0`, `intensity`, `VOT`, `formant transitions` は、Praat ではそれぞれ**別のオブジェクトや操作**として現れます。注意が必要なのは、「研究で知りたい概念」と「Praat のメニュー名・ファイル名」とが頭の中でまだ結びついていない段階です。そこで、Praat / rPraat 節に入る前に一度だけ翻訳表を作っておきます。
 
@@ -1639,27 +2142,27 @@ Praat 的に言い換えると、**音響概念は「オブジェクト + 注釈
 
 #### 文献から見るポイント
 
-- **duration** は「長い / 短い」ではなく、`TextGrid の境界差` から得た正の連続変数として扱う  
+- **duration** は「長い / 短い」ではなく、`TextGrid の境界差` から得た正の連続変数として扱います
   例: @dejong2009
-- **VOT** は「有声 / 無声」の説明変数であると同時に、それ自体が連続的な時間差でもある  
+- **VOT** は「有声 / 無声」の説明変数であると同時に、それ自体が連続的な時間差でもある
   例: @lisker1964; @abramson2017
-- **F0 / intensity** は単独ではなく、prominence や focus の複数手がかりの一部として使われることが多い  
+- **F0 / intensity** は単独ではなく、prominence や focus の複数手がかりの一部として使われることが多いです
   例: @cole2019
-- **formants** は midpoint だけでも使えるが、遷移まで含めると問いが変わる  
+- **formants** は midpoint だけでも使えるが、遷移まで含めると問いが変わる
   例: @hillenbrand1995; @wieling2018gamm; @soskuthy2021gamm
 
 #### 最短の実務フロー
 
-1. **Praat で注釈する**  
-   まず TextGrid で区間境界やラベルを作る。duration, VOT, 母音区間の定義はここで決まる。
-2. **必要なら Praat で Pitch / Formant / Intensity を保存する**  
-   F0, formants, intensity を Praat の推定で使いたいなら、`.Pitch` / `.PitchTier` / `.Formant` / `.IntensityTier` を保存する。
-3. **`rPraat` で読む**  
-   `tg.read()`, `pitch.read()` または `pt.read()`, `formant.read()`, `it.read()` で R に持ち込む。
-4. **tidy な表にする**  
-   区間ごとの duration、母音中央の F1/F2、区間内 F0 中央値など、1行1トークンの表にする。
-5. **研究質問に合うモデルへ渡す**  
-   1値なら LMM / GLMM、輪郭なら GAMM、状態推移なら HMM。
+1. **Praat で注釈します**
+   まず TextGrid で区間境界やラベルを作ります。duration, VOT, 母音区間の定義はここで決まります。
+2. **必要なら Praat で Pitch / Formant / Intensity を保存します**
+   F0, formants, intensity を Praat の推定で使いたいなら、`.Pitch` / `.PitchTier` / `.Formant` / `.IntensityTier` を保存します。
+3. **`rPraat` で読みます**
+   `tg.read()`, `pitch.read()` または `pt.read()`, `formant.read()`, `it.read()` で R に持ち込みます。
+4. **tidy な表にします**
+   区間ごとの duration、母音中央の F1/F2、区間内 F0 中央値など、1行1トークンの表にします。
+5. **研究質問に合うモデルへ渡します**
+   1値なら LMM / GLMM、輪郭なら GAMM、状態推移なら HMM が候補になります。
 
 #### 集約ルール
 
@@ -1697,15 +2200,42 @@ Praat 的に言い換えると、**音響概念は「オブジェクト + 注釈
 3. **実践的な橋渡し**：指定してもらった授業ノートは、`phonTools`, `vowels`, `rPraat`, `speakr` の位置づけを横並びで掴むのに有用です。公式マニュアルほど厳密ではありませんが、学習順序を考える補助資料として優れています [@moroz2022phonetics]。
 4. **Praat を R から呼ぶ段階**：最後に `speakr` を見ると、「Praat の推定アルゴリズムを R のバッチ処理の中で使う」という発想が理解しやすくなります [@coretta2023speakr]。
 
+#### 外部前処理ツールから R へ渡す発想
+
+音声・視線・EEG/ERP の分析では、すべてを R だけで完結させる必要はありません。むしろ、前処理は各分野で検証されてきた専用ツールに任せ、R では統計モデルと報告用の表・図を担当する方が安全です。
+
+| データ | 前処理ツール | Rへ渡す表 | Rでの主分析 |
+|---|---|---|---|
+| 音声 | Praat, forced alignment, rPraat | token-level / trajectory table | LMM, GLMM, GAMM |
+| Eye-tracking | tracker付属ソフト, eyetrackingR, gazeR | fixation table, AOI summary, time-bin table | GLMM, GAMM, growth curve |
+| ERP/EEG | MNE-Python, EEGLAB | trial-window mean, electrode-time matrix | LMM, cluster permutation |
+
+Python を使う場合も、R の代替ではなく前処理レイヤーとして考えると整理しやすくなります。たとえば MNE-Python で EEG をフィルタリングして epoch ごとの平均振幅を CSV に出力し、その CSV を R で `lme4` や `permuco` に渡す、という分業です。Praat も同様に、TextGrid と音響特徴を整形して R に渡すための前処理ツールと位置づけられます。
+
+::: {.callout-note}
+#### 実務で判断が分かれる点
+
+| 判断 | 具体例 | 読む資料 |
+|---|---|---|
+| 1トークン1値にするか、軌跡として残すか | 母音 F1/F2 を midpoint だけで取るか、onset-midpoint-offset または連続軌跡にするか | Praat manual と動的音声データの GAMM 論文[@boersma2023; @wieling2018gamm; @soskuthy2021gamm] |
+| Hz のまま使うか、半音・話者内基準化を使うか | F0 や formant は話者差が大きいため、研究目的に応じて変換を明記する | 音響特徴量の定義は Praat、統計モデルは LMM/GAMM の文献 |
+| TextGrid の区間をどう R の行にするか | `participant`, `item`, `vowel`, `start`, `end`, `F1`, `F2` のような token table にする | `rPraat` / `speakr` の package page と Praat manual |
+| EEG/ERP の CSV を R に渡す単位 | epoch 平均、time-window 平均、electrode-time grid のどれを 1 行にするか | MNE-Python / EEGLAB の公式チュートリアルと第13b章 |
+
+この段階で重要なのは、前処理の細かな操作名を暗記することではなく、**R に渡した表の 1 行が何を表すか**を説明できる形にすることです。1 行が token なのか、時点なのか、電極×時点なのかが決まると、混合効果モデル、GAMM、cluster permutation のどこへ進むべきかが決めやすくなります。
+:::
+
 #### この節で優先する一次情報
 
 この節では、できるだけ**一次情報を優先**して記述しています。読むときは、次の3層に分けると整理しやすいです。
 
-- **Praat 公式マニュアル**：TextGrid, Pitch, Formant, Intensity の**定義・コマンドの意味・設定値**を確認する  
+- **Praat 公式マニュアル**：TextGrid, Pitch, Formant, Intensity の**定義・コマンドの意味・設定値**を確認します
   例: @praatTextGrid; @praatToPitch; @praatToFormantBurg; @praatToIntensity
-- **CRAN マニュアルと package page**：`rPraat` / `speakr` の**関数の守備範囲と入出力**を確認する  
+- **外部前処理ツールの公式ドキュメント**：MNE-Python や EEGLAB の前処理手順、イベント抽出、epoch 化、アーティファクト処理の標準的な流れを確認します
+  例: [MNE-Python documentation](https://mne.tools/stable/index.html), [EEGLAB documentation](https://eeglab.org/)
+- **CRAN マニュアルと package page**：`rPraat` / `speakr` の**関数の守備範囲と入出力**を確認します
   例: @bores2023rpraat; @coretta2023speakr
-- **先行研究・方法論論文**：どの時点を測るか、どの単位で集約するか、どのモデルで比較するかを判断する  
+- **先行研究・方法論論文**：どの時点を測るか、どの単位で集約するか、どのモデルで比較するかを判断します
   例: @hillenbrand1995; @dejong2009; @cole2019; @wieling2018gamm; @soskuthy2021gamm
 
 :::
@@ -1722,7 +2252,7 @@ Praat 的に言い換えると、**音響概念は「オブジェクト + 注釈
 |---|---|---|
 | **バッチ処理** | Praat スクリプトで可能だが、データ整形は別途必要 | `purrr::map()` + `tidyverse` で抽出→整形→集約が一貫 |
 | **統計解析** | 外部ソフト（SPSS, R 等）に手動エクスポート | `lme4`/`brms`/`mgcv` に直接パイプ。中間ファイル不要 |
-| **再現可能性** | GUI 操作は記録が残らない | `.qmd` にすべてのコードを記録。誰でも再実行可能 |
+| **再現可能性** | GUI 操作は記録が残らない | `.qmd` にすべてのコードを記録。同じ手順で再実行可能 |
 | **可視化** | Praat の描画機能は限定的 | `ggplot2` で出版品質の母音空間図、F0 contour、信頼区間付きプロット |
 | **大規模データ** | 100人×5母音×3回 = 1500ファイルの手動処理は非現実的 | R スクリプトで数分で一括処理 |
 
@@ -1848,7 +2378,7 @@ CRAN の `rPraat` マニュアルでは、`pt.read()` は **PitchTier**、`pitch
 - **Praat**：注釈する、見る、手で直す
 - **rPraat**：Praat の結果を R に持ち込む
 - **speakr**：Praat のアルゴリズムを R から呼ぶ
-- **seewave / phonTools**：Praat を介さず R 側で推定・可視化する
+- **seewave / phonTools**：Praat を介さず R 側で推定・可視化します
 
 #### 「rPraat だけではできない」の根拠
 
@@ -1856,16 +2386,16 @@ CRAN の `rPraat` マニュアルでは、`pt.read()` は **PitchTier**、`pitch
 
 ### 最初に行うとよい 4 ステップ
 
-1. Praat で短い `.wav` を開き、1つの `TextGrid` tier にラベルを付けて保存する。
-2. `rPraat::tg.read()` でその TextGrid を読み、`names(tg)` と `tg[["TierName"]]` を確認する。
-3. Praat で `.Pitch` または `.Formant` を保存し、`.Pitch` は `pitch.read()`、`.Formant` は `formant.read()` で読み込んで `tibble` に変換する。
-4. その後で必要に応じて `speakr` に進む。最初から Praat スクリプト実行に入るより、**Praat オブジェクトの構造を先に理解した方がトラブルシュートしやすい**です。
+1. Praat で短い `.wav` を開き、1つの `TextGrid` tier にラベルを付けて保存します。
+2. `rPraat::tg.read()` でその TextGrid を読み、`names(tg)` と `tg[["TierName"]]` を確認します。
+3. Praat で `.Pitch` または `.Formant` を保存し、`.Pitch` は `pitch.read()`、`.Formant` は `formant.read()` で読み込んで `tibble` に変換します。
+4. その後で必要に応じて `speakr` に進みます。最初から Praat スクリプト実行に入るより、**Praat オブジェクトの構造を先に理解した方がトラブルシュートしやすい**です。
 
 #### この先のコードの読み分け
 
 - **学習用デモ**: `rPraat` 付属の sample object や `tempdir()` を使う例。まず構造を理解するためのコードです。
 - **研究用テンプレート**: `data/audio/...` のような自分のファイルを読む例。研究データに置き換える前提のコードです。
-- まず `17.6` の学習用デモでオブジェクト構造を掴み、その後 `17.7` の研究用テンプレートへ移ると迷いにくいです。
+- まずこの節の学習用デモでオブジェクト構造を掴み、その後 [研究用テンプレート](#sec-textgrid-template) へ移ると迷いにくいです。
 
 ::: {.panel-tabset}
 
@@ -1991,11 +2521,11 @@ head(tibble(time = pt_interp$t, f0_st = pt_interp$f), 5)
 
 #### F0 分析の最低報告項目
 
-- どのオブジェクトを使ったか: `.Pitch` か `.PitchTier` か
+- どのオブジェクトを使ったかを記録します: `.Pitch` か `.PitchTier` か
 - 推定方法: Praat GUI, `speakr`, `seewave::fund()` など
 - 設定値: `pitch floor`, `pitch ceiling`, `time step`
 - 集約方法: midpoint, median, contour 全体, semitone 変換の有無
-- 無声フレームの扱い: `0 Hz` を除外したか、補間したか、そのまま残したか
+- 無声フレームの扱いを記録します: `0 Hz` を除外したか、補間したか、そのまま残したか
 
 #### F0 の半音変換と `Pitch` / `PitchTier` の使い分け
 
@@ -2003,10 +2533,10 @@ F0を Hz のまま分析すると、話者間の絶対差が大きく、群間�
 
 実務上は、次のように理解すると迷いません。
 
-- **候補込みで見たい**なら `Pitch` を `pitch.read()` で読む
-- **1本の輪郭として扱いたい**なら `PitchTier` を `pt.read()` で読む
+- **候補込みで見たい**なら `Pitch` を `pitch.read()` で読みます
+- **1本の輪郭として扱いたい**なら `PitchTier` を `pt.read()` で読みます
 - **半音変換・補間・Legendre 近似**は `PitchTier` 側の関数群 (`pt.*`) を使う
-- **区間中央値や輪郭比較**に進む前に、まず無声候補 (`0 Hz`) をどう扱うかを決める
+- **区間中央値や輪郭比較**に進む前に、まず無声候補 (`0 Hz`) をどう扱うかを決めます
 
 #### Formant を読む
 
@@ -2057,17 +2587,48 @@ tibble(
 
 この chunk の観察ポイントは、`formant.toArray()` で framewise な行列になることと、**TextGrid の区間中央を使って1トークン1行に集約できる**ことです。研究で使う表は、最終的にこの「label + midpoint + F1/F2/F3」の形に近づいていきます。
 
+一方、フォルマント遷移や F0 contour を GAMM に渡す場合は、midpoint に集約せず、フレームごとの値を残します。重要なのは、Praat から読んだ時間をそのまま使うだけでなく、トークン内の相対時間 `time_norm` も作っておくことです。`time_sec` は物理的な秒数、`time_norm` は「その母音・語・発話の中で 0 から 1 のどこか」を表します。
+
+```{r rpraat_formant_trajectory_template}
+#| eval: false
+
+trajectory_tbl <- tibble(
+  time_sec = fmt_arr$t,
+  F1 = fmt_arr$frequencyArray[1, ],
+  F2 = fmt_arr$frequencyArray[2, ],
+  F3 = fmt_arr$frequencyArray[3, ]
+) |>
+  pivot_longer(
+    cols = c(F1, F2, F3),
+    names_to = "formant",
+    values_to = "hz"
+  ) |>
+  mutate(
+    speaker_id = "spk001",
+    item_id = "word_bit_rep01",
+    condition = "Pre",
+    token_id = paste(speaker_id, item_id, condition, sep = "_"),
+    time_norm = (time_sec - min(time_sec)) / (max(time_sec) - min(time_sec))
+  )
+```
+
+この形まで整えると、第13b章の GAMM 節と同じ発想で、`hz ~ s(time_norm, by = condition)` のように曲線を比較できます。midpoint 表は「1トークン1値」の LMM 用、trajectory 表は「1トークン複数時点」の GAMM 用、と分けておくと、後から分析方針を説明しやすくなります。
+
 #### フォルマント分析の最低報告項目
 
-- どのコマンドで推定したか: Praat の `To Formant (burg)...` か、R 側の LPC 実装か
+- どのコマンドで推定したかを記録します: Praat の `To Formant (burg)...` か、R 側の LPC 実装か
 - 設定値: number of formants, maximum formant, window length, time step, pre-emphasis
 - 抽出時点: midpoint, 20/50/80% 点, 軌跡全体のいずれか
-- TextGrid との対応づけ: どの tier / label を対象にしたか
-- 外れ値処理: ceiling 超過や明らかな追跡失敗をどう扱ったか
+- TextGrid との対応づけを記録します: どの tier / label を対象にしたか
+- 外れ値処理を記録します: ceiling 超過や明らかな追跡失敗をどう扱ったか
+- 品質管理を記録します: スペクトログラムに重ねた確認図、F1/F2 の範囲、フレーム間ジャンプ、F1/F2 の接近をどう点検したか
+- 感度確認を記録します: maximum formant や window length を変えたとき、主要な結論が変わらないか
 
 #### Praat Formant vs. R LPC
 
 Praat の `To Formant (burg)...` は **Burg 法**（共分散法の一種）を使用します。R の `phonTools::findformants()` や `phonTools::lpc()` もLPCベースですが、アルゴリズムの実装が異なるため、**同一データでも値が完全には一致しません**。論文では「Praat で推定」か「R で推定」かを明記し、設定パラメータ（最大フォルマント周波数、LPC次数、窓長）も報告してください。特に ceiling と window length は、再現性の観点から必ず残すべき設定です。
+
+F0 についても同じです。`pitch floor` / `pitch ceiling` は単なる技術設定ではなく、推定アルゴリズムが「どの範囲を候補として探索するか」を決める研究上の条件です。たとえば成人男性・成人女性・子どもを同じ pitch range で一括処理すると、一部の話者で halving / doubling が増えることがあります。したがって、話者群ごとに妥当な探索範囲を決め、少なくとも代表例では **波形・スペクトログラム・F0 track を同じ時間軸で確認**します。
 
 #### Intensity を読む
 
@@ -2093,24 +2654,29 @@ int_cut <- rPraat::it.cut(int_tier, tStart = 0.2, tEnd = 0.8)
 head(tibble(time = int_cut$t, intensity_dB = int_cut$i), 5)
 
 # ── Sound オブジェクト（Praat 互換の音声表現）──
-snd <- rPraat::snd.read("data/audio/vowel_i.wav")
-tibble(
-  duration_sec = snd$duration,
-  sample_rate_hz = snd$fs,
-  channels = snd$nChannels,
-  bits = snd$nBits
-) |>
-  knitr::kable(caption = "snd.read() summary for the local vowel_i.wav")
+snd_path <- "data/audio/vowel_i.wav"
+if (file.exists(snd_path)) {
+  snd <- rPraat::snd.read(snd_path)
+  tibble(
+    duration_sec = snd$duration,
+    sample_rate_hz = snd$fs,
+    channels = snd$nChannels,
+    bits = snd$nBits
+  ) |>
+    knitr::kable(caption = "snd.read() summary for the local vowel_i.wav")
 
-w <- tuneR::Wave(
-  left = as.integer(as.vector(snd$sig[, 1]) * 32767),
-  samp.rate = as.integer(snd$fs),
-  bit = as.integer(snd$nBits)
-)
-seewave::oscillo(w)
+  w <- tuneR::Wave(
+    left = as.integer(as.vector(snd$sig[, 1]) * 32767),
+    samp.rate = as.integer(snd$fs),
+    bit = as.integer(snd$nBits)
+  )
+  seewave::oscillo(w)
+} else {
+  message("Skip snd.read(): data/audio/vowel_i.wav is not available")
+}
 ```
 
-ここでは `it.read()` が `IntensityTier` 用であること、`snd.read()` は Praat 互換の sound 表現を返すことを理解すれば十分です。`snd.read()` の結果があれば、`tuneR` / `seewave` に橋渡しして既存の可視化関数と混ぜられます。
+ここでは `it.read()` が `IntensityTier` 用であること、`snd.read()` は Praat 互換の sound 表現を返すことを理解すれば十分です。Praat の `Intensity` object と `IntensityTier` は別物であり、この例の `it.read()` は点列化・保存した `IntensityTier` を前提にしています。`snd.read()` の結果があれば、`tuneR` / `seewave` に橋渡しして既存の可視化関数と混ぜられます。
 
 #### rPraat の全オブジェクト対応
 
@@ -2129,7 +2695,7 @@ seewave::oscillo(w)
 
 :::
 
-### speakr パッケージ：R から Praat スクリプトを実行 [@coretta2023speakr]
+### speakr パッケージ：R から Praat スクリプトを実行 [@coretta2023speakr] {#sec-speakr-guide}
 
 `speakr` パッケージを使うと、**Praat スクリプト（.praat）を R から直接実行**できます。Praat の高度な分析機能（例：Burg 法によるフォルマント推定、autocorrelation ベースのピッチ推定）を、R のバッチ処理パイプラインの中で呼び出すことが可能です。
 
@@ -2138,7 +2704,7 @@ seewave::oscillo(w)
 `speakr` を使うには、**Praat がローカルにインストール**されている必要があります。Windows では `Praat.exe` が `Sys.which("Praat")` あるいは `Sys.which("praat")` で見つかる状態、macOS では `/Applications/Praat.app`、Linux では `praat` コマンドにパスが通っている状態が前提です。`speakr::praat_run()` は内部で Praat のコマンドラインインターフェースを呼び出します。
 
 ```{r speakr_example}
-#| eval: true
+#| eval: false
 praat_available <- dir.exists("/Applications/Praat.app") ||
   nzchar(Sys.which("Praat")) ||
   nzchar(Sys.which("Praat.exe")) ||
@@ -2148,17 +2714,24 @@ if (requireNamespace("speakr", quietly = TRUE) &&
     praat_available &&
     file.exists("data/audio/vowel_i.wav")) {
   praat_script <- '
-    Read from file: "{wav_path}"
+    form Estimate formants
+      sentence wav_path
+      sentence out_path
+    endform
+
+    Read from file: wav_path$
     To Formant (burg): 0, 5, 5500, 0.025, 50
-    Save as text file: "{out_path}"
+    Save as text file: out_path$
   '
 
+  script_path <- file.path(tempdir(), "estimate_formants.praat")
   out_path <- file.path(tempdir(), "vowel_i_speakr.Formant")
+  writeLines(praat_script, script_path)
 
   speakr::praat_run(
-    praat_script,
-    wav_path = "data/audio/vowel_i.wav",
-    out_path = out_path
+    script_path,
+    "data/audio/vowel_i.wav",
+    out_path
   )
 
   fmt <- rPraat::formant.read(out_path)
@@ -2180,10 +2753,10 @@ if (requireNamespace("speakr", quietly = TRUE) &&
 
 #### Praat スクリプト実行時の最低報告項目
 
-- Praat のバージョンと、`speakr` 経由か GUI 経由か
+- Praat のバージョンと、`speakr` 経由か GUI 経由かを記録します
 - 実行した Praat コマンド列
 - 主要設定値: number of formants, maximum formant, window length, time step など
-- 入力ファイルと抽出時点: どの wav のどの区間から値を取ったか
+- 入力ファイルと抽出時点を記録します: どの wav のどの区間から値を取ったか
 - 出力後の集約方法: midpoint, mean, median, contour 全体のいずれか
 
 #### speakr の利点
@@ -2220,23 +2793,26 @@ if (requireNamespace("speakr", quietly = TRUE) &&
 
 ------------------------------------------------------------------------
 
-## Praat TextGrid と LPC による F1/F2 抽出（実データ連携） {#sec-textgrid-template}
+## Praat TextGrid と音響特徴量抽出（実データ連携） {#sec-textgrid-template}
 
-英語母音の研究では、発話を録音した後に **Praat** で母音区間を手動（または半自動）で注釈し、その区間からフォルマント（F1/F2）を抽出するのが標準的なワークフローです。本セクションでは、PraatのTextGridで注釈した母音区間をRに読み込み、フォルマントを推定し、統計分析（LMM/GAMM）に繋げる最小レシピを示します。
+英語母音の研究では、発話を録音した後に **Praat** で母音区間を手動（または半自動）で注釈し、その区間から F0・intensity・フォルマント（F1/F2）を抽出するワークフローがよく使われます。本セクションでは、Praat の TextGrid で注釈した母音区間を R に読み込み、Praat で推定済みの `.Pitch` / `.Formant` / `.IntensityTier` と結合して、統計分析（LMM/GAMM）に渡せる表へ整えるレシピを示します。R 内での LPC・ピーク検出は、比較用・デモ用の補助経路として後半で扱います。
 
 これは、前節の [音響概念を Praat / rPraat の作業に翻訳する](#sec-acoustic-to-praat) のうち、特に **「TextGrid + Formant → F1/F2 → LMM / GAMM」** の流れを具体化したものです。`duration` や `VOT` を扱う場合も、最初の入口は同じく TextGrid です。
 
 **全体の流れ**：
 
 1. **Praat で注釈**：.wav ファイルを開き、TextGrid で母音区間にラベルを付ける
-2. **R で読み込み**：`rPraat::tg.read()` で TextGrid を読み、`tuneR::readWave()` + `seewave::cutw()` で母音区間を切り出す
-3. **フォルマント推定**：`meanspec()` + `fpeaks()` でスペクトルピークを近似的にF1/F2とする（本節の方法）、または `phonTools::findformants()` でLPCベースの推定を行う
-4. **可視化・統計分析**：F1–F2 散布図で母音空間を描き、LMM や GAMM で群間比較を行う
+2. **Praat で音響オブジェクトを保存**：必要に応じて `.Pitch`、`.Formant`、`.IntensityTier` を保存します
+3. **R で読み込み**：`rPraat::tg.read()`、`pitch.read()`、`formant.read()`、`it.read()` で注釈と測定値を読み込む
+4. **分析表を作る**：1トークン1行の `token table` と、1トークン複数時点の `trajectory table` を分けて保存します
+5. **検証・保存・モデル化**：manifest、失敗ログ、data contract、設定レジストリを残し、LMM / GLMM / GAMM へ渡す
+6. **補助的な R 内推定**：Praat 推定値がない場合や方法比較をしたい場合だけ、`phonTools` や `seewave` の LPC・ピーク検出例を見ます
 
 ### 準備（ファイル配置）
 
 - `data/audio/` に `spk001_word_bit_rep01.wav` と `spk001_word_bit_rep01.TextGrid` のように**同名**（拡張子だけ異なる）で置いておきます。
 - TextGridの tier には、母音区間を含む `Vowel`（例）を用意（`label` に母音記号やターゲット名）。
+- 手元に練習用音声がない場合は、[Appendix: gTTSで教材用音声を作成する](#sec-gtts-appendix) の manifest と TextGrid 注釈例を使って、同じ列構造だけ先に確認できます。
 
 ### TextGrid とは？
 
@@ -2261,12 +2837,18 @@ TextGrid 構造の例：
 
 ```{r praat_textgrid_read}
 #| eval: true
+#| cache: false
 
-if (file.exists("data/audio/spk001_word_bit_rep01.TextGrid") &&
+if (render_local_audio_enabled() &&
+    file.exists("data/audio/spk001_word_bit_rep01.TextGrid") &&
     file.exists("data/audio/spk001_word_bit_rep01.wav")) {
   tg <- rPraat::tg.read("data/audio/spk001_word_bit_rep01.TextGrid")
   tiers <- names(tg)             # TextGridオブジェクトのtier名一覧を取得
   print(tiers)
+
+  if (!"Vowel" %in% tiers) {
+    message("Skip praat_textgrid_read: tier 'Vowel' was not found")
+  } else {
 
   # 例：'Vowel' tier の intervalをdata.frame化
   iv <- tg[["Vowel"]]           # tierをリスト要素として直接取得
@@ -2290,8 +2872,9 @@ if (file.exists("data/audio/spk001_word_bit_rep01.TextGrid") &&
   segments <- ann |>
     mutate(mid = (t1 + t2)/2,
            seg = pmap(list(t1, t2), ~extract_segment(w, ..1, ..2, pad_ms = 0)))
+  }
 } else {
-  message("Skip praat_textgrid_read: required TextGrid or wav file not found")
+  message("Skip praat_textgrid_read: set RENDER_LOCAL_AUDIO=true and provide TextGrid/wav files")
 }
 ```
 
@@ -2299,10 +2882,19 @@ if (file.exists("data/audio/spk001_word_bit_rep01.TextGrid") &&
 
 上記では `seewave::fund()` や `phonTools::findformants()` で R 内で F0/フォルマントを推定していますが、**Praat で既に推定済み**の場合は `.Pitch` / `.Formant` ファイルを直接読み込む方がはるかに効率的です。
 
+Praat の `To Pitch...` や `To Formant (burg)...` で推定した結果を `.Pitch` / `.Formant` ファイルとして保存し、`rPraat` で読み込む方法には次の利点があります。
+
+1. **先行研究との比較可能性**：多くの音声研究が Praat で測定を行っているため、同じコマンド体系と設定を使うことで比較しやすいです。
+2. **推定品質の点検**：Praat GUI で F0 やフォルマントの追跡を目視し、必要な修正や除外判断を反映できます。
+3. **手動修正の反映**：Praat で修正・保存した Pitch / Formant / TextGrid を、そのまま R の分析表へ持ち込めます。
+4. **処理速度**：R 内で毎回再推定せず、保存済みオブジェクトを読むだけなので、大規模データのバッチ処理が軽くなります。
+
 ```{r praat_pitch_formant_read}
 #| eval: true
+#| cache: false
 # ── Praat で保存した Pitch オブジェクトを読み込み ──
-if (file.exists("data/audio/spk001_word_bit_rep01.Pitch") &&
+if (render_local_audio_enabled() &&
+    file.exists("data/audio/spk001_word_bit_rep01.Pitch") &&
     file.exists("data/audio/spk001_word_bit_rep01.Formant") &&
     exists("ann", inherits = FALSE) &&
     inherits(ann, c("tbl_df", "tbl", "data.frame"))) {
@@ -2330,35 +2922,922 @@ if (file.exists("data/audio/spk001_word_bit_rep01.Pitch") &&
     mutate(
       mid = (t1 + t2) / 2,
       F1 = purrr::map_dbl(mid, function(m) {
-        idx <- which.min(abs(fmt$t - m))
+        idx <- rPraat::formant.getPointIndexNearestTime(fmt, time = m)
         fmt_arr$frequencyArray[1, idx]
       }),
       F2 = purrr::map_dbl(mid, function(m) {
-        idx <- which.min(abs(fmt$t - m))
+        idx <- rPraat::formant.getPointIndexNearestTime(fmt, time = m)
         fmt_arr$frequencyArray[2, idx]
       })
     )
 } else {
-  message("Skip praat_pitch_formant_read: required Pitch/Formant files or ann object not available")
+  message("Skip praat_pitch_formant_read: set RENDER_LOCAL_AUDIO=true and provide Pitch/Formant files")
 }
 ```
 
-#### Praat ファイル直接読み込みの利点
+#### token table と trajectory table を作る
 
-Praat の `To Pitch (ac)...` や `To Formant (burg)...` で推定した結果を `.Pitch` / `.Formant` ファイルとして保存し、`rPraat` で読み込む方法には以下のメリットがあります：
+Praat / rPraat から読み込んだ値は、最終的に次の2種類の表へ分けます。`token table` は LMM / GLMM 用、`trajectory table` は GAMM / 状態空間モデル用です。この分離を早い段階で決めておくと、同じ音声データから「母音空間の群差」と「フォルマント遷移の時間構造」を混同せずに扱えます。
 
-1. **先行研究との比較可能性**：多くの音声研究が Praat で測定を行っているため、同じアルゴリズムを使うことで比較が容易になります
-2. **推定品質**：Praat の Pitch / Formant 推定は長年にわたって改良されており、倍音跳躍の修正やフォルマント追跡の精度が高い
-3. **手動修正の反映**：Praat の GUI でF0やフォルマントの推定エラーを手動修正した結果をそのまま R に持ち込めます
-4. **処理速度**：R 内で再推定する必要がないため、大規模データのバッチ処理が高速です
+| 表 | 1行の意味 | 典型的な目的 | 例 |
+|---|---|---|---|
+| `token table` | 1つの母音・語・発話区間 | 平均差、群差、条件差 | `duration_ms`, `f0_median`, `F1_mid`, `F2_mid` |
+| `trajectory table` | 1つの区間内の1時点 | 曲線差、遷移、輪郭 | `time_norm`, `f0_hz`, `F1`, `F2`, `intensity_dB` |
 
-### LPCとピーク抽出（近似）
+ここでの `token table` / `trajectory table` の区別は、**データの1行が何を表すか**の区別です。概念名としては `token table` / `trajectory table` と書き、R オブジェクトや保存ファイル名では `token_table` / `trajectory_table.csv` のように snake_case を使います。本文中の分類表や設計表は静的に読み、実際の分析表のプレビューは HTML 版で検索・並べ替えできる形にします。
+
+`token_id` は、話者・項目・条件だけで作ると、反復録音、複数 tier、縦断セッションが入った時点で衝突しやすくなります。実データでは少なくとも `recording_id + tier + interval_index` を含め、縦断研究では `session` も明示的に保持します。
+
+以下は、`TextGrid` から作った `ann`、`.Pitch` から作った `f0_df`、`.Formant` から作った `formant_df`、`.IntensityTier` から作った `intensity_df` があると仮定した表作成テンプレートです。ここでは外部ファイルなしで実行できるよう、同じ列構造を持つデモデータを使います。
+
+```{r praat_analysis_tables_template}
+#| eval: true
+
+set.seed(1706)
+
+demo_ann <- tibble(
+  speaker_id = rep(c("S01", "S02"), each = 3),
+  item_id = rep(c("bit", "bet", "bat"), times = 2),
+  condition = rep(c("Pre", "Post"), each = 3),
+  session = rep(c("T1", "T2"), each = 3),
+  tier = "Vowel",
+  label = rep(c("i", "e", "ae"), times = 2),
+  t1 = c(0.20, 0.70, 1.18, 0.25, 0.76, 1.28),
+  t2 = c(0.46, 0.96, 1.48, 0.51, 1.06, 1.60)
+) |>
+  group_by(speaker_id, condition, session) |>
+  mutate(
+    recording_id = paste(speaker_id, session, condition, "rec01", sep = "_"),
+    interval_index = row_number(),
+    duration_ms = 1000 * (t2 - t1),
+    midpoint_sec = (t1 + t2) / 2,
+    token_id = paste(recording_id, tier, interval_index, sep = "_")
+  ) |>
+  ungroup()
+
+track_time <- seq(0, 1.8, by = 0.01)
+
+demo_pitch_df <- tibble(
+  time = track_time,
+  f0_hz = 145 + 12 * sin(2 * pi * track_time / 1.8) + rnorm(length(track_time), 0, 1.8)
+) |>
+  mutate(f0_hz = if_else(time > 1.03 & time < 1.10, NA_real_, f0_hz))
+
+demo_formant_df <- tibble(
+  time = track_time,
+  F1 = 430 + 140 * sin(pi * track_time / 1.8) + rnorm(length(track_time), 0, 12),
+  F2 = 2050 - 420 * track_time / 1.8 + 90 * sin(2 * pi * track_time / 1.8) +
+    rnorm(length(track_time), 0, 28),
+  F3 = 2850 + 70 * sin(2 * pi * track_time / 1.8) + rnorm(length(track_time), 0, 35)
+)
+
+demo_intensity_df <- tibble(
+  time = track_time,
+  intensity_dB = 68 + 4 * sin(pi * track_time / 1.8) + rnorm(length(track_time), 0, 0.7)
+)
+
+interval_values <- function(df, time_col, value_col, start, end) {
+  df |>
+    dplyr::filter(.data[[time_col]] >= start, .data[[time_col]] <= end) |>
+    dplyr::pull(.data[[value_col]])
+}
+
+nearest_value <- function(df, time_col, value_col, target_time) {
+  idx <- which.min(abs(df[[time_col]] - target_time))
+  df[[value_col]][idx]
+}
+
+interpolate_numeric_track <- function(time, value, xout) {
+  valid <- is.finite(time) & is.finite(value)
+
+  if (sum(valid) < 2) {
+    return(rep(NA_real_, length(xout)))
+  }
+
+  stats::approx(
+    x = time[valid],
+    y = value[valid],
+    xout = xout,
+    rule = 2,
+    ties = "ordered"
+  )$y
+}
+
+interpolate_f0_track <- function(time, value, xout, max_gap_s = 0.03) {
+  valid <- is.finite(time) & is.finite(value)
+
+  if (sum(valid) < 2) {
+    return(rep(NA_real_, length(xout)))
+  }
+
+  time_valid <- time[valid]
+  value_valid <- value[valid]
+
+  interp <- stats::approx(
+    x = time_valid,
+    y = value_valid,
+    xout = xout,
+    rule = 1,
+    ties = "ordered"
+  )$y
+
+  nearest_distance <- vapply(
+    xout,
+    \(current_time) min(abs(time_valid - current_time)),
+    numeric(1)
+  )
+
+  dplyr::if_else(nearest_distance <= max_gap_s, interp, NA_real_)
+}
+
+token_table <- demo_ann |>
+  mutate(
+    f0_median = map2_dbl(t1, t2, \(start, end) {
+      median(interval_values(demo_pitch_df, "time", "f0_hz", start, end), na.rm = TRUE)
+    }),
+    f0_voiced_prop = map2_dbl(t1, t2, \(start, end) {
+      vals <- interval_values(demo_pitch_df, "time", "f0_hz", start, end)
+      mean(!is.na(vals))
+    }),
+    intensity_mean = map2_dbl(t1, t2, \(start, end) {
+      mean(interval_values(demo_intensity_df, "time", "intensity_dB", start, end), na.rm = TRUE)
+    }),
+    F1_mid = map_dbl(midpoint_sec, \(mid) nearest_value(demo_formant_df, "time", "F1", mid)),
+    F2_mid = map_dbl(midpoint_sec, \(mid) nearest_value(demo_formant_df, "time", "F2", mid)),
+    F3_mid = map_dbl(midpoint_sec, \(mid) nearest_value(demo_formant_df, "time", "F3", mid)),
+    f0_st_100 = case_when(
+      is.finite(f0_median) & f0_median > 0 ~ 12 * log2(f0_median / 100),
+      TRUE ~ NA_real_
+    )
+  )
+
+token_table |>
+  select(
+    speaker_id, item_id, condition, label, duration_ms,
+    f0_median, f0_voiced_prop, intensity_mean, F1_mid, F2_mid
+  ) |>
+  render_inspection_table(
+    caption = "Analysis-ready token table: one row per annotated interval",
+    page_length = 6,
+    static_rows = 6,
+    digits = 2
+  )
+```
+
+`token_table` では、`duration_ms` は TextGrid 境界から、`f0_median` と `intensity_mean` は区間内の値から、`F1_mid` / `F2_mid` は区間中央の値から作っています。実データでは、この `demo_*` オブジェクトを `rPraat::pitch.toArray()`、`rPraat::formant.toArray()`、`rPraat::it.read()` から作った表に置き換えます。
+
+```{r praat_trajectory_table_template}
+#| eval: true
+
+make_token_trajectory <- function(speaker_id, item_id, condition, label,
+                                  t1, t2, duration_ms, midpoint_sec, token_id,
+                                  n_points = 25) {
+  time_sec <- seq(t1, t2, length.out = n_points)
+
+  tibble(
+    speaker_id = speaker_id,
+    item_id = item_id,
+    condition = condition,
+    label = label,
+    token_id = token_id,
+    time_sec = time_sec,
+    time_norm = (time_sec - t1) / (t2 - t1),
+    f0_hz = interpolate_f0_track(demo_pitch_df$time, demo_pitch_df$f0_hz, time_sec),
+    intensity_dB = interpolate_numeric_track(
+      demo_intensity_df$time, demo_intensity_df$intensity_dB, time_sec
+    ),
+    F1 = interpolate_numeric_track(demo_formant_df$time, demo_formant_df$F1, time_sec),
+    F2 = interpolate_numeric_track(demo_formant_df$time, demo_formant_df$F2, time_sec),
+    F3 = interpolate_numeric_track(demo_formant_df$time, demo_formant_df$F3, time_sec)
+  )
+}
+
+trajectory_table <- demo_ann |>
+  select(speaker_id, item_id, condition, label, t1, t2, duration_ms, midpoint_sec, token_id) |>
+  pmap_dfr(make_token_trajectory)
+
+trajectory_table |>
+  dplyr::group_by(token_id) |>
+  dplyr::slice(c(1, ceiling(dplyr::n() / 2), dplyr::n())) |>
+  dplyr::ungroup() |>
+  dplyr::select(speaker_id, item_id, condition, label, token_id, time_norm, f0_hz, F1, F2) |>
+  render_inspection_table(
+    caption = "Analysis-ready trajectory table: selected rows from each token",
+    page_length = 9,
+    static_rows = 9,
+    digits = 2
+  )
+```
+
+`trajectory_table` では、すべてのトークンを同じ数の相対時点にそろえています。これにより、母音の長さが違っても `time_norm = 0` が onset、`time_norm = 1` が offset を表すようになります。物理的な秒数そのものが研究対象なら `time_sec` を使いますが、トークン内の形を比較したいなら `time_norm` を使う方が自然です。ただし、`time_norm` は絶対持続時間の差を取り除くため、duration が理論的に重要な研究では、trajectory の形と duration を別々のモデルで扱います。F0 は無声区間をまたいで長く補間せず、近い有声フレームがない時点は `NA` のまま残します。
+
+```{r praat_trajectory_table_plot}
+#| eval: true
+#| fig-height: 5.2
+#| fig-width: 8
+
+trajectory_table |>
+  select(token_id, speaker_id, condition, label, time_norm, F1, F2) |>
+  pivot_longer(cols = c(F1, F2), names_to = "formant", values_to = "hz") |>
+  ggplot(aes(x = time_norm, y = hz, group = token_id, color = condition)) +
+  geom_line(alpha = 0.45, linewidth = 0.55) +
+  stat_summary(
+    aes(group = condition),
+    fun = mean,
+    geom = "line",
+    linewidth = 1.1
+  ) +
+  facet_wrap(~ formant, scales = "free_y", ncol = 1) +
+  labs(
+    title = "Trajectory table check before GAMM",
+    subtitle = "Thin lines are token trajectories; thick lines are condition means",
+    x = "Normalized time within token",
+    y = "Frequency (Hz)",
+    color = NULL
+  ) +
+  theme_speech(12)
+```
+
+この図は、GAMM を走らせる前の点検図です。モデルの結果を見る前に、個別トークンの線が極端に崩れていないか、条件平均がどの時点で離れるか、欠測が特定の時点に偏っていないかを確認します。ここで明らかな追跡失敗が見つかった場合は、先に品質管理のルールへ戻り、再推定・除外・欠測化の判断を記録します。
+
+#### 複数ファイル処理: manifest と失敗ログ
+
+実際の研究では、1つの `.wav` と 1つの `.TextGrid` だけを処理することはまれです。複数話者、複数項目、複数時点のデータを扱う場合は、最初に **file manifest** を作り、音声・注釈・Pitch・Formant の対応関係を明示します。manifest は、分析対象を定義する表であり、同時に再現性の記録でもあります。
+
+manifest と処理ログは、本文中で隅々まで読む表ではなく、録音 ID、話者、欠落ファイル、失敗理由を探すための作業表です。そのため、HTML 版では操作可能な表として表示し、PDF や静的出力では先頭行の確認表として表示します。
+
+```{r praat_file_manifest_template}
+#| eval: true
+#| cache: false
+
+build_praat_manifest <- function(audio_dir = "data/audio") {
+  wav_files <- if (render_local_audio_enabled()) {
+    list.files(
+      audio_dir,
+      pattern = "\\.(wav|WAV)$",
+      full.names = TRUE
+    )
+  } else {
+    character()
+  }
+
+  if (length(wav_files) == 0) {
+    return(tibble(
+      recording_id = c("spk001_word_bit_rep01", "spk001_word_bet_rep01"),
+      speaker_id = c("spk001", "spk001"),
+      item_id = c("word_bit", "word_bet"),
+      condition = c("Pre", "Pre"),
+      wav_path = file.path(audio_dir, paste0(recording_id, ".wav")),
+      textgrid_path = file.path(audio_dir, paste0(recording_id, ".TextGrid")),
+      pitch_path = file.path(audio_dir, paste0(recording_id, ".Pitch")),
+      formant_path = file.path(audio_dir, paste0(recording_id, ".Formant")),
+      intensity_path = file.path(audio_dir, paste0(recording_id, ".IntensityTier")),
+      example_only = TRUE
+    ))
+  }
+
+  tibble(wav_path = wav_files) |>
+    mutate(
+      recording_id = tools::file_path_sans_ext(basename(wav_path)),
+      directory = dirname(wav_path),
+      textgrid_path = file.path(directory, paste0(recording_id, ".TextGrid")),
+      pitch_path = file.path(directory, paste0(recording_id, ".Pitch")),
+      formant_path = file.path(directory, paste0(recording_id, ".Formant")),
+      intensity_path = file.path(directory, paste0(recording_id, ".IntensityTier")),
+      parts = str_split(recording_id, "_", simplify = FALSE),
+      speaker_id = map_chr(parts, \(x) x[1] %||% NA_character_),
+      item_id = map_chr(parts, \(x) paste(x[pmin(2, length(x)):pmin(3, length(x))], collapse = "_")),
+      condition = map_chr(parts, \(x) x[4] %||% NA_character_),
+      example_only = FALSE
+    ) |>
+    select(-directory, -parts)
+}
+
+praat_manifest <- build_praat_manifest("data/audio") |>
+  mutate(
+    wav_exists = file.exists(wav_path),
+    textgrid_exists = file.exists(textgrid_path),
+    pitch_exists = file.exists(pitch_path),
+    formant_exists = file.exists(formant_path),
+    intensity_exists = file.exists(intensity_path),
+    ready_for_tokens = wav_exists & textgrid_exists,
+    ready_for_praat_tracks = textgrid_exists & pitch_exists & formant_exists
+  )
+
+praat_manifest |>
+  select(
+    recording_id, speaker_id, item_id, condition,
+    wav_exists, textgrid_exists, pitch_exists, formant_exists,
+    ready_for_tokens, ready_for_praat_tracks
+  ) |>
+  render_inspection_table(
+    page_length = 8,
+    static_rows = 8,
+    caption = "Praat file manifest with existence checks"
+  )
+```
+
+`example_only = TRUE` の行は、`data/audio` に `.wav` がない環境でも章を読めるようにするための見本です。自分の研究データで使うときは、ファイル名規則を先に決めます。たとえば `speaker_item_condition_rep.wav` のようにしておくと、`recording_id` から `speaker_id`, `item_id`, `condition` を機械的に取り出せます。
+
+次のテンプレートは、manifest の各行を処理し、成功した結果と失敗ログを分けて残すための骨格です。ここでは直前の `token_table` / `trajectory_table` を使って実行可能なデモにしていますが、実データでは `read_one_recording()` の中身を `tg.read()`、`pitch.read()`、`formant.read()` へ置き換えます。
+
+```{r praat_batch_processing_template}
+#| eval: true
+
+demo_batch_manifest <- token_table |>
+  distinct(speaker_id, condition) |>
+  mutate(
+    recording_id = paste(speaker_id, condition, sep = "_"),
+    should_fail = recording_id == "S02_Post"
+  )
+
+read_one_recording_demo <- function(recording_id, speaker_id, condition, should_fail) {
+  if (isTRUE(should_fail)) {
+    stop("Example failure: TextGrid tier 'Vowel' was not found")
+  }
+
+  tokens <- token_table |>
+    filter(.data$speaker_id == speaker_id, .data$condition == condition) |>
+    mutate(recording_id = recording_id, .before = 1)
+
+  trajectories <- trajectory_table |>
+    filter(.data$speaker_id == speaker_id, .data$condition == condition) |>
+    mutate(recording_id = recording_id, .before = 1)
+
+  list(tokens = tokens, trajectories = trajectories)
+}
+
+safe_read_one <- purrr::safely(read_one_recording_demo)
+
+batch_raw <- demo_batch_manifest |>
+  mutate(result = pmap(
+    list(recording_id, speaker_id, condition, should_fail),
+    safe_read_one
+  ))
+
+batch_log <- batch_raw |>
+  transmute(
+    recording_id,
+    speaker_id,
+    condition,
+    status = map_chr(result, \(x) if (is.null(x$error)) "ok" else "failed"),
+    message = map_chr(result, \(x) if (is.null(x$error)) NA_character_ else conditionMessage(x$error))
+  )
+
+batch_token_table <- batch_raw |>
+  mutate(tokens = map(result, \(x) x$result$tokens %||% tibble())) |>
+  select(tokens) |>
+  unnest(tokens)
+
+batch_trajectory_table <- batch_raw |>
+  mutate(trajectories = map(result, \(x) x$result$trajectories %||% tibble())) |>
+  select(trajectories) |>
+  unnest(trajectories)
+
+batch_log |>
+  render_inspection_table(
+    caption = "Batch processing log: successful and failed recordings",
+    page_length = 8,
+    static_rows = 8
+  )
+```
+
+このパターンの利点は、1ファイルで失敗しても処理全体が止まらないことです。`batch_log` に `failed` が出た録音は、TextGrid の tier 名、空ラベル、Pitch/Formant ファイルの欠落、推定エラーなどを確認します。失敗した録音を黙って落とすのではなく、**どの録音がなぜ分析表に入らなかったか**を記録することが重要です。
+
+```{r praat_batch_processing_summary}
+#| eval: true
+
+batch_log |>
+  count(status, name = "n_recordings") |>
+  knitr::kable(caption = "Batch processing status summary")
+
+batch_token_table |>
+  count(recording_id, speaker_id, condition, name = "n_tokens") |>
+  knitr::kable(caption = "Number of token rows retained after batch processing")
+
+batch_trajectory_table |>
+  count(recording_id, speaker_id, condition, name = "n_time_rows") |>
+  knitr::kable(caption = "Number of trajectory rows retained after batch processing")
+```
+
+実データ用の `read_one_recording()` では、少なくとも次のチェックを入れます。
+
+- `wav_path`, `textgrid_path`, `pitch_path`, `formant_path` が存在するかを確認します
+- 目的の tier 名（例: `Vowel`）が TextGrid に存在するかを確認します
+- 空ラベルや極端に短い区間をどう扱うかを決めます
+- `.Pitch` の `0 Hz` と無声区間をどう扱うかを決めます
+- `.Formant` の F1/F2/F3 が区間内で十分なフレーム数を持つかを確認します
+- `token_id` が一意かを確認します
+
+ここまでを保存してから統計モデルへ進むと、「どのファイルを分析したか」「どのファイルが除外されたか」「何行の token / trajectory が残ったか」を後から再現できます。
+
+#### 分析表の検証と保存
+
+`token table` と `trajectory table` ができたら、すぐに LMM や GAMM へ進むのではなく、最低限の **data contract** を確認します。ここでいう data contract とは、「この表はどの列を持ち、ID は一意で、値の範囲は音声学的に妥当で、欠測はどこにあるか」を明示する確認表です。
+
+```{r praat_table_contract}
+#| eval: true
+
+if (exists("batch_token_table", inherits = FALSE) &&
+    exists("batch_trajectory_table", inherits = FALSE) &&
+    nrow(batch_token_table) > 0 &&
+    nrow(batch_trajectory_table) > 0) {
+
+  required_token_cols <- c(
+    "recording_id", "speaker_id", "item_id", "condition", "label", "tier",
+    "interval_index", "token_id",
+    "duration_ms", "f0_median", "f0_voiced_prop", "intensity_mean", "F1_mid", "F2_mid"
+  )
+
+  required_trajectory_cols <- c(
+    "recording_id", "speaker_id", "item_id", "condition", "label", "token_id",
+    "time_sec", "time_norm", "f0_hz", "intensity_dB", "F1", "F2"
+  )
+
+  token_contract <- tibble(
+    table = "token_table",
+    check = c(
+      "required columns are present",
+      "token_id is unique",
+      "duration_ms is positive",
+      "f0_median is in a plausible broad range",
+      "f0_voiced_prop is between 0 and 1",
+      "F1_mid / F2_mid are in broad plausible ranges"
+    ),
+    pass = c(
+      all(required_token_cols %in% names(batch_token_table)),
+      anyDuplicated(batch_token_table$token_id) == 0,
+      all(batch_token_table$duration_ms > 0, na.rm = TRUE),
+      all(is.na(batch_token_table$f0_median) | dplyr::between(batch_token_table$f0_median, 50, 500)),
+      all(is.na(batch_token_table$f0_voiced_prop) | dplyr::between(batch_token_table$f0_voiced_prop, 0, 1)),
+      all(is.na(batch_token_table$F1_mid) | dplyr::between(batch_token_table$F1_mid, 150, 1200)) &&
+        all(is.na(batch_token_table$F2_mid) | dplyr::between(batch_token_table$F2_mid, 500, 3500))
+    )
+  )
+
+  trajectory_rows_per_token <- batch_trajectory_table |>
+    count(token_id, name = "n_time_rows")
+
+  trajectory_contract <- tibble(
+    table = "trajectory_table",
+    check = c(
+      "required columns are present",
+      "time_norm is between 0 and 1",
+      "each token has at least 5 time points",
+      "token_id values exist in token_table",
+      "f0_hz is missing or in a plausible broad range",
+      "F1 / F2 are in broad plausible ranges"
+    ),
+    pass = c(
+      all(required_trajectory_cols %in% names(batch_trajectory_table)),
+      all(dplyr::between(batch_trajectory_table$time_norm, 0, 1), na.rm = TRUE),
+      all(trajectory_rows_per_token$n_time_rows >= 5),
+      all(unique(batch_trajectory_table$token_id) %in% batch_token_table$token_id),
+      all(is.na(batch_trajectory_table$f0_hz) | dplyr::between(batch_trajectory_table$f0_hz, 50, 500)),
+      all(is.na(batch_trajectory_table$F1) | dplyr::between(batch_trajectory_table$F1, 150, 1200)) &&
+        all(is.na(batch_trajectory_table$F2) | dplyr::between(batch_trajectory_table$F2, 500, 3500))
+    )
+  )
+
+  bind_rows(token_contract, trajectory_contract) |>
+    mutate(result = if_else(pass, "pass", "inspect")) |>
+    select(table, check, result) |>
+    knitr::kable(caption = "Minimum data contract checks before modeling")
+} else {
+  message("Skip praat_table_contract: batch tables are not available")
+}
+```
+
+この範囲チェックは、除外基準そのものではありません。たとえば `F2 > 3500 Hz` が必ず誤りという意味ではなく、話者群・母音・録音条件に照らして確認すべき候補だという意味です。閾値は研究対象に合わせて調整します。重要なのは、**モデルに渡す前に、どの値を確認したかを表で残す**ことです。
+
+```{r praat_missingness_summary}
+#| eval: true
+
+if (exists("batch_token_table", inherits = FALSE) &&
+    exists("batch_trajectory_table", inherits = FALSE) &&
+    nrow(batch_token_table) > 0 &&
+    nrow(batch_trajectory_table) > 0) {
+
+  token_missing <- batch_token_table |>
+    summarise(
+      across(
+        c(duration_ms, f0_median, f0_voiced_prop, intensity_mean, F1_mid, F2_mid),
+        \(x) mean(is.na(x))
+      )
+    ) |>
+    pivot_longer(everything(), names_to = "variable", values_to = "missing_rate") |>
+    mutate(table = "token_table")
+
+  trajectory_missing <- batch_trajectory_table |>
+    summarise(
+      across(
+        c(f0_hz, intensity_dB, F1, F2),
+        \(x) mean(is.na(x))
+      )
+    ) |>
+    pivot_longer(everything(), names_to = "variable", values_to = "missing_rate") |>
+    mutate(table = "trajectory_table")
+
+  bind_rows(token_missing, trajectory_missing) |>
+    select(table, variable, missing_rate) |>
+    mutate(missing_rate = round(missing_rate, 3)) |>
+    knitr::kable(caption = "Missingness summary for speech analysis tables")
+} else {
+  message("Skip praat_missingness_summary: batch tables are not available")
+}
+```
+
+欠測率は、単に「多い / 少ない」で判断するものではありません。F0 の欠測は無声区間では自然ですし、フォルマントの欠測は短い母音・雑音・追跡失敗の結果かもしれません。欠測が条件や話者群に偏っている場合は、統計モデルの結果にも影響するため、`condition` や `speaker_id` ごとの欠測率も追加で確認します。
+
+```{r praat_save_analysis_tables}
+#| eval: true
+
+if (exists("batch_log", inherits = FALSE) &&
+    exists("batch_token_table", inherits = FALSE) &&
+    exists("batch_trajectory_table", inherits = FALSE)) {
+
+  out_dir <- file.path(tempdir(), "speech_analysis_tables")
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+  readr::write_csv(batch_log, file.path(out_dir, "batch_log.csv"))
+  readr::write_csv(batch_token_table, file.path(out_dir, "token_table.csv"))
+  readr::write_csv(batch_trajectory_table, file.path(out_dir, "trajectory_table.csv"))
+
+  tibble(
+    object = c("batch_log", "token_table", "trajectory_table"),
+    path = file.path(
+      "tempdir()/speech_analysis_tables",
+      c("batch_log.csv", "token_table.csv", "trajectory_table.csv")
+    ),
+    n_rows = c(nrow(batch_log), nrow(batch_token_table), nrow(batch_trajectory_table))
+  ) |>
+    knitr::kable(caption = "Saved analysis tables for downstream modeling")
+} else {
+  message("Skip praat_save_analysis_tables: batch tables are not available")
+}
+```
+
+実プロジェクトでは、`tempdir()` ではなく `analysis/derived/` や `data/processed/` のような固定フォルダへ保存します。保存する対象は、少なくとも `batch_log.csv`, `token_table.csv`, `trajectory_table.csv` の3つです。これにより、LMM / GLMM へ進む分析者と、GAMM へ進む分析者が同じ前処理結果を共有できます。
+
+#### 前処理 provenance と感度確認
+
+分析表を保存しても、「どの Praat 設定で作った表なのか」が残っていなければ、後から同じ表を再生成できません。音声分析では、`pitch floor`, `pitch ceiling`, `maximum formant`, `window length`, `pre-emphasis` のような設定値が結果に直接影響します。したがって、統計モデルの前に **設定レジストリ** と **入力ファイルの記録** を残します。
+
+```{r praat_parameter_registry}
+#| eval: true
+
+praat_parameter_registry <- tibble(
+  domain = c(
+    "annotation", "pitch", "pitch", "pitch",
+    "formant", "formant", "formant", "formant", "aggregation", "quality_control"
+  ),
+  parameter = c(
+    "target_tier",
+    "pitch_floor_hz", "pitch_ceiling_hz", "time_step_s",
+    "number_of_formants", "maximum_formant_hz", "window_length_s", "pre_emphasis_from_hz",
+    "formant_time_point",
+    "manual_inspection_rule"
+  ),
+  value = c(
+    "Vowel",
+    "75", "500", "0.01",
+    "5", "5500", "0.025", "50",
+    "midpoint or 25 equally spaced time-normalized points",
+    "inspect F0 jumps, F1/F2 proximity, range flags, and failed batch records"
+  ),
+  why_it_matters = c(
+    "Defines which TextGrid intervals enter the analysis",
+    "Controls the lowest F0 candidate Praat will consider",
+    "Controls the highest F0 candidate Praat will consider",
+    "Controls temporal resolution of the F0 track",
+    "Controls the number of formant candidates estimated",
+    "Strongly affects F1/F2 tracking, especially across speaker groups",
+    "Controls the time-frequency tradeoff in formant estimation",
+    "Controls spectral tilt correction before formant estimation",
+    "Defines whether the analysis is token-level or trajectory-level",
+    "Defines which automatically flagged values require human inspection"
+  )
+)
+
+praat_parameter_registry |>
+  knitr::kable(caption = "Praat/rPraat preprocessing parameter registry")
+```
+
+この表の値は、研究対象に合わせて書き換える前提です。たとえば成人男性だけのデータ、成人女性だけのデータ、子どものデータ、歌唱に近い発話では、同じ F0 探索範囲を使うべきとは限りません。重要なのは、**設定値を本文・補足資料・解析スクリプトのどこかに明示的に残す**ことです。
+
+```{r praat_file_hashes}
+#| eval: true
+#| cache: false
+
+if (exists("praat_manifest", inherits = FALSE)) {
+  manifest_paths <- praat_manifest |>
+    select(ends_with("_path")) |>
+    pivot_longer(everything(), names_to = "file_role", values_to = "path") |>
+    distinct() |>
+    mutate(exists = file.exists(path))
+
+  existing_paths <- manifest_paths |>
+    filter(exists) |>
+    pull(path)
+
+  if (length(existing_paths) > 0) {
+    hash_tbl <- tibble(
+      path = existing_paths,
+      md5 = unname(tools::md5sum(existing_paths))
+    ) |>
+      right_join(manifest_paths, by = "path") |>
+      arrange(file_role, path)
+  } else {
+    hash_tbl <- manifest_paths |>
+      mutate(md5 = NA_character_) |>
+      arrange(file_role, path)
+  }
+
+  hash_tbl |>
+    select(file_role, path, exists, md5) |>
+    render_inspection_table(
+      caption = "Input-file inventory with optional MD5 hashes",
+      page_length = 8,
+      static_rows = 8
+    )
+} else {
+  message("Skip praat_file_hashes: praat_manifest is not available")
+}
+```
+
+ファイルハッシュは、音声ファイルや TextGrid が途中で差し替わっていないかを確認するための記録です。実プロジェクトでは、`manifest.csv` と一緒に `file_hashes.csv` を保存しておくと、解析表を作り直すときに同じ入力を使っているか確認できます。
+
+```{r praat_formant_sensitivity_plan}
+#| eval: true
+
+formant_sensitivity_plan <- tibble(
+  setting = c("lower_ceiling", "primary", "higher_ceiling"),
+  maximum_formant_hz = c(5000, 5500, 6000),
+  window_length_s = c(0.025)
+) |>
+  mutate(
+    praat_command = paste0(
+      "To Formant (burg): 0, 5, ",
+      maximum_formant_hz,
+      ", ",
+      window_length_s,
+      ", 50"
+    ),
+    compare = "Rebuild token_table and compare F1_mid/F2_mid, model coefficients, and vowel-space plots"
+  )
+
+formant_sensitivity_plan |>
+  knitr::kable(caption = "Template for formant-setting sensitivity checks")
+```
+
+感度確認では、すべての設定を無制限に変える必要はありません。主分析の設定を1つ決めたうえで、`maximum formant` を少し低く・高くした場合に、主要な母音差や群差が大きく変わらないかを確認します。設定変更で結論が変わる場合は、どちらが「正しいか」を数値だけで決めるのではなく、スペクトログラム上の formant track、話者群、母音カテゴリ、外れ値処理を合わせて判断します。
+
+#### 感度分析結果の読み方
+
+Praat の設定を変えたあとに必要なのは、設定ごとの数値を並べるだけではありません。主分析の結論がどの程度安定しているか、そして不安定な場合に何を点検するかを、事前に決めておきます。
+
+```{r praat_sensitivity_interpretation}
+#| eval: true
+
+praat_sensitivity_interpretation <- tibble(
+  pattern = c(
+    "F1/F2 の平均差とモデル係数の符号がすべての設定で一致します",
+    "係数の符号は同じですが、効果量や信頼区間が大きく変わります",
+    "設定によって主要な群差・時点差の符号が変わります",
+    "特定の母音または話者群だけで formant jump が増えます",
+    "欠測率または除外率が設定によって大きく変わります"
+  ),
+  interpretation = c(
+    "主結論は抽出設定に対して比較的安定しています",
+    "方向は安定していますが、推定量の大きさは設定依存です",
+    "主結論は抽出設定に敏感であり、単一設定だけでは報告できません",
+    "母音カテゴリ、話者特性、録音品質、ceiling 設定の相互作用が疑われます",
+    "推定値の差ではなく、分析対象に残るトークン集合の差が影響している可能性があります"
+  ),
+  report_action = c(
+    "主分析を本文に示し、感度分析を補足表で報告します",
+    "効果量の範囲を報告し、解釈を方向性中心にします",
+    "スペクトログラムと formant track を点検し、設定別の結果を本文で示します",
+    "該当話者・母音の可視化を追加し、必要なら speaker-specific ceiling を検討します",
+    "除外前後の token 数、欠測率、主要属性の偏りを併記します"
+  )
+)
+
+praat_sensitivity_interpretation |>
+  knitr::kable(caption = "Praat setting sensitivity analysis: interpretation and reporting actions")
+```
+
+この表の目的は、感度分析を「結論を守るための儀式」にしないことです。設定変更で結果が揺れる場合、その揺れ自体が重要な情報です。特に formant analysis では、話者の声道長、母音の高さ、録音品質、LPC 設定が絡むため、統計モデルだけでなくスペクトログラムと軌跡図を併用して判断します。
+
+#### 統計モデルへの引き渡し仕様
+
+ここまでで作った表は、まだ「統計モデルの入力」として最終確定したものではありません。モデルへ渡す直前に、音響特徴量を研究質問に合う尺度へ変換します。典型的には、duration は対数化、F0 は 0 Hz や範囲外の値を欠測として扱ってから半音変換、formant は話者内正規化、trajectory は `time_norm` による時間整列を行います。
+
+```{r praat_model_handoff_tables}
+#| eval: true
+
+if (exists("batch_token_table", inherits = FALSE) &&
+    exists("batch_trajectory_table", inherits = FALSE) &&
+    nrow(batch_token_table) > 0 &&
+    nrow(batch_trajectory_table) > 0) {
+
+  z_within <- function(x) {
+    x_mean <- mean(x, na.rm = TRUE)
+    x_sd <- sd(x, na.rm = TRUE)
+
+    if (!is.finite(x_sd) || x_sd == 0) {
+      return(rep(NA_real_, length(x)))
+    }
+
+    (x - x_mean) / x_sd
+  }
+
+  center_within <- function(x) {
+    x_mean <- mean(x, na.rm = TRUE)
+
+    if (!is.finite(x_mean)) {
+      return(rep(NA_real_, length(x)))
+    }
+
+    x - x_mean
+  }
+
+  min_voiced_prop <- 0.5
+
+  model_token_table <- batch_token_table |>
+    mutate(
+      speaker_id = factor(speaker_id),
+      item_id = factor(item_id),
+      condition = factor(condition),
+      label = factor(label),
+      log_duration = case_when(
+        duration_ms > 0 ~ log(duration_ms),
+        TRUE ~ NA_real_
+      ),
+      f0_median_for_model = case_when(
+        is.finite(f0_voiced_prop) & f0_voiced_prop >= min_voiced_prop ~ f0_median,
+        TRUE ~ NA_real_
+      ),
+      f0_st_100 = case_when(
+        is.finite(f0_median_for_model) & f0_median_for_model > 0 ~
+          12 * log2(f0_median_for_model / 100),
+        TRUE ~ NA_real_
+      )
+    ) |>
+    group_by(speaker_id) |>
+    mutate(
+      f0_st_within_speaker = center_within(f0_st_100),
+      intensity_within_speaker = center_within(intensity_mean),
+      F1_mid_z = z_within(F1_mid),
+      F2_mid_z = z_within(F2_mid)
+    ) |>
+    ungroup()
+
+  model_trajectory_table <- batch_trajectory_table |>
+    mutate(
+      speaker_id = factor(speaker_id),
+      item_id = factor(item_id),
+      condition = factor(condition),
+      label = factor(label),
+      f0_st_100 = case_when(
+        is.finite(f0_hz) & dplyr::between(f0_hz, 50, 500) ~
+          12 * log2(f0_hz / 100),
+        TRUE ~ NA_real_
+      )
+    ) |>
+    group_by(speaker_id) |>
+    mutate(
+      F1_z = z_within(F1),
+      F2_z = z_within(F2),
+      f0_st_within_speaker = center_within(f0_st_100),
+      intensity_within_speaker = center_within(intensity_dB)
+    ) |>
+    ungroup()
+
+  tibble(
+    table = c("model_token_table", "model_trajectory_table"),
+    n_rows = c(nrow(model_token_table), nrow(model_trajectory_table)),
+    unit = c("one row per annotated token", "one row per token-time point"),
+    main_outcomes = c(
+      "log_duration, f0_st_100, f0_st_within_speaker, intensity_within_speaker, F1_mid_z, F2_mid_z",
+      "f0_st_within_speaker, intensity_within_speaker, F1_z, F2_z"
+    )
+  ) |>
+    knitr::kable(caption = "Model-ready speech analysis tables")
+} else {
+  message("Skip praat_model_handoff_tables: batch tables are not available")
+}
+```
+
+ここで作る `model_token_table` と `model_trajectory_table` は、前処理済み表とは別に考えます。前処理済み表は観測値を保存するための表、モデル用表は統計モデルで使う尺度に変換した表です。F0 は 0 Hz のような無声・不正値を半音変換の前に欠測へ回し、さらにこの例では `f0_voiced_prop >= 0.5` のトークンだけを token-level F0 のモデル候補にしています。trajectory 側の F0 も、0 Hz だけでなく、話者範囲に合わない値や急跳躍を点検してから半音変換します。このデモでは広い確認範囲として 50–500 Hz を使っています。formant は話者ごとに z-score 化しています。両方を残しておくと、結果の解釈で「Hz ではどれくらいか」「標準化後の効果量ではどれくらいか」を行き来しやすくなります。
+
+trajectory の `F1_z` / `F2_z` は、実データでは原則として事前に決めた話者内の母音分布から正規化基準を推定し、その同じ基準を各時点の trajectory に適用します。条件や時点の偏りを含んだ全 trajectory 点から平均と標準偏差を作ると、正規化そのものが条件差を一部吸収することがあります。
+
+話者内中心化した F0 は、同一話者内の条件差や時点差を見るための尺度です。話者群間の絶対的な F0 差を研究質問に含む場合は、中心化前の `f0_st_100` を保持し、必要に応じて性別、年齢、話者群などの属性をモデルに入れます。無声化そのものが研究対象なら、F0 値とは別に voiced / unvoiced をロジスティック混合モデルで扱います。
+
+```{r praat_model_formula_registry}
+#| eval: true
+
+model_formula_registry <- tibble(
+  research_question = c(
+    "Do groups or conditions differ in segment duration?",
+    "Do conditions differ in median F0 within speakers?",
+    "Do vowel categories differ in normalized F1/F2 position?",
+    "Do conditions differ in the shape of a formant trajectory?",
+    "Do conditions differ in the shape of an F0 contour?",
+    "Do acoustic measures change across recording sessions?"
+  ),
+  table = c(
+    "model_token_table",
+    "model_token_table",
+    "model_token_table",
+    "model_trajectory_table",
+    "model_trajectory_table",
+    "model_token_table plus session metadata"
+  ),
+  outcome = c(
+    "log_duration",
+    "f0_st_within_speaker",
+    "F1_mid_z or F2_mid_z",
+    "F2_z",
+    "f0_st_within_speaker",
+    "log_duration, F1_mid_z, F2_mid_z, or f0_st_within_speaker"
+  ),
+  model_family = c(
+    "Gaussian LMM",
+    "Gaussian LMM",
+    "Gaussian LMM or multivariate extension",
+    "GAMM",
+    "GAMM",
+    "Gaussian LMM; GAMM only if the trajectory shape is the outcome"
+  ),
+  formula_template = c(
+    "log_duration ~ condition * label + (1 | speaker_id) + (1 | item_id)",
+    "f0_st_within_speaker ~ condition * label + (1 | speaker_id) + (1 | item_id)",
+    "F2_mid_z ~ condition * label + (1 | speaker_id) + (1 | item_id)",
+    "F2_z ~ condition + s(time_norm, by = condition) + s(token_id, bs = 're') + s(speaker_id, bs = 're') + s(item_id, bs = 're')",
+    "f0_st_within_speaker ~ condition + s(time_norm, by = condition) + s(token_id, bs = 're') + s(speaker_id, bs = 're') + s(item_id, bs = 're')",
+    "F2_mid_z ~ session * condition * label + (1 | speaker_id) + (1 | item_id)"
+  )
+)
+
+model_formula_registry |>
+  knitr::kable(caption = "Model handoff registry: outcomes, tables, and formula templates")
+```
+
+式はそのまま機械的に使うものではなく、研究デザインに合わせて調整します。たとえば同じ item をすべての話者が読んでいない場合、`(1 | item_id)` の意味は変わります。ここで示す LMM は切片のみの最小式です。同一話者内または同一項目内で `condition`、`session`、`label` が変動する設計では、それらはランダム傾き候補になります。実務上は、第6章の混合モデルの考え方に従い、研究デザインから必要な乱効果構造を置き、収束状況・特異適合・データ量を見て簡素化します。縦断データなら `session` や `month` を固定効果または smooth として加える必要があります。重要なのは、**どの表のどの列が、どのモデル式のどの部分に入るか**を明示することです。
+
+ここで特に混同しやすいのは、`time_norm` と縦断研究の `Time` / `session` です。`time_norm` は1つの母音・語・発話区間の内部で 0 から 1 にそろえた相対時間であり、同一参加者を複数回測った「事前・事後」「月1・月2」といった within-participant factor ではありません。縦断的な変化を token-level の `LMM` / `GLMM` で扱う場合は、manifest や metadata から `session` 列を追加し、`session * condition` のような固定効果として入れます。一方、トークン内部の輪郭そのものを比較する場合は、`time_norm` を `GAMM` の smooth に入れ、`s(token_id, bs = "re")` で同じトークンから複数時点が出ていることを明示します。
+
+```{r praat_model_diagnostic_queue}
+#| eval: true
+
+model_diagnostic_queue <- tibble(
+  model_type = c(
+    "LMM / GLMM", "LMM / GLMM", "LMM / GLMM",
+    "GAMM", "GAMM", "GAMM"
+  ),
+  diagnostic = c(
+    "convergence and singular fit",
+    "residual distribution and heteroskedasticity",
+    "influential speakers/items",
+    "basis dimension and smooth adequacy",
+    "residual autocorrelation",
+    "smooth uncertainty and difference curves"
+  ),
+  why = c(
+    "Random-effect structure may be too complex for the available data",
+    "Duration and acoustic measures often have skewed or group-dependent variance",
+    "A small number of speakers or items can drive acoustic effects",
+    "Too small k can underfit trajectories; too large k can overfit",
+    "Adjacent time points in a contour are not independent",
+    "The substantive result is often where curves diverge, not only whether a coefficient is significant"
+  ),
+  useful_tools = c(
+    "lme4::isSingular(), performance::check_model()",
+    "DHARMa, performance, residual plots",
+    "influence.ME, leave-one-speaker/item checks",
+    "mgcv::gam.check(), gratia::appraise()",
+    "acf(resid(model)), itsadug::acf_resid()",
+    "gratia::difference_smooths(), model-based prediction plots"
+  )
+)
+
+model_diagnostic_queue |>
+  knitr::kable(caption = "Diagnostics to run after the model handoff")
+```
+
+音響特徴量のモデルでは、係数表だけを読んで終えると判断を誤りやすくなります。duration なら残差の歪み、F0 なら無声区間と話者差、formant なら話者正規化と外れ値、trajectory なら残差自己相関と smooth の形を確認します。前処理表、モデル用表、診断表をつなげて残すことで、測定から統計解釈までの道筋が追いやすくなります。
+
+ここまでが、この節の主経路です。以下では、Praat で推定済みの `.Formant` がない場合や、R 側の推定関数の挙動を確認したい場合のために、LPC とスペクトルピーク検出の近似例を示します。論文用の主分析では、上で作った manifest、設定レジストリ、data contract、`model_token_table` / `model_trajectory_table` を優先して使います。
+
+### 補助: LPCとピーク抽出（近似）
 
 切り出した母音区間からフォルマント（F1/F2）を推定する方法は複数あります。
 
-**LPC（線形予測符号化）**は、音声信号の自己回帰モデルを推定する手法で、スペクトルの包絡線（滑らかなカーブ）を求めるのに適しています。LPC の次数（`order`）は声道のフォルマント数に関係し、経験的には「サンプリングレート（kHz）+ 3〜4」程度（例：16 kHz なら 19〜20）が標準です。`phonTools::lpc()` はデフォルトでこの値を自動設定します。より直接的にフォルマント周波数を求めるには `phonTools::findformants()` が便利です。
+**LPC（線形予測符号化）**は、音声信号の自己回帰モデルを推定する手法で、スペクトルの包絡線（滑らかなカーブ）を求めるのに適しています。LPC の次数（`order`）は声道のフォルマント数に関係し、実装によって既定値や推奨値が異なります。`phonTools::lpc()` はデフォルトで次数を自動設定します。より直接的にフォルマント周波数を求めるには `phonTools::findformants()` が便利です。ただし、R の近似例と Praat の Burg 法の `number of formants`、`maximum formant`、`window length` は同一の設定ではありません。主分析では、同一ソフト・同一設定で一貫して推定します。
 
-以下のコードでは、より単純な方法として `meanspec()` で平均スペクトルを算出し、`fpeaks()` でピーク周波数を検出して、200–3500 Hz の範囲で低周波側から順にF1、F2として採用します。`nmax = 6` は検出するピークの最大数で、フォルマント候補（F1–F3 + スプリアスピーク）を十分にカバーする数です。
+以下のコードでは、より単純な方法として `meanspec()` で平均スペクトルを算出し、`fpeaks()` でピーク周波数を検出して、200–3500 Hz の範囲で低周波側から順にF1、F2として採用します。`fpeaks()` の周波数列は kHz 相当で返ることがあるため、この例では Hz に変換してから範囲で絞ります。`nmax = 6` は検出するピークの最大数で、フォルマント候補（F1–F3 + スプリアスピーク）を十分にカバーする数です。
 
 #### スペクトルピーク ≠ 厳密なフォルマント
 
@@ -2378,9 +3857,16 @@ if (exists("segments", inherits = FALSE) &&
     pk <- seewave::fpeaks(sp, f = f, nmax = 6, plot = FALSE)
     if (is.null(pk) || nrow(pk) == 0) return(c(NA, NA))
     # 音声領域のピークを絞り込み、低周波からnform個を採用
-    cand <- pk[,1]
-    cand <- cand[cand >= flim[1] & cand <= flim[2]]
-    sort(cand)[1:min(nform, length(cand))]
+    peak_freq <- as.numeric(pk[, 1])
+    cand_hz <- if (max(peak_freq, na.rm = TRUE) < 50) peak_freq * 1000 else peak_freq
+    cand_hz <- cand_hz[cand_hz >= flim[1] & cand_hz <= flim[2]]
+
+    if (length(cand_hz) == 0) {
+      return(rep(NA_real_, nform))
+    }
+
+    out <- sort(cand_hz)[seq_len(min(nform, length(cand_hz)))]
+    c(out, rep(NA_real_, nform - length(out)))
   }
 
   formant_tbl <- segments |>
@@ -2394,7 +3880,7 @@ if (exists("segments", inherits = FALSE) &&
 }
 ```
 
-LPCのモデル次数や窓長によって推定は大きく変わります。実データでは、**Praat（FormantTask）**でF1/F2を抽出し、TextGridと揃えてRで集約・統計化するのが一般的です。`phonTools::formanttrack`等のR実装を使う方法もあります。
+LPCのモデル次数や窓長によって推定は大きく変わります。実データでは、Praat の **`To Formant (burg)...`** でF1/F2を抽出し、TextGridと揃えてRで集約・統計化するのが一般的です。`phonTools::formanttrack`等のR実装を使う方法もあります。
 
 ### F1–F2散布図（楕円つき）
 
@@ -2434,59 +3920,168 @@ lobanov_norm <- function(df, speaker_col = "Speaker") {
 }
 ```
 
-正規化後のF1_z/F2_zを使うことで、「話者の個人差を除いた母音カテゴリの違い」を比較できます。Rパッケージ `vowels` や `phonR` も正規化機能を提供しています。
+正規化後のF1_z/F2_zを使うことで、「話者の個人差を除いた母音カテゴリの違い」を比較できます。Rパッケージ `vowels` や `phonR` も正規化機能を提供しています。ただし、Lobanov型の正規化は、話者ごとに十分な母音カテゴリとトークンが観測されている場合に使うのが前提です。trajectory に適用する場合は、正規化基準を token-level の母音分布から推定して trajectory に適用するか、少なくとも条件・時点の偏りで平均と SD が変わらないかを確認します。
 
-### GLMM か？ 時系列か？（考え方）
+### 補助例で扱うモデルの位置づけ
 
-**Steady-state 母音**：各トークンから1点（F1/F2）を抽出する場合、**LMM/GLMM**（交差乱効果：話者×項目）で群差や条件効果を評価するのが標準です（第6章参照）。
+**Steady-state 母音**：各トークンから1点（F1/F2）を抽出する場合、連続量ならまず **LMM**（交差乱効果：話者×項目）で群差や条件効果を評価するのが標準です。目的変数が二値、カウント、比率など通常の正規誤差に合わない場合に **GLMM** を検討します（第6章参照）。
 
-**持続時間 / VOT / 平均 F0 / 平均 intensity**：1トークン1値に要約するなら、まずは **LMM/GLMM** を使います。duration や VOT のような正の連続量は、必要に応じて対数変換や Gamma / lognormal を検討します [@baayen2008crossed; @abramson2017]。
+**持続時間 / VOT / 平均 F0 / 平均 intensity**：1トークン1値に要約するなら、まずは token-level の混合効果モデルを使います。duration や VOT のような正の連続量は、必要に応じて対数変換した LMM、または Gamma / lognormal 系の混合モデルを検討します [@baayen2008crossed; @abramson2017]。
 
 **有声 / 無声ラベル**：各フレームや各区間を 0/1 で扱うなら、**ロジスティック混合モデル**が自然です。状態の切り替わり自体を分析したい場合は、**HMM** を使うと「どの状態からどの状態へ移りやすいか」まで扱えます。
 
-**トラジェクトリ（F0 / intensity / フォルマントの時間変化）**：時点をそろえて曲線を比較するなら、**GAM/GAMM**（`mgcv`）や**状態空間**（KFAS）が適します。例：`gam(F0 ~ s(time, by = condition) + s(time, speaker, bs='fs'), method='REML')` [@wieling2018gamm; @soskuthy2021gamm]。
+**トラジェクトリ（F0 / intensity / フォルマントの時間変化）**：時点をそろえて曲線を比較するなら、**GAM/GAMM**（`mgcv`）や**状態空間**（KFAS）が適します。例：`bam(F0_st ~ condition + s(time_norm, by = condition) + s(token_id, bs = "re") + s(speaker_id, bs = "re"), method = "fREML")` [@wieling2018gamm; @soskuthy2021gamm]。
 
 **縦断的発達研究**：学習者を月ごとに録音し、F0やフォルマントの変化を追跡する場合、各時点の音響特徴を集約した値は「マクロな時系列」になります。ここで前2章の ARIMA / STL / SSM が再び適用できます。
+
+判断の出発点は、モデル名ではなく **1行が何を表すか** と **目的変数の型** です。
+
+| データの形 | 目的変数 | 例 | 主なモデル | よくある取り違え |
+|---|---|---|---|---|
+| token table | 連続量 | `F1_mid_z`, `F2_mid_z`, `f0_st_within_speaker` | LMM | `time_norm` を入れようとする |
+| token table | 正の連続量 | `duration_ms`, `VOT_ms` | 対数 LMM, Gamma / lognormal mixed model | 正規 LMM の残差歪みを見ない |
+| token table | 二値 | correct/incorrect, voiced/unvoiced | logistic GLMM | 平均化して連続量として扱う |
+| trajectory table | 連続曲線 | `F2_z` over `time_norm` | GAMM | 同一 `token_id` の反復時点を独立とみなす |
+| frame / state table | 状態列 | voiced/unvoiced sequence | logistic GLMM, HMM | 状態遷移を単なる平均割合に潰す |
+| session-level table | 縦断集約値 | monthly mean F0, vowel-space area | LMM, GAMM, ARIMA / SSM | トークン内時間と録音時点を混同する |
+
+同じ研究でも、母音空間の全体差は token table、フォルマント遷移の形は trajectory table で見る、という使い分けが自然です。どちらを主分析にするかは、「最終的な母音カテゴリの位置」を知りたいのか、「そこへ向かう時間的な動き」を知りたいのかで決めます。
 
 ### 混合効果モデル（LMM）の最小例
 
 ```{r lmm_example}
 #| eval: true
-# 例：F1 ~ Vowel * Group + (1|Speaker) + (1|Item)
-if (exists("formant_tbl", inherits = FALSE) &&
-    inherits(formant_tbl, c("tbl_df", "tbl", "data.frame")) &&
-    requireNamespace("lme4", quietly = TRUE)) {
-  df <- formant_tbl |>
-    mutate(Speaker = 'spk001', Item = row_number(), Group = 'G1')  # 実際はメタデータと結合
+# model_token_table と同じ列名を持つ、実行可能なデモデータ
+if (requireNamespace("lme4", quietly = TRUE)) {
+  set.seed(1707)
 
-  fit_f1 <- lme4::lmer(F1 ~ Vowel * Group + (1|Speaker) + (1|Item), data = df)
+  lmm_demo <- tidyr::crossing(
+    speaker_id = factor(sprintf("S%02d", seq_len(12))),
+    item_id = factor(sprintf("I%02d", seq_len(8))),
+    condition = factor(c("Pre", "Post"), levels = c("Pre", "Post")),
+    label = factor(c("i", "e", "ae"), levels = c("i", "e", "ae"))
+  ) |>
+    mutate(
+      speaker_re = rnorm(n_distinct(speaker_id), 0, 0.35)[speaker_id],
+      item_re = rnorm(n_distinct(item_id), 0, 0.15)[item_id],
+      label_effect = case_when(
+        label == "i" ~ -0.45,
+        label == "e" ~ 0.00,
+        label == "ae" ~ 0.55
+      ),
+      condition_effect = if_else(condition == "Post", -0.12, 0),
+      F1_mid_z = label_effect + condition_effect + speaker_re + item_re +
+        rnorm(n(), 0, 0.30)
+    )
+
+  fit_f1 <- lme4::lmer(
+    F1_mid_z ~ condition * label + (1 | speaker_id) + (1 | item_id),
+    data = lmm_demo
+  )
   summary(fit_f1)
 } else {
-  message("Skip lmm_example: formant_tbl or lme4 not available")
+  message("Skip lmm_example: lme4 is not available")
 }
 ```
 
-この `LMM` の最小例では、出力のうち **固定効果の係数** と **乱効果の分散** をまず見ます。固定効果では `Vowel` や `Group` の係数の符号と大きさが、どちらの条件で `F1` が高いかを示します。乱効果では `Speaker` と `Item` の分散が、話者差と項目差をどれくらい吸収しているかを示します。教材としては、「平均差を出すだけではなく、話者差と項目差を同時に扱うのが LMM の役割だ」と理解できれば十分です。
+この `LMM` の最小例では、出力のうち **固定効果の係数** と **乱効果の分散** をまず見ます。固定効果では `condition` や `label` の係数の符号と大きさが、どちらの条件・母音で `F1_mid_z` が高いかを示します。乱効果では `speaker_id` と `item_id` の分散が、話者差と項目差をどれくらい吸収しているかを示します。実データでは、この `lmm_demo` を上で作った `model_token_table` に置き換えます。
 
 ### トラジェクトリ比較（GAMM）の最小例
 
 ```{r gamm_example}
 #| eval: true
-# F0曲線を time in [0,1] に正規化し、各トークンでサンプル（要事前整形）
-# df_track: columns = c(Speaker, Item, Condition, time, F0)
-if (exists("df_track", inherits = FALSE) &&
-    inherits(df_track, c("tbl_df", "tbl", "data.frame")) &&
-    requireNamespace("mgcv", quietly = TRUE)) {
-  fit_gamm <- mgcv::gam(F0 ~ s(time, by = Condition) + s(time, Speaker, bs='fs'),
-                        data = df_track, method = 'REML')
-  summary(fit_gamm)
-  plot(fit_gamm, pages = 1)
-} else {
-  message("Skip gamm_example: df_track or mgcv not available")
-}
+# Praat / rPraat から作る trajectory table と同じ列構造を持つデモデータ
+set.seed(1703)
+n_speakers <- 12
+n_items <- 8
+time_grid <- seq(0, 1, length.out = 31)
+
+df_track <- tidyr::crossing(
+  speaker_id = factor(sprintf("S%02d", seq_len(n_speakers))),
+  item_id = factor(sprintf("I%02d", seq_len(n_items))),
+  condition = factor(c("Pre", "Post"), levels = c("Pre", "Post")),
+  time_norm = time_grid
+) |>
+  mutate(
+    token_id = factor(paste(speaker_id, item_id, condition, sep = "_")),
+    speaker_re = rnorm(n_speakers, 0, 0.22)[speaker_id],
+    item_re = rnorm(n_items, 0, 0.12)[item_id],
+    pre_curve = -0.55 + 0.45 * time_norm + 0.15 * sin(pi * time_norm),
+    post_shift = 0.35 * exp(-((time_norm - 0.55) / 0.22)^2),
+    F2_z = pre_curve +
+      if_else(condition == "Post", post_shift, 0) +
+      speaker_re + item_re + rnorm(n(), 0, 0.16)
+  )
+
+fit_gamm <- mgcv::bam(
+  F2_z ~ condition +
+    s(time_norm, by = condition, k = 8) +
+    s(token_id, bs = "re") +
+    s(speaker_id, bs = "re") +
+    s(item_id, bs = "re"),
+  data = df_track,
+  method = "fREML"
+)
+
+pred_track <- tidyr::expand_grid(
+  time_norm = seq(0, 1, length.out = 101),
+  condition = factor(c("Pre", "Post"), levels = c("Pre", "Post")),
+  token_id = factor("S01_I01_Pre", levels = levels(df_track$token_id)),
+  speaker_id = factor("S01", levels = levels(df_track$speaker_id)),
+  item_id = factor("I01", levels = levels(df_track$item_id))
+)
+
+pred_gamm <- predict(
+  fit_gamm,
+  newdata = pred_track,
+  se.fit = TRUE,
+  exclude = c("s(token_id)", "s(speaker_id)", "s(item_id)")
+)
+
+pred_track <- pred_track |>
+  mutate(
+    fit = pred_gamm$fit,
+    lo = fit - 1.96 * pred_gamm$se.fit,
+    hi = fit + 1.96 * pred_gamm$se.fit
+  )
+
+df_track_summary <- df_track |>
+  group_by(condition, time_norm) |>
+  summarise(
+    mean_F2_z = mean(F2_z),
+    .groups = "drop"
+  )
+
+ggplot(pred_track, aes(x = time_norm, y = fit, color = condition, fill = condition)) +
+  geom_line(
+    data = df_track,
+    aes(x = time_norm, y = F2_z, group = token_id, color = condition),
+    inherit.aes = FALSE,
+    linewidth = 0.22,
+    alpha = 0.08
+  ) +
+  geom_ribbon(aes(ymin = lo, ymax = hi), alpha = 0.18, color = NA) +
+  geom_line(linewidth = 1) +
+  geom_point(
+    data = df_track_summary,
+    aes(y = mean_F2_z),
+    size = 1.3,
+    alpha = 0.65
+  ) +
+  labs(
+    title = "GAMM for a formant trajectory table",
+    subtitle = "Model predictions over normalized token time",
+    x = "Normalized time within token",
+    y = "F2 (speaker-normalized z score)",
+    color = NULL,
+    fill = NULL
+  ) +
+  theme_speech()
 ```
 
-この `GAMM` の最小例では、`summary()` の係数表よりも、**平滑項 `s(time, ...)` が条件ごとにどんな曲線を返すか** を重視して読みます。`plot(fit_gamm)` で 2 条件の曲線が時間のどこで分かれ、どこで重なるかを見ると、「平均値の差」ではなく「輪郭全体の差」を扱っていることが分かります。1トークン1値の `LMM` と違い、`GAMM` は **時間構造を潰さずに比較するためのモデル**だと理解してください。
+この `GAMM` の最小例では、`summary()` の係数表よりも、**平滑項 `s(time_norm, ...)` が条件ごとにどんな曲線を返すか** を重視して読みます。薄い線は個別トークンの軌跡、点は観測データに近い条件別平均、太い線と帯はモデル予測です。`s(token_id, bs = "re")` は、同じトークンから複数の時点が出ているクラスタ構造を表す最小指定です。ただし、これは主にトークンごとのランダム切片であり、残差自己相関やトークンごとの曲線形状の違いをすべて処理する指定ではありません。残差 ACF が残る場合は、AR(1) 構造、factor-smooth、差分曲線の確認などを第13b章の GAMM 診断と合わせて検討します。2 条件の曲線が時間のどこで分かれ、どこで重なるかを見ると、「平均値の差」ではなく「輪郭全体の差」を扱っていることが分かります。1トークン1値の `LMM` と違い、`GAMM` は **時間構造を潰さずに比較するためのモデル**だと理解してください。
+
+実データでは、この `df_track` を Praat / rPraat から作った trajectory table に置き換えます。F0 なら `F2_z` の代わりに半音変換・話者内中心化した `F0_st`、intensity ならセッション内で基準化した `intensity_z`、フォルマントなら `F1_z` / `F2_z` を使います。trajectory の行数は独立サンプル数ではありません。研究計画では、話者数、項目数、トークン数、除外率、自己相関を含めて第6章の検出力シミュレーションの発想で検討します。差分曲線や自己相関診断まで行う場合は、第13b章の GAMM 節と同じ手順で進めます。
 
 ------------------------------------------------------------------------
 
@@ -2494,26 +4089,957 @@ if (exists("df_track", inherits = FALSE) &&
 
 ### テンプレート③：音響時系列（worked example: 合成母音 /i/ /a/）
 
-> 合成母音データ（f0 = 120 Hz、サンプリングレート 16 kHz、モノラル 16 bit、持続時間 0.5 秒）を用いて F0 推定の精度を検証した。F0 は自己相関法（ACF）とケプストラム法の2手法で推定し、それぞれ /i/: ACF = [値] Hz / Cepstrum = [値] Hz、/a/: ACF = [値] Hz / Cepstrum = [値] Hz であった（真値 120 Hz）。両手法とも真値に近い推定を示し、母音の種類（フォルマント構造の違い）にかかわらず F0 推定が安定していることが確認された。
+> 合成母音データ（f0 = 120 Hz、サンプリングレート 16 kHz、モノラル 16 bit、持続時間 0.5 秒）を用いて F0 推定の精度を検証しました。F0 は自己相関法（ACF）とケプストラム法の2手法で推定し、それぞれ /i/: ACF = [値] Hz / Cepstrum = [値] Hz、/a/: ACF = [値] Hz / Cepstrum = [値] Hz でした（真値 120 Hz）。両手法とも真値に近い推定を示し、母音の種類（フォルマント構造の違い）にかかわらず F0 推定が安定していることが確認されました。
 >
-> スペクトル分析では、/i/ の F1 ≈ 300 Hz / F2 ≈ 2200 Hz、/a/ の F1 ≈ 730 Hz / F2 ≈ 1100 Hz の近傍にスペクトル包絡のピークが確認され、合成パラメータと一致した。
+> スペクトル分析では、/i/ の F1 ≈ 300 Hz / F2 ≈ 2200 Hz、/a/ の F1 ≈ 730 Hz / F2 ≈ 1100 Hz の近傍にスペクトル包絡のピークが確認され、合成パラメータと一致しました。
 >
-> **実データへの適用時の注意**：実録音データでは話者間変動（性別・年齢による声道長の違い）があるため、Lobanov法等による正規化が必要。統計モデルは LMM（F1 ~ Vowel * Group + (1|Speaker) + (1|Item)）を基本とし、F0トラジェクトリの比較には GAMM を使用する。
+> **実データへの適用時の注意**：実録音データでは、まず manifest、batch log、data contract を残し、`token_table` と `trajectory_table` を分けて保存します。話者間変動（性別・年齢による声道長の違い）があるため、フォルマントは話者内正規化の条件を確認します。1トークン1値の母音差は LMM（例: `F1_mid_z ~ condition * label + (1 | speaker_id) + (1 | item_id)`）、軌跡差は GAMM（例: `F2_z ~ condition + s(time_norm, by = condition) + s(token_id, bs = "re") + s(speaker_id, bs = "re") + s(item_id, bs = "re")`）で扱います。
+
+### テンプレート④：実録音データの前処理とモデル引き渡し
+
+> 録音ファイル、TextGrid、Pitch、Formant、IntensityTier の対応は file manifest として管理し、各録音について処理成否を batch log に記録しました。分析前に data contract を用いて、必須列、`token_id` の一意性、duration の正値、F0・F1・F2 の広い妥当範囲、欠測率を確認しました。`token_id` は `recording_id + tier + interval_index` を含む形で作成し、縦断データでは `session` も保持しました。
+>
+> 1トークン1値の分析では `model_token_table` を使用し、duration は対数化、F0 は無声・範囲外の値を欠測化してから半音変換し、フォルマントは話者内正規化しました。軌跡分析では `model_trajectory_table` を使用し、`time_norm` によりトークン内時間を 0–1 に整列しました。ただし、`time_norm` は絶対持続時間の差を取り除くため、duration は別モデルで検討しました。
+>
+> LMM では話者と項目の乱効果を含め、同一話者内または同一項目内で変動する `condition`、`session`、`label` はランダム傾き候補として検討しました。GAMM では条件別 smooth、`s(token_id, bs = "re")`、話者・項目のランダム効果を含め、残差自己相関と smooth の十分性を診断しました。trajectory の行数は独立サンプル数ではないため、設計段階では話者数、項目数、トークン数、除外率、自己相関を含めたシミュレーションで検出力を確認しました。
+
+### テンプレート⑤：Praat / rPraat の設定と感度分析
+
+> 音響特徴量は Praat [version] / rPraat [version] を用いて抽出しました。TextGrid では [tier 名] の interval を分析単位とし、空文字ラベル、[除外ラベル]、持続時間 [閾値] ms 未満の区間を除外しました。各 interval には `recording_id`、`tier`、`interval_index` を組み合わせた `token_id` を付与し、同一録音内および録音間で ID が衝突しないことを確認しました。
+>
+> F0 は pitch floor = [値] Hz、pitch ceiling = [値] Hz、time step = [値] s で推定しました。0 Hz、範囲外の値、明らかな halving / doubling は欠測として扱い、F0 の代表値は [median / mean / contour] として要約しました。群間比較では Hz のままではなく、[semitone 変換 / 話者内中心化] を行いました。
+>
+> Formant は `To Formant (burg)` を用い、maximum formant = [値] Hz、number of formants = [値]、window length = [値] s、pre-emphasis from = [値] Hz としました。主分析に加えて maximum formant を [低い設定]、[高い設定] に変更した感度分析を行い、F1/F2 の分布、母音空間図、主要モデル係数を比較しました。設定変更によって結論が変わる場合は、設定別の推定値を本文または補足資料に示し、該当話者・母音のスペクトログラムを確認しました。
+>
+> 最終的な統計モデルには、`token_table` / `trajectory_table` のうち [主分析表] を使用しました。`trajectory_table` を用いる場合、同一トークン内の複数時点は独立観測ではないため、`token_id`、`speaker_id`、`item_id` に対応するランダム効果または smooth を含め、残差自己相関を点検しました。
 
 #### 査読者チェックリスト（音響時系列）
 
-- [ ] 録音条件（サンプリングレート、ビット深度、マイク、環境）を報告したか
-- [ ] クリッピング・SNR のチェックを行ったか
-- [ ] F0 推定の `fmin` / `fmax` パラメータを話者の範囲に合わせたか
-- [ ] フォルマント推定法（LPC / Praat）と設定を明記したか
-- [ ] 複数話者の比較では正規化（Lobanov等）を実施したか
-- [ ] 統計モデルに話者・項目の乱効果を含めたか
-- [ ] 母音空間図（F1–F2）を提示したか
+- [ ] 録音条件（サンプリングレート、ビット深度、マイク、環境）を報告しましたか
+- [ ] クリッピング・SNR のチェックを行いましたか
+- [ ] file manifest と batch log に、分析対象ファイルと失敗理由を残しましたか
+- [ ] F0 推定の `fmin` / `fmax` パラメータを話者の範囲に合わせましたか
+- [ ] F0 の halving / doubling / 不連続を図で確認し、処理方針を報告しましたか
+- [ ] フォルマント推定法（LPC / Praat）と設定を明記しましたか
+- [ ] formant ceiling、window length、pre-emphasis の設定を報告しましたか
+- [ ] F1/F2 の範囲、フレーム間ジャンプ、F1/F2 の接近を点検しましたか
+- [ ] Praat settings registry と感度分析の結果を本文または補足資料に示しましたか
+- [ ] 設定変更で結論が変わる場合の扱いを、スペクトログラムと軌跡図も含めて説明しましたか
+- [ ] 除外・再推定・欠測化のルールを、統計モデルの前に決めましたか
+- [ ] data contract で必須列、`token_id` の一意性、範囲チェック、欠測率を確認しましたか
+- [ ] `token_id` が録音・tier・interval をまたいで衝突しない形で定義されていますか
+- [ ] `token_table` と `trajectory_table` を分け、どちらを主分析に使うか説明しましたか
+- [ ] `time_norm` と縦断の `session` / `Time` を混同していませんか
+- [ ] 複数話者の比較では正規化（Lobanov等）を実施しましたか
+- [ ] 統計モデルに話者・項目の乱効果を含め、必要なランダム傾き候補を検討しましたか
+- [ ] 母音空間図（F1–F2）を提示しましたか
+- [ ] 軌跡データでは、個別トークンの線、条件別 smooth、残差自己相関の少なくとも一部を確認しましたか
+- [ ] 検出力やサンプルサイズを、単なる行数ではなく話者数・項目数・トークン数・除外率・自己相関を含めて検討しましたか
 
 ### 次に読む章
 
 - **音響特徴量を混合モデルで分析したい**: 第5章 `一般化線形モデル・一般化加法モデル` と第6章 `混合効果モデル：2値ロジスティック回帰分析` のモデル化の考え方を参照してください。
 - **縦断的に音響変化を追いたい**: `時系列データ分析（基礎）` と `時系列データ分析（発展）` に戻ると、学習者の音響特徴を週次・月次で追う設計につなげやすくなります。
+
+## Appendix: gTTSで教材用音声を作成する {#sec-gtts-appendix}
+
+この Appendix では、Python の `gTTS` を使って短い例文音声を作成し、Praat / rPraat の練習用ファイルとして利用する手順を示します。目的は、TextGrid 注釈、manifest 作成、R への読み込みを試すための**教材用音声**をすばやく用意することです。
+
+`gTTS` は Google Translate TTS に接続して音声を生成し、MP3 データを書き出す Python ライブラリです [@gttsDocs]。ネットワーク接続が必要であり、音声合成の仕様や声質を研究者側で完全には固定できません。したがって、F0、フォルマント、持続時間の厳密な妥当性検証や、音響モデルの ground truth としては扱いません。主分析では、実録音データ、または本章前半のようなパラメータを明示した合成波形を使います。
+
+この Appendix は主経路ではなく、TextGrid 注釈と manifest 管理を手元で試すための補助演習です。終わったら、[TextGrid と F1/F2 抽出](#sec-textgrid-template)、[token table と trajectory table](#sec-textgrid-template)、[補助例で扱うモデルの位置づけ](#sec-textgrid-template)、[報告テンプレート](#sec-report-templates) に戻って、実録音データの分析設計へ接続します。
+
+### 依存関係と実行方針
+
+| 目的 | 必要なもの | 注意 |
+|---|---|---|
+| MP3 音声を作る | `gTTS` | ネットワーク接続が必要 |
+| MP3 を WAV に変換する | `pydub` と `ffmpeg` | Praat / `tuneR` で扱いやすい 16 kHz mono WAV に変換する |
+| 公開レンダー | 何も実行しない | 下の Python チャンクは `eval: false` |
+| 手元で実行 | `RENDER_GTTS=true` | ローカルにファイルを生成する意思を明示する |
+
+インストール例は次の通りです。これは1回だけ手元の Python 環境で実行します。
+
+```{python}
+#| label: gtts_install
+#| eval: false
+
+# python3 -m pip install gTTS pydub
+# brew install ffmpeg        # macOS の例
+```
+
+### 例文音声を MP3 として保存します
+
+次のチャンクは、短い英語例文を `data/audio_gtts/` に MP3 として保存し、同時に manifest を作ります。公開レンダーでは実行しません。手元で実行する場合は、ターミナルで `RENDER_GTTS=true` を設定してからチャンクを実行します。
+
+```{python}
+#| label: gtts_create_mp3
+#| eval: false
+
+import csv
+import datetime as dt
+import importlib.metadata as metadata
+import os
+from pathlib import Path
+
+from gtts import gTTS
+
+if os.environ.get("RENDER_GTTS", "false").lower() != "true":
+    raise SystemExit("Set RENDER_GTTS=true to create gTTS audio files.")
+
+out_dir = Path("data/audio_gtts")
+out_dir.mkdir(parents=True, exist_ok=True)
+
+gtts_version = metadata.version("gTTS")
+generated_at_utc = dt.datetime.now(dt.timezone.utc).isoformat()
+
+records = [
+    {
+        "recording_id": "gtts_en_sentence_001",
+        "speaker_id": "gtts_en",
+        "item_id": "sentence_001",
+        "condition": "demo",
+        "session": "demo_session",
+        "language": "en",
+        "tts_engine": "gTTS",
+        "tts_version": gtts_version,
+        "tts_slow": False,
+        "generated_at_utc": generated_at_utc,
+        "text": "The learner read the sentence clearly.",
+    },
+    {
+        "recording_id": "gtts_en_sentence_002",
+        "speaker_id": "gtts_en",
+        "item_id": "sentence_002",
+        "condition": "demo",
+        "session": "demo_session",
+        "language": "en",
+        "tts_engine": "gTTS",
+        "tts_version": gtts_version,
+        "tts_slow": False,
+        "generated_at_utc": generated_at_utc,
+        "text": "This file is only for annotation practice.",
+    },
+]
+
+for record in records:
+    mp3_path = out_dir / f"{record['recording_id']}.mp3"
+    tts = gTTS(text=record["text"], lang=record["language"], slow=False)
+    tts.save(str(mp3_path))
+    record["mp3_path"] = str(mp3_path)
+
+manifest_path = out_dir / "gtts_manifest.csv"
+with manifest_path.open("w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=records[0].keys())
+    writer.writeheader()
+    writer.writerows(records)
+
+print(f"Saved {len(records)} MP3 files and {manifest_path}")
+```
+
+この manifest は、後で `recording_id`、`speaker_id`、`item_id`、`condition` を R 側で結合するときの入口になります。実録音データでは、ここに録音日時、話者属性、タスク、セッション、除外メモなどを足します。合成音声でも `tts_engine`、`tts_version`、`generated_at_utc` を残しておくと、後で「同じ文なのに音声が変わった」可能性を切り分けやすくなります。
+
+### Praat用に WAV へ変換します
+
+Praat や `tuneR::readWave()` で扱いやすくするには、MP3 を 16 kHz mono WAV に変換しておくと便利です。`pydub` の `AudioSegment` は MP3 の読み込みや WAV への書き出しを簡潔に扱えます [@pydubDocs]。内部では `ffmpeg` を使うため、ローカル環境に `ffmpeg` が入っているかも確認します [@ffmpegDocs]。
+
+```{python}
+#| label: gtts_convert_wav
+#| eval: false
+
+import csv
+import os
+from pathlib import Path
+
+from pydub import AudioSegment
+
+if os.environ.get("RENDER_GTTS", "false").lower() != "true":
+    raise SystemExit("Set RENDER_GTTS=true to convert gTTS audio files.")
+
+out_dir = Path("data/audio_gtts")
+manifest_path = out_dir / "gtts_manifest.csv"
+
+with manifest_path.open(newline="", encoding="utf-8") as f:
+    records = list(csv.DictReader(f))
+
+for record in records:
+    mp3_path = Path(record["mp3_path"])
+    wav_path = mp3_path.with_suffix(".wav")
+
+    audio = AudioSegment.from_mp3(mp3_path)
+    audio = audio.set_channels(1).set_frame_rate(16000)
+    audio.export(wav_path, format="wav")
+    record["wav_path"] = str(wav_path)
+    record["sample_rate_hz"] = 16000
+    record["channels"] = 1
+    record["duration_ms"] = len(audio)
+    record["sample_width_bytes"] = audio.sample_width
+
+with manifest_path.open("w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=records[0].keys())
+    writer.writeheader()
+    writer.writerows(records)
+
+print(f"Converted {len(records)} files to WAV")
+```
+
+### manifest を R 側で確認します
+
+Python で生成した manifest は、そのまま R の点検表として読み込めます。公開レンダーではローカルファイルを読み込まず、同じ列構造を持つデモ表を表示します。手元で gTTS ファイルまで作成した場合だけ、`RENDER_GTTS=true` を設定して実ファイルを読みます。
+
+```{r gtts_manifest_preview}
+#| eval: true
+
+gtts_manifest_path <- file.path("data", "audio_gtts", "gtts_manifest.csv")
+gtts_manifest_enabled <- identical(tolower(Sys.getenv("RENDER_GTTS", "false")), "true")
+
+gtts_manifest_demo <- tibble::tibble(
+  recording_id = c("gtts_en_sentence_001", "gtts_en_sentence_002"),
+  speaker_id = "gtts_en",
+  item_id = c("sentence_001", "sentence_002"),
+  condition = "demo",
+  session = "demo_session",
+  language = "en",
+  tts_engine = "gTTS",
+  tts_version = "recorded-in-manifest",
+  generated_at_utc = "recorded-in-manifest",
+  text = c(
+    "The learner read the sentence clearly.",
+    "This file is only for annotation practice."
+  ),
+  wav_path = file.path(
+    "data", "audio_gtts",
+    c("gtts_en_sentence_001.wav", "gtts_en_sentence_002.wav")
+  ),
+  sample_rate_hz = 16000,
+  channels = 1,
+  duration_ms = NA_real_
+)
+
+gtts_manifest_for_r <- if (gtts_manifest_enabled && file.exists(gtts_manifest_path)) {
+  readr::read_csv(gtts_manifest_path, show_col_types = FALSE)
+} else {
+  gtts_manifest_demo
+}
+
+render_inspection_table(
+  gtts_manifest_for_r,
+  caption = "gTTS 教材用音声の manifest 例",
+  page_length = 5,
+  static_rows = 5
+)
+```
+
+この表があれば、TextGrid 注釈後に `textgrid_path` を足すだけで、本章の実データ連携節と同じ発想で `token_table` を作れます。特に `recording_id` は、音声ファイル、TextGrid、Praat で抽出した Pitch / Formant / Intensity の表を結合するキーになります。
+
+### TextGrid 注釈へ渡す単位
+
+教材用音声では、すべての音を細かく注釈する必要はありません。目的に合わせて tier を絞る方が、後続の統計表との対応が明確になります。
+
+| 練習目的 | TextGrid tier | ラベル例 | R で作る列 |
+|---|---|---|---|
+| 語区間の duration | `word` | `learner`, `sentence`, `clearly` | `word`, `duration_ms`, `token_id` |
+| 母音の midpoint F1/F2 | `vowel` | `i`, `e`, `a` | `label`, `F1_mid_hz`, `F2_mid_hz` |
+| ポーズ・流暢性 | `pause` | `silent`, `filled_pause` | `pause_type`, `duration_ms` |
+| 軌跡分析の練習 | `segment` | `target_vowel`, `transition` | `time_norm`, `F1_z`, `F2_z` |
+
+ここでの `token_id` は、少なくとも `recording_id + tier + interval_index` から作ります。gTTS では話者が1種類に見えても、実録音データへ移行したときに同じ規則を使えるようにしておく方が安全です。
+
+### gTTS manifest から token_table までの最短例
+
+次のチャンクは、直前の `gtts_manifest_for_r` に TextGrid 注釈を結合し、`token_table` の最小形を作る例です。手元で gTTS 音声に TextGrid を付けた場合は、`RENDER_GTTS=true` かつ `textgrid_path` が存在すると実ファイルを読みます。公開レンダーでは、同じ列構造を持つデモ注釈を使います。
+
+```{r gtts_manifest_to_token_table}
+#| eval: true
+#| cache: false
+
+gtts_annotation_demo <- tibble::tibble(
+  recording_id = c(
+    "gtts_en_sentence_001", "gtts_en_sentence_001",
+    "gtts_en_sentence_002", "gtts_en_sentence_002"
+  ),
+  tier = "segment",
+  interval_index = c(1L, 2L, 1L, 2L),
+  label = c("target_vowel_1", "target_vowel_2", "target_vowel_1", "target_vowel_2"),
+  t1 = c(0.18, 1.05, 0.20, 1.15),
+  t2 = c(0.62, 1.48, 0.78, 1.68)
+)
+
+read_interval_tier <- function(textgrid_path, recording_id, tier_name = "segment") {
+  tg <- rPraat::tg.read(textgrid_path)
+  available_tiers <- names(tg)
+
+  if (!tier_name %in% available_tiers) {
+    stop(
+      "Tier '", tier_name, "' was not found in ",
+      textgrid_path,
+      ". Available tiers: ",
+      paste(available_tiers, collapse = ", "),
+      call. = FALSE
+    )
+  }
+
+  intervals <- tg[[tier_name]]
+
+  if (!all(c("t1", "t2", "label") %in% names(intervals))) {
+    stop(
+      "Tier '", tier_name, "' is not an interval tier with t1/t2/label columns.",
+      call. = FALSE
+    )
+  }
+
+  tibble::tibble(
+    recording_id = recording_id,
+    tier = tier_name,
+    interval_index = seq_along(intervals$label),
+    label = intervals$label,
+    t1 = intervals$t1,
+    t2 = intervals$t2
+  ) |>
+    dplyr::filter(!is.na(label), nzchar(label))
+}
+
+gtts_manifest_for_tokens <- if (!"wav_path" %in% names(gtts_manifest_for_r) &&
+    "mp3_path" %in% names(gtts_manifest_for_r)) {
+  gtts_manifest_for_r |>
+    dplyr::mutate(wav_path = sub("\\.mp3$", ".wav", mp3_path))
+} else {
+  gtts_manifest_for_r
+}
+
+gtts_manifest_with_textgrid <- if ("textgrid_path" %in% names(gtts_manifest_for_tokens)) {
+  gtts_manifest_for_tokens |>
+    dplyr::mutate(
+      textgrid_path = dplyr::coalesce(
+        as.character(textgrid_path),
+        sub("\\.wav$", ".TextGrid", wav_path)
+      )
+    )
+} else {
+  gtts_manifest_for_tokens |>
+    dplyr::mutate(
+      textgrid_path = sub("\\.wav$", ".TextGrid", wav_path)
+    )
+}
+
+gtts_can_read_textgrids <- gtts_manifest_enabled &&
+  all(file.exists(gtts_manifest_with_textgrid$textgrid_path))
+
+gtts_annotation_tbl <- if (gtts_can_read_textgrids) {
+  purrr::map2_dfr(
+    gtts_manifest_with_textgrid$textgrid_path,
+    gtts_manifest_with_textgrid$recording_id,
+    read_interval_tier,
+    tier_name = "segment"
+  )
+} else {
+  gtts_annotation_demo
+}
+
+gtts_token_table <- gtts_annotation_tbl |>
+  dplyr::left_join(
+    gtts_manifest_with_textgrid |>
+      dplyr::select(dplyr::any_of(c(
+        "recording_id", "speaker_id", "item_id", "condition",
+        "session", "language", "tts_engine", "wav_path", "textgrid_path"
+      ))),
+    by = "recording_id"
+  ) |>
+  dplyr::mutate(
+    duration_ms = 1000 * (t2 - t1),
+    token_id = paste(recording_id, tier, interval_index, sep = "_")
+  ) |>
+  dplyr::select(
+    dplyr::any_of(c(
+      "recording_id", "speaker_id", "item_id", "condition", "session", "tier",
+      "interval_index", "token_id", "label", "t1", "t2", "duration_ms",
+      "wav_path", "textgrid_path"
+    ))
+  )
+
+render_inspection_table(
+  gtts_token_table,
+  caption = "gTTS manifest と TextGrid 注釈から作る token_table の最小例",
+  page_length = 8,
+  static_rows = 8,
+  digits = 3
+)
+```
+
+この段階では、`duration_ms` は TextGrid 境界から計算できます。一方、F0、intensity、F1/F2 はまだ入っていません。次に Praat で `.Pitch`、`.Formant`、`.IntensityTier` を保存し、`recording_id` と `token_id` をキーにして結合すると、[実データ連携](#sec-textgrid-template) で作った `token_table` / `trajectory_table` と同じ形に近づきます。語区間の duration だけを練習するなら `word` tier で十分ですが、F1/F2 の midpoint を扱う場合は、母音や遷移区間を切った `vowel` または `segment` tier を使います。
+
+### Praat 側で保存する音響オブジェクト
+
+`gtts_token_table` に音響値を足すには、WAV と同じ `recording_id` で `.Pitch`、`.Formant`、`.IntensityTier` を保存しておきます。Praat の `Sound: To Pitch...` は `Pitch` オブジェクト、`Sound: To Formant (burg)...` は `Formant` オブジェクト、`Sound: To Intensity...` は `Intensity` オブジェクトを作ります [@praatToPitch; @praatToFormantBurg; @praatToIntensity]。`rPraat::it.read()` で読みたい場合は、Praat スクリプトでは Sound から `IntensityTier` を直接作るか、Praat GUI で `Intensity` を `IntensityTier` へ変換して保存します。Praat manual では、`Intensity: To IntensityTier` は各 intensity sample を点としてコピーする変換として説明されています [@praatIntensityToIntensityTier]。
+
+```{r gtts_expected_praat_objects}
+#| eval: true
+
+gtts_praat_targets <- gtts_manifest_with_textgrid |>
+  dplyr::transmute(
+    recording_id,
+    wav_path,
+    textgrid_path,
+    pitch_path = sub("\\.wav$", ".Pitch", wav_path),
+    formant_path = sub("\\.wav$", ".Formant", wav_path),
+    intensity_path = sub("\\.wav$", ".IntensityTier", wav_path)
+  )
+
+render_inspection_table(
+  gtts_praat_targets,
+  caption = "gTTS 音声から Praat 側で保存しておくファイル",
+  page_length = 5,
+  static_rows = 5
+)
+```
+
+単一ファイルで手順を確認するなら、Praat に次のスクリプトを貼り付け、ファイルパスと設定値を手元の音声に合わせて変更します。これは gTTS 用の練習テンプレートです。実録音では、話者群・年齢・性別・声質・録音条件に合わせて `pitch_floor_hz`、`pitch_ceiling_hz`、`max_formant_hz`、`window_length_s` を決め、方法節に報告します。
+
+```{.praat}
+# Save Pitch, Formant, and IntensityTier for one WAV file.
+# Copy this into Praat and adjust paths/settings before running.
+
+form Save Praat objects for one WAV
+  sentence wav_file data/audio_gtts/gtts_en_sentence_001.wav
+  sentence pitch_file data/audio_gtts/gtts_en_sentence_001.Pitch
+  sentence formant_file data/audio_gtts/gtts_en_sentence_001.Formant
+  sentence intensity_tier_file data/audio_gtts/gtts_en_sentence_001.IntensityTier
+  real time_step_s 0.0
+  positive pitch_floor_hz 75
+  positive pitch_ceiling_hz 500
+  positive max_number_of_formants 5
+  positive max_formant_hz 5500
+  positive window_length_s 0.025
+  positive pre_emphasis_from_hz 50
+endform
+
+Read from file: wav_file$
+sound_id = selected("Sound")
+
+selectObject: sound_id
+To Pitch: time_step_s, pitch_floor_hz, pitch_ceiling_hz
+Save as text file: pitch_file$
+Remove
+
+selectObject: sound_id
+To Formant (burg): time_step_s, max_number_of_formants, max_formant_hz, window_length_s, pre_emphasis_from_hz
+Save as text file: formant_file$
+Remove
+
+selectObject: sound_id
+To IntensityTier: pitch_floor_hz, time_step_s, "yes"
+Save as text file: intensity_tier_file$
+Remove
+
+selectObject: sound_id
+Remove
+```
+
+複数ファイルへ拡張する場合は、上の処理を manifest の各 `wav_path` に対して繰り返します。ただし、バッチ化する前に2〜3ファイルを Praat GUI で開き、Pitch track、Formant track、Intensity contour が想定した区間を追っているかを確認します。特に formant ceiling と pitch range は、処理を自動化するほど誤設定に気づきにくくなります。
+
+### gTTS token_table に音響値を足す最短例
+
+次のチャンクでは、`gtts_token_table` に token-level の音響値を追加します。`RENDER_GTTS=true` で `.Pitch`、`.Formant`、`.IntensityTier` がそろっている場合は Praat オブジェクトを読み、そろっていない場合は同じ列構造のデモ値を使います。実データ分析では、ここで作る `f0_median`、`intensity_mean`、`F1_mid`、`F2_mid` が LMM / GLMM へ渡す入口になります。
+
+```{r gtts_token_table_add_acoustics}
+#| eval: true
+#| cache: false
+
+safe_mean <- function(x) {
+  if (length(x) == 0 || all(is.na(x))) {
+    NA_real_
+  } else {
+    mean(x, na.rm = TRUE)
+  }
+}
+
+safe_median <- function(x) {
+  if (length(x) == 0 || all(is.na(x))) {
+    NA_real_
+  } else {
+    median(x, na.rm = TRUE)
+  }
+}
+
+safe_voiced_prop <- function(x) {
+  if (length(x) == 0) {
+    NA_real_
+  } else {
+    mean(!is.na(x))
+  }
+}
+
+summarise_praat_acoustics <- function(token_id, t1, t2,
+                                      pitch_path, formant_path, intensity_path) {
+  mid <- (t1 + t2) / 2
+
+  pitch_obj <- rPraat::pitch.read(pitch_path)
+  pitch_arr <- rPraat::pitch.toArray(pitch_obj)
+  pitch_df <- tibble::tibble(
+    time = pitch_arr$t,
+    f0_hz = pitch_arr$frequencyArray[1, ]
+  ) |>
+    dplyr::mutate(f0_hz = dplyr::if_else(f0_hz <= 0, NA_real_, f0_hz))
+
+  f0_vals <- pitch_df |>
+    dplyr::filter(time >= t1, time <= t2) |>
+    dplyr::pull(f0_hz)
+
+  intensity_obj <- rPraat::it.read(intensity_path)
+  intensity_df <- tibble::tibble(
+    time = intensity_obj$t,
+    intensity_dB = intensity_obj$i
+  )
+
+  intensity_vals <- intensity_df |>
+    dplyr::filter(time >= t1, time <= t2) |>
+    dplyr::pull(intensity_dB)
+
+  formant_obj <- rPraat::formant.read(formant_path)
+  formant_arr <- rPraat::formant.toArray(formant_obj)
+  formant_index <- rPraat::formant.getPointIndexNearestTime(formant_obj, time = mid)
+
+  tibble::tibble(
+    token_id = token_id,
+    f0_median = safe_median(f0_vals),
+    f0_voiced_prop = safe_voiced_prop(f0_vals),
+    intensity_mean = safe_mean(intensity_vals),
+    F1_mid = formant_arr$frequencyArray[1, formant_index],
+    F2_mid = formant_arr$frequencyArray[2, formant_index],
+    acoustic_source = "Praat saved objects"
+  )
+}
+
+gtts_token_paths <- gtts_token_table |>
+  dplyr::mutate(
+    pitch_path = sub("\\.wav$", ".Pitch", wav_path),
+    formant_path = sub("\\.wav$", ".Formant", wav_path),
+    intensity_path = sub("\\.wav$", ".IntensityTier", wav_path)
+  )
+
+gtts_can_read_acoustics <- gtts_manifest_enabled &&
+  all(file.exists(gtts_token_paths$pitch_path)) &&
+  all(file.exists(gtts_token_paths$formant_path)) &&
+  all(file.exists(gtts_token_paths$intensity_path))
+
+gtts_acoustic_values <- if (gtts_can_read_acoustics) {
+  purrr::pmap_dfr(
+    gtts_token_paths |>
+      dplyr::select(token_id, t1, t2, pitch_path, formant_path, intensity_path),
+    summarise_praat_acoustics
+  )
+} else {
+  set.seed(1720)
+
+  gtts_token_paths |>
+    dplyr::transmute(
+      token_id,
+      f0_median = 178 + 4 * dplyr::row_number() + rnorm(dplyr::n(), 0, 1.5),
+      f0_voiced_prop = pmin(1, pmax(0, 0.92 + rnorm(dplyr::n(), 0, 0.025))),
+      intensity_mean = 66 + 0.8 * dplyr::row_number() + rnorm(dplyr::n(), 0, 0.4),
+      F1_mid = 520 + 25 * dplyr::row_number() + rnorm(dplyr::n(), 0, 8),
+      F2_mid = 1900 - 45 * dplyr::row_number() + rnorm(dplyr::n(), 0, 18),
+      acoustic_source = "demo values"
+    )
+}
+
+gtts_token_table_acoustic <- gtts_token_paths |>
+  dplyr::left_join(gtts_acoustic_values, by = "token_id") |>
+  dplyr::mutate(
+    f0_st_100 = dplyr::case_when(
+      is.finite(f0_median) & f0_median > 0 ~ 12 * log2(f0_median / 100),
+      TRUE ~ NA_real_
+    )
+  )
+
+gtts_token_table_acoustic |>
+  dplyr::select(
+    recording_id, token_id, label, duration_ms,
+    f0_median, f0_voiced_prop, intensity_mean,
+    F1_mid, F2_mid, f0_st_100, acoustic_source
+  ) |>
+  render_inspection_table(
+    caption = "gTTS token_table に token-level 音響値を足した例",
+    page_length = 8,
+    static_rows = 8,
+    digits = 2
+  )
+```
+
+`acoustic_source` が `"demo values"` の行は、列の意味と結合手順を確認するための値です。`.Pitch`、`.Formant`、`.IntensityTier` を実際に保存して読み込んだ場合でも、gTTS 音声の F0 やフォルマントを学習者音声・母語話者音声・実録音条件の代替として解釈してはいけません。ここで確認したいのは、**Praat で保存した音響オブジェクトを、TextGrid 注釈から作った `token_id` に沿って結合できるか**です。
+
+### gTTS trajectory_table と点検図
+
+token-level の表は LMM / GLMM へ渡しやすい一方で、F0 やフォルマントの輪郭を見たい場合は、区間内の複数時点を残した `trajectory_table` が必要です。次のチャンクでは、`gtts_token_table_acoustic` から `time_norm` を持つ trajectory table を作ります。`.Pitch`、`.Formant`、`.IntensityTier` が存在する場合は Praat オブジェクトから時系列値を取り、存在しない場合は同じ列構造のデモ曲線を作ります。
+
+```{r gtts_trajectory_table}
+#| eval: true
+#| cache: false
+
+interpolate_numeric <- function(time, value, xout) {
+  valid <- is.finite(time) & is.finite(value)
+
+  if (sum(valid) < 2) {
+    return(rep(NA_real_, length(xout)))
+  }
+
+  stats::approx(
+    x = time[valid],
+    y = value[valid],
+    xout = xout,
+    rule = 2,
+    ties = "ordered"
+  )$y
+}
+
+interpolate_f0 <- function(time, value, xout, max_gap_s = 0.03) {
+  valid <- is.finite(time) & is.finite(value)
+
+  if (sum(valid) < 2) {
+    return(rep(NA_real_, length(xout)))
+  }
+
+  time_valid <- time[valid]
+  value_valid <- value[valid]
+
+  interp <- stats::approx(
+    x = time_valid,
+    y = value_valid,
+    xout = xout,
+    rule = 1,
+    ties = "ordered"
+  )$y
+
+  nearest_distance <- vapply(
+    xout,
+    \(current_time) min(abs(time_valid - current_time)),
+    numeric(1)
+  )
+
+  dplyr::if_else(nearest_distance <= max_gap_s, interp, NA_real_)
+}
+
+make_praat_trajectory <- function(recording_id, speaker_id, item_id, condition,
+                                  tier, token_id, label, t1, t2, duration_ms,
+                                  pitch_path, formant_path, intensity_path,
+                                  n_points = 25) {
+  time_sec <- seq(t1, t2, length.out = n_points)
+  time_norm <- (time_sec - t1) / (t2 - t1)
+
+  pitch_obj <- rPraat::pitch.read(pitch_path)
+  pitch_arr <- rPraat::pitch.toArray(pitch_obj)
+  pitch_df <- tibble::tibble(
+    time = pitch_arr$t,
+    f0_hz = pitch_arr$frequencyArray[1, ]
+  ) |>
+    dplyr::mutate(f0_hz = dplyr::if_else(f0_hz <= 0, NA_real_, f0_hz))
+
+  intensity_obj <- rPraat::it.read(intensity_path)
+  intensity_df <- tibble::tibble(
+    time = intensity_obj$t,
+    intensity_dB = intensity_obj$i
+  )
+
+  formant_obj <- rPraat::formant.read(formant_path)
+  formant_arr <- rPraat::formant.toArray(formant_obj)
+
+  formant_values <- purrr::map_dfr(time_sec, function(current_time) {
+    idx <- rPraat::formant.getPointIndexNearestTime(formant_obj, time = current_time)
+    tibble::tibble(
+      F1 = formant_arr$frequencyArray[1, idx],
+      F2 = formant_arr$frequencyArray[2, idx]
+    )
+  })
+
+  tibble::tibble(
+    recording_id = recording_id,
+    speaker_id = speaker_id,
+    item_id = item_id,
+    condition = condition,
+    tier = tier,
+    token_id = token_id,
+    label = label,
+    time_sec = time_sec,
+    time_norm = time_norm,
+    f0_hz = interpolate_f0(pitch_df$time, pitch_df$f0_hz, time_sec),
+    intensity_dB = interpolate_numeric(
+      intensity_df$time,
+      intensity_df$intensity_dB,
+      time_sec
+    ),
+    F1 = formant_values$F1,
+    F2 = formant_values$F2,
+    trajectory_source = "Praat saved objects"
+  )
+}
+
+make_demo_trajectory <- function(recording_id, speaker_id, item_id, condition,
+                                 tier, token_id, label, t1, t2, duration_ms,
+                                 f0_median, intensity_mean, F1_mid, F2_mid,
+                                 token_order, n_points = 25) {
+  time_sec <- seq(t1, t2, length.out = n_points)
+  time_norm <- (time_sec - t1) / (t2 - t1)
+  token_shift <- token_order - mean(seq_len(nrow(gtts_token_table_acoustic)))
+
+  tibble::tibble(
+    recording_id = recording_id,
+    speaker_id = speaker_id,
+    item_id = item_id,
+    condition = condition,
+    tier = tier,
+    token_id = token_id,
+    label = label,
+    time_sec = time_sec,
+    time_norm = time_norm,
+    f0_hz = f0_median + 3.5 * sin(pi * time_norm) + token_shift,
+    intensity_dB = intensity_mean + 1.8 * sin(pi * time_norm),
+    F1 = F1_mid + 28 * (time_norm - 0.5) + 12 * sin(pi * time_norm),
+    F2 = F2_mid - 55 * (time_norm - 0.5) + 20 * cos(pi * time_norm),
+    trajectory_source = "demo values"
+  )
+}
+
+gtts_trajectory_table <- if (gtts_can_read_acoustics) {
+  purrr::pmap_dfr(
+    gtts_token_paths |>
+      dplyr::select(
+        recording_id, speaker_id, item_id, condition,
+        tier, token_id, label, t1, t2, duration_ms,
+        pitch_path, formant_path, intensity_path
+      ),
+    make_praat_trajectory
+  )
+} else {
+  gtts_token_table_acoustic |>
+    dplyr::mutate(token_order = dplyr::row_number()) |>
+    dplyr::select(
+      recording_id, speaker_id, item_id, condition,
+      tier, token_id, label, t1, t2, duration_ms,
+      f0_median, intensity_mean, F1_mid, F2_mid, token_order
+    ) |>
+    purrr::pmap_dfr(make_demo_trajectory)
+}
+
+gtts_trajectory_table |>
+  dplyr::group_by(token_id) |>
+  dplyr::slice(c(1, ceiling(dplyr::n() / 2), dplyr::n())) |>
+  dplyr::ungroup() |>
+  dplyr::select(
+    recording_id, token_id, label, time_norm,
+    f0_hz, intensity_dB, F1, F2, trajectory_source
+  ) |>
+  render_inspection_table(
+    caption = "gTTS trajectory_table の確認用抜粋",
+    page_length = 12,
+    static_rows = 12,
+    digits = 2
+  )
+```
+
+```{r gtts_trajectory_plot}
+#| eval: true
+#| fig-height: 5.5
+#| fig-width: 8
+
+gtts_trajectory_table |>
+  dplyr::select(token_id, label, time_norm, f0_hz, F1, F2) |>
+  tidyr::pivot_longer(
+    cols = c(f0_hz, F1, F2),
+    names_to = "measure",
+    values_to = "value"
+  ) |>
+  ggplot(aes(x = time_norm, y = value, group = token_id, color = label)) +
+  geom_line(alpha = 0.72, linewidth = 0.7) +
+  facet_wrap(~ measure, scales = "free_y", ncol = 1) +
+  labs(
+    title = "gTTS trajectory table check",
+    subtitle = "Rows are repeated time points within annotated segments",
+    x = "Normalized time within segment",
+    y = NULL,
+    color = NULL
+  ) +
+  theme_speech(12)
+```
+
+この図は、GAMM に入る前の形状確認です。`time_norm` は1つの `segment` 内の相対時間であり、縦断研究の `session` や `Time` ではありません。また、`trajectory_table` の行数は独立サンプル数ではありません。同じ `token_id` から複数時点が出ているため、実データでモデル化するときは[トラジェクトリ比較（GAMM）の最小例](#sec-textgrid-template)のように `s(token_id, bs = "re")`、必要に応じて自己相関構造や factor-smooth を検討します。F0 は無声区間を無理に補間せず、近くに有声フレームがない時点は `NA` のまま残します。
+
+### gTTS 表の最小 data contract
+
+Appendix の練習用データでも、表を作ったら最低限の data contract を確認します。ここでの目的は、合成音声の音響値を評価することではなく、**後続モデルへ渡す表として列・ID・範囲・欠測が破綻していないか**を確認することです。
+
+```{r gtts_table_contract}
+#| eval: true
+
+gtts_required_token_cols <- c(
+  "recording_id", "speaker_id", "item_id", "condition", "session", "tier",
+  "interval_index", "token_id", "label", "t1", "t2",
+  "duration_ms", "f0_median", "f0_voiced_prop",
+  "intensity_mean", "F1_mid", "F2_mid"
+)
+
+gtts_required_trajectory_cols <- c(
+  "recording_id", "speaker_id", "item_id", "condition", "tier",
+  "token_id", "label", "time_sec", "time_norm",
+  "f0_hz", "intensity_dB", "F1", "F2"
+)
+
+gtts_rows_per_token <- gtts_trajectory_table |>
+  dplyr::count(token_id, name = "n_time_rows")
+
+gtts_token_contract <- tibble::tibble(
+  table = "gtts_token_table_acoustic",
+  check = c(
+    "required columns are present",
+    "token_id is unique",
+    "duration_ms is positive",
+    "f0_median is missing or in a broad plausible range",
+    "f0_voiced_prop is between 0 and 1",
+    "F1_mid / F2_mid are in broad plausible ranges"
+  ),
+  pass = c(
+    all(gtts_required_token_cols %in% names(gtts_token_table_acoustic)),
+    anyDuplicated(gtts_token_table_acoustic$token_id) == 0,
+    all(gtts_token_table_acoustic$duration_ms > 0, na.rm = TRUE),
+    all(is.na(gtts_token_table_acoustic$f0_median) |
+      dplyr::between(gtts_token_table_acoustic$f0_median, 50, 500)),
+    all(is.na(gtts_token_table_acoustic$f0_voiced_prop) |
+      dplyr::between(gtts_token_table_acoustic$f0_voiced_prop, 0, 1)),
+    all(is.na(gtts_token_table_acoustic$F1_mid) |
+      dplyr::between(gtts_token_table_acoustic$F1_mid, 150, 1200)) &&
+      all(is.na(gtts_token_table_acoustic$F2_mid) |
+        dplyr::between(gtts_token_table_acoustic$F2_mid, 500, 3500))
+  )
+)
+
+gtts_trajectory_contract <- tibble::tibble(
+  table = "gtts_trajectory_table",
+  check = c(
+    "required columns are present",
+    "time_norm is between 0 and 1",
+    "each token has at least 5 time points",
+    "token_id values exist in token table",
+    "f0_hz is missing or in a broad plausible range",
+    "F1 / F2 are in broad plausible ranges"
+  ),
+  pass = c(
+    all(gtts_required_trajectory_cols %in% names(gtts_trajectory_table)),
+    all(dplyr::between(gtts_trajectory_table$time_norm, 0, 1), na.rm = TRUE),
+    all(gtts_rows_per_token$n_time_rows >= 5),
+    all(unique(gtts_trajectory_table$token_id) %in% gtts_token_table_acoustic$token_id),
+    all(is.na(gtts_trajectory_table$f0_hz) |
+      dplyr::between(gtts_trajectory_table$f0_hz, 50, 500)),
+    all(is.na(gtts_trajectory_table$F1) |
+      dplyr::between(gtts_trajectory_table$F1, 150, 1200)) &&
+      all(is.na(gtts_trajectory_table$F2) |
+        dplyr::between(gtts_trajectory_table$F2, 500, 3500))
+  )
+)
+
+dplyr::bind_rows(gtts_token_contract, gtts_trajectory_contract) |>
+  dplyr::mutate(result = dplyr::if_else(pass, "pass", "inspect")) |>
+  dplyr::select(table, check, result) |>
+  knitr::kable(caption = "gTTS Appendix tables: minimum data contract")
+```
+
+この範囲チェックは、除外基準ではありません。`inspect` になった値は、研究対象・話者・注釈区間に照らして確認する候補です。gTTS のデモ値ではなく実ファイルから作った場合でも、F0 の halving / doubling、フォルマント追跡失敗、短すぎる区間などを Praat 画面と照合してから、欠測化・再推定・除外を判断します。
+
+```{r gtts_missingness_summary}
+#| eval: true
+
+gtts_token_missing <- gtts_token_table_acoustic |>
+  dplyr::summarise(
+    dplyr::across(
+      dplyr::any_of(c(
+        "duration_ms", "f0_median", "f0_voiced_prop",
+        "intensity_mean", "F1_mid", "F2_mid"
+      )),
+      \(x) mean(is.na(x))
+    )
+  ) |>
+  tidyr::pivot_longer(
+    dplyr::everything(),
+    names_to = "variable",
+    values_to = "missing_rate"
+  ) |>
+  dplyr::mutate(table = "gtts_token_table_acoustic")
+
+gtts_trajectory_missing <- gtts_trajectory_table |>
+  dplyr::summarise(
+    dplyr::across(
+      dplyr::any_of(c("f0_hz", "intensity_dB", "F1", "F2")),
+      \(x) mean(is.na(x))
+    )
+  ) |>
+  tidyr::pivot_longer(
+    dplyr::everything(),
+    names_to = "variable",
+    values_to = "missing_rate"
+  ) |>
+  dplyr::mutate(table = "gtts_trajectory_table")
+
+dplyr::bind_rows(gtts_token_missing, gtts_trajectory_missing) |>
+  dplyr::select(table, variable, missing_rate) |>
+  dplyr::mutate(missing_rate = round(missing_rate, 3)) |>
+  knitr::kable(caption = "gTTS Appendix tables: missingness summary")
+```
+
+### gTTS 表を保存する場合
+
+公開レンダーではファイルを書き出しません。手元で Appendix の表を保存したい場合だけ、`SAVE_GTTS_TABLES=true` を設定します。実プロジェクトでは、`analysis/derived/gtts_demo/` のように主分析データと分けた場所へ保存し、合成音声由来であることがファイル名やディレクトリ名から分かるようにします。
+
+```{r gtts_save_tables}
+#| eval: true
+#| cache: false
+
+save_gtts_tables <- identical(tolower(Sys.getenv("SAVE_GTTS_TABLES", "false")), "true")
+
+if (save_gtts_tables) {
+  gtts_out_dir <- file.path("analysis", "derived", "gtts_demo")
+  dir.create(gtts_out_dir, recursive = TRUE, showWarnings = FALSE)
+
+  readr::write_csv(
+    gtts_token_table_acoustic,
+    file.path(gtts_out_dir, "gtts_token_table_acoustic.csv")
+  )
+  readr::write_csv(
+    gtts_trajectory_table,
+    file.path(gtts_out_dir, "gtts_trajectory_table.csv")
+  )
+
+  gtts_saved_files <- tibble::tibble(
+    object = c("gtts_token_table_acoustic", "gtts_trajectory_table"),
+    path = file.path(
+      gtts_out_dir,
+      c("gtts_token_table_acoustic.csv", "gtts_trajectory_table.csv")
+    ),
+    n_rows = c(nrow(gtts_token_table_acoustic), nrow(gtts_trajectory_table))
+  )
+} else {
+  gtts_saved_files <- tibble::tibble(
+    object = c("gtts_token_table_acoustic", "gtts_trajectory_table"),
+    path = file.path(
+      "analysis/derived/gtts_demo",
+      c("gtts_token_table_acoustic.csv", "gtts_trajectory_table.csv")
+    ),
+    n_rows = c(nrow(gtts_token_table_acoustic), nrow(gtts_trajectory_table)),
+    status = "not saved; set SAVE_GTTS_TABLES=true to write files"
+  )
+}
+
+gtts_saved_files |>
+  knitr::kable(caption = "gTTS Appendix tables: optional save targets")
+```
+
+### Praat / rPraat 練習での使い方
+
+この Appendix で作った WAV は、次のような練習に向いています。
+
+- Praat で `TextGrid` を作り、語・母音・ポーズの tier を付けます。
+- `Save as short text file...` で TextGrid を保存し、Git 管理しやすい形式にします。
+- `rPraat::tg.read()` で TextGrid を読み、`duration_ms` や `token_id` を作ります。
+- manifest に `wav_path`、`textgrid_path`、`recording_id`、`session` を加え、本章の `token table` / `trajectory table` に接続します。
+
+一方で、gTTS 音声を使った F0 やフォルマントの値を、学習者音声・母語話者音声・実録音条件の代替として解釈してはいけません。ここで作る音声は、**ファイル管理と注釈ワークフローの練習素材**として位置づけます。発音研究・知覚実験の刺激として使う場合も、少なくとも生成条件、実行日、音声ファイルそのもの、除外・編集の履歴を固定し、合成音声であることを方法節に明記します。
 
 ## 参考文献
 

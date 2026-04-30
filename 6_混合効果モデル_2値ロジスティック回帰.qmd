@@ -23,10 +23,10 @@ required_packages <- c(
   "gt",
   "knitr",
   "lme4",
+  "MASS",
   "mclogit",
   "ordinal",
   "pROC",
-  "pacman",
   "patchwork",
   "performance",
   "purrr",
@@ -39,27 +39,33 @@ required_packages <- c(
   "tidyverse"
 )
 
-missing_packages <- setdiff(required_packages, rownames(installed.packages()))
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+
 if (length(missing_packages) > 0) {
-  install.packages(missing_packages, repos = "https://cloud.r-project.org")
+  stop(
+    "以下のパッケージを先にインストールしてください: ",
+    paste(missing_packages, collapse = ", ")
+  )
 }
 ```
 
 
 ## はじめに
 
-5章では GLM/GAM の使い分けを扱いました。次の実務課題は、
+本章へようこそ。第 5 章では GLM/GAM の使い分けを扱いました。次の実務課題は、
 **データの独立性が崩れる場面**（ある観測の値が他の観測の値に影響しないという仮定が成り立たない場面）です。
 
 英語教育データでは「同じ学習者が複数のペアに登場する」「同じテスト項目に複数の学習者が回答する」
 といった**繰り返し構造**がほぼ必ず存在します。
-このとき GLM を使うと、実際には独立でない観測を独立と見なすことになり、
-標準誤差が過小評価され、p 値が実際より小さく出てしまいます（本当は有意でない効果が有意に見えてしまいます）[@baayen2008; @meteyard2020]。
+このとき GLM だけで扱うと、実際には独立でない観測を独立と見なすことになります。
+とくに正の依存がある場面では標準誤差が過小評価され、p 値が実際より小さく出る可能性があります（本当は有意でない効果が有意に見えてしまいます）[@baayen2008; @meteyard2020]。
 
 この問題に対する標準解が
 **一般化線形混合効果モデル（GLMM）**です。
 GLMM は、報告したい効果（**固定効果**: 研究者が検証したい予測子の平均的な効果）と個人差・項目差（**ランダム効果**: 個人や項目ごとのばらつき）を
-同時にモデル化することで、標準誤差を**正直に**推定します[@bates2015]。
+同時にモデル化することで、推定値と標準誤差を依存構造に合わせて推定します[@bates2015]。
 SLA（第二言語習得）分野でも GLMM は標準ツールとなっており、
 @cunnings2012 と @linck2015 が分野に特化したチュートリアルを提供しています。
 2値言語データに対するロジット混合モデルの有効性も、
@@ -70,38 +76,78 @@ SLA（第二言語習得）分野でも GLMM は標準ツールとなってお�
 
 ### この章の到達目標
 
-- GLM と GLMM を同一データで比較し、ランダム効果の必要性を説明できる。
-- 交差分類ランダム効果（sender / receiver）を実装できる。
-- ICC（級内相関係数: グループ内の類似度）とデザインエフェクト（実効サンプルサイズの縮小率）を用いて、独立性仮定の破れを説明できる。
-- OR と予測確率を併記して、読み手に伝わる結果提示ができる。
-- 特異適合・過分散・残差の点検を、最小限の手順で実行できる。
+- GLM と GLMM を同一データで比較し、ランダム効果の必要性を説明できます。
+- 交差分類ランダム効果（sender / receiver）を実装できます。
+- ICC（級内相関係数: グループ内の類似度）とデザインエフェクト（実効サンプルサイズの縮小率）を用いて、独立性仮定の破れを説明できます。
+- シミュレーションに基づき、参加者数・項目数・試行数の事前サンプルサイズ設計を説明できます。
+- OR と予測確率を併記して、読み手に伝わる結果提示ができます。
+- 特異適合・過分散・残差の点検を、最小限の手順で実行できます。
 
-### ファストトラック（最短ルート）
+### 中核となる読み筋
 
-本章は 3,500 行以上の包括的なチュートリアルです。**以下のセクションを読めば、GLMM の実行・報告に必要な知識が得られます**：
+本章は包括的なチュートリアルです。**以下のセクションを順に読めば、GLMM の実行・報告に必要な知識が得られます**：
 
-| 順序 | セクション | 所要時間目安 |
-|:---:|:---|:---:|
-| 1 | GLMM が必要になる理由 | 5 分 |
-| 2 | データ準備 → 分析データ作成 | 10 分 |
-| 3 | 階層性の確認: ICC | 5 分 |
-| 4 | ステップ 1-3: GLM → GLMM-RI → モデル比較 | 20 分 |
-| 5 | 固定効果の解釈（OR）+ 応答スケール予測 | 15 分 |
-| 6 | 診断（DHARMa + VIF） | 10 分 |
-| 7 | 報告テンプレート | 5 分 |
+| 順序 | セクション |
+|:---:|:---|
+| 1 | GLMM が必要になる理由 |
+| 2 | データ準備 → 分析データ作成 |
+| 3 | 階層性の確認: ICC |
+| 4 | ステップ 1-3: GLM → GLMM-RI → モデル比較 |
+| 5 | 固定効果の解釈（OR）+ 応答スケール予測 |
+| 6 | 診断（DHARMa + VIF） |
+| 7 | 報告テンプレート |
 
-**以下は 2 回目以降または必要に応じて参照**：コントラストコーディング、ランダム効果構造の理論、リンク関数の詳細、交互作用、検出力分析、技術的補足。
+**応用編 (必要に応じて参照)**：コントラストコーディング、ランダム効果構造の理論、リンク関数の詳細、交互作用、検出力分析、技術的補足。
+
+::: {.callout-tip}
+#### 研究計画段階で読む場合
+
+データ収集前であれば、分析手順を確認したあと、`事前サンプルサイズ設計と検出力分析` の節を先に読んでください。GLMM では「何人集めるか」だけでなく、「何項目・何試行を用意するか」「除外や欠測でどれだけ情報が減るか」も検出力を左右します。
+:::
+
+### 実験・試行単位データへの橋渡し
+
+本章の主例は助言ネットワークの 2 値データですが、混合効果モデルが最も頻繁に必要になるのは、**1 行 = 1 試行**の実験データです。SLA・心理言語学では、同じ参加者が多数の項目に反応し、同じ項目も多数の参加者に提示されます。この `participant × item` の交差構造を無視すると、標準誤差が過小になります。
+
+| 研究場面 | 1行の単位 | 代表的アウトカム | 出発モデル | 典型的なランダム効果 |
+|---|---|---|---|---|
+| 語彙判断・文法性判断 | participant-item-trial | 正誤、RT | logistic GLMM, log-normal/Gamma LMM | `(1\|participant) + (1\|item)` |
+| Self-paced reading | participant-item-region | region RT | LMM / Gamma GLMM | participant, item, region |
+| Eye-tracking reading | participant-item-interest area | fixation有無、GD、TRT | logistic / Gamma GLMM | participant, item, AOI |
+| Visual World Paradigm | participant-item-time bin-AOI | AOI注視 | binomial GLMM / GAMM | participant, item, time smooth |
+| ERP/EEG | participant-item-electrode-window | 平均振幅 | LMM / cluster permutation | participant, item, electrode |
+| 音声実験 | speaker-token-time | duration, F0, F1/F2 | LMM / GAMM | speaker, item, token |
+
+前処理はツールごとに分担します。MNE-Python や EEGLAB は EEG/ERP のフィルタリング・エポック化・アーティファクト処理に使い、Praat は音声注釈と音響特徴抽出に使います。R 側では、前処理済みの表を `participant_id`, `item_id`, `trial`, `condition`, `outcome` を含む tidy なロング形式にし、上の表のモデルへ渡します。
+
+::: {.callout-note}
+#### `time` は本章の主分析では使わない
+
+本章のメインの worked example は dyad データであり、`Time` / `time` を within-participant factor として使っていません。後半に出てくる `time` は、pre/post などの反復測定デザインを説明するための補足例です。その場合だけ、`time` は learner の中で変動する within-learner factor になり、`(1 + time | learner_id)` のようなランダム傾き候補になります。
+
+一方、`group` や `treatment` が参加者間要因なら、参加者内では変動しません。したがって、参加者ごとのランダム傾きに `group` を入れることはできません。実験の `trial` や VWP の `time bin` のように時点が多数ある場合は、単純な pre/post factor としてではなく、連続的な trial order や smooth term として GAMM を検討します。
+
+| 変数名として出やすいもの | 実際に表しているもの | participant 内での扱い | モデル上の出発点 |
+|---|---|---|---|
+| `time` / `wave` | pre/post, T1/T2/T3 など少数の測定時点 | 全員が複数時点を持つなら within | 固定効果 + 必要なら `(1 + time | participant)` |
+| `trial` / `order` | 実験内の試行順、疲労、練習効果 | 多くの場合 within | 連続共変量、必要ならランダム傾きまたは GAMM |
+| `time_bin` / `sample` | VWP や eye-tracking の試行内時間 | 試行内で多数反復 | binomial GLMM の多項式項、または GAMM の smooth |
+| `session` | 実験日・授業回・測定回 | デザインに依存 | within なら time と同様、欠測が多ければ第20章も確認 |
+| `group` / `treatment` | 群・条件割当 | 参加者間要因なら between | 固定効果。参加者ランダム傾きには入れない |
+
+この区別を先に済ませておくと、`Time` という名前だけでランダム傾きを決める誤りを避けられます。判断基準は常に「その予測子が同じ参加者の中で複数水準を取るか」です。
+:::
 
 ## GLMM が必要になる理由（最短版）
 
 ### GLM と GLMM の核心的な違い
 
-GLM は**推定値そのもの**（β）を大きく変えるわけではありません。GLMM の本質は**標準誤差を正直にする**ことにあります。
+GLMM に移ると、固定効果の推定値（β）が常に大きく変わるわけではありません。多くの実例では、最も目立つ違いは標準誤差と p 値に表れます。ただし、ロジスティックモデルでは未モデル化の個人差、クラスター不均衡、効果の非 collapsibility によって、固定効果の推定値そのものも変わり得ます。
 
-- **GLM**: 全ペアが独立と仮定 → SE が過小 → p 値が楽観的
-- **GLMM**: sender/receiver の繰り返しを考慮 → SE が適切 → p 値が正直
+- **GLM**: 全ペアが独立と仮定 → 依存が強いと SE が過小になりやすい → p 値が楽観的になりやすい
+- **GLMM**: sender/receiver の繰り返しを考慮 → 個人差をモデルに入れる → SE と固定効果の推定を依存構造に合わせる
 
-つまり、GLMM は「効果を見つける」ためではなく、「効果の不確かさを正しく評価する」ために使います。
+つまり、GLMM は「効果を見つける」ためではなく、「効果の平均的な大きさと、その不確かさを依存構造込みで評価する」ために使います。
 
 ### GLMM の数学的表現
 
@@ -121,13 +167,13 @@ $$
 - **固定効果 $\beta$**（報告したい効果）: 「同クラスだと助言しやすい」「スコアが高いと助言しやすい」など、研究で検証したい平均的な効果
 - **ランダム効果 $b$**（統制したいばらつき）: 「田中さんは全般に助言をよくする」「鈴木さんは助言をあまり受けない」など、個人ごとの偏り
 
-#### この式の理解が難しい場合
+#### 数式をコードに対応させて読む
 
-数式よりもコードから理解を深めたい場合は、以下の入門チュートリアルを先に参照することを推奨します。
+数式だけで読むよりも、`lme4` の式・データ構造・シミュレーション例を横に置くと、GLMM の役割が見えやすくなります。以下のチュートリアルは、本章の数式をコードに対応させて読むときに役立ちます。
 
 1. @winter2013 — 言語学データの例で、線形モデルから混合モデルへの拡張を段階的に解説。
 2. @brown2021 — 心理学データを使い、`lme4` での実装を一から追える R チュートリアル。
-3. @debruine2021 — 「自分でデータを生成して、ランダム効果が何をしているか体感する」という独自のアプローチ。数式の意味が腑に落ちます。
+3. @debruine2021 — 自分でデータを生成し、ランダム効果が推定値と標準誤差にどう効くかを確認できる実践的アプローチ。
 
 いずれも本章の前提知識として有用ですが、**本章だけでも完結する設計**になっています。
 
@@ -170,10 +216,12 @@ GLMM で 2 値アウトカムを扱う際、リンク関数（確率を線形予
 #| fig-width: 9
 #| echo: false
 
-# このチャンクは setup より前に実行されるため、明示的にパッケージを読み込む
-if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
+# このチャンクは setup より前に実行されるため、明示的にパッケージを確認して読み込む
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  stop("このチャンクの実行には ggplot2 が必要です。install.packages('ggplot2') を先に実行してください。")
+}
 
-pacman::p_load(ggplot2)
+library(ggplot2)
 base_font <- "HiraginoSans-W3"
 theme_set(theme_bw(base_size = 12, base_family = base_font) +
   theme(
@@ -262,35 +310,36 @@ $$
 - **信号検出理論（SDT）との接続**: probit モデルで刺激条件（signal/noise）の係数は、そのまま $d'$（感度指標）として解釈可能[@decarlo1998]
 - **項目反応理論との接続**: 正規オジブモデル（normal ogive model）は probit そのもの。IRT の 2PL は $P = \Phi(a(\theta - b))$ で、probit 回帰の特殊ケース
 
-##### Cloglog → ハザード比
+##### Cloglog → 離散時間ハザードの比（条件付き）
 
 $$
 \log(-\log(1-p)) = \beta_0 + \beta_1 X
 $$
 
-- $\exp(\beta_1)$ = **ハザード比**: 連続時間生存分析の Cox 比例ハザードモデルと等価[@prentice1978]
-- 離散時間（例：学期ごとのドロップアウト）を扱う場合に理論的に適切[@singer2003]
+- 離散時間生存分析（例：学期ごとのドロップアウト）としてデータを定義した場合、$\exp(\beta_1)$ は**離散時間ハザードの比**として解釈できます[@prentice1978; @singer2003]。
+- この解釈は、各観測が「その区間でイベントが起きたか」を表しているときに成り立ちます。
 - 応答確率が非対称な場合（低確率側はなだらか、高確率側は急激）に適合しやすい
+- 通常の 2 値分類で単に cloglog を使っただけでは、$\exp(\beta)$ を一般的なハザード比として報告しない方が安全です。
 
 #### Logit と Probit のスケーリング関係
 
-logit 係数と probit 係数の間には近似的な換算関係があります：
+logit 係数と probit 係数の間には近似的な換算関係があります:
 
 $$
-\beta_{\text{probit}} \approx \frac{\beta_{\text{logit}}}{1.7}
+\beta_{\text{probit}} \approx \frac{\beta_{\text{logit}}}{1.81}
 $$
 
-これはロジスティック分布の標準偏差が $\pi/\sqrt{3} \approx 1.814$ であることに由来します（実用的には 1.7 で十分な近似）。つまり logit で $\beta = 0.85$ なら、probit では $\beta \approx 0.50$ になります。**効果の方向と有意性は同じ**ですが、数値の大きさが異なるため、混同に注意が必要です。
+これは **ロジスティック分布の標準偏差が $\pi/\sqrt{3} \approx 1.81$** であることに由来する**理論値**です。なお、実証研究では logit/probit 係数の比が **1.6〜1.7 倍**として報告されることもありますが、これは Amemiya (1981) 等の経験的近似(回帰でフィットした倍率)であり、潜在 SD から導かれる理論値とは異なります。論文で換算する場合は、**理論値 1.81 か経験的近似 1.6〜1.7 のどちらを使ったかを明記**してください。例えば logit で $\beta = 0.85$ なら、probit では $\beta \approx 0.47$(理論)または $\beta \approx 0.50$(経験的)になります。**効果の方向と有意性は同じ**ですが、数値の大きさが異なるため、混同に注意が必要です。
 
 #### どのリンク関数を選ぶか
 
 | 場面 | 推奨リンク | 理由 | 係数の解釈 |
 |:--|:--|:--|:--|
-| 一般的な 2 値データ | logit（デフォルト） | OR 解釈が可能。最も広く使われる | `exp(β) = OR` |
+| 一般的な 2 値データ | logit（デフォルト） | OR 解釈が可能です。最も広く使われる | `exp(β) = OR` |
 | 信号検出理論（SDT）分析 | probit | 係数 = `d'`（感度指標）[@decarlo1998] | `β = Δz on latent normal` |
 | IRT 正規オジブモデル | probit | IRT の理論的基盤 | `β = 識別力 × 能力差` |
 | 離散時間生存分析 | cloglog | Cox PH の離散時間版[@prentice1978; @singer2003] | `exp(β) = hazard ratio` |
-| 反応確率の非対称性 | cloglog | 低確率→高確率の移行が急速な場合 | `exp(β) = hazard ratio` |
+| 反応確率の非対称性 | cloglog | 低確率→高確率の移行が急速な場合 | 非対称リンク上の係数 |
 | 判断に迷った場合 | logit | probit とほぼ同一の予測。OR の解釈性で優位 | `exp(β) = OR` |
 
 : リンク関数の選択ガイド: 理論的根拠がなければ logit がデフォルト
@@ -299,7 +348,7 @@ $$
 
 1. **理論がリンクを指定する場合**: SDT → probit、離散時間ハザード → cloglog
 2. **理論が中立なら**: logit（OR 解釈の利便性）
-3. **「どちらが当てはまりが良いか」で選ばない**: logit と probit は AIC がほぼ同じになることが多く、当てはまりの差は実質的ではない。選択の根拠は理論的解釈性であるべき[@mccullagh1989]
+3. **「どちらが当てはまりが良いか」で選ばない**: logit と probit は AIC がほぼ同じになることが多く、当てはまりの差は実質的ではありません。選択の根拠は理論的解釈性に置くべきです[@mccullagh1989]
 
 本章の後半（ステップ②）で実際に 3 リンクを AIC/BIC で比較するコードを示しますが、上記の通り理論的根拠が第一です。
 
@@ -334,6 +383,27 @@ GLM/GLMM では **アウトカムの正規性は仮定していません**。fam
 - 残差診断: `DHARMa::simulateResiduals()`, `testDispersion()`, `testUniformity()`
 - 補助診断: `check_overdispersion()`, `check_collinearity()`, `check_model()`
 
+### GLMM 可視化の標準セット
+
+GLMM の可視化は、単に「きれいな図を作る」ためではなく、**どの推論をどの尺度で読ませるか**を整理するために使います。公式ドキュメントでも、`sjPlot::plot_model()` は固定効果・ランダム効果・予測効果を分けて描けること、`ggeffects::ggpredict()` は混合モデルで population-level prediction を作れること、`emmeans` は交互作用を平均しすぎないよう可視化してから単純効果を検討することを強調しています[@sjplot_plot_model; @ggeffects_ggpredict; @ggeffects_randomeffects; @emmeans_interactions]。診断については、DHARMa のシミュレーション残差と `performance::check_model()` を併用するのが実務的です[@dharma; @performance_checkmodel]。
+
+本章の可視化は、次の 8 種類を揃える設計にしています。
+
+| 目的 | 推奨図 | 本章での実装 | 論文での位置づけ |
+|---|---|---|---|
+| データ構造を見せる | raw proportion / raw mean plot | participant × item 例、語彙例、LME worked example | 主図または補助図 |
+| 効果の方向と不確実性を示す | OR forest plot / coefficient plot | `plot_model(type = "est")` | 主図 |
+| 読者に確率で説明する | adjusted probability plot | `plot_model(type = "pred")`, `ggpredict()` | 主図 |
+| 交互作用を分解する | EMM interaction plot | `emmip()` + `pairs()` | 主図 |
+| 個人差・項目差を示す | random-effect caterpillar plot / shrinkage plot | `plot_model(type = "re")`, BLUP vs no-pooling | 補助図 |
+| モデル仮定を点検する | simulated residual diagnostics | `DHARMa`, `check_model()` | 補助図 |
+| 判別能を示す | ROC / AUC | marginal と conditional を分離 | 補助図または主図 |
+| 確率予測の妥当性を見る | calibration plot / Brier score | 本章の診断セクションで追加 | 補助図 |
+
+: GLMM 可視化の標準セット: 係数、確率、個人差、診断を分けて提示します
+
+実務上は、本文の主図を **(a) OR forest plot**, **(b) adjusted probability plot**, **(c) 交互作用がある場合の EMM plot** に絞り、ランダム効果・DHARMa・ROC・calibration は補助資料に回すと読みやすくなります。AUC は「イベントと非イベントを分けられるか」という判別能を見ますが、予測確率が 0.20 と出たとき本当に約 20% 起きるかという calibration は別問題です。そのため、2 値 GLMM では AUC と calibration / Brier score を併記すると、予測図の信頼性を説明しやすくなります[@brier1950; @hosmer2013]。
+
 ## セットアップ
 
 GLMM 分析に必要なパッケージを読み込みます。主要パッケージの役割：
@@ -341,6 +411,7 @@ GLMM 分析に必要なパッケージを読み込みます。主要パッケー
 | パッケージ | 役割 |
 |-----------|------|
 | `lme4` | GLMM の推定（`glmer()`）|
+| `MASS` | 逐次差分コーディング（`contr.sdif()`）などの補助関数 |
 | `performance` | モデル比較、ICC、R²、診断（`compare_performance()`, `icc()`, `r2_nakagawa()`）|
 | `emmeans` | 推定周辺平均と事後比較 |
 | `ggeffects` | `ggpredict()` による調整済み予測値のデータフレーム化 |
@@ -355,21 +426,34 @@ GLMM 分析に必要なパッケージを読み込みます。主要パッケー
 #| warning: false
 
 # --- パッケージ読み込み ---
-# pacman::p_load() は未インストールのパッケージを自動でインストールしてから読み込む
-pacman::p_load(
-  tidyverse,
-  lme4,
-  mclogit,
-  performance,
-  emmeans,
-  ggeffects,
-  DHARMa,
-  simr,
-  sjPlot,
-  patchwork,
-  broom.mixed,
-  pROC,
+required_packages_runtime <- c(
+  "tidyverse", "lme4", "MASS", "mclogit", "performance", "emmeans",
+  "ggeffects", "DHARMa", "simr", "sjPlot", "patchwork", "broom.mixed", "pROC"
 )
+
+missing_packages_runtime <- required_packages_runtime[
+  !vapply(required_packages_runtime, requireNamespace, logical(1), quietly = TRUE)
+]
+
+if (length(missing_packages_runtime) > 0) {
+  stop(
+    "以下のパッケージを先にインストールしてください: ",
+    paste(missing_packages_runtime, collapse = ", ")
+  )
+}
+
+library(tidyverse)
+library(lme4)
+library(mclogit)
+library(performance)
+library(emmeans)
+library(ggeffects)
+library(DHARMa)
+library(simr)
+library(sjPlot)
+library(patchwork)
+library(broom.mixed)
+library(pROC)
 
 # --- 共通設定 ---
 # ggplot2 のデフォルトテーマ
@@ -485,7 +569,7 @@ head(nodes, 8) |>
 
 `summary()` の出力で確認すべき点：
 
-- **class**: 各クラスの人数バランス。極端な偏りがあるとランダム効果の推定が不安定になる。
+- **class**: 各クラスの人数バランス。極端な偏りがあるとランダム効果の推定が不安定になります。
 - **proficiency**: A2/B1/B2 の分布。3水準が揃っているか。
 - **baseline_score_sc**: 平均≈0、SD≈1 になっていれば標準化は正常。
 
@@ -554,10 +638,10 @@ print(p_hist)
 
 #### 中心化の実務ルール
 
-- **連続変数**: 必ず `scale()` で z 標準化する。これにより全連続予測子が同じスケール（SD 単位）になり、効果量の比較も容易になる。
+- **連続変数**: 必ず `scale()` で z 標準化します。これにより全連続予測子が同じスケール（SD 単位）になり、効果量の比較も容易になります。
 - **2 値変数**（0/1）: 中心化は任意。sum coding（-0.5/+0.5）にすると切片が全体平均になる（コントラストコーディング節参照）。
-- **カウント変数**: `log()` 変換 + `scale()` が一般的。
-- **注意**: `scale()` は元のスケールを変えるため、係数の解釈が「1 SD あたりの変化」になる。元のスケール（例: 1 点あたり）で解釈したい場合は、平均を引くだけの中心化（`x - mean(x)`）を使う。
+- **カウント変数**: `log()` 変換 + `scale()` が一般的です。
+- **注意**: `scale()` は元のスケールを変えるため、係数の解釈が「1 SD あたりの変化」になります。元のスケール（例: 1 点あたり）で解釈したい場合は、平均を引くだけの中心化（`x - mean(x)`）を使います。
 
 ## 分析データ作成（有向ペア単位）
 
@@ -632,6 +716,13 @@ tibble(
 `tie_rate` が低いということは、大半のペアで `tie = 0` であることを意味します。このようなスパースなデータでは、各学習者が複数のペアに繰り返し出現するという依存構造（sender が 29 回、receiver が 29 回出現）が推定に大きく影響します。GLM はこの依存を無視するため、標準誤差が過小評価される典型的な場面です。
 
 ## カテゴリカル変数のコーディング（コントラスト）
+
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本節(コントラストコーディングの理論と invariance proof)は約 500 行の発展節で、**第 2 章「ANOVA とカテゴリカル変数のコーディング」を既読の場合は飛ばして構いません**。初読では @sec-anova-regression (ANOVA を回帰モデルとして捉える) への参照だけ確認し、@sec-glmm-step1 (ステップ 1: GLM 基準モデル)へ直接進むこともできます。実データで「Treatment / Sum / Helmert のどれを使うべきか」に直面した時に戻ってください。
+:::
+
+
 
 分析データが準備できたので、次にモデルに投入するカテゴリ変数の扱い方を決めます。コーディングの選択は係数の解釈に直結するため、**モデル推定の前に**理解しておくことが重要です。
 
@@ -957,7 +1048,7 @@ p_treat + p_sum +
 
 1. **同じデータ・同じモデル適合**でも、コーディングで「主効果」の有意性が変わる（Step 3 のフォレストプロット）。
 2. **Treatment coding の「主効果」は単純効果**であり、交互作用がある場合に誤解を招く（Step 4 の矢印図）。
-3. **交互作用を含むモデルでは sum coding を使うべき**[@schad2020]。
+3. **交互作用を含むモデルでは sum coding を使うべきです**[@schad2020]。
 4. ただし、**emmeans による下位検定はコーディングに依存しない**（次の Step 5 で実証）。
 
 ### `emmeans` はコーディングに依存しない（重要）
@@ -996,8 +1087,8 @@ tibble::tibble(
 
 **実務的含意**:
 
-- **回帰表（β, SE, p）を直接報告する場合** → コーディングの選択が結論に直結。sum coding を推奨。
-- **emmeans で下位検定して報告する場合** → コーディングは結論に影響しない。ただし、β を報告する場合の解釈のために、コーディング方式は必ず明記する。
+- **回帰表（β, SE, p）を直接報告する場合** → コーディングの選択が結論に直結します。sum coding を推奨します。
+- **emmeans で下位検定して報告する場合** → コーディングは結論に影響しません。ただし、β を報告する場合の解釈のために、コーディング方式は必ず明記します。
 
 ### その他のコーディング方式 {.tabset}
 
@@ -1129,6 +1220,13 @@ tibble::tibble(
 
 ## ランダム効果構造の選択（理論と実践）
 
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本節(Barr 2013 vs Bates 2015 vs Matuschek 2017 の理論論争)は約 280 行の理論節で、初読では **「(1|sender) + (1|receiver) から始め、特異適合が出たらランダム傾きを段階的に削る」** という基本方針だけ覚えれば、@sec-glmm-step1 以降を読み進められます。実際に `isSingular() = TRUE` に遭遇した時に戻ってきて、Barr/Bates/Matuschek の判断基準を選ぶ読み方が効率的です。
+:::
+
+
+
 コーディングの選択を理解したところで、次にもう 1 つの重要な設計上の判断——**ランダム効果構造の選択**——を扱います。
 
 ### なぜランダム効果構造が重要か
@@ -1145,12 +1243,14 @@ tibble::tibble(
 
 | デザイン | 定義 | `英語教育での例` | `ランダム傾き` |
 |---|---|---|---|
-| Within-participant | 全参加者が全条件を経験 | 全学習者が congruent/incongruent 両条件の文を読む | ✅ 含めるべき |
-| Between-participant | 各参加者が 1 条件のみ | L1 話者 vs L2 話者（1人1群） | ❌ 含められない |
-| Within-item | 全項目が全条件に出現 | ラテン方格で全項目が全条件に割当 | ✅ 含めるべき |
-| Between-item | 各項目が 1 条件のみ | 高頻度語リスト vs 低頻度語リスト（別項目） | ❌ 含められない |
+| Within-participant | 全参加者が全条件を経験 | 全学習者が congruent/incongruent 両条件の文を読む | 設計上の候補 |
+| Between-participant | 各参加者が 1 条件のみ | L1 話者 vs L2 話者（1人1群） | 含められない |
+| Within-item | 全項目が全条件に出現 | ラテン方格で全項目が全条件に割当 | 設計上の候補 |
+| Between-item | 各項目が 1 条件のみ | 高頻度語リスト vs 低頻度語リスト（別項目） | 含められない |
 
-: デザインとランダム傾きの対応: 予測子がグルーピング変数の中で変動する場合のみランダム傾きが可能
+: デザインとランダム傾きの対応: 予測子がグルーピング変数の中で変動する場合のみランダム傾きが可能です
+
+ここでの「候補」は、**必ず最終モデルに残す**という意味ではありません。まず研究デザイン上ランダム傾きが推定可能かを確認し、推定後に収束、特異適合、分散成分、モデル比較、研究上の解釈を合わせて採否を決めます。
 
 #### なぜ between 変数にランダム傾きを入れられないのか
 
@@ -1209,7 +1309,7 @@ summary(rePCA(maximal))
 # → 1 成分で 99%+ なら、ランダム傾きは実質不要
 ```
 
-**鍵となる主張**: 「過適合モデルは収束しないことでデータが構造を支持していないことを教えてくれている。無理に収束させるのではなく、その信号に従うべき。」
+**鍵となる主張**: 「過適合モデルは収束しないことで、データが構造を支持していないことを教えてくれています。無理に収束させるのではなく、その信号に従うべきです。」
 
 #### Matuschek et al. (2017): LRT ベースの妥協
 
@@ -1254,7 +1354,7 @@ glmer(correct ~ frequency * L1_group +
 
 #### ケース2: 文処理実験（ラテン方格）
 
-**場面**: 32 人の参加者が 24 文を読む。文は 2 条件（一致/不一致）でラテン方格により割当。
+**場面**: 32 人の参加者が 24 文を読みます。文は 2 条件（一致/不一致）でラテン方格により割当。
 
 - **参加者**: 各参加者が両条件を経験 → `congruency` は **within-participant**
 - **項目**: ラテン方格で各項目が両条件に出現 → `congruency` は **within-item**
@@ -1294,7 +1394,7 @@ lmer(score ~ student_proficiency + rater_severity +
 
 - **時点（time）**: 全参加者がプレ・ポスト両方 → **within-participant** → 傾き可
 - **群（group）**: 各参加者が介入か統制の一方 → **between-participant** → 傾き不可
-- **time × group**: group が between なので → **交互作用の傾きも不可**
+- **time × group**: 固定効果としては主な関心です。参加者ランダム効果では `time` の傾きで個人差を表し、`group` や `time × group` の参加者傾きは入れません。
 
 ```r
 # Maximal
@@ -1303,7 +1403,8 @@ glmer(correct ~ time * group +
         (1 | item),                 # 全参加者が同じ項目セット
       family = binomial, data = intervention_data)
 
-# group, time×group は between-participant なので参加者の傾きに含めない
+# group は between-participant なので参加者の傾きに含めない
+# time×group は固定効果として解釈し、参加者ランダム傾きは time に留める
 ```
 
 ### モデル比較の判断基準
@@ -1319,12 +1420,12 @@ tibble::tribble(
   ~基準, ~計算方法, ~判断ルール, ~注意点,
   "ΔAIC", "AIC(簡略) - AIC(複雑)", "< -2: 複雑モデル優位\n-2〜2: 実質的差なし\n> 2: 簡略モデル優位", "小さいほど良い。ペナルティがBICより軽い",
   "ΔBIC", "BIC(簡略) - BIC(複雑)", "< -6: 複雑モデルを強く支持\n-2〜2: 差なし\n> 6: 簡略モデルを強く支持", "BIC はサンプルサイズに依存。大標本でより保守的",
-  "LRT", "anova(簡略, 複雑)", "p < .05: 複雑モデルが有意に改善\np ≥ .05: 簡略化を支持", "境界問題: 分散=0 の帰無仮説では p が保守的[@self1987]",
-  "isSingular()", "lme4::isSingular(model)", "TRUE: 過剰パラメータ化\nFALSE: 安全", "TRUE でも推定値は使えるが、過適合の強い示唆",
+  "LRT", "anova(簡略, 複雑)", "p < .05: 複雑モデルで適合改善\np ≥ .05: 簡略モデルも候補", "境界問題: 分散=0 の帰無仮説では p が保守的[@self1987]",
+  "isSingular()", "lme4::isSingular(model)", "TRUE: 過剰パラメータ化の疑い\nFALSE: 明確な特異適合なし", "FALSE でもモデル比較と理論整合性は確認する",
   "rePCA()", "summary(rePCA(model))", "累積分散 99%+ で 1 成分\n→ ランダム傾き不要", "各成分の寄与率を確認"
 ) |>
   knitr::kable(
-    caption = "モデル比較の判断基準一覧: AIC/BIC は小さいほど良い。LRT は p < .05 で複雑モデルを支持"
+    caption = "モデル比較の判断基準一覧: AIC/BIC、LRT、特異適合、理論整合性を合わせて判断する"
   )
 ```
 
@@ -1360,7 +1461,7 @@ tibble::tribble(
 
 上記の分析から、本データの maximal モデルは非常に複雑になります（sender 側と receiver 側で異なるランダム傾き）。実際に本章の後半で、ランダム傾きモデル（`m_glmm_rs`）が**特異適合**を起こしたことを確認しています。これは @bates2015parsimonious の予測通りで、データがランダム傾きを支持していないことを示唆しています。
 
-**本章の結論**: `(1 | sender) + (1 | receiver)`（ランダム切片のみの交差分類モデル）がこのデータに最も適切です。この判断は以下の 3 つの証拠に基づきます：
+**本章の結論**: `(1 | sender) + (1 | receiver)`（ランダム切片のみの交差分類モデル）を本データの最終モデルとして採用します。この判断は以下の 3 つの証拠に基づきます：
 
 1. ランダム傾きモデルの特異適合（`isSingular() = TRUE`）
 2. `rePCA()` で 1 成分が分散の 99%+ を説明
@@ -1382,7 +1483,7 @@ tibble::tribble(
   "2", "Maximal モデルを推定", "収束するか？",
   "3a", "収束した場合: isSingular() を確認", "FALSE → Step 4 へ。TRUE → Step 3b へ",
   "3b", "特異適合: rePCA() で分散ゼロの成分を特定", "ゼロ成分を除去して再推定",
-  "4", "最終モデルと簡略化モデルを LRT で比較", "p < .05 ならランダム効果を保持",
+  "4", "最終モデルと簡略化モデルを LRT で比較", "p 値、AIC/BIC、特異適合、理論整合性を合わせて判断",
   "5", "収束しない場合: 段階的に簡略化", "① 相関除去 (||) → ② 交互作用傾き除去 → ③ 主効果傾き除去",
   "6", "報告", "試みた maximal モデルと最終モデルの両方を明記"
 ) |>
@@ -1390,16 +1491,19 @@ tibble::tribble(
 ```
 
 ::: {.callout-note}
-#### 参考文献の整理
+#### 迷いやすい判断とチュートリアル論文
 
-| 目的 | 推奨文献 |
-|------|---------|
-| 理論的背景 | @barr2013（maximal の根拠）、@bates2015parsimonious（parsimonious の根拠） |
-| 実践的妥協 | @matuschek2017（LRT ベースの選択）、@meteyard2020（ベストプラクティス） |
-| 交互作用の扱い | @barr2013interaction（交互作用のランダム傾き） |
-| 参加者 × 項目の交差分類 | @baayen2008（crossed random effects の基礎） |
-| 統一的フレームワーク | @brauer2018（within/between の統一的扱い） |
-| 自動化ツール | `buildmer` パッケージ[@voeten2019]（自動的な構造選択） |
+| 迷いやすい判断 | まず確認すること | 参照先 |
+|------|---------|---|
+| カテゴリカル反応を参加者平均にして ANOVA するか | 反応が 0/1 なら、集約せず trial-level のロジット混合モデルを検討する | @jaeger2008 |
+| 参加者と項目を同時に一般化するか | participant と item が交差していれば、少なくとも両方のランダム切片を考える | @baayen2008; @cunnings2012 |
+| ランダム傾きを入れるか | その予測子が grouping factor の中で変動するかを先に判定する | @barr2013; @brauer2018 |
+| maximal と parsimonious のどちらに寄せるか | 確認的検定なら省略リスク、収束しない場合は特異適合・検出力を同時に見る | @bates2015parsimonious; @matuschek2017; @meteyard2020 |
+| 交互作用のランダム傾きをどう扱うか | 交互作用を作る両要因が同じ grouping factor 内で変動するかを確認する | @barr2013interaction |
+| 実験計画の検出力をどう見積もるか | 参加者数・項目数・試行数を同時に変えるシミュレーションを使う | @debruine2021; @debruine2021power |
+| SLA 論文としてどう報告するか | モデル式、ランダム効果構造、収束・特異適合、モデル比較の順に書く | @linck2015; @cunnings2012 |
+
+この表は「どの文献が正しいか」を選ぶためではなく、**どの判断でどの論点を確認するか**を明確にするための案内です。最終的なモデルは、研究デザイン、推定可能性、感度分析、報告したい効果の解釈を合わせて決めます。
 :::
 
 ## 階層性を理解する: なぜデータは独立でないのか
@@ -1419,16 +1523,16 @@ tibble::tribble(
 | 英語教育（評価） | 学習者 × 評価者 | 学習者, 評価者 | 交差 | `(1 | learner) + (1 | rater)` |
 | 本章データ | sender × receiver（助言ネットワーク） | sender, receiver | 交差 | `(1 | sender) + (1 | receiver)` |
 
-: 分野別の階層構造の比較: 英語教育・SLA では交差分類（crossed）が標準
+: 分野別の階層構造の比較: 英語教育・SLA では交差分類（crossed）が標準です
 
 ### 英語教育データの階層性: 「参加者 × 項目」が基本
 
 英語教育・SLA で最も頻繁に出会う階層は「**1 人の学習者が複数の項目に回答する**」構造です。このとき：
 
-- **同じ学習者の複数の回答は独立でない**（能力の高い学習者は全体的に正答しやすい）
-- **同じ項目への複数の回答は独立でない**（易しい項目は全員が正答しやすい）
+- **同じ学習者の複数の回答は独立ではありません**（能力の高い学習者は全体的に正答しやすい）
+- **同じ項目への複数の回答は独立ではありません**（易しい項目は全員が正答しやすい）
 
-GLM はこの依存構造を無視するため、標準誤差が過小になり、p 値が楽観的になります。GLMM はランダム効果で「学習者ごとの偏り」と「項目ごとの偏り」を同時にモデル化し、標準誤差を正直に推定します[@baayen2008]。
+GLM はこの依存構造を無視するため、標準誤差が過小になり、p 値が楽観的になりやすいです。GLMM はランダム効果で「学習者ごとの偏り」と「項目ごとの偏り」を同時にモデル化し、固定効果と標準誤差を依存構造に合わせて推定します[@baayen2008]。
 
 これはまさに **IRT（項目反応理論）が扱う構造と同じ**です（次のセクション参照）。
 
@@ -1441,9 +1545,9 @@ GLM はこの依存構造を無視するため、標準誤差が過小になり�
 - 同じ固定効果を **2 本の別モデル**で見ているだけなので、結論が割れると解釈が難しい
 - `participant × item` の**交差分類**を 1 つの式で同時に扱えない
 - random slope のような「効果の個人差 / 項目差」を自然に入れにくい
-- binary outcome では、F1/F2 的な分割分析をすると、2 値 GLMM の利点である **正しい link と分布**を生かしにくい
+- binary outcome では、F1/F2 的な分割分析をすると、2 値 GLMM の利点である **正しい link と分布**を生かしにくくなります
 
-LME / GLMM は、この問題を **1 本のモデル**で扱います[@baayen2008; @barr2013; @lme4_lmer; @lme4_glmer]。  
+LME / GLMM は、この問題を **1 本のモデル**で扱います[@baayen2008; @barr2013; @lme4_lmer; @lme4_glmer]。
 連続アウトカムなら `lmer()`、2 値アウトカムなら `glmer(..., family = binomial)` を使って、participant と item の両方をランダム効果として同時に入れます。
 
 | Approach | Unit_of_analysis | What_it_generalizes_to | Main_limitation |
@@ -1464,7 +1568,7 @@ dyad データは GLMM の交差分類を説明するには有用ですが、英
 
 - `frequency` は **within-participant**: どの学習者も高頻度語と低頻度語の両方に答える
 - `frequency` は **between-item**: 各項目は高頻度語か低頻度語のどちらか一方にしか属さない
-- したがって `(1 + frequency | learner_id)` は可能だが、`(1 + frequency | item_id)` は識別できない
+- したがって `(1 + frequency | learner_id)` は可能ですが、`(1 + frequency | item_id)` は識別できません
 
 ```{r}
 #| eval: true
@@ -1650,7 +1754,7 @@ knitr::kable(
 )
 ```
 
-この小表では、**frequency の係数自体は大きく変わらなくても、SE と AIC が変わる**ことに注目してください。GLMM は「平均の向き」を大きく変えるというより、**依存構造を入れて精度の主張を正直にする**モデルです。さらに random slope を許すと、「frequency の効き方が learner ごとに違うか」という問いまで扱えます。
+この小表では、**frequency の係数自体は大きく変わらなくても、SE と AIC が変わる**ことに注目してください。GLMM は「平均の向き」だけでなく、**依存構造を入れたうえで効果の不確実性を評価する**モデルです。データの不均衡や個人差が強い場合には、係数自体も変わり得ます。さらに random slope を許すと、「frequency の効き方が learner ごとに違うか」という問いまで扱えます。
 
 ### 語彙研究の実務拡張: item-level pre-test をそのまま統制する
 
@@ -1761,9 +1865,9 @@ m_vocab_pretest <- glmer(
 
 両者の違いは、**どの問いを主眼に置くか**です。
 
-- **post-test only + item-level pre-test**:  
+- **post-test only + item-level pre-test**:
   「もともと知らなかった語に対して、学習後にどれだけ正答確率が上がったか」を聞きたいときに強い。
-- **pre/post long-data GLMM**:  
+- **pre/post long-data GLMM**:
   「pre から post への変化そのものが群間で違うか」を、`time × treatment` で直接聞きたいときに強い。
 
 以下は後者の最小例です。ここでは `pretest_correct` と `posttest_correct` を縦に積み、`time` を within-learner かつ within-item の要因として扱います。
@@ -1801,6 +1905,105 @@ m_vocab_long <- glmer(
 
 このモデルでは `timePost:treatmentGloss` が、「`Gloss` 群は `Control` 群より pre→post の伸びが大きいか」を表します。したがって、**全体の成長曲線**を見たいときは長データ GLMM が自然です。一方で、「pre-test で未知だった target word のみ」に焦点を当てたいときは、先ほどの `post-test only + item-level pre-test` の方が解釈しやすいことが多いです。
 
+#### 個人軌跡の可視化: スパゲッティプロット
+
+縦断データ（pre/post の繰り返し）を扱うときの**標準的な可視化**は、**スパゲッティプロット**です。各学習者の正答率の軌跡を細い線で重ね、群ごとの全体平均を太い線で重ねることで、「個人差の幅」と「群レベルの平均効果」を一画面で示せます[@singer2003]。
+
+```{r}
+#| eval: true
+#| label: fig-spaghetti-vocab-prepost
+#| fig-width: 10
+#| fig-height: 5
+#| fig-cap: "Pre/post 縦断 GLMM のスパゲッティプロット。細い灰線は個人軌跡（学習者ごとの平均正答率）、色付き太線は群レベルのモデル予測（GLMM の固定効果から逆リンク変換）。Gloss 群の上昇幅が Control 群より大きい場合、time × treatment 交互作用として表れる。"
+
+# ── 個人レベルの観測値: 学習者×時点ごとの平均正答率 ──
+spag_obs <- vocab_long_dat |>
+  dplyr::group_by(learner_id, treatment, time) |>
+  dplyr::summarise(p_correct = mean(correct), .groups = "drop")
+
+# ── 群レベルのモデル予測: 固定効果のみ（typical learner / typical item） ──
+# frequency / proficiency は factor のため、それぞれ modal level (頻度最大の水準)
+# を典型値として固定し、treatment と time を 2x2 で展開する
+modal_level <- function(f) names(sort(table(f), decreasing = TRUE))[1]
+new_grid <- expand.grid(
+  time       = factor(c("Pre", "Post"), levels = levels(vocab_long_dat$time)),
+  treatment  = factor(levels(vocab_long_dat$treatment),
+                      levels = levels(vocab_long_dat$treatment)),
+  frequency  = factor(modal_level(vocab_long_dat$frequency),
+                      levels = levels(vocab_long_dat$frequency)),
+  proficiency = factor(modal_level(vocab_long_dat$proficiency),
+                       levels = levels(vocab_long_dat$proficiency)),
+  stringsAsFactors = FALSE
+)
+new_grid$item_id <- vocab_long_dat$item_id[1]  # ダミー (re.form = NA で無視される)
+new_grid$pred_p <- predict(m_vocab_long, newdata = new_grid,
+                           re.form = NA, type = "response",
+                           allow.new.levels = TRUE)
+
+ggplot() +
+  # 個人軌跡（細い灰線）
+  geom_line(
+    data = spag_obs,
+    aes(x = time, y = p_correct, group = learner_id, color = treatment),
+    alpha = 0.25, linewidth = 0.4
+  ) +
+  # 群レベル予測（太線）
+  geom_line(
+    data = new_grid,
+    aes(x = time, y = pred_p, group = treatment, color = treatment),
+    linewidth = 1.4
+  ) +
+  geom_point(
+    data = new_grid,
+    aes(x = time, y = pred_p, color = treatment),
+    size = 3
+  ) +
+  scale_color_manual(values = c(Control = "#0072B2", Gloss = "#D55E00")) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title    = "Spaghetti plot: pre/post vocabulary trajectories by treatment",
+    subtitle = "Thin lines: individual learners. Bold lines: GLMM fixed-effect predictions.",
+    x = NULL,
+    y = "Probability of correct response"
+  ) +
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    legend.position = "top",
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10)
+  )
+```
+
+**この図の読み方**:
+
+- **細い灰線（学習者軌跡）**: 個人ごとの pre→post の変化。学習者間のばらつきの大きさが一目で分かる。
+- **太線（群レベル予測）**: 固定効果のみから計算した群平均の軌跡。`re.form = NA` で「ランダム効果ゼロの典型的な学習者」の予測を返す。
+- **2 本の太線の傾きの差**こそが `time × treatment` 交互作用の視覚化。Gloss 群が Control 群より急峻なら、介入効果あり。
+- 個人軌跡が「全員上昇」なら一様な学習効果、「上昇する人と下降する人が混在」なら個人差が大きく、ランダム傾き `(1 + time | learner_id)` の妥当性が支持される。
+
+::: {.callout-tip}
+#### スパゲッティプロットを描くべき場面
+
+- **縦断デザイン**（pre/post、複数時点、ベースラインからの変化）
+- **クラスター内変動と個人差を同時に示したい**とき
+- 集計平均だけでは「平均は上がっているが半数は下降」のような**Simpson's paradox 的な現象**を見逃しやすい
+- ランダム傾きモデルの妥当性を**視覚的に検証**したいとき（傾きのばらつきが目に見える）
+
+縦断研究の論文では、結果図として「群平均 ± SE のエラーバー図」よりも「スパゲッティ + 群平均」が好まれる傾向にあります[@singer2003; @mirman2014]。
+:::
+
 ### GLMM と IRT の関係
 
 2 値 GLMM と IRT は、実は**同じ数学的枠組みの異なるパラメータ化**です[@deboeck2004; @wilson2008]。
@@ -1821,7 +2024,7 @@ m_vocab_long <- glmer(
 
 - **GLMM**: 「実験条件や学習者属性が正答率にどう影響するか」を検証したいとき。予測子（固定効果）が主な関心。
 - **IRT**: 「テスト項目の性質（困難度・識別力）を推定したい」「学習者の能力を推定したい」とき。項目パラメータや能力推定が主な関心。
-- **両者を組み合わせる**: Explanatory IRT[@wilson2008]では、IRT に予測子（学習者属性や項目属性）を追加できる。`TAM::tam.mml.mfr()` や `lme4::glmer()` で実装可能。
+- **両者を組み合わせる**: Explanatory IRT[@wilson2008]では、IRT に予測子（学習者属性や項目属性）を追加できます。`TAM::tam.mml.mfr()` や `lme4::glmer()` で実装可能です。
 
 **例**: 語彙テストで「高頻度語と低頻度語で正答率が異なるか」を検証する場合、GLMM で `frequency` を固定効果に入れ、`(1 | learner) + (1 | item)` をランダム効果に入れるのが自然です。一方、テストの項目分析や能力推定が目的なら IRT（本書 12 章参照）が適切です。
 
@@ -1836,7 +2039,7 @@ m_vocab_long <- glmer(
 - Level 1: 有向ペア（sender → receiver）
 - 高次構造: sender と receiver の**交差分類ランダム効果**
 - 重要点: 厳密な単純階層（生徒がクラスにのみ入る形）ではないため、
-  ICC/DEFF は「構造把握の近似指標」として使う
+  ICC/DEFF は「構造把握の近似指標」として使います
 
 ### ICC を 1 分で直感的に理解する
 
@@ -1916,7 +2119,7 @@ null モデルでは固定効果がないため両者は実質同じ値です。
 #### 方法 B: 手計算で原理を理解する
 
 `performance::icc()` の中身を理解するために、ICC を手計算で確認します。
-ロジスティック GLMM では、Level 1 の残差分散を $\pi^2/3 \approx 3.29$ と近似する
+ロジスティック GLMM では、Level 1 の残差分散を $\pi^2/3 \approx 3.29$ と近似します
 「潜在変数法」が標準的です[@snijders2012; @hox2018]。
 
 $$
@@ -2054,7 +2257,7 @@ tibble(
 | 平均クラスターサイズ | 各 sender/receiver が関与するペア数の平均（n-1 に近い）|
 | DEFF sender / receiver | 繰り返し構造による情報の目減り。**1 なら独立と同等**、大きいほど深刻 |
 | DEFF total | 両方を合わせた概算 |
-| 実効サンプルサイズ（参考値） | 観測数 / DEFF の概算。**あくまで参考値**であり、最終的なモデル選択の根拠にはしない |
+| 実効サンプルサイズ（参考値） | 観測数 / DEFF の概算。**あくまで参考値**であり、最終的なモデル選択の根拠にはしません |
 
 単純階層データ（入れ子構造）では $\mathrm{DEFF}=1+(m-1)\mathrm{ICC}$ が標準式です[@kish1965]。**本章の交差分類（sender × receiver）にはこの公式の理論的根拠がありません**。ここで示す DEFF と実効サンプルサイズは「独立性違反がどの程度深刻かの大まかな参考値」にすぎず、モデル選択の根拠には使いません。最終的な GLM/GLMM の選択は、後のセクションで行う **AIC/BIC 比較と LRT** に基づきます。
 
@@ -2065,7 +2268,7 @@ tibble(
 - ICC が中程度以上: GLMM を優先し、標準誤差の過小評価を避ける。
 - DEFF が 1 を大きく超える: 独立性仮定の破れが大きい可能性がある。
 - 交差分類では ICC/DEFF は「採用判断の補助」であり、最終判断は
-  `compare_performance()` と診断を併用する。
+  `compare_performance()` と診断を併用します。
 
 **報告テンプレート（ICC/DEFF）**:
 
@@ -2083,7 +2286,7 @@ ICC と DEFF はセットで出てくることが多いですが、答えてい�
 
 たとえば、同じ 30 人の学習者が 20 項目に答えるデータでは、ICC が大きいほど「同じ学習者の 20 反応は互いに似やすい」と言えます。DEFF は、その結果として「600 観測あるように見えても、独立観測 600 個ぶんの情報はない」と示す指標です。**ICC が“似ている強さ”、DEFF が“その帰結”**という関係で理解すると混乱しません。
 
-## ステップ1: GLM（基準モデル）
+## ステップ1: GLM（基準モデル） {#sec-glmm-step1}
 
 まずランダム効果なしのロジスティック回帰で基準線を作ります。この GLM は「全ペアが独立」と仮定しており、sender/receiver の繰り返し構造を無視しています。**目的は GLMM との比較基準を作ること**であり、このモデル自体を最終モデルとして採用するわけではありません。
 
@@ -2137,7 +2340,16 @@ ICC/DEFF の分析で見たとおり、このデータには sender/receiver に
 - `(1 | receiver)`: 「助言を受けやすい人/受けにくい人」の個人差
 - この 2 つは **交差分類**（同じ 30 人のプールから sender と receiver が出ている）
 
-`control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))` は、デフォルトの最適化アルゴリズムでは収束しにくい場合の標準対処です。`bobyqa`（制約付き最適化）と最大反復回数の増加を組み合わせています。
+`control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))` は、デフォルトの最適化アルゴリズムでは収束しにくい場合の標準対処です。`bobyqa`(制約付き最適化)と最大反復回数の増加を組み合わせています。
+
+::: {.callout-note}
+#### 推定アルゴリズム用語の早見表
+- **`bobyqa`**(Bound Optimization BY Quadratic Approximation):制約付き最適化アルゴリズム。`lme4` のデフォルト `Nelder_Mead` より収束しやすい
+- **`nloptwrap`**:`nloptr` パッケージの NLopt 最適化アルゴリズム群へのラッパー。bobyqa が失敗した時の次の選択肢
+- **Laplace 近似**(`nAGQ = 1`、デフォルト):ランダム効果の積分を**最頻値まわりの正規分布で近似**する手法。GLMM の標準推定法で計算が速い
+- **Gauss-Hermite 求積**(`nAGQ > 1`):積分を**複数のノード(quadrature points)で評価**してより正確に計算する。`nAGQ = 5〜10` で精度が大きく上がるが、計算時間も比例して増える。**ランダム切片 1 つのみ**の場合に使用可
+- **`isSingular()`**:ランダム効果の分散が 0 に推定された(境界に張り付いた)場合に `TRUE` を返す
+:::
 
 ```{r}
 #| eval: true
@@ -2174,12 +2386,12 @@ GLMM の出力は GLM と構造が似ていますが、**ランダム効果の�
 | `Std.Dev.` | 分散の平方根（logit スケール）。0.5 以上なら実質的な個人差がある |
 | `Number of obs` / `groups` | 観測数とグループ数 |
 
-**固定効果セクション**：GLM と同じ列構成ですが、**SE が GLM より大きくなっている**はずです。これが GLMM の本質的な効果——依存構造を考慮することで SE が「正直に」なるのです。
+**固定効果セクション**：GLM と同じ列構成ですが、依存構造が強い場合は **SE が GLM より大きくなる**ことがよくあります。GLMM の重要な役割は、独立でない観測を独立と見なさず、固定効果とその不確実性を反復構造込みで推定することです。
 
 ::: {.callout-important}
 ### GLM と GLMM の SE を比較する
 
-`summary(m_glm)` と `summary(m_glmm_ri)` の SE を並べて見てください。GLMM の SE が GLM より大きくなっていれば、GLM が独立性仮定のもとで SE を過小評価していた証拠です。**推定値（Estimate）自体はそれほど変わらないが、SE が変わる**——これが GLMM の核心です。「GLMM は推定値を変えるのではなく、精度の主張を正直にする」と理解してください。
+`summary(m_glm)` と `summary(m_glmm_ri)` の SE を並べて見てください。GLMM の SE が GLM より大きくなっていれば、GLM が独立性仮定のもとで SE を小さく見積もっていた可能性があります。同時に、**推定値（Estimate）自体がどの程度変わるか**も確認してください。ロジスティック GLMM では、未モデル化の異質性やクラスター不均衡によって、SE だけでなく係数も変わることがあります。
 :::
 
 分散成分の大きさを直感的に解釈するには、ロジスティック分布の残差分散 $\pi^2/3 \approx 3.29$ と比較します。sender 分散が 0.5、receiver 分散が 0.3 なら、残差（$\pi^2/3$）に対する比率はそれぞれ約 15%、9% であり、sender 側の個人差がより大きいことがわかります。
@@ -2306,26 +2518,26 @@ m_glmm_rs <- glmer(
   )
 )
 
-# 特異適合の確認：FALSE なら安全、TRUE なら過剰パラメータ化
+# 特異適合の確認：FALSE なら明確な特異適合なし、TRUE なら過剰パラメータ化の疑い
 isSingular(m_glmm_ri)  # ランダム切片モデル
 isSingular(m_glmm_rs)  # ランダム傾き追加モデル
 ```
 
 **`isSingular()` の読み方**：
 
-- `FALSE` → 特異適合ではない。ランダム効果構造はデータに支持されている。
+- `FALSE` → 明確な特異適合は検出されていません。採用可否はモデル比較・理論整合性も合わせて判断します。
 - `TRUE` → **特異適合が発生**。分散成分の一部が 0 に張り付いており、モデルが複雑すぎる。
 
-**本データでの判断**: `m_glmm_ri` が FALSE（安全）、`m_glmm_rs` が TRUE（過剰）であれば、ランダム傾きモデルはこのデータには複雑すぎると判断し、ランダム切片モデル（`m_glmm_ri`）を採用します。
+**本データでの判断**: `m_glmm_ri` が FALSE、`m_glmm_rs` が TRUE であれば、ランダム傾きモデルはこのデータには複雑すぎると判断し、ランダム切片モデル（`m_glmm_ri`）を採用します。
 
 ::: {.callout-warning}
 ### 特異適合が起きたときの対処法
 
-1. **無視しない**: 特異適合はモデルの過剰パラメータ化の徴候であり、推定結果の信頼性に影響する。
+1. **無視しない**: 特異適合はモデルの過剰パラメータ化の徴候であり、推定結果の信頼性に影響します。
 2. **ランダム構造を簡素化**: ランダム傾きを落とし、ランダム切片モデルに戻す。
-3. **試みたことを報告**: 論文では「ランダム傾きを試みたが特異適合が生じたため、ランダム切片モデルを採用した」と書くことが推奨される[@bates2015parsimonious; @matuschek2017]。SLA 分野での具体的な判断例は @linck2015 を参照。
+3. **試みたことを報告**: 論文では「ランダム傾きを試みたが特異適合が生じたため、ランダム切片モデルを採用した」と書くことが推奨されます[@bates2015parsimonious; @matuschek2017]。SLA 分野での具体的な判断例は @linck2015 を参照してください。
 
-本データでは、`m_glmm_ri`（ランダム切片のみ）が `FALSE` であれば安全に使用でき、`m_glmm_rs`（ランダム傾き追加）が `TRUE` であれば、ランダム切片モデルに留めるのが実務上の正解です。
+本データでは、`m_glmm_ri`（ランダム切片のみ）に明確な特異適合がなく、`m_glmm_rs`（ランダム傾き追加）で特異適合が出るなら、ランダム切片モデルに留める判断が妥当です。
 :::
 
 
@@ -2387,9 +2599,9 @@ compare_models_tbl(m_glm, m_glmm_sender, m_glmm_receiver, m_glmm_ri, m_glmm_rs) 
 
 1. **AIC/BIC**: 小さいほど良い。GLM vs GLMM で ΔAIC > 10 なら、ランダム効果が大幅に改善。
 2. **R² (conditional vs marginal)**: conditional R² が marginal を大きく上回るほど、ランダム効果（個人差）が予測に寄与している。
-3. **ランダム傾き**: AIC が改善していても特異適合（`isSingular = TRUE`）ならば採用は避ける。
+3. **ランダム傾き**: AIC が改善していても特異適合（`isSingular = TRUE`）ならば採用は避けます。
 
-次に LRT（尤度比検定）でランダム効果構造を正式に比較します。LRT は **入れ子関係にあるモデル同士** でのみ有効です。
+次に LRT（尤度比検定）でランダム効果構造を比較します。LRT は **入れ子関係にあるモデル同士** でのみ有効です。
 
 ```{r}
 #| eval: true
@@ -2410,15 +2622,15 @@ anova(m_glmm_ri, m_glmm_rs)
 | `Df` | パラメータ数の差（追加されたランダム効果の数）|
 | `Pr(>Chisq)` | p 値。有意なら、より複雑なモデルが有意に適合を改善 |
 
-**3 つの LRT の結果をまとめると**: (1) sender のみ → sender + receiver で有意に改善 → receiver のランダム切片は必要。(2) receiver のみ → sender + receiver で有意に改善 → sender のランダム切片も必要。(3) sender + receiver → sender + receiver + ランダム傾き で改善しない → ランダム傾きは不要。この結論は `isSingular()` の結果とも整合します。
+**3 つの LRT の結果をまとめると**: (1) sender のみ → sender + receiver で有意に改善 → receiver のランダム切片は必要です。(2) receiver のみ → sender + receiver で有意に改善 → sender のランダム切片も必要です。(3) sender + receiver → sender + receiver + ランダム傾き で改善しない → ランダム傾きは不要です。この結論は `isSingular()` の結果とも整合します。
 
 ::: {.callout-note}
 #### 境界問題に注意
 
-ランダム効果の分散はゼロ以上の制約があるため、帰無仮説（分散 = 0）はパラメータ空間の境界に位置します。このため LRT の p 値は**保守的**（やや大きめ）になる傾向があります[@self1987; @stram1994]。実務的には、LRT が有意でなくても AIC/BIC が改善していれば、ランダム効果の追加を検討する余地があります。
+ランダム効果の分散はゼロ以上の制約があるため、帰無仮説（分散 = 0）はパラメータ空間の境界に位置します。この場合、通常のカイ二乗分布に基づく LRT の p 値は厳密ではありません[@self1987; @stram1994]。単一の分散成分を比較する単純な場合には保守的になりやすいと説明されますが、交差分類や相関を含む複雑なランダム効果構造では一概に言えません。実務では、LRT を近似的な情報として扱い、AIC/BIC、`isSingular()`、研究デザイン上の必要性、必要ならパラメトリックブートストラップやシミュレーションを合わせて判断します。
 :::
 
-次に特異適合の正式チェックと、ランダム効果の主成分分析（`rePCA()`）を行います。`rePCA()` はランダム効果の分散共分散行列を主成分分解し、各成分がどれだけ情報を持つかを示します。
+次に特異適合と、ランダム効果の主成分分析（`rePCA()`）を確認します。`rePCA()` はランダム効果の分散共分散行列を主成分分解し、各成分がどれだけ情報を持つかを示します。
 
 ```{r}
 #| eval: true
@@ -2440,13 +2652,13 @@ rePCA(m_glmm_rs)
 
 | 関数 | 結果 | 意味 |
 |------|------|------|
-| `isSingular()` | `FALSE` | 安全。ランダム効果構造は推定可能 |
+| `isSingular()` | `FALSE` | 明確な特異適合なし。採用可否は他の証拠も見る |
 | `isSingular()` | `TRUE` | 特異適合。分散成分の一部が 0 に収束 |
 | `VarCorr()` | 分散 ≈ 0 の項あり | その項のランダム効果は過剰 |
 | `rePCA()` | 1成分で 99%+ | ランダム傾きは実質的に不要 |
 
 `m_glmm_rs` が特異適合かつ適合改善が小さい場合は、
-ランダム切片モデルを採用するのが実務上の安全策です。
+ランダム切片モデルを採用する判断が妥当です。
 
 ::: {.callout-note collapse="true"}
 #### 連続変数のランダム傾き（発展）
@@ -2465,15 +2677,18 @@ glmer(correct ~ item_difficulty * proficiency +
 **連続変数のランダム傾き特有の注意点**:
 
 1. **収束失敗が起きやすい**: 連続変数は 2 値変数よりランダム傾きの推定が不安定。まず `||`（相関なし）で試す。
-2. **中心化が重要**: 中心化されていない連続変数（例：年齢 20〜60）のランダム傾きは、切片との相関が人工的に高くなる。必ず z 標準化してからランダム傾きに含める。
-3. **解釈**: 「SD_slope = 0.3」は「ある学習者の item_difficulty の効果は平均 ± 0.3 logit の範囲でばらつく」を意味する。分散が 0 に近ければ、全学習者で効果が均一（ランダム傾き不要）。
+2. **中心化が重要**: 中心化されていない連続変数（例：年齢 20〜60）のランダム傾きは、切片との相関が人工的に高くなります。必ず z 標準化してからランダム傾きに含める。
+3. **解釈**: 「SD_slope = 0.3」は「ある学習者の item_difficulty の効果は平均 ± 0.3 logit の範囲でばらつく」を意味します。分散が 0 に近ければ、全学習者で効果が均一（ランダム傾き不要）。
 :::
 
 #### ランダム効果の可視化
 
 ```{r}
 #| eval: true
-#| label: sjplot-random-effects
+#| label: fig-sjplot-random-effects
+#| fig-width: 10
+#| fig-height: 5
+#| fig-cap: "sjPlot::plot_model(type = \"re\") による sender / receiver のランダム効果（BLUP）。点が条件付きモード、横バーは Wald 型条件付き分散に基づく区間。"
 
 # ランダム効果の個人ごとの推定値を可視化
 # → 各点が 1 人の sender（または receiver）
@@ -2528,10 +2743,76 @@ if (inherits(re_plots, "list")) {
 **図の読み方**：
 
 - 各点が 1 人の sender（または receiver）のランダム効果推定値。
-- **信頼区間が 0 をまたぐ**個人は、全体平均と有意に異ならない。
-- 信頼区間が 0 をまたがない個人は、特に助言をしやすい（正）または しにくい（負）。
+- **0 より上**なら平均より助言をしやすい傾向、**0 より下**なら助言をしにくい傾向を示します。
+- 区間が 0 をまたぐかどうかは、個人ごとの「有意差検定」としては読みません。ランダム効果の推定値は部分プーリングされた条件付き推定値（BLUP / conditional modes）であり、主目的は個人差の大きさと方向を探索することです。
 - 例えば、sender のランダム効果が +0.8 の人は、全体平均よりもログオッズで 0.8 高い（＝助言をしやすい）個人です。確率で言えば、平均的な sender に比べてベースラインの助言確率が約 10-15 ポイント高くなります。
-- sender と receiver のプロットを比べ、**どちらの個人差が大きいか**を視覚的に判断できる。散布の幅が大きいほど個人差が大きい。
+- sender と receiver のプロットを比べ、**どちらの個人差が大きいか**を視覚的に判断できます。散布の幅が大きいほど個人差が大きい。
+
+#### シミュレーションベースのキャタピラープロット（`merTools::REsim`）
+
+`sjPlot::plot_model(type = "re")` は条件付き分散から導く Wald 型区間を描画しますが、`merTools::REsim()` はランダム効果の事後分布をシミュレーションで近似し、より現実的な不確実性区間を返します[@knowles2016mertools]。サンプルサイズが小さいクラスタや特異適合に近い場合に推奨されます。
+
+```{r}
+#| eval: true
+#| label: fig-mertools-caterpillar
+#| fig-width: 10
+#| fig-height: 6
+#| fig-cap: "merTools::REsim() によるシミュレーションベースのキャタピラープロット。各点はランダム効果の中央値、バーは 95%（2.5–97.5パーセンタイル）シミュレーション区間。0 を含まない個人ほど、平均からの逸脱の証拠が強い。"
+
+# n.sims = 1000 回のシミュレーションでランダム効果の事後分布を近似
+re_sim <- merTools::REsim(m_glmm_ri, n.sims = 1000)
+
+# 中央値で並び替え、上位/下位を強調する典型的な caterpillar 表現
+merTools::plotREsim(
+  re_sim,
+  level = 0.95,
+  stat  = "median",
+  sd    = TRUE   # ±1.96 SD の区間を描く
+) +
+  labs(
+    title    = "Caterpillar plot: simulated 95% intervals for random intercepts",
+    subtitle = "Highlighted points: intervals that exclude zero (notably above/below average)"
+  ) +
+  xlab("Individual (ranked by random intercept)") +
+  ylab("Random intercept (log-odds scale)") +
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+```
+
+**この図の読み方**:
+
+- 横軸は個人（中央値で昇順に並べ替え）、縦軸はランダム切片（log-odds スケール）。
+- **黒バー（区間が 0 を含む）**: 全体平均と統計的に区別できない個人。
+- **強調バー（区間が 0 を含まない）**: 平均から有意に逸脱している個人。中央付近では個人差は小さく、両端で大きい。
+- これは「どの個人が標準的か／外れているか」を一目で識別する標準的な GLMM 可視化です[@knowles2016mertools; @gelman2007]。
+
+::: {.callout-tip}
+#### `sjPlot` と `merTools` の使い分け
+
+| ツール | 区間の計算 | 推奨される場面 |
+|:---|:---|:---|
+| `sjPlot::plot_model(type = "re")` | Wald 型（条件付き SE × 1.96） | 大規模データ、デザインがバランス、特異適合なし |
+| `merTools::REsim()` | シミュレーション（事後分布の経験分位点） | 小サンプル、特異適合に近い、クラスタサイズが不均一 |
+| `lme4::ranef(.., condVar = TRUE)` の自前描画 | Wald 型（手動） | テーマや配色を完全制御したい場合 |
+
+`merTools::REsim()` は内部で多変量正規からのモンテカルロ近似を行い、Bates らが推奨する正確な事後区間に近い結果を与えます[@bates2015]。
+:::
 
 #### 部分プーリング（shrinkage）: GLMM が個人差を推定する仕組み
 
@@ -2601,7 +2882,7 @@ ggplot(shrink_df, aes(x = no_pool, y = partial_pool)) +
 **この図の読み方**:
 
 - 各点は 1 人の sender。破線は「収縮なし」（no-pooling = partial-pooling）の対角線。
-- **矢印**: no-pooling 推定値（矢印の先端）が GLMM 推定値（点）に引き寄せられる方向を示す。
+- **矢印**: no-pooling 推定値（矢印の先端）が GLMM 推定値（点）に引き寄せられる方向を示します。
 - **極端な推定値ほど大きく収縮**する（対角線からの乖離が大きい）。
 - 青点線は全体平均（grand mean）。GLMM は全ての推定値をここに向かって引き寄せる。
 
@@ -2768,8 +3049,8 @@ sjPlot::tab_model(
 **この表の読み方**:
 
 - **3 列の比較**: 左から GLM（ランダム効果なし）、GLMM-RI（ランダム切片）、GLMM-RS（ランダム傾き）。
-- **SE の変化に注目**: GLMM では SE が GLM より大きくなるのが通常（標準誤差が正直になった証拠）。
-- **ICC**: ランダム効果が説明する分散の割合。高いほど GLMM が重要。
+- **SE の変化に注目**: 正の依存を無視した GLM では SE が小さく出やすく、GLMM で大きくなることが多い。ただし、データ構造や予測子の配置によっては固定効果推定値と SE の両方が変わる。
+- **ICC**: ランダム効果が説明する分散の割合。高いほど GLMM が重要です。
 - **Random Effects**: 各グルーピング変数のランダム効果分散。0 に近い場合は過剰パラメータ化の可能性。
 - **AIC**: 小さいほど良い。モデル間で比較してランダム効果の追加が正当化されるかを判断。
 
@@ -2853,9 +3134,10 @@ sjPlot::tab_model(
 
 **注目すべき点**：
 
-- **SE の変化**: GLMM の SE が GLM より大きくなっていれば、GLM が SE を過小評価していた証拠。
-- **有意性の変化**: GLM では有意だった予測子が GLMM では非有意になることがある。これは「見かけの有意性」が依存構造の無視によるものだったことを示す。
-- **ICC / R²**: 表の下部に表示される。conditional R² が marginal R² より大きければ、ランダム効果が重要。
+- **SE の変化**: GLMM の SE が GLM より大きくなっていれば、GLM が依存構造を十分に反映していなかった可能性が高い。
+- **推定値の変化**: ロジスティック GLMM では、固定効果の係数そのものも変わり得る。SE だけでなく β と OR の変化も確認します。
+- **有意性の変化**: GLM では有意だった予測子が GLMM では非有意になることがある。これは「見かけの有意性」が依存構造の無視によるものだった可能性を示します。
+- **ICC / R²**: 表の下部に表示される。conditional R² が marginal R² より大きければ、ランダム効果が重要です。
 
 ### ③ 固定効果の比較（ランダム構造は固定）
 
@@ -2877,7 +3159,7 @@ m_glmm_drop_sender   <- update(m_glmm_ri, . ~ . - score_sender_sc)
 m_glmm_drop_receiver <- update(m_glmm_ri, . ~ . - score_receiver_sc)
 ```
 
-次に LRT で各予測子の寄与を正式に検定します。`drop1()` は「フルモデルから各予測子を 1 つずつ落とし、適合が有意に悪化するかを一括検定する」便利関数です。
+次に LRT で各予測子の寄与を検討します。`drop1()` は「フルモデルから各予測子を 1 つずつ落とし、適合がどれだけ悪化するか」を一括確認する便利関数です。ただし、交互作用を含むモデルでは階層性を守る必要があり、上位の交互作用に含まれる主効果を機械的に落としてはいけません。
 
 ```{r}
 #| eval: true
@@ -2895,14 +3177,14 @@ drop1(m_glmm_ri, test = "Chisq")
 | `Df` | その予測子のパラメータ数（通常 1）|
 | `AIC` | その予測子を落とした場合の AIC。フルモデルより大きければ、落とすと悪化する |
 | `LRT` | 尤度比統計量。大きいほど、その予測子の寄与が大きい |
-| `Pr(Chi)` | p 値。p < .05 なら、その予測子はモデルの適合に有意に寄与 |
+| `Pr(Chi)` | 近似的な p 値。p < .05 なら、その予測子を落とすと適合が悪化する証拠 |
 
-**出力の確認**: p < .05 の予測子はモデルの適合に有意に寄与しています。非有意な予測子でも理論的根拠があれば（統制変数など）残すのが一般的です。全予測子が非有意であっても、ランダム効果の追加は ICC/LRT で正当化されています。
+**出力の確認**: p < .05 の予測子は、その予測子を落とすとモデル適合が悪化する証拠があると読みます。非有意な予測子でも、理論的根拠がある統制変数や先行研究で重要な変数は残すのが一般的です。全予測子が非有意であっても、ランダム効果の追加は ICC、モデル比較、研究デザイン上の反復構造によって別途正当化されます。
 
 ::: {.callout-warning}
 #### Wald 検定と LRT の p 値は異なることがある
 
-`summary(model)` の z 値と p 値は **Wald 検定**に基づいており、`drop1()` の p 値は**尤度比検定（LRT）**に基づいています。小標本や推定が不安定な場合、両者の結論が異なることがあります。一般に **LRT のほうが信頼性が高い**ため、固定効果の有意性判断には `drop1()` や `anova()` を優先してください[@bolker2009]。`summary()` の p 値は効果の方向と大まかな有意性の確認に使い、最終的な報告には LRT を使うのが安全です。
+`summary(model)` の z 値と p 値は **Wald 検定**に基づいており、`drop1()` の p 値は**尤度比検定（LRT）**に基づいています。小標本や推定が不安定な場合、両者の結論が異なることがあります。固定効果の有意性判断では、`summary()` の p 値だけに依存せず、`drop1()` や `anova()` による LRT、AIC/BIC、理論上の必要性を合わせて確認します[@bolker2009]。`summary()` の p 値は効果の方向と大まかな有意性の確認に使い、最終的な報告では検定方法を明記してください。
 :::
 
 ::: {.callout-tip collapse="true"}
@@ -2933,10 +3215,10 @@ compare_models_tbl(
 ::: {.callout-note}
 #### ①②③ の結果を踏まえた最終判断
 
-- **①** ランダム効果構造: AIC が改善し、かつ特異適合でないモデルを優先。本データでは `m_glmm_ri`（sender + receiver のランダム切片）を採用。
+- **①** ランダム効果構造: AIC が改善し、かつ特異適合でないモデルを優先します。本データでは `m_glmm_ri`（sender + receiver のランダム切片）を採用します。
 - **②** リンク関数: AIC が同等なら logit を採用（OR で解釈可能なため）。
-- **③** 固定効果: LRT・AIC/BIC・理論整合性を総合的に判断。統制変数として投入した予測子は、非有意でも残すのが一般的。
-- 境界問題を含む比較では p 値は近似なので、`compare_performance()` と診断を併用する。
+- **③** 固定効果: LRT・AIC/BIC・理論整合性を総合的に判断。統制変数として投入した予測子は、非有意でも残すのが一般的です。
+- 境界問題を含む比較では p 値は近似なので、`compare_performance()` と診断を併用します。
 :::
 
 ## 交互作用の検討（実践例）
@@ -3019,11 +3301,11 @@ sjPlot::plot_model(
 
 - 2 本の線（same_class = 0 と 1）が**平行に近い**なら交互作用は弱い。
 - 線が**交差するか、間隔が変わる**なら交互作用がある。
-- 例えば「同クラスの効果（2 線の差）が prof_gap = 0 では大きいが、prof_gap = 2 では小さい」なら、熟達度差が大きいと同クラスの利点が薄れることを意味する。
+- 例えば「同クラスの効果（2 線の差）が prof_gap = 0 では大きいが、prof_gap = 2 では小さい」なら、熟達度差が大きいと同クラスの利点が薄れることを意味します。
 
 ### 交互作用の emmeans による分解
 
-交互作用が見つかった場合（あるいは理論的に重要な場合）、`emmeans` で**条件ごとの推定確率**と**単純効果**を求めます。ここでの役割分担は明確です。`pairs(emm_int)` が**どの simple effect が有意か**を検定し、`emmip()` は**その検定の土台になっている推定周辺平均の形**を応答スケールで見せます[@emmeans_emmip]。
+交互作用が見つかった場合（あるいは理論的に重要な場合）、`emmeans` で**条件ごとの推定確率**と**単純効果**を求めます。ここでの役割分担は明確です。`emmeans(..., type = "response")` は確率スケールの表を返しますが、`pairs()` の検定は基本的にリンク尺度（logit）で行われ、その結果が OR として表示されます。`emmip()` は**その検定の土台になっている推定周辺平均の形**を応答スケールで見せます[@emmeans_emmip]。
 
 ```{r}
 #| eval: true
@@ -3045,13 +3327,14 @@ as.data.frame(emm_int) |>
   )
 
 # ── 単純効果: prof_gap の各水準での same_class の OR ──
-pairs(emm_int, adjust = "none")  # 2群なので補正不要
+# prof_gap = 0, 1, 2 の 3 つの simple effects を同時に見るため Holm 補正を使う
+pairs(emm_int, adjust = "holm")
 ```
 
 **読み方**:
 
 - **推定確率表**: prof_gap = 0, 1, 2 のそれぞれで、同クラス（1）と異クラス（0）の予測確率を比較。
-- **`pairs()` 出力**: 各 prof_gap 水準での same_class の OR と p 値。OR が prof_gap によって異なれば、交互作用の実質的な意味が明確になる。
+- **`pairs()` 出力**: 各 prof_gap 水準での same_class の OR と補正済み p 値。OR が prof_gap によって異なれば、交互作用の実質的な意味が明確になります。
 
 ```{r}
 #| eval: true
@@ -3106,6 +3389,105 @@ emmeans::emmip(m_glmm_int, same_class ~ prof_gap,
 :::
 
 ## 固定効果の解釈（OR）
+
+::: {.callout-important}
+**OR の non-collapsibility — Conditional (subject-specific) と Marginal (population-averaged) の区別**
+
+GLMM (二値ロジスティック) で得られる Odds Ratio は **conditional (subject-specific) OR** であり、**ランダム効果を固定したときの個人内 OR** を表します。これは [@greenland1999] が指摘した「ロジスティックモデルの非崩壊性 (non-collapsibility)」により、**集団全体に対する population-averaged (marginal) OR とは数値が一致しない** という重要な性質を持ちます。
+
+| 種類 | 何を表すか | 解釈例 (語彙学習研究) |
+|------|---------|---------------------|
+| **Conditional OR** (GLMM の既定) | 個人 $i$ の中で予測子が 1 単位変化した時のオッズ比 | 「**同じ学習者**が CEFR 1 段階上がると、語の習得オッズが 1.8 倍」 |
+| **Marginal OR** (population) | 集団全体での予測子効果 | 「**集団全体**で見ると、CEFR 1 段階上がると語の習得オッズが約 1.5 倍」 |
+
+ランダム効果分散 $\sigma_b^2$ が大きいほど、conditional OR と marginal OR の差は大きくなります。**集団政策的判断 (例: カリキュラム改訂、選抜閾値設定)** には marginal OR が、**個人レベルの介入 (例: 個別指導効果)** には conditional OR が適切です。
+
+**Marginal OR の計算方法**:
+
+```r
+# (a) marginaleffects パッケージで marginal effect を計算
+library(marginaleffects)
+avg_comparisons(m_glmm, variables = "predictor", type = "response")
+# → 確率スケールでの集団平均効果。OR 換算は確率比から計算可能
+
+# (b) Hedeker et al. (2018) のマージナル化手法 (積分による近似)
+# brms::brm() で完全ベイズ推定後、posterior_predict() で marginal probability を生成
+fit_brms <- brms::brm(y ~ x + (1 | id), data = dat, family = bernoulli())
+marg_pred <- posterior_predict(fit_brms, re_formula = NA)  # 集団平均化
+```
+
+論文では **「本研究では subject-specific (conditional) な OR を報告しており、集団全体への一般化には marginal OR の併記が望ましい」** と注記するか、両方を報告するのが現代的です [@hedeker2018]。
+:::
+
+::: {.callout-tip}
+#### Inference toolkit:Wald / Profile / Bootstrap CI と df 補正
+GLMM の固定効果には複数の信頼区間計算法があり、サンプルサイズ・モデル複雑度によって使い分けます。
+
+| 手法 | 関数 | 性質 | 推奨場面 |
+|---|---|---|---|
+| **Wald CI**(default) | `confint(model, method = "Wald")` / `broom.mixed::tidy(conf.int = TRUE)` | 漸近正規性を仮定、計算が速い | 大標本(n > 100)、固定効果が中程度 |
+| **Profile likelihood CI** | `confint(model, method = "profile")` | 尤度の曲率を反映、非対称になり得る | 小〜中標本、係数が極端な場合 |
+| **Parametric bootstrap CI** | `confint(model, method = "boot", nsim = 1000)` | 分布仮定を緩める | 小標本、profile が失敗する場合 |
+
+**自由度補正(線形混合モデル `lmer` 限定)**:`lmer` の F / t 検定では `lmerTest` パッケージが **Satterthwaite df**(default)を、`pbkrtest` パッケージが **Kenward-Roger df** を提供します。**`glmer`(本章のロジスティック GLMM)は漸近的 z 検定を使うため、df 補正は適用されません**(`Pr(>|z|)` が `lmer` の `Pr(>|t|)` に対応)。
+
+```r
+# Wald(default、broom.mixed::tidy で取得)
+broom.mixed::tidy(m_glmm_ri, conf.int = TRUE)
+
+# Profile likelihood
+confint(m_glmm_ri, method = "profile", parm = "beta_")
+
+# Parametric bootstrap(時間がかかるため小標本のみ)
+confint(m_glmm_ri, method = "boot", nsim = 1000, parm = "beta_")
+```
+:::
+
+::: {.callout-tip}
+#### Cluster-robust SE for GLMM(`clubSandwich`)
+ランダム効果を入れても**残された依存構造**(例:同じ教室内で sender も receiver も入れ子になる三層構造)が懸念される場合、**cluster-robust SE** を併記すると頑健性が高まります。`clubSandwich::vcovCR()` + `coef_test()` で実装できます。
+
+```r
+library(clubSandwich)
+
+# CR2(Bell-McCaffrey 補正、小標本でも妥当)
+clubSandwich::coef_test(m_glmm_ri,
+                         vcov = "CR2",
+                         cluster = dat_bin$class_id)
+```
+
+**判断基準**:1 クラスに 5 人以上入っているなら CR2 を主報告に併記。Wald CI と比べて SE が大きく異なるなら、**ランダム効果構造が捉えきれていない依存**が残っている可能性があります(Pustejovsky & Tipton 2018)。
+:::
+
+::: {.callout-tip}
+#### モダンな代替エンジン:`glmmTMB` と `marginaleffects`
+**`glmmTMB`** [@brooks2017glmmtmb] は `lme4::glmer` の代替として 2017 年以降標準化しつつあります。同じ formula 構文で:
+
+- **対応 family が広い**:beta、Tweedie、zero-inflated Poisson/NB、ordbeta など
+- **計算が速い**:Template Model Builder ベースで大規模データに強い
+- **AR(1)、空間相関**などの複雑な共分散構造を扱える
+
+```r
+library(glmmTMB)
+m_tmb <- glmmTMB(
+  tie ~ same_class + prof_gap + score_from_sc + score_to_sc +
+        (1 | sender) + (1 | receiver),
+  family = binomial(link = "logit"), data = dat_bin
+)
+summary(m_tmb)   # lme4 と同じ係数・SE が得られる
+```
+
+**`marginaleffects`** [@arelbundock2024marginaleffects] は emmeans の現代的代替で、glmer / glmmTMB / brms すべてに統一 API で対応します。
+
+```r
+library(marginaleffects)
+avg_slopes(m_glmm_ri, variables = "same_class")
+avg_comparisons(m_glmm_ri, variables = list(same_class = c(0, 1)))
+plot_predictions(m_glmm_ri, condition = c("same_class", "prof_gap"))
+```
+
+本章は `lme4` + `emmeans` を主軸にしていますが、論文の Robustness セクションで両ツール出力を併記すると推定の頑健性を多角的に示せます。
+:::
 
 logit スケールの係数（β）はそのままでは解釈しにくいため、**オッズ比（OR = exp(β)）** に変換して報告します。OR は「その予測子が 1 単位増加したとき、イベント（助言関係）のオッズが何倍になるか」を示します。
 
@@ -3199,15 +3581,15 @@ OR は**確率差そのもの**ではありません。例えば OR = 2.0 は「
 
 ### OR の大きさの目安（効果量ベンチマーク）
 
-OR の大きさは Cohen's *d* に変換して解釈できます。変換式は $d = \ln(\text{OR}) / 1.81$ です[@chinn2000; @chen2010]。
+OR の大きさは Cohen's *d* に変換して解釈できます。Chinn (2000) の変換式は $d = \ln(\text{OR}) / (\pi/\sqrt{3}) = \ln(\text{OR}) / 1.81$、逆向きには $\text{OR} = \exp(d \times 1.81)$ です [@chinn2000; @chen2010]。
 
-| 効果の大きさ | Cohen's *d* | 対応する OR |
+| 効果の大きさ | Cohen's *d* | 対応する OR ($= \exp(d \times 1.81)$) |
 |:---:|:---:|:---:|
-| 小 (small) | 0.2 | 1.68 |
-| 中 (medium) | 0.5 | 3.47 |
-| 大 (large) | 0.8 | 6.71 |
+| 小 (small) | 0.2 | 1.44 |
+| 中 (medium) | 0.5 | 2.48 |
+| 大 (large) | 0.8 | 4.27 |
 
-**注意**: この変換式 $d = \ln(\text{OR})/1.81$ は、潜在変数がロジスティック分布に従うという仮定のもとで導出されています[@chinn2000]。OR そのものはベースラインの確率に依存しない指標ですが、OR から**リスク比（RR）やリスク差**に換算する場合はベースラインの確率に強く依存します。OR を報告する際には、この表と比較して効果の実質的な大きさを論じると、査読者に伝わりやすくなります。
+**注意**: この変換式は、潜在変数がロジスティック分布に従うという仮定のもとで導出されています [@chinn2000]。OR そのものはベースラインの確率に依存しない指標ですが、OR から**リスク比(RR)やリスク差**に換算する場合はベースラインの確率に強く依存します。OR を報告する際には、この表と比較して効果の実質的な大きさを論じると、査読者に伝わりやすくなります。
 
 ## 応答スケールでの報告（予測確率）
 
@@ -3219,13 +3601,13 @@ OR の大きさは Cohen's *d* に変換して解釈できます。変換式は 
 | Conditional prediction | 観測された learner / item のランダム効果も含む予測 | このサンプル内での fitted probability | `predict(..., re.form = NULL)` |
 | Unknown-at-pretest prediction | `pretest_status = incorrect` に条件づけた平均 | 未知語に対する学習効果 | `emmeans(..., at = list(pretest_status = ...))` |
 
-: この章で使う予測量の早見表: 同じ「確率」でも意味は同じではない
+: この章で使う予測量の早見表: 同じ「確率」でも意味は同じではありません
 
 この表を先に頭に入れておくと、後の予測図がかなり読みやすくなります。特に混乱しやすいのは、**EMM**, **marginal prediction**, **conditional prediction** の違いです。どれも 0〜1 の確率を返しますが、「何を平均しているか」と「誰に一般化するか」が違います。
 
 ### 群比較（same class）
 
-`emmeans()` は、他の予測子を平均的な値に固定したうえで、特定の条件における推定周辺平均（EMMs）を算出します。`type = "response"` を指定すると、logit スケールではなく**確率スケール**で結果を返します。
+`emmeans()` は、他の予測子を平均的な値に固定したうえで、特定の条件における推定周辺平均（EMMs）を算出します。`type = "response"` を指定すると、logit スケールではなく**確率スケール**で結果を返します。ただし、`pairs()` による比較は通常リンク尺度で行われ、logit モデルでは差が OR として表示されます。つまり、**表の `prob` は確率、比較の `odds.ratio` はオッズ比**です。
 
 ```{r}
 #| eval: true
@@ -3254,12 +3636,12 @@ pairs(emm_class)
 | `df` | 自由度（GLMM では `Inf` = 漸近正規近似） |
 | `asymp.LCL` / `asymp.UCL` | 確率の 95% 信頼区間（漸近的） |
 
-**確率差**: 2 つの `prob` の差が、same_class の実質的効果を示す。例えば 0.15 vs 0.25 なら、同クラスは約 10 ポイント高い。
+**確率差**: 2 つの `prob` の差が、same_class の実質的効果を示します。例えば 0.15 vs 0.25 なら、同クラスは約 10 ポイント高い。
 
 **`pairs()` の読み方**：
 
 - `odds.ratio`: 2 条件間の OR（OR 表の same_class の OR と一致するはず）。
-- `p.value`: ペアワイズ比較の p 値。
+- `p.value`: ペアワイズ比較の p 値です。検定はリンク尺度で行われるため、確率差の見た目だけで判断しません。
 
 #### 多重比較の補正
 
@@ -3303,7 +3685,7 @@ ggplot(emm_class_df, aes(x = same_class, y = prob, ymin = asymp.LCL, ymax = asym
   )
 ```
 
-**図の読み方**: 点が推定確率、縦線が 95% CI。2 条件の CI が重なっていなければ、差は統計的に有意と視覚的に判断できます（ただし正式な検定は `pairs()` の p 値で行う）。
+**図の読み方**: 点が推定確率、縦線が 95% CI。2 条件の差が大きいほど効果は明確ですが、CI の重なりだけで有意性を判断しないでください。正式な比較は `pairs()` の OR、CI、p 値で確認します。
 
 次に `sjPlot::plot_model()` で連続予測子の効果を可視化します。`pred.type = "fe"` は固定効果のみによる予測（母平均的予測）です。`plot_model()` は**まず全体像を素早くつかむ**のに向いています[@sjplot_plot_model]。
 
@@ -3414,7 +3796,7 @@ ggpred_sender |>
 
 1. **raw post-test proportion**: 実測の post-test 正答率。pre-test の既知語が混ざる。
 2. **adjusted prediction over the model**: pre-test, item, learner を統制した母平均的予測。
-3. **counterfactual prediction for unknown words**: `pretest_status = "Incorrect at pre-test"` に固定した予測。  
+3. **counterfactual prediction for unknown words**: `pretest_status = "Incorrect at pre-test"` に固定した予測。
    これは「最初は知らなかった語に限ると、学習後の正答確率はどう違うか」を見る図です。
 
 ```{r}
@@ -3516,7 +3898,7 @@ p_vocab_raw + p_vocab_adjusted
 **この図の読み方**:
 
 - 左の raw 図は、`Gloss` 群の post-test が高く見えても、**それが learning なのか、もともと知っていた語が多かっただけなのか**を区別できません。
-- 右の adjusted 図では、facet が `pretest_status` を分けています。  
+- 右の adjusted 図では、facet が `pretest_status` を分けています。
   左 facet `Incorrect at pre-test` が、**本当に学習対象だった語**に対する予測です。ここで `Gloss > Control` なら、「未知語に対して介入が効いた」と読みやすくなります。
 - 右 facet `Correct at pre-test` は ceiling に近い領域なので、ここで群差が小さくても不思議ではありません。むしろ、**この facet の情報を混ぜたまま全体平均だけを見ると、介入効果の解釈が鈍る**ことがあります。
 
@@ -3613,18 +3995,18 @@ knitr::kable(
 
 この小表の意図は、**「どの予測値を報告するかは研究質問の一部である」**ことを明示することです。
 
-- `Observed raw post-test`: 記述統計として有用。ただし既知語を含む。
+- `Observed raw post-test`: 記述統計として有用です。ただし既知語を含む。
 - `Adjusted average over pre-test mix`: モデルで調整した周辺平均。全体的な post-test 成績の比較に向く。
-- `Adjusted for words unknown at pre-test`: 語彙学習の効果そのものに最も近い。  
+- `Adjusted for words unknown at pre-test`: 語彙学習の効果そのものに最も近い。
   介入研究で「学習されたか」を主張するなら、この条件つき予測を本文で前面に出す価値があります。
 
 ### 同じ語彙モデルでも、予測が「誰に対するものか」は違う
 
 ここでもう 1 つ重要なのは、**同じ `m_vocab_pretest` から出した予測でも、それが誰に対する確率かは 1 通りではない**という点です。
 
-- **marginal / population-level prediction**: `re.form = NA`。  
+- **marginal / population-level prediction**: `re.form = NA`。
   「新しい learner・新しい item に一般化した、平均的な予測」
-- **conditional / subject-item-specific prediction**: `re.form = NULL`。  
+- **conditional / subject-item-specific prediction**: `re.form = NULL`。
   「この learner とこの item のランダム切片も使った、観測サンプル内での fitted probability」
 
 語彙研究で本文の主要結果として出すのは、通常は前者です。後者は、**このデータの中で誰が特に高く／低く当たりやすかったか**を反映するため、一般化可能性よりも sample-specific fit の側面が強くなります。
@@ -3724,9 +4106,9 @@ ggplot(
 
 したがって、語彙介入研究で `pre-test` を統制した予測を報告するときは、少なくとも次の 2 点を本文で明示するとよいです。
 
-1. **pre-test を何として入れたか**  
+1. **pre-test を何として入れたか**
    参加者総得点なのか、item-level の既知/未知なのか。
-2. **予測が誰に対する確率か**  
+2. **予測が誰に対する確率か**
    population-level 予測なのか、sample-specific fitted probability なのか。
 
 この 2 点が曖昧だと、同じ「予測確率 0.62」という数字でも、査読者にはまったく違う意味に読まれてしまいます。
@@ -3904,14 +4286,14 @@ ggplot(plot_pred, aes(x = score_sender_sc, y = pred_prob,
 - **横軸**: 送り手のベースラインスコア（z スコア）。0 が平均、+1 が 1 SD 上。
 - **縦軸**: 助言関係の予測確率。
 - **2 本の曲線**: Same class（同クラス）と Different class（異クラス）。
-- **曲線の間隔**: same_class の効果の大きさを確率スケールで示す。間隔が広いほど効果が大きい。
+- **曲線の間隔**: same_class の効果の大きさを確率スケールで示します。間隔が広いほど効果が大きい。
 - **曲線の傾き**: score_sender_sc の効果。右上がりなら、スコアが高い送り手ほど助言を出しやすい。
 - ロジスティック曲線のため、確率の中央付近（≈0.5）で効果が最も大きく、端（≈0 や ≈1）では効果が小さくなる（S 字カーブの性質）。
 
 ::: {.callout-note}
 #### `re.form = NA` vs `re.form = NULL`
 
-- `re.form = NA`: ランダム効果を**含まない**予測。母平均的な効果（「典型的な」送り手・受け手）を表す。**論文の主要な結果図にはこちらを使用**。
+- `re.form = NA`: ランダム効果を**含まない**予測です。母平均的な効果（「典型的な」送り手・受け手）を表します。**論文の主要な結果図にはこちらを使用します**。
 - `re.form = NULL`: ランダム効果を**含む**予測。特定の個人の条件付き予測。個人レベルの予測が必要な場合に使用。
 :::
 
@@ -3980,7 +4362,7 @@ R²（Nakagawa系）を実装した関数です[@performance_r2; @performancepkg
   個体差・項目差などのランダム効果が主要因になっている可能性。
 - 両者が近い:
   固定効果だけで大部分が説明され、ランダム効果の追加利得は小さい。
-- R²の大小だけで採否を決めず、`compare_performance()` と残差診断を併用する。
+- R²の大小だけで採否を決めず、`compare_performance()` と残差診断を併用します。
 :::
 
 ### ICC と marginal / conditional R² はどう違うか
@@ -4016,16 +4398,16 @@ icc_r2_bridge_tbl <- tibble(
 knitr::kable(
   icc_r2_bridge_tbl |>
     mutate(across(where(is.numeric), ~ round(.x, 3))),
-  caption = "ICC と Nakagawa の R² は、同じ分散分解ファミリーだが役割が異なる"
+  caption = "ICC と Nakagawa の R² は、同じ分散分解ファミリーですが役割が異なります"
 )
 ```
 
 安全な読み分けは次の通りです。
 
-- **Null-model ICC**: 予測子をまだ入れていない段階で、「もともとどれだけ clustered か」を見る。
-- **Marginal R²**: fixed effects がどれだけ signal を拾えたかを見る。
-- **Conditional R²**: fixed + random effects を合わせた説明力を見る。
-- **Conditional - Marginal**: 予測子を入れた後も、どれだけ個人差・項目差が残っているかを見る。
+- **Null-model ICC**: 予測子をまだ入れていない段階で、「もともとどれだけ clustered か」を見ます。
+- **Marginal R²**: fixed effects がどれだけ signal を拾えたかを見ます。
+- **Conditional R²**: fixed + random effects を合わせた説明力を見ます。
+- **Conditional - Marginal**: 予測子を入れた後も、どれだけ個人差・項目差が残っているかを見ます。
 
 したがって、`conditional - marginal` は**ランダム効果の寄与の目安**ですが、**null モデルの ICC と数値的に一致するとは限りません**。たとえば `same_class` のような固定効果が sender / receiver の系統差を部分的に吸収すれば、**null モデルでは大きかった clustered share が、最終モデルでは小さく見える**ことがあります。逆に固定効果で拾えない個人差が多ければ、差分は大きく残ります。
 
@@ -4124,8 +4506,8 @@ ggplot(g_phi_demo, aes(x = n_items, y = value, color = metric)) +
 
 Rasch モデルの `Separation Reliability` も、直感としては ICC に近い指標です。どちらも「ばらつきのうち、どれだけが実質的な個人差で、どれだけが誤差か」を見ています[@mair2007; @bondfox2007; @erm_seprel]。ただし、**どのレベルの量を分解しているか**が違います。
 
-- **2 値 GLMM の ICC**: 反応レベルの潜在 logit 傾向を、person / item / residual に分ける。
-- **Rasch の separation reliability**: 推定された人物能力 \(\hat{\theta}\) の広がりが、人物ごとの測定誤差より十分大きいかを見る。
+- **2 値 GLMM の ICC**: 反応レベルの潜在 logit 傾向を、person / item / residual に分けます。
+- **Rasch の separation reliability**: 推定された人物能力 \(\hat{\theta}\) の広がりが、人物ごとの測定誤差より十分大きいかを見ます。
 
 `eRm::SepRel()` の考え方は
 
@@ -4144,7 +4526,7 @@ $$
 | GLMM の ICC | person / item のランダム効果分散が大きい | 観測レベル残差が支配的 |
 | Rasch の separation reliability | 人物能力の広がりが大きく、項目 targeting が良い | サンプルが均質、極端反応が多い、項目が mistargeted |
 
-つまり、**両者は“信号対誤差”という点で親戚だが、数値的に同じものではありません**。GLMM の ICC は「反応データの clustered dependence」、Rasch の reliability は「推定した能力値をどれだけ安心して順位づけに使えるか」を問います。第11章では、この違いを Wright Map と `SepRel()` の出力を使ってさらに丁寧に扱います。GLMM / Rasch の数理的な橋渡し自体は、explanatory IRT の整理で詳しく解説します[@deboeck2004; @wilson2008; @dunn2024]。
+つまり、**両者は“信号対誤差”という点で親戚ですが、数値的に同じものではありません**。GLMM の ICC は「反応データの clustered dependence」、Rasch の reliability は「推定した能力値をどれだけ安心して順位づけに使えるか」を問います。第11章では、この違いを Wright Map と `SepRel()` の出力を使ってさらに丁寧に扱います。GLMM / Rasch の数理的な橋渡し自体は、explanatory IRT の整理で詳しく解説します[@deboeck2004; @wilson2008; @dunn2024]。
 
 #### 具体例: 同じ項目セットでもサンプルが均質だと Rasch reliability は下がる
 
@@ -4208,7 +4590,11 @@ DHARMa はシミュレーションベースの残差を生成し、モデルの�
 
 ```{r}
 #| eval: true
-#| label: diag-dharma
+#| label: fig-dharma-glmm
+#| fig-width: 10
+#| fig-height: 5
+#| fig-cap: "DHARMa scaled residuals: m_glmm_ri (binomial GLMM)の総合診断。左パネル = QQ プロット(均一分布との一致 + KS test / dispersion test / outlier test の結果)、右パネル = scaled residuals vs ranked predictions(青の四分位線が水平に近いほど分散構造に問題なし)。"
+#| fig-alt: "左 QQ プロット(対角線に沿うほど分布適合が良好、KS/Dispersion/Outlier 検定の p 値がプロット上に表示される)、右 scaled residuals vs ranked predictions プロット(青の四分位曲線が水平に近いほど均一性が保たれる)を並べた DHARMa の総合診断図。"
 
 # シミュレーション残差を生成（n = 250 回のシミュレーション）
 res_glmm <- DHARMa::simulateResiduals(m_glmm_ri, n = 250)
@@ -4218,17 +4604,31 @@ DHARMa::testDispersion(res_glmm)    # 過分散テスト（p > .05 なら OK）
 DHARMa::testUniformity(res_glmm)    # 残差分布テスト（p > .05 なら OK）
 ```
 
+::: {.callout-tip}
+#### グループ別の DHARMa 診断
+sender / receiver ごとに残差の偏りがないかを診たい場合は `recalculateResiduals(res_glmm, group = ...)` を使います:
+
+```r
+res_by_sender <- DHARMa::recalculateResiduals(res_glmm, group = dat_bin$sender)
+plot(res_by_sender)
+DHARMa::testCategorical(res_glmm, catPred = dat_bin$same_class)
+```
+
+特定のグループで残差が偏っていれば、そのグループ変数を**ランダム効果として追加すべきサイン**になります。
+:::
+
+
 **読み方**：
 
-- **QQ プロット（左）**: 点が対角線に沿っていれば残差分布は適切。大きく外れていればモデルのミスフィット。
+- **QQ プロット（左）**: 点が対角線に沿っていれば残差分布は適切です。大きく外れていればモデルのミスフィット。
 - **残差 vs 予測値（右）**: パターン（U 字、扇形など）がなければ OK。系統的パターンがあればモデル構造の問題。
-- `testDispersion`: **p > .05 なら過分散の問題なし**。有意なら過分散（観測データの分散がモデルの想定より大きい）。
-- `testUniformity`: **p > .05 なら残差分布に大きな問題なし**。有意なら分布の仮定に懸念。
+- `testDispersion`: **p > .05 なら分散の大きなズレは検出されていない**。有意なら過分散または過小分散、未モデル化の依存、外れ値、リンク関数の不適合などを疑う。
+- `testUniformity`: **p > .05 なら残差分布の大きなズレは検出されていない**。有意なら分布の仮定やモデル構造に懸念。
 
 ::: {.callout-important}
 #### DHARMa 診断の合格基準
 
-以下の 3 条件がすべて満たされていれば、モデルの当てはまりは実務上問題ない：
+以下の 3 条件がすべて満たされていれば、モデルの当てはまりに大きな問題は見つかっていないと判断できます：
 
 1. `testDispersion` が非有意（p > .05）
 2. `testUniformity` が非有意（p > .05）
@@ -4247,20 +4647,21 @@ performance::check_overdispersion(m_glmm_ri)
 
 **読み方**：
 
-- `Dispersion ratio` ≈ 1.0 なら過分散なし。1.0 から大きく離れるほど過分散の懸念。
-- p > .05 なら過分散は統計的に有意ではない。
+- `Dispersion ratio` ≈ 1.0 なら分散のズレは小さい。1.0 から大きく離れるほど過分散または過小分散の懸念。
+- p > .05 なら、この検定では分散のズレが検出されていません。
 
 ::: {.callout-important}
 #### 2値 GLMM での過分散: この検定は参考情報
 
-**個々の観測が 0/1 の2値データでは、過分散は理論的に定義されません**。各観測の分散は $p(1-p)$ で決まり、追加の分散パラメータは存在しないためです。上の `check_overdispersion()` の結果は**参考情報としてのみ**掲載しています。
+個々の観測が 0/1 の Bernoulli データでは、正規線形モデルのような自由な分散パラメータはありません。各観測の分散は $p(1-p)$ で決まるため、`check_overdispersion()` の結果は**モデル診断の参考情報**として読みます。一方で、未モデル化の個人差、項目差、ネットワーク依存、外れ値、リンク関数の不適合があれば、extra-binomial variation のようなふるまいは起こり得ます。
 
 過分散が実質的に問題になるのは以下のケースです：
 
 - **集計データ**（n回中k回成功のような binomial(n, p) データ）
-- **観測レベルのランダム効果がないモデル**に未モデル化の異質性がある場合
+- **観測レベルまたはクラスター内の異質性**をモデルが十分に拾えていない場合
+- **ネットワークデータの相互性・三者閉包**など、通常のランダム効果だけでは表しにくい依存が強い場合
 
-本章のモデルは個々の 0/1 観測にランダム効果を含んでいるため、過分散の懸念は低いです。**モデルの妥当性は DHARMa の残差診断と AUC で判断**してください。
+本章のモデルは個々の 0/1 観測に sender / receiver のランダム効果を含んでいるため、単純な GLM よりは依存構造をよく扱えています。ただし、モデルの妥当性は `check_overdispersion()` だけでは判断せず、DHARMa の残差図、予測確率、AUC、研究デザイン上の依存構造を合わせて確認します。
 :::
 
 #### 共線性チェック
@@ -4279,7 +4680,7 @@ performance::check_collinearity(m_glmm_ri)  # GLMM 版（両方で確認）
 | VIF | 判断 |
 |-----|------|
 | < 3 | 問題なし |
-| 3–5 | 注意。解釈に影響がないか確認 |
+| 3–5 | 注意が必要です。解釈に影響がないか確認 |
 | > 5 | 共線性の懸念。予測子の除外や合成を検討 |
 | > 10 | 深刻な共線性。推定が不安定な可能性が高い |
 
@@ -4391,17 +4792,17 @@ pred_cond <- predict(m_glmm_ri, type = "response")            # ランダム効�
 pred_marg <- predict(m_glmm_ri, type = "response", re.form = NA)  # 固定効果のみ
 
 # ROC 曲線の計算
-roc_cond <- roc(dat_bin$tie, pred_cond, quiet = TRUE)
-roc_marg <- roc(dat_bin$tie, pred_marg, quiet = TRUE)
+roc_cond <- pROC::roc(dat_bin$tie, pred_cond, quiet = TRUE)
+roc_marg <- pROC::roc(dat_bin$tie, pred_marg, quiet = TRUE)
 
 # ── ggplot2 で 2 つの ROC 曲線を重ね描き ──
 roc_df <- rbind(
   data.frame(sensitivity = roc_cond$sensitivities,
              specificity = 1 - roc_cond$specificities,
-             Model = sprintf("Conditional (AUC = %.3f)", auc(roc_cond))),
+             Model = sprintf("Conditional (AUC = %.3f)", pROC::auc(roc_cond))),
   data.frame(sensitivity = roc_marg$sensitivities,
              specificity = 1 - roc_marg$specificities,
-             Model = sprintf("Marginal (AUC = %.3f)", auc(roc_marg)))
+             Model = sprintf("Marginal (AUC = %.3f)", pROC::auc(roc_marg)))
 )
 
 ggplot(roc_df, aes(x = specificity, y = sensitivity, color = Model)) +
@@ -4438,10 +4839,10 @@ ggplot(roc_df, aes(x = specificity, y = sensitivity, color = Model)) +
 
 tibble::tibble(
   予測タイプ = c("Conditional（ランダム効果込み）", "Marginal（固定効果のみ）"),
-  AUC = c(as.numeric(auc(roc_cond)), as.numeric(auc(roc_marg))),
+  AUC = c(as.numeric(pROC::auc(roc_cond)), as.numeric(pROC::auc(roc_marg))),
   `95% CI` = c(
-    sprintf("[%.3f, %.3f]", ci.auc(roc_cond)[1], ci.auc(roc_cond)[3]),
-    sprintf("[%.3f, %.3f]", ci.auc(roc_marg)[1], ci.auc(roc_marg)[3])
+    sprintf("[%.3f, %.3f]", pROC::ci.auc(roc_cond)[1], pROC::ci.auc(roc_cond)[3]),
+    sprintf("[%.3f, %.3f]", pROC::ci.auc(roc_marg)[1], pROC::ci.auc(roc_marg)[3])
   )
 ) |>
   knitr::kable(caption = "AUC / C-statistic: モデルの判別能")
@@ -4460,15 +4861,100 @@ tibble::tibble(
 **2 つの AUC の違い**:
 
 - **Conditional**: ランダム効果（個人差）を含めた予測。「この sender/receiver を知っている場合」の判別能。通常は高い。
-- **Marginal**: 固定効果のみの予測。「新しい未知の sender/receiver に対する」判別能。研究の一般化可能性を示す。
+- **Marginal**: 固定効果のみの予測。「新しい未知の sender/receiver に対する」判別能。研究の一般化可能性を示すため、本文ではこちらを主指標にし、conditional AUC はサンプル内の当てはまり確認として補助的に報告します。
 
 ::: {.callout-note}
 #### AUC の報告テンプレート
 
 > The model demonstrated [acceptable/excellent] discrimination, with a C-statistic of .XX, 95% CI [.XX, .XX], based on [conditional / marginal] predicted probabilities. [If both are reported: The conditional C-statistic (.XX) exceeded the marginal C-statistic (.XX), indicating that individual differences in sender/receiver tendencies contribute substantially to prediction accuracy.]
+
+新しい sender / receiver への一般化を主張する場合は、marginal predicted probabilities に基づく C-statistic を本文の主指標として報告してください。Conditional C-statistic は、既知の sender / receiver を含むこのサンプル内での判別能として位置づけます。
 :::
 
-## 最終モデルの確定と結果の要約
+### Calibration と Brier score: 確率予測の妥当性
+
+AUC は「高リスクのペアほど実際に tie = 1 になりやすいか」という**順位づけ**の指標です。一方、calibration は「予測確率 0.20 のペアが、実際にも約 20% の確率で tie = 1 になるか」を見ます。Brier score は予測確率と 0/1 結果の二乗誤差平均で、**小さいほどよい**指標です[@brier1950]。GLMM の予測図を主要結果として使う場合は、AUC だけでなく calibration も補助的に確認すると、予測確率の読み方が安全になります。
+
+```{r}
+#| eval: true
+#| label: diag-calibration-brier
+#| fig-height: 4.8
+#| fig-width: 8.5
+
+calibration_input <- tibble::tibble(
+  tie = dat_bin$tie,
+  Marginal = pred_marg,
+  Conditional = pred_cond
+) |>
+  tidyr::pivot_longer(
+    cols = c(Marginal, Conditional),
+    names_to = "Prediction",
+    values_to = "predicted"
+  )
+
+brier_tbl <- calibration_input |>
+  dplyr::group_by(Prediction) |>
+  dplyr::summarise(
+    Brier = mean((tie - predicted)^2),
+    .groups = "drop"
+  )
+
+brier_tbl |>
+  dplyr::mutate(Brier = round(Brier, 4)) |>
+  knitr::kable(caption = "Brier score: marginal vs conditional predictions")
+
+calibration_df <- calibration_input |>
+  dplyr::group_by(Prediction) |>
+  dplyr::mutate(bin = dplyr::ntile(predicted, 10)) |>
+  dplyr::group_by(Prediction, bin) |>
+  dplyr::summarise(
+    predicted = mean(predicted),
+    observed = mean(tie),
+    n = dplyr::n(),
+    .groups = "drop"
+  )
+
+ggplot(calibration_df, aes(x = predicted, y = observed, color = Prediction)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "grey55") +
+  geom_line(linewidth = 0.9) +
+  geom_point(aes(size = n), alpha = 0.85) +
+  scale_color_manual(values = c("Conditional" = "#0072B2", "Marginal" = "#D55E00")) +
+  scale_size_continuous(range = c(2.5, 6), guide = "none") +
+  coord_equal(xlim = c(0, 1), ylim = c(0, 1)) +
+  labs(
+    title = "Calibration Plot: Predicted vs. Observed Tie Probability",
+    subtitle = "Diagonal = perfectly calibrated; points are deciles of predicted probability",
+    x = "Mean Predicted Probability",
+    y = "Observed Proportion of Tie = 1",
+    color = "Prediction"
+  ) +
+  theme_bw(base_size = 12, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(
+      face = "bold",
+      size = rel(1.0),
+      lineheight = 1.04,
+      margin = margin(b = 6)
+    ),
+    plot.subtitle = element_text(
+      size = rel(0.92),
+      lineheight = 1.04,
+      margin = margin(b = 8)
+    ),
+    plot.margin = margin(t = 10, r = 14, b = 10, l = 10),
+    legend.position = "top"
+  )
+```
+
+**この図の読み方**:
+
+- 点が対角線に近ければ、予測確率と実測割合がよく対応しています。
+- marginal calibration は、新しい sender / receiver への平均的予測がどの程度信用できるかを見るための主指標です。
+- conditional calibration は、既知の sender / receiver を含むサンプル内 fitted value の確認です。こちらの方が良く見えやすいですが、一般化性能とは区別します。
+- Brier score は calibration と discrimination の両方の影響を受けます。AUC が高くても calibration が悪いモデルは、確率予測としては慎重に扱います。
+
+## 最終モデルの確定と結果の要約 {#sec-glmm-final}
 
 ### 診断結果に基づく最終モデルの確定
 
@@ -4482,6 +4968,9 @@ dharma_disp <- DHARMa::testDispersion(res_glmm, plot = FALSE)
 dharma_unif <- DHARMa::testUniformity(res_glmm, plot = FALSE)
 vif_max     <- max(performance::check_collinearity(m_glmm_ri)$VIF)
 auc_cond    <- as.numeric(pROC::auc(roc_cond))
+auc_marg    <- as.numeric(pROC::auc(roc_marg))
+brier_marg  <- brier_tbl$Brier[brier_tbl$Prediction == "Marginal"]
+brier_cond  <- brier_tbl$Brier[brier_tbl$Prediction == "Conditional"]
 
 diag_final_tbl <- tibble::tribble(
   ~診断, ~結果, ~判断,
@@ -4491,8 +4980,12 @@ diag_final_tbl <- tibble::tribble(
     ifelse(dharma_unif$p.value > 0.05, "問題なし", "要検討"),
   "VIF (最大値)", sprintf("%.2f", vif_max),
     ifelse(vif_max < 3, "共線性なし", "要検討"),
+  "AUC (marginal)", sprintf("%.3f", auc_marg),
+    ifelse(auc_marg >= 0.7, "一般化判別能 acceptable 以上", "一般化判別能 poor"),
   "AUC (conditional)", sprintf("%.3f", auc_cond),
-    ifelse(auc_cond >= 0.7, "acceptable 以上", "poor")
+    ifelse(auc_cond >= 0.7, "サンプル内判別能 acceptable 以上", "サンプル内判別能 poor"),
+  "Brier (marginal / conditional)", sprintf("%.4f / %.4f", brier_marg, brier_cond),
+    "小さいほど予測確率の誤差が小さい"
 )
 
 knitr::kable(
@@ -4502,15 +4995,15 @@ knitr::kable(
 )
 ```
 
-全ての診断で大きな問題が見られなかったため、**`m_glmm_ri`（交差分類ランダム切片モデル、logit リンク、5 固定効果）を最終モデルとして確定**します。
+全ての診断で大きな問題が見られなかったため、**`m_glmm_ri`（交差分類ランダム切片モデル、logit リンク、5 固定効果）を最終モデルとして確定**します。一般化性能は marginal AUC、サンプル内の当てはまりは conditional AUC として分けて読みます。
 
 ### 結果を読む順番
 
 この章では結果をかなり多面的に確認しましたが、**最終的な読解順は 3 段階**で十分です。
 
-1. `sjPlot::tab_model()` で、どの固定効果が残り、ランダム効果がどれくらい重要かを俯瞰する。
-2. `sjPlot::plot_model(type = "est")` で、OR と 95% CI を見ながら「どの効果が最も大きいか」を確認する。
-3. `sjPlot::plot_model(type = "pred")` と `emmeans()` で、最終的に**確率で何ポイント違うのか**を読む。
+1. `sjPlot::tab_model()` で、どの固定効果が残り、ランダム効果がどれくらい重要かを俯瞰します。
+2. `sjPlot::plot_model(type = "est")` で、OR と 95% CI を見ながら「どの効果が最も大きいか」を確認します。
+3. `sjPlot::plot_model(type = "pred")` と `emmeans()` で、最終的に**確率で何ポイント違うのか**を読みます。
 
 ### `sjPlot` による最終結果の俯瞰
 
@@ -4538,9 +5031,9 @@ sjPlot::tab_model(
 
 **読み方**:
 
-- 最初に `same_class` と `prof_gap` の行を見て、95% CI が 1 をまたぐかどうかを確認する。
-- 次に表の下部で `ICC`、`Random Effects`、`N groups` を見て、個人差を入れたことが実質的に意味を持つかを判断する。
-- `AIC` はこの表だけでは比較できないので、ここでは**最終モデルの記述**として読む。モデル選択そのものは前節の比較表で確認済み。
+- 最初に `same_class` と `prof_gap` の行を見て、95% CI が 1 をまたぐかどうかを確認します。
+- 次に表の下部で `ICC`、`Random Effects`、`N groups` を見て、個人差を入れたことが実質的に意味を持つかを判断します。
+- `AIC` はこの表だけでは比較できないので、ここでは**最終モデルの記述**として読みます。モデル選択そのものは前節の比較表で確認済み。
 
 #### Effect Plot
 
@@ -4581,8 +5074,8 @@ sjPlot::plot_model(
 **読み方**:
 
 - 点が OR、水平線が 95% CI。灰色の縦線 `OR = 1` をまたぐかどうかが基本判断。
-- `sort.est = TRUE` なので、上にあるほど影響の大きい効果。`same_class` が最上位なら、「同クラスであること」が最も強い予測子だと読める。
-- ただし OR は**確率差そのものではない**。大きさの比較には便利だが、実務的な説明は次の予測確率図で行う。
+- `sort.est = TRUE` なので、上にあるほど影響の大きい効果です。`same_class` が最上位なら、「同クラスであること」が最も強い予測子だと読めます。
+- ただし OR は**確率差そのものではありません**。大きさの比較には便利ですが、実務的な説明は次の予測確率図で行います。
 
 #### Probability Plot
 
@@ -4628,9 +5121,9 @@ sjPlot::plot_model(
 
 **読み方**:
 
-- 2 本の線の縦方向の差が、`same_class` の効果を**確率スケール**で表す。
+- 2 本の線の縦方向の差が、`same_class` の効果を**確率スケール**で表します。
 - 線の傾きが右上がりなら、送り手スコアが高いほど助言関係の確率が高い。
-- 線がほぼ平行なら、`same_class` と `score_sender_sc` の間に強い交互作用はない。つまり「同クラス効果は送り手スコア全体にわたって概ね一定」と読める。
+- 線がほぼ平行なら、`same_class` と `score_sender_sc` の間に強い交互作用はありません。つまり「同クラス効果は送り手スコア全体にわたって概ね一定」と読めます。
 
 :::
 
@@ -4665,9 +5158,16 @@ results_summary_tbl <- tibble::tribble(
   "R² (marginal / conditional)", sprintf("%.3f / %.3f", r2$R2_marginal, r2$R2_conditional),
     sprintf("固定効果で%.0f%%、固定+ランダム効果で%.0f%%の分散を説明",
             r2$R2_marginal * 100, r2$R2_conditional * 100),
-  "AUC (conditional)", sprintf("%.3f", auc_cond),
-    ifelse(auc_cond >= 0.8, "Excellent な判別能",
-           ifelse(auc_cond >= 0.7, "Acceptable な判別能", "Poor な判別能")),
+  "AUC (marginal / conditional)", sprintf("%.3f / %.3f", auc_marg, auc_cond),
+    sprintf(
+      "一般化判別能は%s、サンプル内判別能は%s",
+      ifelse(auc_marg >= 0.8, "Excellent",
+             ifelse(auc_marg >= 0.7, "Acceptable", "Poor")),
+      ifelse(auc_cond >= 0.8, "Excellent",
+             ifelse(auc_cond >= 0.7, "Acceptable", "Poor"))
+    ),
+  "Brier (marginal / conditional)", sprintf("%.4f / %.4f", brier_marg, brier_cond),
+    "予測確率と実測0/1の二乗誤差平均。小さいほど良い",
   "ランダム効果 SD (sender / receiver)", sprintf("%.3f / %.3f", vc$sdcor[1], vc$sdcor[2]),
     ifelse(vc$sdcor[2] > vc$sdcor[1],
            "receiver の個人差が sender より大きい",
@@ -4686,27 +5186,90 @@ knitr::kable(
 
 本データの 2 値ロジスティック GLMM 分析から、以下が明らかになりました：
 
-1. **同クラスの学習者同士は助言関係を持ちやすい**（`r sprintf("OR = %.2f, p < .001", exp(lme4::fixef(m_glmm_ri)["same_class"]))`)。これは最も強い予測子であり、クラス編成がネットワーク構造に直接影響していることを示唆する。
+1. **同クラスの学習者同士は助言関係を持ちやすい**（`r sprintf("OR = %.2f, p < .001", exp(lme4::fixef(m_glmm_ri)["same_class"]))`)。これは最も強い予測子であり、クラス編成がネットワーク構造に直接影響していることを示唆します。
 2. **熟達度差が大きいペアほど助言関係が見られる**（`r sprintf("OR = %.2f, p = %.03f", exp(lme4::fixef(m_glmm_ri)["prof_gap"]), summary(m_glmm_ri)$coefficients["prof_gap", "Pr(>|z|)"])`）。異なる熟達度の学習者間で知識共有が生じている可能性がある。
 3. **個々のスコアやスコア差は助言関係を予測しない**。テスト得点そのものよりも、クラス所属や熟達度ラベルのほうが社会的ネットワークの構造に影響している。
 4. **receiver のランダム効果 SD（`r sprintf("%.3f", as.data.frame(lme4::VarCorr(m_glmm_ri))$sdcor[2])`）が sender（`r sprintf("%.3f", as.data.frame(lme4::VarCorr(m_glmm_ri))$sdcor[1])`）より大きい**。「助言を受けやすい人」の個人差のほうが、「助言をしやすい人」の個人差より大きい。
 :::
 
-## 検出力分析（研究計画段階で必須）
+## 事前サンプルサイズ設計と検出力分析（研究計画段階で必須）
 
-モデルの分析と診断が完了しました。ここからは、今後の研究計画に役立つ検出力分析の方法を紹介します。この節は分析後の振り返りとして、あるいは次回の研究設計のために読んでください。
+::: {.callout-tip}
+#### 初読では飛ばして OK
+本節(約 1,000 行のシミュレーションベース検定力分析)は **研究計画段階で参照する**内容です。初読では「**GLMM の検定力には参加者数 × 項目数 × 試行数の 3 軸が効く**」「**simr で simulate できる**」だけ覚えれば、@sec-glmm-final (最終モデル確定)以降を読み進められます。実際に研究計画書を書く段階で戻ってきてください。
+:::
 
-GLMM の検出力は解析的に求まらないため、**シミュレーションベース**で推定します[@debruine2021; @green2016]。以下では @debruine2021 のアプローチに従い、データ生成過程を完全に明示した手動シミュレーションを実装します。
+
+
+この節は、分析後の補足ではなく、GLMM を使う研究計画の一部です。混合効果モデルでは観測数だけを数えても十分ではありません。参加者数、項目数、試行数、群ごとの割付、欠測・除外率、ランダム効果の大きさが同時に検出力を左右します。
+
+したがって、研究計画段階では **simulation-based power analysis** によって複数の設計案を比較します [@debruine2021; @debruine2021power; @green2016]。@lakens2022sample は、伝統的な検定力分析にとどまらず、**実質的に意味のある最小効果量** (smallest effect size of interest, SESOI) を事前に決めて計画する発想を体系的に整理しています。L2 研究では @plonsky2014 の SLA 専用効果量参照値や先行メタ分析の値を起点に SESOI を設定するのが実務的です。以下では @debruine2021 のアプローチに従い、データ生成過程を完全に明示した手動シミュレーションを実装します。目的は「有意差が出る設計を探す」ことではなく、仮定を明示したうえで、研究課題に対してどの程度の不確実性が残るかを事前に評価することです。
+
+::: {.callout-note}
+#### 先行研究ではどのように使われているか
+
+GLMM の power simulation は、SLA・心理言語学ではまだすべての論文で標準化されているわけではありませんが、すでに実研究と方法論研究の両方で使われています。重要なのは、先行研究名だけを挙げることではなく、**何を借りるか**を明確にすることです。
+
+| 文献 | 位置づけ | 本章で借りる観点 |
+|---|---|---|
+| @terai2021retrieval | EFL 語彙学習で GLMM を用いた SSLA 論文。`simr` や検出力分析文献を参照している | SLA 語彙研究で、participant × item の 2 値データを GLMM で扱う実例 |
+| @baxter2022contrasting | 成人 L2 語彙学習で、pilot data に基づく Monte Carlo / `simr` 型のサンプルサイズ検討を報告 | pilot から効果量・ランダム効果を得て、事前設計に使う発想 |
+| @elgort2024readingtimes | 新奇語学習の eye-tracking 研究で、`simr` による a priori power simulation を報告 | 参加者数だけでなく、項目数・試行構造を含めて設計を説明する実例 |
+| @green2016 | `lme4` モデルに基づく `simr` パッケージの方法論論文 | 既存モデルを拡張して `powerSim()` / `powerCurve()` を使う場合の根拠 |
+| @johnson2015glmmpower | GLMM の simulation-based power analysis を体系的に解説 | 固定効果、ランダム効果、過分散、応答分布をデータ生成に含める考え方 |
+| @kumle2021power | (G)LMM の power simulation を R で行うオープンチュートリアル | 既存データあり・項目数を変える・データなし、という 3 つの設計場面 |
+| @kain2015glmmpower | GLMM の power analysis を、ランダム効果のばらつきに関する問いへ拡張 | 固定効果だけでなく、ランダム効果そのものが研究対象になる場合の発展 |
+
+たとえば @terai2021retrieval のような EFL 語彙研究を読むと、GLMM が「分析方法」として使われていることが分かります。一方で、研究計画段階のサンプルサイズ根拠を書くときは、@green2016、@kumle2021power、@johnson2015glmmpower のような方法論論文を合わせて参照すると、なぜシミュレーションが必要なのかを説明しやすくなります。eye-tracking や語彙学習の実例としては、@elgort2024readingtimes や @baxter2022contrasting の書き方も参考になります。
+:::
+
+::: {.callout-important}
+#### 事前に決める設計パラメータ
+
+| 設計要素 | 例 | なぜ必要か |
+|---|---|---|
+| 関心のある効果 | 条件差、群差、`time × group`、語彙介入効果 | 検出力を計算する対象を固定するため |
+| 効果量の仮定 | log odds, OR, 平均差、先行研究・pilot の推定値 | 非現実的な効果量を置くと設計判断が歪むため |
+| ベースライン率 | A2 群の正答率、語彙の既知率、AOI 注視率 | 2値データでは切片が情報量を大きく変えるため |
+| ランダム効果 | 参加者 SD、項目 SD、必要ならランダム傾き SD | 反復測定の依存性が標準誤差を変えるため |
+| サンプルサイズの軸 | 参加者数、項目数、試行数、群あたり人数 | GLMM では総観測数だけでは設計を評価できないため |
+| 情報の減少 | 欠測、除外、pre-test 既知語、外れ値処理 | 解析に残る有効データ数を見積もるため |
+| 検定対象 | オムニバス検定、特定対比、交互作用 | どの効果を 80% 程度の検出力で見たいかが変わるため |
+| シミュレーション設定 | `nsim`、有意水準、収束失敗時の扱い | Monte Carlo 誤差と再現可能性を管理するため |
+
+この表は、研究計画書や事前登録にそのまま移せるチェックリストです。特に SLA の実験では、参加者数を増やすだけでなく、項目数、trial 数、pre-test で未知語として残る割合を同時に検討します。
+
+もう 1 つ重要なのは、**募集数**と**分析可能数**を分けることです。たとえば「40 人/群を募集する」研究でも、欠席、機器トラブル、正答率の天井・床効果、反応時間の除外、pre-test 既知語の除外によって、モデルに入るデータは減ります。検出力シミュレーションには、募集時点の最大値ではなく、解析に残る見込みのある値を入れます。
+
+| 計画上の数 | 例 | シミュレーションで使う値 |
+|---|---|---|
+| 募集数 | 40 人/群を募集 | そのまま入れない |
+| 分析可能参加者数 | 10% の脱落を見込み 36 人/群 | `n_subj_per_group = 36` |
+| 用意する項目数 | 40 語を作成 | 除外前の素材数として記録 |
+| 分析可能項目数 | pilot で 5 語を除外し 35 語 | `n_item = 35` |
+| 試行保持率 | 反応時間除外・誤反応除外で 90% 残る | 生成後に 10% を除外する、または有効試行数で近似 |
+| pre-test 未知語率 | 既知語が 40% 程度 | unknown-at-pretest 語の期待値を設計に入れる |
+:::
 
 ::: {.callout-important}
 ### なぜ参加者数と項目数の両方を変える必要があるのか
 
 GLMM では「サンプルサイズ」が**2 つの次元**を持ちます。「30 人 × 10 項目」と「30 人 × 20 項目」では検出力が異なりますし、「30 人 × 20 項目」と「60 人 × 20 項目」でも異なります。研究計画では**両次元を同時に探索**して、予算・時間の制約下での最適な組み合わせを見つけます[@westfall2014; @brysbaert2018]。
+
+試行単位データでは、ここに trial 数や条件ごとの反復数も加わります。ただし、同じ参加者に試行を大量に追加しても、参加者レベルのばらつきは消えません。総行数が大きいことと、参加者・項目・試行の各レベルで十分な情報があることは別問題です。
+
+| デザイン | サンプルサイズの軸 | 注意点 |
+|---|---|---|
+| 完全交差の判断課題 | 参加者数 × 項目数 | participant と item の両方に一般化したいなら両方を動かす |
+| ラテン方格・リスト分割 | 参加者数 × リスト数 × 条件あたり項目数 | 1 人が全条件を見ない場合、条件あたりの有効項目数を確認する |
+| pre/post 介入 | 群あたり参加者数 × 項目数 × 測定時点 | `time` は within-participant なので、必要ならランダム傾きも候補に入れる |
+| 語彙学習 | 参加者数 × 項目数 × unknown-word yield | pre-test 既知語が多いと、学習対象として残る情報が減る |
+| eye-tracking / VWP | 参加者数 × 項目数 × AOI × time bin | time bin は独立な行ではないため、GAMM や時系列構造も検討する |
 :::
 
 ### シミュレーションの原理
 
-検出力分析の核心は 4 ステップです[@debruine2021]：
+事前サンプルサイズ設計としてのシミュレーションは、次の 4 ステップで進めます[@debruine2021]：
 
 1. **パラメータを設定**: 固定効果 β、ランダム効果の SD、参加者数、項目数
 2. **データを生成**: ランダム効果を `rnorm()` で生成 → 線形予測子 η を計算 → `plogis(η)` で確率に変換 → `rbinom()` で 2 値データを生成
@@ -4716,6 +5279,8 @@ GLMM では「サンプルサイズ」が**2 つの次元**を持ちます。「
 ### Step 1: データ生成関数の定義
 
 英語教育で典型的な「**参加者 × 項目**」の交差分類デザインを想定します。熟達度（A2/B1/B2）が参加者間要因として 3 水準あるケースです。
+
+この例は、熟達度が参加者間要因であるため、データ生成モデルも分析モデルもランダム切片を中心にしています。確認的仮説が `condition` や `time` のような参加者内要因に関わる場合は、検出力シミュレーションにも予定しているランダム傾き構造を反映させます。たとえば `(1 + condition | participant) + (1 + condition | item)` を分析計画に含めるなら、データ生成側にも参加者・項目ごとの `condition` 傾き SD と、必要に応じて相関を入れます。ランダム傾きを分析モデルに入れる予定なのにシミュレーションで省くと、検出力を楽観的に見積もることがあります。
 
 ```{r}
 #| eval: true
@@ -4917,9 +5482,17 @@ p_rate + p_item + p_re + plot_layout(widths = c(1, 1, 1))
 ::: {.callout-tip}
 #### パラメータの設定方法
 
-- **パイロットデータがある場合**: パイロットで `glmer()` を推定し、`fixef()` と `VarCorr()` の値をそのまま使う。
+- **パイロットデータがある場合**: パイロットで `glmer()` を推定し、`fixef()` と `VarCorr()` の値をそのまま使います。
 - **先行研究に基づく場合**: 先行研究の報告値（OR, ランダム効果の SD）を使用。OR → β の変換は `log(OR)`。
 - **目安がない場合**: Cohen の OR ベンチマーク（小 = 1.68, 中 = 3.47）と、ランダム効果 SD = 0.5〜1.5 の範囲で感度分析。
+
+OR はベースライン率によって確率差への見え方が変わります。同じ OR でも、正答率が .30 の課題と .70 の課題では、研究上の意味づけが異なります。効果量を決めるときは、log odds や OR だけでなく、想定される確率差にも翻訳して確認します。
+
+| ベースライン率 | OR = 1.65 の予測率 | 確率差 | OR = 2.72 の予測率 | 確率差 |
+|---:|---:|---:|---:|---:|
+| .30 | .41 | +.11 | .54 | +.24 |
+| .50 | .62 | +.12 | .73 | +.23 |
+| .70 | .79 | +.09 | .86 | +.16 |
 :::
 
 ### Step 2: 1 つの設定での検出力
@@ -5095,7 +5668,7 @@ ggplot(grid, aes(x = factor(n_subj_pg), y = factor(n_item),
 
 ```{r}
 #| eval: true
-#| label: power-grid-B1
+#| label: power-grid-b1
 #| fig-height: 5.5
 #| fig-width: 9
 
@@ -5163,7 +5736,376 @@ p_omnibus + p_b1 +
 
 - **左（オムニバス）**: 全体的な proficiency の効果を検出する力。B1 と B2 の情報を合算するため、比較的高い検出力。
 - **右（B1 vs A2）**: 小さい効果（OR = `r sprintf("%.2f", exp(0.5))`）だけを検出する力。オムニバスより大幅に低い。
-- **実務的含意**: 「全体として差がある」ことと「特定の 2 群間で差がある」ことは検出力が異なる。研究の問いが**特定の対比**に焦点を当てている場合は、その対比に基づいて検出力を計画する必要がある。
+- **実務的含意**: 「全体として差がある」ことと「特定の 2 群間で差がある」ことは検出力が異なります。研究の問いが**特定の対比**に焦点を当てている場合は、その対比に基づいて検出力を計画する必要がある。
+
+### Step 3b: 募集数・除外率・ランダム傾きを含めた設計コード
+
+上の例は、考え方を見せるためのランダム切片モデルです。研究計画で `time × group` のような within-participant 効果を検証するなら、募集数、除外率、ランダム傾き、収束失敗もシミュレーションに入れます。以下は、pre/post 語彙介入を想定した実行用コードです。書籍内ではレンダー時間を抑えるため小さい `nsim_design` で実演し、自分の研究計画では 500-1000 に増やして実行します。
+
+```{r}
+#| eval: true
+#| label: power-prepost-random-slope-design
+#| cache: true
+#| message: false
+#| warning: false
+#| fig-height: 5.5
+#| fig-width: 10
+
+# ── ランダム切片とランダム傾きを相関つきで生成 ──
+draw_intercept_slope <- function(n, sd_intercept, sd_slope, cor = 0) {
+  Sigma <- matrix(
+    c(
+      sd_intercept^2, cor * sd_intercept * sd_slope,
+      cor * sd_intercept * sd_slope, sd_slope^2
+    ),
+    nrow = 2
+  )
+
+  draws <- MASS::mvrnorm(n = n, mu = c(0, 0), Sigma = Sigma)
+
+  tibble::tibble(
+    u_0 = draws[, 1],
+    u_time = draws[, 2]
+  )
+}
+
+# ── pre/post 介入研究のデータ生成 ──
+simulate_prepost_glmm_data <- function(
+  n_recruit_per_group = 40,   # 募集予定人数（群あたり）
+  attrition_rate = 0.10,      # 脱落・分析除外の見込み
+  n_item_planned = 36,        # 用意する項目数
+  item_exclusion_rate = 0.05, # pilot や項目分析で落ちる項目の見込み
+  trial_keep_rate = 0.95,     # 反応時間・機器トラブル等を除いた試行保持率
+  beta_0 = -0.20,             # Control 群 pre のベースログオッズ
+  beta_time = 0.20,           # Control 群の pre-post 変化
+  beta_group = 0.00,          # pre 時点での群差
+  beta_time_group = 0.50,     # 介入効果: time × group
+  sd_participant_intercept = 0.80,
+  sd_participant_time = 0.35,
+  cor_participant = 0.20,
+  sd_item_intercept = 0.50,
+  sd_item_time = 0.20,
+  cor_item = 0.10
+) {
+  n_per_group <- max(2, floor(n_recruit_per_group * (1 - attrition_rate)))
+  n_item <- max(2, floor(n_item_planned * (1 - item_exclusion_rate)))
+
+  participant_re <- draw_intercept_slope(
+    n = n_per_group * 2,
+    sd_intercept = sd_participant_intercept,
+    sd_slope = sd_participant_time,
+    cor = cor_participant
+  )
+
+  participants <- tibble::tibble(
+    participant_id = factor(sprintf("P%03d", seq_len(n_per_group * 2))),
+    group = factor(
+      rep(c("Control", "Treatment"), each = n_per_group),
+      levels = c("Control", "Treatment")
+    ),
+    group_num = as.integer(group == "Treatment")
+  ) |>
+    dplyr::bind_cols(participant_re)
+
+  item_re <- draw_intercept_slope(
+    n = n_item,
+    sd_intercept = sd_item_intercept,
+    sd_slope = sd_item_time,
+    cor = cor_item
+  )
+
+  items <- tibble::tibble(
+    item_id = factor(sprintf("I%03d", seq_len(n_item)))
+  ) |>
+    dplyr::bind_cols(item_re |>
+      dplyr::rename(u_item_0 = u_0, u_item_time = u_time))
+
+  tidyr::crossing(
+    participants,
+    items,
+    time = factor(c("Pre", "Post"), levels = c("Pre", "Post"))
+  ) |>
+    dplyr::mutate(
+      time_num = as.integer(time == "Post"),
+      eta = beta_0 +
+        beta_time * time_num +
+        beta_group * group_num +
+        beta_time_group * time_num * group_num +
+        u_0 + u_time * time_num +
+        u_item_0 + u_item_time * time_num,
+      prob = plogis(eta),
+      y = rbinom(dplyr::n(), size = 1, prob = prob)
+    ) |>
+    dplyr::filter(stats::runif(dplyr::n()) <= trial_keep_rate)
+}
+
+# ── 1 回のシミュレーション: 生成 → 推定 → time × group の LRT ──
+run_prepost_single_sim <- function(...) {
+  dat <- simulate_prepost_glmm_data(...)
+
+  tryCatch(
+    {
+      mod_full <- glmer(
+        y ~ time_num * group +
+          (1 + time_num || participant_id) +
+          (1 + time_num || item_id),
+        family = binomial,
+        data = dat,
+        control = glmerControl(optimizer = "bobyqa",
+                               optCtrl = list(maxfun = 1e5))
+      )
+
+      mod_null <- update(mod_full, . ~ . - time_num:group)
+      lr <- anova(mod_null, mod_full, test = "Chisq")
+
+      data.frame(
+        p_interaction = lr[["Pr(>Chisq)"]][2],
+        converged = TRUE,
+        singular = lme4::isSingular(mod_full),
+        n_participants = dplyr::n_distinct(dat$participant_id),
+        n_items = dplyr::n_distinct(dat$item_id),
+        n_rows = nrow(dat)
+      )
+    },
+    error = function(e) {
+      data.frame(
+        p_interaction = NA_real_,
+        converged = FALSE,
+        singular = NA,
+        n_participants = dplyr::n_distinct(dat$participant_id),
+        n_items = dplyr::n_distinct(dat$item_id),
+        n_rows = nrow(dat)
+      )
+    }
+  )
+}
+
+# ── nsim 回繰り返して、検出力・収束失敗率・特異適合率を返す ──
+run_prepost_power <- function(nsim = 100, alpha = 0.05, ...) {
+  sims <- do.call(
+    rbind,
+    lapply(seq_len(nsim), function(i) run_prepost_single_sim(...))
+  )
+
+  n_valid <- sum(!is.na(sims$p_interaction))
+  n_sig <- sum(sims$p_interaction < alpha, na.rm = TRUE)
+  ci <- if (n_valid > 0) {
+    stats::binom.test(n_sig, n_valid)$conf.int
+  } else {
+    c(NA_real_, NA_real_)
+  }
+  singular_rate <- if (all(is.na(sims$singular))) {
+    NA_real_
+  } else {
+    mean(sims$singular, na.rm = TRUE)
+  }
+
+  data.frame(
+    valid_sims = n_valid,
+    power = ifelse(n_valid > 0, n_sig / n_valid, NA_real_),
+    ci_low = ci[1],
+    ci_high = ci[2],
+    convergence_failure_rate = mean(!sims$converged),
+    singular_rate = singular_rate,
+    mean_n_participants = mean(sims$n_participants),
+    mean_n_items = mean(sims$n_items),
+    mean_n_rows = mean(sims$n_rows)
+  )
+}
+
+# ── 研究計画用のグリッド探索 ──
+set.seed(2027)
+nsim_design <- 5  # デモ用。本番では 500-1000 に増やす
+
+design_grid <- expand.grid(
+  n_recruit_per_group = c(24, 36),
+  n_item_planned = c(18, 30)
+)
+
+design_results <- do.call(
+  rbind,
+  lapply(seq_len(nrow(design_grid)), function(i) {
+    res <- run_prepost_power(
+      nsim = nsim_design,
+      n_recruit_per_group = design_grid$n_recruit_per_group[i],
+      n_item_planned = design_grid$n_item_planned[i],
+      attrition_rate = 0.10,
+      item_exclusion_rate = 0.05,
+      trial_keep_rate = 0.95,
+      beta_time_group = 0.50,
+      sd_participant_time = 0.35,
+      sd_item_time = 0.20
+    )
+
+    cbind(design_grid[i, ], res)
+  })
+)
+
+design_results |>
+  dplyr::mutate(
+    power_ci = sprintf("%.0f%% [%.0f, %.0f]",
+                       power * 100, ci_low * 100, ci_high * 100),
+    convergence_failure_rate = scales::percent(convergence_failure_rate),
+    singular_rate = scales::percent(singular_rate)
+  ) |>
+  dplyr::select(
+    n_recruit_per_group, n_item_planned, valid_sims, power_ci,
+    convergence_failure_rate, singular_rate,
+    mean_n_participants, mean_n_items, mean_n_rows
+  ) |>
+  knitr::kable(
+    caption = "事前サンプルサイズ設計: time × group の検出力、収束失敗率、特異適合率"
+  )
+
+# ── 可視化: power と診断を分けて確認 ──
+design_plot_data <- design_results |>
+  dplyr::mutate(
+    n_recruit_per_group = factor(n_recruit_per_group),
+    n_item_planned = factor(n_item_planned),
+    power_label = ifelse(
+      is.na(power),
+      "NA",
+      scales::percent(power, accuracy = 1)
+    )
+  )
+
+p_power_design <- ggplot(
+  design_plot_data,
+  aes(x = n_recruit_per_group, y = n_item_planned, fill = power)
+) +
+  geom_tile(color = "white", linewidth = 1.2) +
+  geom_text(aes(label = power_label), fontface = "bold", size = 4) +
+  scale_fill_gradient2(
+    low = "#D73027", mid = "#FEE08B", high = "#1A9850",
+    midpoint = 0.8, limits = c(0, 1),
+    labels = scales::percent, na.value = "grey90"
+  ) +
+  labs(
+    title = "Power for time × group",
+    subtitle = sprintf("Simulation demo: nsim = %d per design cell", nsim_design),
+    x = "Recruited participants per group",
+    y = "Planned items",
+    fill = "Power"
+  ) +
+  theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(face = "bold", size = rel(1.0)),
+    legend.position = "right"
+  )
+
+diagnostic_plot_data <- design_results |>
+  dplyr::select(
+    n_recruit_per_group, n_item_planned,
+    convergence_failure_rate, singular_rate
+  ) |>
+  tidyr::pivot_longer(
+    cols = c(convergence_failure_rate, singular_rate),
+    names_to = "diagnostic", values_to = "rate"
+  ) |>
+  dplyr::mutate(
+    n_recruit_per_group = factor(n_recruit_per_group),
+    n_item_planned = factor(n_item_planned),
+    diagnostic = dplyr::case_match(
+      diagnostic,
+      "convergence_failure_rate" ~ "Convergence failure",
+      "singular_rate" ~ "Singular fit"
+    ),
+    rate_label = ifelse(is.na(rate), "NA", scales::percent(rate, accuracy = 1))
+  )
+
+p_diagnostics_design <- ggplot(
+  diagnostic_plot_data,
+  aes(x = n_recruit_per_group, y = n_item_planned, fill = rate)
+) +
+  geom_tile(color = "white", linewidth = 1.2) +
+  geom_text(aes(label = rate_label), fontface = "bold", size = 3.5) +
+  facet_wrap(~ diagnostic) +
+  scale_fill_gradient(
+    low = "#F7FBFF", high = "#CB181D",
+    limits = c(0, 1), labels = scales::percent,
+    na.value = "grey90"
+  ) +
+  labs(
+    title = "Model diagnostics by design cell",
+    x = "Recruited participants per group",
+    y = "Planned items",
+    fill = "Rate"
+  ) +
+  theme_bw(base_size = 11, base_family = base_font) +
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_text(face = "bold", size = rel(1.0)),
+    legend.position = "right"
+  )
+
+p_power_design + p_diagnostics_design + patchwork::plot_layout(widths = c(1, 1.3))
+```
+
+このコードでは、`n_recruit_per_group` と `n_item_planned` は募集・準備段階の数です。実際のデータ生成では `attrition_rate` と `item_exclusion_rate` を反映し、分析可能な参加者数・項目数へ変換しています。さらに `trial_keep_rate` で試行単位の除外も入れているため、報告時には power だけでなく、`mean_n_rows` や収束失敗率も一緒に確認します。
+
+可視化は、**power だけを見ない**ことが重要です。左のヒートマップで検出力を確認し、右の診断図で収束失敗率と特異適合率を確認します。power が高く見えても、収束失敗や特異適合が多い設計は、推定モデルがそのデータ構造に対して不安定である可能性があります。なお、ここでの `nsim_design = 5` はレンダー用の実演値なので、実際の研究計画では数値を結論として読まず、`nsim_design` を 500-1000 に増やして再計算します。
+
+### `simr` で実装する場合
+
+上の手動シミュレーションは、データ生成過程をすべて見せるための方法です。一方、pilot data からすでに `lme4` モデルを推定できる場合は、`simr` を使うと、同じモデル式を保ったまま `powerSim()` や `powerCurve()` で検出力を見積もれます[@green2016]。
+
+| 方法 | 向いている場面 | 注意点 |
+|---|---|---|
+| 手動シミュレーション | 欠測、除外、pre-known rate、条件割付、time bin などを細かく制御したい | コード量は増えるが、仮定をすべて明示できる |
+| `simr::powerSim()` | pilot data または既存の `lme4` モデルがあり、特定の効果の検出力を見たい | モデル式、効果量、ランダム効果分散が pilot に強く依存する |
+| `simr::powerCurve()` / `simr::extend()` | 参加者数や項目数を増やした場合の power curve を見たい | 拡張後のデザインが、実際の割付・リスト構造と一致しているか確認する |
+
+```{r}
+#| eval: false
+#| label: power-simr-example
+
+# 1. pilot data または想定データから、分析予定のモデルを推定
+pilot_dat <- simulate_prepost_glmm_data(
+  n_recruit_per_group = 30,
+  n_item_planned = 24,
+  attrition_rate = 0.10,
+  item_exclusion_rate = 0.05,
+  trial_keep_rate = 0.95
+)
+
+pilot_mod <- glmer(
+  y ~ time_num * group +
+    (1 + time_num || participant_id) +
+    (1 + time_num || item_id),
+  family = binomial,
+  data = pilot_dat,
+  control = glmerControl(optimizer = "bobyqa")
+)
+
+# 2. 研究計画で仮定する効果量を固定効果に反映
+#    term 名は names(fixef(pilot_mod)) で必ず確認する
+names(fixef(pilot_mod))
+fixef(pilot_mod)["time_num:groupTreatment"] <- 0.50
+
+# 3. 単一デザインで time × group の検出力を見積もる
+simr::powerSim(
+  pilot_mod,
+  test = simr::fixed("time_num:groupTreatment", method = "z"),
+  nsim = 1000,
+  seed = 2028
+)
+
+# 4. 参加者数を変えた power curve を確認する
+#    breaks は along 変数の「水準数」(participant_id のユニーク数 = 総参加者数)を指定する。
+#    群均衡デザインでは「総参加者数」と「群×2 あたり人数」が一意に対応する。
+#    breaks > 既存 N なら事前に extend() でモデルを拡張しておく必要がある。
+simr::powerCurve(
+  pilot_mod,
+  test = simr::fixed("time_num:groupTreatment", method = "z"),
+  along = "participant_id",
+  breaks = c(40, 60, 80),    # = participant_id の保持水準数(総参加者数)
+  nsim = 1000,
+  seed = 2028
+)
+```
+
+`simr` は便利ですが、完全に自動で研究計画を作ってくれるわけではありません。`fixef()` に入れた効果量、`VarCorr()` に入っているランダム効果分散、`extend()` 後の参加者・項目・条件の組み合わせが、研究で本当に想定しているデザインと一致しているかを必ず確認します。語彙研究で pre-test 既知語を除外する、eye-tracking で time bin ごとにデータ量が変わる、ERP で electrode/window を持つ、といった設計では、手動シミュレーションのほうが仮定を明示しやすい場合があります。
 
 ### 語彙介入研究では `pre-test` 既知率も検出力を左右する
 
@@ -5319,19 +6261,27 @@ ggplot(
 #### 検出力分析の実務ガイドライン
 
 - **目標検出力**: 80%（慣例）。査読で求められることが増えています。
-- **グループ数の目安**: ランダム切片のみなら各群 20+、ランダム傾きも含むなら 30+ が望ましい[@maas2005; @brysbaert2018]。
-- **nsim**: 上記はデモ用に 50-100 回。最終報告には **500-1000 回**に増やしてください。
+- **設計の軸**: 参加者数だけでなく、項目数、試行数、群ごとの割付、除外後に残る有効データ数を同時に動かす。
+- **グループ数の目安**: ランダム切片のみなら各群 20+、ランダム傾きも含むなら 30+ を候補に入れて比較する[@maas2005; @brysbaert2018]。
+- **ランダム傾き**: 研究仮説で within-participant / within-item の効果を検証するなら、分析モデルだけでなくデータ生成モデルにも傾きのばらつきを入れる。
+- **nsim**: 上記はデモ用に 20-100 回。最終報告には **500-1000 回**に増やしてください。
 - **効果量の設定**: パイロットデータの推定値か、先行研究のメタ分析値を使用。
 - **パラメータの感度分析**: ランダム効果の SD を ±50% 変えてみて、検出力がどう変わるかを確認するのも重要です。
+- **収束失敗の記録**: 各設計条件で何回推定に失敗したかを報告します。失敗率が高い設計は、検出力の数値だけで採用しません。
+- **事後検出力との区別**: 研究計画では事前検出力分析を行い、分析後は「この設計で検出できた最小効果量」を見る感度分析として扱います。
 :::
 
 ::: {.callout-note}
 #### 報告テンプレート（検出力分析）
 
 > A simulation-based power analysis was conducted following DeBruine and Barr (2021). We assumed effect sizes of β_B1 = 0.50 (OR = 1.65) and β_B2 = 1.00 (OR = 2.72) for the proficiency effect, with random intercept SDs of 1.0 (participants) and 0.5 (items), based on [pilot data / prior literature]. Binary response data were generated from the specified GLMM, fitted with `glmer()`, and the omnibus likelihood ratio test for the proficiency factor was evaluated. Monte Carlo simulations (nsim = 1000) across a grid of participant counts (15–50 per group) and item counts (10–30) indicated that XX participants per group with YY items provided ZZ% power (95% CI [LL, UU]) for the omnibus proficiency effect at α = .05 (Figure X).
+>
+> We planned to recruit NN participants per group, assuming XX% participant attrition and YY% trial/item exclusion; simulations were based on the expected analyzable sample. When random slopes were part of the planned confirmatory model, the data-generating model included the corresponding slope SDs. Convergence failures and singular fits were recorded for each design cell and reported alongside the power estimates.
+
+報告では、採用した設計だけでなく、比較した設計グリッド、効果量・ランダム効果・ベースライン率の根拠、欠測・除外の見込み、収束失敗の扱いも明記します。査読者が確認したいのは「最終的に何人集めたか」だけではなく、「どの仮定ならその設計が妥当になるか」です。
 :::
 
-## 技術的補足（中級者向け）
+## 技術的補足（必要に応じて参照）
 
 ::: {.callout-note collapse="true"}
 #### `nAGQ` による推定精度の向上
@@ -5357,14 +6307,14 @@ m_nAGQ <- glmer(correct ~ condition + (1 | participant),
 ::: {.callout-note collapse="true"}
 #### `allFit()` による収束の頑健性確認
 
-収束警告が出た場合、`lme4::allFit()` で複数のオプティマイザを一括比較できます。全オプティマイザで推定値が近ければ、警告は無視して構いません。
+収束警告が出た場合、`lme4::allFit()` で複数のオプティマイザを一括比較できます。全オプティマイザで推定値が近ければ、推定値そのものは比較的安定していると判断できます。ただし、警告の有無、どのオプティマイザが収束したか、追加で行った確認は記録しておきます。
 
 ```r
 # 全利用可能オプティマイザで再推定
 all_fits <- lme4::allFit(m_glmm_ri)
 summary(all_fits)$fixef  # 固定効果の比較表
 
-# 結果が一致していれば安全
+# 結果が一致していれば推定値は比較的安定
 ss <- summary(all_fits)
 print(ss$which.OK)  # どのオプティマイザが収束したか
 ```
@@ -5386,7 +6336,7 @@ print(ci)
 ::: {.callout-note collapse="true"}
 #### REML vs ML（GLMM では問題にならない理由）
 
-線形混合モデル（`lmer()`）では REML と ML の選択が重要ですが、GLMM（`glmer()`）では Laplace 近似や AGQ による周辺尤度推定が自動で行われ、REML/ML の区別は存在しません。したがって、**`glmer()` で推定したモデル同士は AIC/LRT で自由に比較できます**（固定効果のみの変更でも、ランダム構造の変更でも）。
+線形混合モデル（`lmer()`）では REML と ML の選択が重要ですが、GLMM（`glmer()`）では Laplace 近似や AGQ による周辺尤度推定が用いられ、REML/ML の区別はありません。したがって、同じデータ・同じ family/link・同じ推定設定で推定した `glmer()` モデルは AIC/BIC の比較対象になります。LRT は、入れ子関係にあるモデル同士で使い、ランダム効果の分散が 0 という境界問題がある場合は p 値を機械的に読まないようにします。
 :::
 
 ## 非有意な結果の解釈と感度分析
@@ -5528,11 +6478,11 @@ ggplot(dat_bin, aes(x = factor(tie, labels = c("No tie (0)", "Tie (1)")))) +
 
 ベースレートが低い（< 10-15%）場合：
 
-1. **完全分離のリスク**: 一部の予測子の組み合わせで tie = 1 が 0 件になり、推定が発散する。`blme::bglmer()` やベイズ推定（`brms`）が有効。
-2. **OR の解釈に注意**: ベースレートが低い場合、OR ≈ リスク比（RR）の近似が成り立つ。ベースレートが高い場合は OR > RR となり、OR は効果を過大評価する。
-3. **検出力への影響**: イベントが少ないとパラメータ推定の精度が低下する。検出力分析のパラメータ設定に `beta_0`（切片）を反映させることが重要。
+1. **完全分離のリスク**: 一部の予測子の組み合わせで tie = 1 が 0 件になり、推定が発散します。`blme::bglmer()` やベイズ推定（`brms`）が有効。
+2. **OR の解釈に注意**: ベースレートが低い場合、OR ≈ リスク比（RR）の近似が成り立つ。ベースレートが高い場合は OR > RR となり、OR は効果を過大評価します。
+3. **検出力への影響**: イベントが少ないとパラメータ推定の精度が低下します。検出力分析のパラメータ設定に `beta_0`（切片）を反映させることが重要です。
 
-ICC に基づく GLM/GLMM の判断基準は「階層性の確認」セクションで詳述しました。安全策として、**データが階層的（繰り返し構造がある）なら常に GLMM を使うのが推奨**です。
+ICC に基づく GLM/GLMM の判断基準は「階層性の確認」セクションで詳述しました。研究デザインに繰り返し構造があるなら、GLMM を第一候補として検討するのが原則です。
 
 #### Bayesian GLMM への発展
 
@@ -5549,7 +6499,7 @@ m_bayes <- brms::brm(
 )
 ```
 
-Bayesian GLMM の利点: (1) 収束が安定、(2) 事前分布で完全分離を回避、(3) 事後分布から直接確率的な推論が可能。詳細は @buerkner2017 を参照。
+Bayesian GLMM の利点: (1) 収束が安定、(2) 事前分布で完全分離を回避、(3) 事後分布から直接確率的な推論が可能です。詳細は @buerkner2017 を参照。
 
 ## 第5章からの接続: GLMM と GAMM の使い分け
 
@@ -5564,7 +6514,7 @@ Bayesian GLMM の利点: (1) 収束が安定、(2) 事前分布で完全分離�
 
 ### 発展: LME / Poisson / ordinal / multinomial への橋渡し
 
-本章は 2 値（binomial）の GLMM ですが、**考え方の骨格**は他の混合モデルでもほぼ同じです。  
+本章は 2 値（binomial）の GLMM ですが、**考え方の骨格**は他の混合モデルでもほぼ同じです。
 変わるのは主に次の 3 点です。
 
 1. **アウトカムの分布**
@@ -5573,8 +6523,8 @@ Bayesian GLMM の利点: (1) 収束が安定、(2) 事前分布で完全分離�
 
 逆に、以下はかなり共通です。
 
-- ランダム効果構造の考え方  
-  どの予測子が `within-participant` / `within-item` かを見る
+- ランダム効果構造の考え方
+  どの予測子が `within-participant` / `within-item` かを見ます
 - `marginal` vs `conditional` 予測の区別
 - `sjPlot` / `ggeffects` / `emmeans` を使った予測可視化
 - 研究質問に合わせて「どの確率・どの期待値を報告するか」を明示すること
@@ -5591,7 +6541,7 @@ Bayesian GLMM の利点: (1) 収束が安定、(2) 事前分布で完全分離�
 
 #### 1. LME: 連続アウトカムなら、まず `lmer()`
 
-アウトカムがほぼ正規的で、**平均差そのもの**を読みたいなら、最初に考えるべきは LME（線形混合モデル）です[@winter2013; @brown2021]。  
+アウトカムがほぼ正規的で、**平均差そのもの**を読みたいなら、最初に考えるべきは LME（線形混合モデル）です[@winter2013; @brown2021]。
 たとえば、語彙サイズ得点、作文総得点、理解度の合成尺度などです。
 
 ```r
@@ -5601,14 +6551,14 @@ lmer(score ~ time * group + (1 + time | learner_id) + (1 | item_id), data = dat)
 ここでの係数は log-odds ではなく、**得点差そのもの**です。したがって、
 
 - `b = 2.4` なら「平均で 2.4 点高い」
-- 予測図は **adjusted mean の差** として読む
+- 予測図は **adjusted mean の差** として読みます
 
-という、より直感的な解釈になります。  
+という、より直感的な解釈になります。
 ただし反応時間のように歪みが強い正の連続量では、LME より Gamma 系混合モデルのほうが自然なことがあります[@lo2015]。
 
 #### 2. Poisson / Negative Binomial: カウントデータなら IRR で読む
 
-誤用数、修正回数、発話イベント数、相談回数などは、**回数**なので Gaussian より Poisson / NB が自然です。  
+誤用数、修正回数、発話イベント数、相談回数などは、**回数**なので Gaussian より Poisson / NB が自然です。
 Poisson は平均 = 分散を仮定し、過分散が強ければ Negative Binomial へ進みます。
 
 ```r
@@ -5621,7 +6571,7 @@ glmer(error_count ~ treatment + (1 | learner_id) + (1 | item_id),
 - `IRR = 1.30` なら「期待回数が 1.30 倍」
 - `IRR = 0.75` なら「期待回数が 25% 減る」
 
-2値 GLMM で OR を確率差に戻したのと同じで、ここでも **IRR だけで終わらず、予測回数の図を併記**すると伝わりやすくなります。  
+2値 GLMM で OR を確率差に戻したのと同じで、ここでも **IRR だけで終わらず、予測回数の図を併記**すると伝わりやすくなります。
 Poisson / NB では、`predicted count` や `predicted rate` の plot が binomial の予測確率図に対応します。
 
 #### 3. Ordinal: Likert や CEFR のような順序尺度
@@ -5641,20 +6591,20 @@ ordinal::clmm(rating ~ treatment + time + (1 | learner_id) + (1 | rater_id), dat
 - `Pr(rating >= 4)`
 - 各カテゴリの予測確率
 
-です。  
+です。
 したがって ordinal では、**threshold の説明より category probability の図**を主に読むのが実務的です。これは第5章で見た ordinal regression の読み方と同じです。
 
 #### 4. Multinomial: 3 択以上の選択データ
 
 未知語処理方略（skip / infer / lookup）、課題選好、反応タイプ分類のように、**順序のない 3 水準以上**なら multinomial です[@gudmestad2025; @agresti2013cda; @venables2002modern; @mclogitpkg]。
 
-ここでは係数が参照カテゴリとの比較になるため、log-odds や RRR だけでは読みづらくなります。  
+ここでは係数が参照カテゴリとの比較になるため、log-odds や RRR だけでは読みづらくなります。
 したがって、binomial 以上に
 
 - **predicted category probabilities**
 - **stacked area / stacked bar**
 
-が重要です。  
+が重要です。
 読み方は「どの条件で、各カテゴリのシェアがどう再配分されるか」です。
 
 #### 5. 何が変わっても、予測図の原理は同じ
@@ -5667,7 +6617,7 @@ ordinal::clmm(rating ~ treatment + time + (1 | learner_id) + (1 | rater_id), dat
 - **multinomial**: 各カテゴリの選択確率
 - **LME**: 調整済み平均値
 
-要するに、係数表は出発点ですが、**読者に伝える最終形は応答スケールの予測図**です。  
+要するに、係数表は出発点ですが、**読者に伝える最終形は応答スケールの予測図**です。
 `sjPlot::plot_model()`、`ggeffects::ggpredict()`、`emmeans()` はこの意味で family が変わっても発想を保ちやすい道具です。違うのは、縦軸が確率なのか回数なのか平均値なのか、という点だけです。
 
 #### 研究質問からの最短マッピング
@@ -5682,30 +6632,30 @@ ordinal::clmm(rating ~ treatment + time + (1 | learner_id) + (1 | rater_id), dat
 
 : 研究質問から混合モデル族を選ぶための最短ガイド
 
-本章を読んだあとで最も自然な発展順は、  
-**LME → Poisson/NB → ordinal → multinomial** です。  
+本章を読んだあとで最も自然な発展順は、
+**LME → Poisson/NB → ordinal → multinomial** です。
 理由は、ランダム効果構造の考え方を保ったまま、応答分布と解釈だけを 1 つずつ増やせるからです。
 
-Poisson と ordinal の本格的な worked example はベイズ章で詳しく扱います。  
+Poisson と ordinal の本格的な worked example はベイズ章で詳しく扱います。
 ここでは、第 6 章の読者がすぐ応用しやすい **LME** と **multinomial mixed model** を、SLA・心理言語学・英語教育の具体例で最後まで通します。
 
 ### Worked Example 1: LME で英語ライティングの改稿得点を分析する
 
 #### 研究プロンプト
 
-英語ライティング授業で、**AI フィードバック群は統制群より第 2 稿で大きく伸びるか**。  
-学習者は複数の writing prompt に応答しており、各 prompt の難しさも異なる。このとき、単純な `lm()` ではなく `lmer()` を使うと、**学習者内の繰り返し**と**prompt 差**を同時に統制したうえで、調整済み平均差を報告できます。
+英語ライティング授業で、**AI フィードバック群は統制群より第 2 稿で大きく伸びるか**。
+学習者は複数の writing prompt に応答しており、各 prompt の難しさも異なります。このとき、単純な `lm()` ではなく `lmer()` を使うと、**学習者内の繰り返し**と**prompt 差**を同時に統制したうえで、調整済み平均差を報告できます。
 
 #### 分析ステップ
 
 1. `learner × prompt × draft` のロングデータを作る。
 2. まず naive な `lm()` を当て、次に `lmer()` で `learner_id` と `prompt_id` のランダム切片を入れる。
-3. `ggpredict()` で調整済み平均を描き、`emmip()` で下位比較を視覚化する。
-4. 係数は平均差として、最終図は **adjusted mean score** として読む。
+3. `ggpredict()` で調整済み平均を描き、`emmip()` で下位比較を視覚化します。
+4. 係数は平均差として、最終図は **adjusted mean score** として読みます。
 
 #### `lmer()` は何をしている関数か
 
-`lmer()` は、**連続アウトカムの混合モデルを REML または ML で推定する関数**です[@lme4_lmer]。  
+`lmer()` は、**連続アウトカムの混合モデルを REML または ML で推定する関数**です[@lme4_lmer]。
 この worked example の式
 
 ```r
@@ -5715,15 +6665,15 @@ lmer(score ~ draft * feedback + proficiency_sc +
 
 は、次の 3 層に分けて読むと分かりやすいです。
 
-1. `score`  
+1. `score`
    連続の目的変数です。ここでは作文得点なので、係数はそのまま**得点差**として解釈できます。
-2. `draft * feedback + proficiency_sc`  
-   固定効果です。`draft * feedback` は `draft + feedback + draft:feedback` を意味します。  
+2. `draft * feedback + proficiency_sc`
+   固定効果です。`draft * feedback` は `draft + feedback + draft:feedback` を意味します。
    したがって、このモデルは「改稿の主効果」「群差」「AI 群だけ追加で伸びるか」を同時に見ています。
-3. `(1 | learner_id) + (1 | prompt_id)`  
+3. `(1 | learner_id) + (1 | prompt_id)`
    ランダム切片です。同じ learner が複数 prompt に答え、同じ prompt に複数 learner が答えるため、各 learner と各 prompt に固有の baseline を持たせています。
 
-`lmer()` のデフォルトは `REML = TRUE` です[@lme4_lmer]。  
+`lmer()` のデフォルトは `REML = TRUE` です[@lme4_lmer]。
 したがって、**最終モデルの係数推定**は REML のままでよい一方、**固定効果構造を比較するとき**は ML に切り替える必要があります。これは `anova.merMod()` の公式ヘルプでも明示されており、`lmerMod` 同士を比較するとき、固定効果が違う REML モデルをそのまま比べるのは不適切なので、既定で `refit = TRUE` にして ML へ refit します[@lme4_anova]。
 
 ```{r}
@@ -5828,15 +6778,15 @@ tbl_lme_ml_compare |>
   knitr::kable(caption = "Worked example (LME): fixed-effect comparison は ML で行う")
 ```
 
-この表では、`No interaction` から `Interaction model` へ行ったときに、AIC/BIC と LRT をまとめて見られます。  
-ポイントは、**交互作用の有無を比べるときは ML 比較で判断し、採択後の係数や分散成分は REML で報告する**ことです。  
+この表では、`No interaction` から `Interaction model` へ行ったときに、AIC/BIC と LRT をまとめて見られます。
+ポイントは、**交互作用の有無を比べるときは ML 比較で判断し、採択後の係数や分散成分は REML で報告する**ことです。
 つまり、一文でまとめると:
 
 > `lmer()` はまず REML で推定してよいが、固定効果を削る・足す比較だけは ML に切り替える。
 
 #### 生データをまず見る
 
-`lm()` と `lmer()` の違いは、**同じ学習者が複数 prompt に出てくる**ことと、**同じ prompt に複数の学習者が答える**ことをどこまで正面から扱うかにあります。  
+`lm()` と `lmer()` の違いは、**同じ学習者が複数 prompt に出てくる**ことと、**同じ prompt に複数の学習者が答える**ことをどこまで正面から扱うかにあります。
 まずは raw data の形を見ておくと、なぜ mixed model が必要かが直感的に分かります。
 
 ```{r}
@@ -5878,7 +6828,7 @@ ggplot(
   )
 ```
 
-この raw plot では、どちらの群も第 2 稿で上がっています。  
+この raw plot では、どちらの群も第 2 稿で上がっています。
 ただし、この図だけでは **同じ learner の複数観測**と**同じ prompt の共有**を分離できません。そこで次に `lm()` と `lmer()` を並べ、標準誤差の違いを確認します。
 
 ```{r}
@@ -5919,7 +6869,7 @@ tbl_lme_worked_compare |>
   knitr::kable(caption = "Worked example (LME): naive LM と LME の固定効果推定の比較")
 ```
 
-この比較では、**係数の方向そのものは大きく変わらない**一方で、SE は mixed model 側の方が「正直」になります。  
+この比較では、**係数の方向そのものは大きく変わらない**一方で、mixed model 側では learner と prompt の反復構造を反映した SE になります。
 つまり LME の価値は、平均差を奇妙に変えることではなく、**不確かさを設計に見合った形で評価すること**にあります。
 
 ```{r}
@@ -5937,13 +6887,13 @@ sjPlot::plot_model(
 )
 ```
 
-`LME` では係数がそのまま**得点差**です。  
-たとえば `draftDraft2` が正なら、第 2 稿の平均得点が高いことを意味します。  
+`LME` では係数がそのまま**得点差**です。
+たとえば `draftDraft2` が正なら、第 2 稿の平均得点が高いことを意味します。
 `draftDraft2:feedbackAI` が正なら、**AI 群の改稿 gain が統制群より大きい**と読みます。
 
 #### 調整済み平均を予測図で読む
 
-読者に伝わりやすい最終図は、log-odds ではなく **adjusted mean score** です。  
+読者に伝わりやすい最終図は、log-odds ではなく **adjusted mean score** です。
 `ggpredict()` では「他の変数を固定したときの予測平均」を取り出せるので、`draft × feedback` の主たる研究質問をそのまま図にできます。
 
 ```{r}
@@ -5975,12 +6925,12 @@ ggplot(
   )
 ```
 
-この図は、「prompt の違いと learner の個人差を平均化したうえで、**平均的な learner がどれくらい伸びるか**」を表しています。  
+この図は、「prompt の違いと learner の個人差を平均化したうえで、**平均的な learner がどれくらい伸びるか**」を表しています。
 本例では、Control も AI も第 2 稿で上がりますが、**AI 群の上昇幅の方が大きい**ため、交互作用が主要な読みどころになります。
 
 #### 下位比較は `emmeans` と `emmip()` で可視化する
 
-LME の結果を論文で書くときは、交互作用が見えたあとに「では各 draft で群差はどの程度か」を示すことが多いです。  
+LME の結果を論文で書くときは、交互作用が見えたあとに「では各 draft で群差はどの程度か」を示すことが多いです。
 ここでは `emmeans()` で simple effect を計算し、`emmip()` で同じ grid を可視化します。
 
 ```{r}
@@ -6024,16 +6974,16 @@ emmip(
   )
 ```
 
-`emmip()` の利点は、**simple effect の検定と同じ EMM grid をそのまま図にしている**ことです。  
+`emmip()` の利点は、**simple effect の検定と同じ EMM grid をそのまま図にしている**ことです。
 この worked example では、第 1 稿では群差が比較的小さく、第 2 稿では AI 群がさらに上がるため、`draftDraft2:feedbackAI` の正の交互作用が視覚的にも確認できます。
 
 LME の報告では、次の 3 点を確認すると十分です。
 
-1. 係数は **得点差**として読む。
-2. 読者向けの主図は **adjusted mean score** にする。
-3. 交互作用があるなら、`emmeans` と `emmip()` で **どこに差があるか**を分解する。
+1. 係数は **得点差**として読みます。
+2. 読者向けの主図は **adjusted mean score** にします。
+3. 交互作用があるなら、`emmeans` と `emmip()` で **どこに差があるか**を分解します。
 
-補足として、`m_lme_worked` の Nakagawa 型 $R^2$ は `marginal = `r round(r2_lme_worked$R2_marginal, 3)`、`conditional = `r round(r2_lme_worked$R2_conditional, 3)` です。  
+補足として、`m_lme_worked` の Nakagawa 型 $R^2$ は `marginal = `r round(r2_lme_worked$R2_marginal, 3)`、`conditional = `r round(r2_lme_worked$R2_conditional, 3)` です。
 つまり、この例では固定効果だけでもかなりの説明力がありますが、learner と prompt のランダム効果を加えると説明力はさらに伸びる、という読みになります。
 
 #### 2値ロジスティック GLMM と multinomial mixed model は何が違うか
@@ -6043,7 +6993,7 @@ worked example 2 に入る前に、**2 値**と**多値**の違いを 1 回だ�
 - 2 値ロジスティック GLMM は、`P(Y = 1)` を 1 本の logit で表します[@lme4_glmer]。
 - multinomial mixed model は、カテゴリが $K$ 個あるとき、**基準カテゴリに対して $K-1$ 本**の logit を立てます[@mclogit_mblogit]。
 
-2 値のときは、基準を入れ替えても実質的には同じです。  
+2 値のときは、基準を入れ替えても実質的には同じです。
 `success vs failure` を `failure vs success` に変えると、係数の符号が反転し OR が逆数になるだけで、**予測確率は同じ**です。
 
 一方、3 カテゴリ以上では事情が変わります。`A / B / C` の 3 択で `A` を reference にすると、出てくるのは
@@ -6051,10 +7001,10 @@ worked example 2 に入る前に、**2 値**と**多値**の違いを 1 回だ�
 - `B vs A`
 - `C vs A`
 
-です。  
+です。
 `B vs C` が「消える」わけではなく、**別の基準化に隠れている**だけです。だから多値モデルでは、binary よりもさらに
 
-- 参照カテゴリを明記する
+- 参照カテゴリを明記します
 - 係数表だけで終わらず、カテゴリ確率の図を出す
 
 ことが重要になります。
@@ -6074,27 +7024,27 @@ worked example 2 に入る前に、**2 値**と**多値**の違いを 1 回だ�
 - **binary** では「1 つの確率」を追う
 - **multinomial** では「複数カテゴリの配分」を追う
 
-という違いがあります。  
+という違いがあります。
 このため、2 値 GLMM の最終図が 1 本の予測確率線になるのに対して、multinomial mixed model の最終図は **カテゴリシェアがどう入れ替わるか**を見せる図になります。
 
 ### 実践例 2: Multinomial mixed model で未知語処理方略の配分をみる
 
 #### 研究プロンプト
 
-英語読解中に未知語に出会ったとき、学習者は **Infer / Lookup / Skip** のどの方略を選ぶのか。  
-L1 gloss の有無と proficiency が、この 3 択の**配分そのもの**をどう変えるかを見たい。  
+英語読解中に未知語に出会ったとき、学習者は **Infer / Lookup / Skip** のどの方略を選ぶのか。
+L1 gloss の有無と proficiency が、この 3 択の**配分そのもの**をどう変えるかを見たい。
 同じ learner が複数 item に答え、同じ item に複数 learner が遭遇するので、`learner_id × item_id` の交差分類を入れた multinomial mixed model が必要になります[@gudmestad2025; @mclogitpkg]。
 
 #### 分析ステップ
 
-1. `learner × item` のロングデータを作り、各観測の strategy を `Infer / Lookup / Skip` として保持する。
-2. `mclogit::mblogit()` で learner と item のランダム切片を入れた baseline-category logit を推定する。
-3. 係数は `Lookup vs Infer`、`Skip vs Infer` の **RRR** として読む。
-4. ただし本文の主図は RRR ではなく、**調整済みカテゴリ確率の再配分**にする。
+1. `learner × item` のロングデータを作り、各観測の strategy を `Infer / Lookup / Skip` として保持します。
+2. `mclogit::mblogit()` で learner と item のランダム切片を入れた baseline-category logit を推定します。
+3. 係数は `Lookup vs Infer`、`Skip vs Infer` の **RRR** として読みます。
+4. ただし本文の主図は RRR ではなく、**調整済みカテゴリ確率の再配分**にします。
 
 #### `mblogit()` は何をしている関数か
 
-`mblogit()` は、**baseline-category logit model** を推定する関数です[@mclogit_mblogit]。  
+`mblogit()` は、**baseline-category logit model** を推定する関数です[@mclogit_mblogit]。
 目的変数が 3 カテゴリ `A / B / C` のとき、1 つを基準カテゴリに決め、残りのカテゴリをその基準と比較する形で複数の logit 方程式を同時に推定します。
 
 たとえば `A` を基準にすると、
@@ -6104,7 +7054,7 @@ $$
 \log \frac{P(C)}{P(A)} = \eta_C
 $$
 
-の 2 本が推定されます。  
+の 2 本が推定されます。
 本例では response の factor levels を `c("Infer", "Lookup", "Skip")` にしているので、**`Infer` が reference category** です。したがって `summary(m_multinom_worked)` には
 
 - `Lookup vs Infer`
@@ -6112,7 +7062,7 @@ $$
 
 だけが表示されます。
 
-ここでよくある疑問は、**「では `Lookup vs Skip` はどこに行ったのか」**です。  
+ここでよくある疑問は、**「では `Lookup vs Skip` はどこに行ったのか」**です。
 結論から言うと、**消えていません**。baseline-category logit では、`Lookup vs Skip` は基準カテゴリを介して表現されているだけです。
 
 $$
@@ -6127,11 +7077,11 @@ $$
 - `A-B`
 - `A-C`
 
-が分かれば、`B-C` はそこから復元できます。  
+が分かれば、`B-C` はそこから復元できます。
 ただし実務では、**係数の差を手で計算するより、基準カテゴリを入れ替えるか、予測カテゴリ確率を図で読む方が安全**です。
 
-もう 1 つ重要なのは、mixed multinomial の `mblogit()` では random effects 推定に **PQL または MQL の近似**を使うことです[@mclogit_mblogit]。  
-この worked example では `method = "PQL"` を明示しており、`predict(..., type = "response", conditional = FALSE)` を使って **population-level category probabilities** を描きます[@mclogit_predict]。  
+もう 1 つ重要なのは、mixed multinomial の `mblogit()` では random effects 推定に **PQL または MQL の近似**を使うことです[@mclogit_mblogit]。
+この worked example では `method = "PQL"` を明示しており、`predict(..., type = "response", conditional = FALSE)` を使って **population-level category probabilities** を描きます[@mclogit_predict]。
 したがって multinomial mixed model では、2 値 GLMM 以上に
 
 - 係数表は「補助」
@@ -6248,10 +7198,10 @@ tbl_multinom_meta |>
 
 #### `Lookup vs Infer` と `Skip vs Infer` しか出ないのはなぜか
 
-`mblogit()` のヘルプは、戻り値の `coefficients` や `fitted.values` が**カテゴリ数 - 1 本の行列**になると説明しています[@mclogit_mblogit]。  
+`mblogit()` のヘルプは、戻り値の `coefficients` や `fitted.values` が**カテゴリ数 - 1 本の行列**になると説明しています[@mclogit_mblogit]。
 要するに、3 カテゴリなら「3 本」ではなく「2 本」の比較式が出るのが仕様です。
 
-この点を実データで確認するために、基準カテゴリを `Infer` から `Lookup` に入れ替えてみます。  
+この点を実データで確認するために、基準カテゴリを `Infer` から `Lookup` に入れ替えてみます。
 すると先ほどは表示されなかった `Skip vs Lookup` が出てきます。
 
 ```{r}
@@ -6301,25 +7251,25 @@ tbl_multinom_relevel |>
 
 この表の読み方は次のとおりです。
 
-- `Lookup vs Infer` の係数が正  
+- `Lookup vs Infer` の係数が正
   `L1Gloss` だと `Infer` より `Lookup` が出やすい
-- `Infer vs Lookup` の係数が負  
+- `Infer vs Lookup` の係数が負
   これは同じ内容を**逆向き**に言っているだけ
-- `Skip vs Lookup` が負  
+- `Skip vs Lookup` が負
   `L1Gloss` だと `Skip` より `Lookup` に寄りやすい
 
-したがって、**B-C 比較は存在しないのではなく、どのカテゴリを分母に置くかで「表示のされ方」が変わる**と理解するのが正確です。  
+したがって、**B-C 比較は存在しないのではなく、どのカテゴリを分母に置くかで「表示のされ方」が変わる**と理解するのが正確です。
 そして最終的には、係数を一つずつ追うより、次節のように **カテゴリ確率の再配分図**で全体像を読む方が誤解が少なくなります。
 
 #### まずは「何と何を比較している係数か」を明示する
 
-multinomial mixed model の係数は、2 値 GLMM のように 1 本ではありません。  
+multinomial mixed model の係数は、2 値 GLMM のように 1 本ではありません。
 この例では `Infer` を基準カテゴリにしているので、
 
 - `Lookup vs Infer`
 - `Skip vs Infer`
 
-の 2 本の logit 方程式が同時に推定されます。  
+の 2 本の logit 方程式が同時に推定されます。
 したがって、係数表を見るときは必ず **どの比較式の係数か** を先に確認する必要があります。
 
 ```{r}
@@ -6422,9 +7372,9 @@ ggplot(
   )
 ```
 
-ここでの `RRR > 1` は、その比較式で**分子側のカテゴリが出やすくなる**ことを意味します。  
-たとえば `Lookup vs Infer` で `L1 Gloss vs No Gloss` の `RRR > 1` なら、L1 gloss があると `Infer` より `Lookup` に寄りやすい、という意味です。  
-一方、本文の最終メッセージとしては、RRR よりも「3 つのカテゴリのシェアがどう再配分されるか」を示す方が直感的です。  
+ここでの `RRR > 1` は、その比較式で**分子側のカテゴリが出やすくなる**ことを意味します。
+たとえば `Lookup vs Infer` で `L1 Gloss vs No Gloss` の `RRR > 1` なら、L1 gloss があると `Infer` より `Lookup` に寄りやすい、という意味です。
+一方、本文の最終メッセージとしては、RRR よりも「3 つのカテゴリのシェアがどう再配分されるか」を示す方が直感的です。
 特に multinomial では、
 
 - `RRR > 1` でも、そのカテゴリの**最終確率**が最も大きいとは限らない
@@ -6434,8 +7384,8 @@ ggplot(
 
 #### 主図はカテゴリ確率の再配分にする
 
-`mblogit()` は `predict(..., type = "response")` でカテゴリ確率を返します。  
-ここでは `conditional = FALSE` にしてランダム効果を 0 に固定し、**population-level prediction** を作ります。  
+`mblogit()` は `predict(..., type = "response")` でカテゴリ確率を返します。
+ここでは `conditional = FALSE` にしてランダム効果を 0 に固定し、**population-level prediction** を作ります。
 さらに、item の頻度や cognate 性は元データの分布をそのまま残したまま平均化し、**実際の item mix を織り込んだ調整済みカテゴリ配分**を描きます。
 
 ```{r}
@@ -6475,7 +7425,7 @@ bind_rows(obs_multinom_worked, pred_multinom_worked) |>
   )
 ```
 
-この図では、**raw の観測比率**と**モデルで調整したカテゴリ配分**を分けて見られます。  
+この図では、**raw の観測比率**と**モデルで調整したカテゴリ配分**を分けて見られます。
 この例では次の読みが重要です。
 
 1. `NoGloss` では A2 学習者の `Skip` が大きい。
@@ -6486,17 +7436,17 @@ bind_rows(obs_multinom_worked, pred_multinom_worked) |>
 
 #### `mblogit()` のモデル比較はどう考えるか
 
-ここは `lmer()` より慎重に扱うべきです。  
+ここは `lmer()` より慎重に扱うべきです。
 `lmer()` では ML へ refit して LRT/AIC を比較的容易に使用できますが、mixed multinomial の `mblogit()` は `PQL` / `MQL` の**準尤度近似**に基づいています[@mclogit_mblogit]。そのため、`anova()` で deviance difference を機械的に検定すると、「quasi-likelihood の deviance は直接比較できないので結果は不安定」という警告が出ます。
 
 したがって、この章の実務ルールは次の通りです。
 
-1. `mblogit()` の固定効果は、まず係数方向と RRR で把握する
+1. `mblogit()` の固定効果は、まず係数方向と RRR で把握します
 2. 最終的な主張は **predicted category shares** の安定性で行う
 3. AIC は候補モデルのスクリーニングには使えるが、LME のような「厳密な LRT」と同じ強さでは扱わない
 4. 厳密な比較や完全な事後分布が必要なら、後続のベイズ章で扱う multinomial multilevel model へ進む
 
-この点は、multinomial mixed model が「使ってはいけない」という意味ではありません。  
+この点は、multinomial mixed model が「使ってはいけない」という意味ではありません。
 むしろ、**係数の有意差だけで押し切らず、カテゴリ確率の再配分図を主たるエビデンスにする**という、より丁寧な報告を促すものと理解するとよいです。
 
 ```{r}
@@ -6517,15 +7467,15 @@ pred_multinom_worked |>
   )
 ```
 
-この補助図は、`Lookup` だけに焦点を当てた読み方です。  
+この補助図は、`Lookup` だけに焦点を当てた読み方です。
 たとえば英語教育の授業設計では、「gloss を付けると**どの proficiency 帯で**辞書的参照が増えるのか」を直接知りたいことがあります。その場合、3 択全体の stacked bar に加えて、**関心カテゴリ 1 本の確率図**を出すと解釈しやすくなります。
 
 multinomial mixed model の報告では、次の原則が有効です。
 
-1. 係数表では `Lookup vs Infer`、`Skip vs Infer` の**比較式**を明記する。
+1. 係数表では `Lookup vs Infer`、`Skip vs Infer` の**比較式**を明記します。
 2. 本文の主たる解釈は **category probability profile** に置く。
-3. `conditional = FALSE` の予測は「新しい learner・新しい item への平均的予測」であると明記する。
-4. 必要なら、関心カテゴリだけを取り出した確率図も補助的に示す。
+3. `conditional = FALSE` の予測は「新しい learner・新しい item への平均的予測」であると明記します。
+4. 必要なら、関心カテゴリだけを取り出した確率図も補助的に示します。
 
 ## 報告テンプレート（実践向け）
 
@@ -6537,9 +7487,9 @@ multinomial mixed model の報告では、次の原則が有効です。
 
 ### Method 欄での引用の方法
 
-SLA 分野の論文では、`lme4` の技術論文[@bates2015]だけでなく、
-**分野内のチュートリアル論文**[@cunnings2012; @linck2015]も併せて引用すると、
-「なぜこの手法を選んだか」の正当化が査読者に伝わりやすくなります。
+SLA 分野の論文では、`lme4` の技術論文 [@bates2015] だけでなく、
+**分野内のチュートリアル論文** [@cunnings2012; @linck2015] も併せて引用すると、
+「なぜこの手法を選んだか」の正当化が査読者に伝わりやすくなります。報告書式は *Language Learning* の Open Methods ガイドライン [@norris2015] に準拠すれば再現に必要な情報の漏れを防げ、効果量の解釈には Plonsky & Oswald [-@plonsky2014] の SLA 専用参照値を併記すると分野慣行に沿います。
 
 ```text
 We analyzed directed advice ties among 30 EFL learners using a
@@ -6574,7 +7524,7 @@ Proficiency gap also positively predicted advice tie formation, β = `r sprintf(
 
 **ランダム効果・分散説明**:
 
-Random intercept variance was estimated for both sender (σ² = `r sprintf("%.3f", as.data.frame(lme4::VarCorr(m_glmm_ri))$vcov[1])`) and receiver (σ² = `r sprintf("%.3f", as.data.frame(lme4::VarCorr(m_glmm_ri))$vcov[2])`), confirming clustered dependence in dyadic observations. Model-level explained variance was R²~marginal~ = `r sprintf("%.3f", performance::r2_nakagawa(m_glmm_ri)$R2_marginal)` (fixed effects only) and R²~conditional~ = `r sprintf("%.3f", performance::r2_nakagawa(m_glmm_ri)$R2_conditional)` (fixed + random effects). The model demonstrated acceptable discrimination (AUC = `r sprintf("%.3f", as.numeric(pROC::auc(roc_cond)))`).
+Random intercept variance was estimated for both sender (σ² = `r sprintf("%.3f", as.data.frame(lme4::VarCorr(m_glmm_ri))$vcov[1])`) and receiver (σ² = `r sprintf("%.3f", as.data.frame(lme4::VarCorr(m_glmm_ri))$vcov[2])`), confirming clustered dependence in dyadic observations. Model-level explained variance was R²~marginal~ = `r sprintf("%.3f", performance::r2_nakagawa(m_glmm_ri)$R2_marginal)` (fixed effects only) and R²~conditional~ = `r sprintf("%.3f", performance::r2_nakagawa(m_glmm_ri)$R2_conditional)` (fixed + random effects). Discrimination was reported separately for population-level prediction (marginal AUC = `r sprintf("%.3f", as.numeric(pROC::auc(roc_marg)))`) and sample-specific fitted prediction (conditional AUC = `r sprintf("%.3f", as.numeric(pROC::auc(roc_cond)))`).
 
 **モデル比較**:
 
@@ -6679,7 +7629,9 @@ m <- glmer(correct ~ time * group + (1 + time || learner_id) + (1 | item),
 
 ## トラブルシューティング
 
-### 収束警告（convergence warning）が出る
+GLMM で実際に解析を進めるとき、誰もが一度は遭遇しやすい 7 つのつまずきポイントを取り上げます。該当する項目だけ参照する形でも構いません。
+
+### 収束警告（convergence warning）が出たときは?
 
 **症状**: `Model failed to converge` や `max|grad| = ...` といった警告メッセージ。
 
@@ -6699,7 +7651,7 @@ control_step1 <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5)
 control_step2 <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 5e5))
 ```
 
-### 特異適合（singular fit）
+### 特異適合（singular fit）が起きたときは?
 
 **症状**: `isSingular(model)` が `TRUE` を返す。`boundary (singular) fit` という警告。
 
@@ -6711,7 +7663,7 @@ control_step2 <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 5e5)
 2. その項を含むランダム効果を除外してモデルを再推定。
 3. 論文には「ランダム傾きを試みたが特異適合が生じたため、ランダム切片モデルを採用した」と記載。
 
-### OR の誤解
+### OR を誤って解釈してしまったら?
 
 **症状**: OR = 2.0 を「確率が 2 倍」と誤って解釈。
 
@@ -6719,11 +7671,11 @@ control_step2 <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 5e5)
 
 **正しい理解**: OR = 2.0 は「オッズが 2 倍」。ベースライン確率が低い場合（例：p = .05）は確率もほぼ 2 倍に近いが、ベースラインが高い場合（例：p = .50）はオッズ 2 倍でも確率は .50 → .67 程度の変化にとどまる。
 
-**対処**: OR だけでなく、`emmeans()` による応答スケール予測（確率差）を必ず併記する。
+**対処**: OR だけでなく、`emmeans()` による応答スケール予測（確率差）を必ず併記します。
 
-### `re.form` の混同
+### `re.form` を取り違えたときは?
 
-**症状**: 予測値が観測値と大きくずれる、または個人ごとの予測が全員同じになる。
+**症状**: 予測値が観測値と大きくずれる、または個人ごとの予測が全員同じになります。
 
 **原因**: `predict()` の `re.form` 引数の誤用。
 
@@ -6735,17 +7687,17 @@ control_step2 <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 5e5)
 | `re.form = NULL` | ランダム効果を含む（条件付き予測）| 個人レベルの予測、モデルの適合度確認 |
 | `re.form = ~0` | `NA` と同じ | 同上 |
 
-### DHARMa の警告が出た
+### DHARMa の警告が出たときは?
 
 **症状**: `testDispersion` や `testUniformity` が有意（p < .05）。
 
 **原因と対処**:
 
-- **testDispersion が有意**: 過分散の可能性。2値データでは観測レベルのランダム効果（`(1 | obs_id)`）を追加するか、`MASS::glmmPQL` を検討。ただし、2値単独観測では過分散は定義上起こらないため、群レベルの集計をしていないか確認。
-- **testUniformity が有意**: モデル構造のミスフィット。非線形効果の追加（GAMM への拡張）や、外れ値の確認を検討。
-- **有意だが視覚的に問題がない場合**: サンプルサイズが大きいと微小な逸脱でも有意になることがあります。QQ プロットと残差プロットを視覚的に確認し、系統的パターンがなければ実務上は問題ないと判断できます。混合モデルは軽度の分布仮定の逸脱に対して頑健であることがシミュレーションで確認されているため[@schielzeth2020]、検定が有意でも**視覚的に問題がなければ過度に心配する必要はありません**。
+- **testDispersion が有意**: 過分散・過小分散、未モデル化の依存、外れ値、リンク関数の不適合を疑います。まず残差図を見て、sender / receiver 以外のクラスター、項目、時点、ネットワーク依存をモデルに入れ忘れていないか確認します。観測レベルのランダム効果（`(1 | obs_id)`）は、未観測の観測レベル異質性を表したい場合の感度分析として使いますが、機械的に追加するものではありません。
+- **testUniformity が有意**: モデル構造のミスフィットです。非線形効果の追加（GAMM への拡張）や、外れ値の確認を検討します。
+- **有意ですが視覚的に問題がない場合**: サンプルサイズが大きいと微小な逸脱でも有意になることがあります。QQ プロットと残差プロットを視覚的に確認し、系統的パターンがなければ実務上は問題ないと判断できます。混合モデルは軽度の分布仮定の逸脱に対して頑健であることがシミュレーションで確認されているため[@schielzeth2020]、検定が有意でも**視覚的に問題がなければ過度に心配する必要はありません**。
 
-### 完全分離（complete separation）
+### 完全分離（complete separation）が起きたときは?
 
 **症状**: `glmer` が収束しない、または係数が極端に大きい（|β| > 10）。
 
@@ -6757,7 +7709,7 @@ control_step2 <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 5e5)
 2. 完全分離がある場合、`blme::bglmer()` で弱い事前分布を追加するか、Firth 補正を検討。
 3. カテゴリの統合や、問題のある予測子の除外も選択肢。
 
-### グループ数が少ない
+### グループ数が少ないときは?
 
 **症状**: ランダム効果の分散推定が不安定。推定値が極端に大きいまたは小さい。
 
@@ -6768,6 +7720,23 @@ control_step2 <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 5e5)
 - グループ数が 5 未満の場合、ランダム効果ではなく固定効果として投入することを検討。
 - グループ数が 10–20 の場合、ランダム切片のみに留め、ランダム傾きは避ける。
 - ベイズ推定（`brms` パッケージ）は少グループでもより安定した推定を行える。
+
+## まとめと次に読む章
+
+ここまでお疲れさまでした。本章では 2 値ロジスティック GLMM を、独立性違反の診断 → ランダム効果構造選択(切片・傾き・交差分類)→ 特異適合対処 → 交互作用 → OR + 予測確率の併記 → DHARMa 診断 → 検定力分析 → 報告まで一貫して辿ってきました。**「同じ参加者・項目の繰り返し観測を尊重して固定効果と個人差を分離する」**という発想は、後続の時系列(第 13 章)・地理空間(第 14 章)・ネットワーク(第 16 章)・メタ分析(第 17 章)の各章でも繰り返し登場します。
+
+要点を 3 つに絞ると:
+
+- **ランダム効果は理論で決める**(`(1|sender) + (1|receiver)` から始め、傾きは情報量に応じて段階的に追加)
+- **特異適合は「複雑さに対するデータ不足」のサイン**で、ランダム傾きを落とすか、Bayes(brms)を使う
+- **OR は応答スケール(予測確率)で必ず併記**し、`re.form = NA` で母平均的予測、`re.form = NULL` で個人レベル予測を区別する
+
+研究質問に応じて、次のステップとしては以下の章が候補になります。
+
+- **第 7 章 ベイズ推定**:小サンプル + 複雑なランダム構造で `lme4` が特異適合する場合の標準解(`brms`)
+- **第 8 章 予測分析**:GLMM の予測性能を ROC/AUC/キャリブレーションで評価
+- **第 11 章 IRT・ラッシュモデル**:項目の難易度パラメータを混合効果として扱う
+- **第 13 章 時系列分析**:時間構造を持つ観測の依存をモデル化(本章のランダム効果の自然な拡張)
 
 ## 発展学習
 
@@ -6803,15 +7772,15 @@ SLA・応用言語学に特化した GLMM ガイドです。論文の方法欄�
 
 「最大構造にすべき」vs「節約的にすべき」という論争は、GLMM の最も実務的な難所です。
 
-- @barr2013 — 「Keep it maximal」：確認的仮説検定ではランダム効果構造を最大にすべきという主張。
-- @bates2015parsimonious; @matuschek2017 — 「節約的モデリング」：過剰パラメータ化を避け、データが支持する範囲に留めるべきという反論。
+- @barr2013 — 「Keep it maximal」：確認的仮説検定ではランダム効果構造を最大にすべきだという主張です。
+- @bates2015parsimonious; @matuschek2017 — 「節約的モデリング」：過剰パラメータ化を避け、データが支持する範囲に留めるべきだという反論です。
 - @schielzeth2020 — 混合モデルが分布仮定の逸脱にどこまで耐えるかを大規模シミュレーションで検証。「多少の違反は大丈夫」の根拠。
 
 実務的な判断基準は @meteyard2020 が最もバランスよくまとめています。
 
 ### 参考文献ガイド
 
-- **GLMM FAQ**: @glmmfaq — 実務で遭遇するほぼすべての疑問に回答。ブックマーク推奨。
+- **GLMM FAQ**: @glmmfaq — 実務で遭遇するほぼすべての疑問に回答しています。ブックマークを推奨します。
 - **p 値の取得**: @lme4pvalues — `lme4` で p 値を得る複数の方法を比較。
 - **特異適合の対処**: @lme4issingular; @lme4repca — `isSingular()` と `rePCA()` の公式ドキュメント。
 - **モデル診断ツール**: @performance_compare; @performance_checkmodel; @performancepkg — `performance` パッケージの各関数リファレンス。
