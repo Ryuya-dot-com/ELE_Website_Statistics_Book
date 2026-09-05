@@ -1,118 +1,1943 @@
 /* ============================================
    Rによる統計解析実戦ガイド — 共通スタイル
-   journalテーマ用のアカデミックなカスタムスタイル
+   Quarto Book / journal テーマ向けの洗練版
    ============================================ */
 
-body {
-  font-family: 'Noto Serif JP', 'Times New Roman', serif;
-  color: #2c3e50;
-  line-height: 1.8;
+:root {
+  /* === neutral ramp (50 lightest → 900 darkest) === */
+  --gray-50:  #f8fafb;
+  --gray-100: #f1f4f6;
+  --gray-200: #e7ecf0;
+  --gray-300: #d7dde3;
+  --gray-400: #b6bfc8;
+  --gray-500: #8d98a4;
+  --gray-600: #64717c;
+  --gray-700: #5f6b76;
+  --gray-800: #3b4a55;
+  --gray-900: #24303a;
+
+  /* === accent ramp (teal-blue) === */
+  --accent-50:  #e8f1f6;
+  --accent-100: #d3e3eb;
+  --accent-200: #b3d0dc;
+  --accent-300: #87b3c5;
+  --accent-400: #4d8aa3;
+  --accent-500: #1f5c7a;
+  --accent-600: #1a4f6a;
+  --accent-700: #15455d;
+  --accent-800: #103848;
+  --accent-900: #0a2733;
+
+  /* === semantic colors (fg=text/icon, bg=tint, border=accent line) === */
+  --info-fg:      var(--accent-700);
+  --info-bg:      rgba(var(--accent-rgb),0.045);
+  --info-border:  var(--accent-500);
+
+  --success-fg:     #245f3c;
+  --success-bg:     rgba(46, 125, 79, 0.05);
+  --success-border: #2e7d4f;
+
+  --warning-fg:     #8d5b14;
+  --warning-bg:     rgba(183, 121, 31, 0.05);
+  --warning-border: #b7791f;
+
+  --danger-fg:      #8e4b2b;
+  --danger-bg:      rgba(160, 64, 32, 0.05);
+  --danger-border:  #a04020;
+
+  /* === legacy aliases (existing CSS depends on these) === */
+  --ink:          var(--gray-900);
+  --muted:        var(--gray-700);
+  --muted-2:      var(--gray-600);
+  --line:         var(--gray-300);
+  --line-strong:  var(--gray-500);
+  --paper:        #ffffff;
+  --paper-alt:    var(--gray-50);
+  --paper-tint:   #eef3f6;
+  --paper-deep:   var(--gray-100);
+  --accent:       var(--accent-500);
+  --accent-strong: var(--accent-700);
+  --accent-soft:  var(--accent-50);
+  --accent-faint: rgba(var(--accent-rgb),0.06);
+  --warm-soft:    rgba(183, 121, 31, 0.1);
+
+  /* === RGB tuples for dark-mode-aware rgba() construction === */
+  --surface-rgb:  255, 255, 255;  /* light surface (paper) */
+  --shadow-rgb:   36, 48, 58;     /* shadow base (ink color) */
+  --accent-rgb:   31, 92, 122;    /* accent-500 RGB */
+  --gray-mid-rgb: 141, 152, 164;  /* gray-500 RGB */
+
+  /* === elevation === */
+  --shadow-soft: 0 8px 24px rgba(var(--shadow-rgb), 0.06);
+  --shadow-card: 0 12px 28px rgba(var(--shadow-rgb), 0.05);
+
+  /* === radius === */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* === measure === */
+  --measure:      1100px;
+  --measure-wide: 1200px;
+  /* prose width — ch units: ~39 Japanese chars/line, JLREQ 35–50 sweet spot */
+  --measure-prose:      78ch;
+  --measure-prose-wide: 92ch;  /* sidebar-collapsed reading width */
+
+  /* spacing scale — 4px grid + modular jumps for vertical rhythm */
+  --space-1: 0.25rem;   /* 4px  — micro */
+  --space-2: 0.5rem;    /* 8px  — tight */
+  --space-3: 0.75rem;   /* 12px — small */
+  --space-4: 1rem;      /* 16px — base */
+  --space-5: 1.25rem;   /* 20px — cozy */
+  --space-6: 1.5rem;    /* 24px — comfortable */
+  --space-7: 2rem;      /* 32px — between blocks */
+  --space-8: 2.5rem;    /* 40px — between sub-sections */
+  --space-9: 3rem;      /* 48px — between sections */
+  --space-10: 4rem;     /* 64px — between major regions */
+
+  /* type scale — 1.2 ratio (gentle, suits long-form Japanese) */
+  --text-xs: 0.78rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.075rem;
+  --text-lg: 1.2rem;
+  --text-xl: 1.44rem;
+  --text-2xl: 1.728rem;
+  --text-3xl: 2.074rem;
+
+  /* line-height scale */
+  --lh-tight: 1.25;
+  --lh-snug: 1.4;
+  --lh-base: 1.6;
+  --lh-relaxed: 1.85;
+  --lh-loose: 2;
 }
 
-/* タイトルブロックをジャーナル風に */
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  font-family: "Noto Serif JP", "Times New Roman", serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: var(--lh-relaxed);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  /* Japanese typography: tighten kana/punctuation widths */
+  font-feature-settings: "palt" 1, "pkna" 1;
+  font-kerning: normal;
+  /* progressive enhancement (Chrome 123+, Safari 17.5+) */
+  text-spacing-trim: trim-start;
+  text-autospace: ideograph-numeric ideograph-alpha;
+}
+
+/* exempt monospaced and tabular contexts from proportional features */
+code,
+pre,
+.sourceCode,
+.cell-output-stdout,
+.cell-output-stderr,
+table,
+.gt_table,
+.math,
+.MathJax,
+math {
+  font-feature-settings: normal;
+}
+
+/* tabular numbers — fix digit widths for tables, code, output, math */
+table:not(.gt_table),
+.gt_table,
+code,
+pre,
+.sourceCode,
+.cell-output-stdout,
+.cell-output-stderr,
+.math,
+.MathJax,
+math {
+  font-variant-numeric: tabular-nums;
+}
+
+/* hanging punctuation in prose (Safari supports today; harmless elsewhere) */
+p, li, dd, blockquote {
+  hanging-punctuation: first allow-end last;
+}
+
+/* Top accent line — acts as the track for the reading-progress fill */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--gray-200);
+  opacity: 0.55;
+  z-index: 1035;
+  pointer-events: none;
+}
+
+/* Reading progress fill — width is updated by progress-bar.html */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--progress, 0%);
+  height: 3px;
+  z-index: 1036;
+  background: linear-gradient(90deg, var(--accent-700), var(--accent-500), var(--accent-300));
+  box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.4);
+  pointer-events: none;
+  transition: width 0.08s linear;
+  will-change: width;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-color: rgba(var(--accent-rgb),0.3);
+  text-underline-offset: 0.12em;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+a:hover,
+a:focus {
+  color: var(--accent-strong);
+  text-decoration-color: rgba(21, 69, 93, 0.55);
+}
+
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--accent-600);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 3000;
+  padding: 0.65rem 0.9rem;
+  border: 2px solid var(--accent-600);
+  border-radius: var(--radius-sm);
+  color: var(--accent-800);
+  background: var(--paper);
+  font-weight: 700;
+  transform: translateY(calc(-100% - 1rem));
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+::selection {
+  background: rgba(var(--accent-rgb),0.18);
+}
+
+main.content#quarto-document-content {
+  max-width: 100%;
+  padding-inline: 1.5rem;
+  padding-bottom: 3rem;
+  position: relative;
+}
+
+#quarto-document-content > * {
+  max-width: 100%;
+}
+
+/* Prose elements: comfortable reading width within wider container */
+main.content#quarto-document-content > p,
+main.content#quarto-document-content > ul,
+main.content#quarto-document-content > ol,
+main.content#quarto-document-content > blockquote,
+main.content#quarto-document-content > dl {
+  max-width: var(--measure-prose);
+}
+
+/* Wide elements: use full container width */
+main.content#quarto-document-content .cell,
+main.content#quarto-document-content table:not(.gt_table),
+main.content#quarto-document-content .gt_table,
+main.content#quarto-document-content .quarto-figure {
+  max-width: 100%;
+  width: 100%;
+}
+
+#quarto-document-content > p:first-of-type {
+  position: relative;
+  margin-bottom: 1.35rem;
+  padding: 1rem 1.3rem 1.05rem 1.4rem;
+  max-width: var(--measure-prose);
+  border-left: 3px solid rgba(var(--accent-rgb),0.28);
+  background: linear-gradient(90deg, rgba(232, 241, 246, 0.58), rgba(var(--surface-rgb),0));
+  color: var(--gray-800);
+  font-size: 1.03rem;
+  line-height: 1.95;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+p,
+li,
+dd {
+  color: var(--ink);
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+h2 + p,
+h3 + p {
+  color: var(--gray-800);
+}
+
+ul,
+ol {
+  padding-left: 1.3rem;
+}
+
+li + li {
+  margin-top: 0.35rem;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--space-8) 0;
+}
+
+blockquote {
+  margin: var(--space-7) 0;
+  padding: 0.2rem 0 0.2rem 1.2rem;
+  border-left: 3px solid var(--line-strong);
+  color: var(--muted);
+  background: linear-gradient(90deg, rgba(var(--accent-rgb),0.05), transparent 65%);
+}
+
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* タイトルブロック */
 .quarto-title-banner {
-  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
-  border-bottom: 4px double #495057;
-  padding: 2.5em 2em;
+  background:
+    linear-gradient(180deg, rgba(var(--surface-rgb),0.96) 0%, rgba(239, 244, 247, 0.98) 100%);
+  border-bottom: 1px solid var(--line);
+  box-shadow: inset 0 -1px 0 rgba(var(--gray-mid-rgb),0.25);
+  padding: 2.6rem 2rem 2.2rem;
   text-align: center;
 }
 
 .quarto-title-banner .title {
-  color: #212529 !important;
-  font-size: 2.2em !important;
-  font-weight: 700;
+  color: var(--gray-900) !important;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: clamp(2rem, 1.25rem + 1.8vw, 2.6rem) !important;
+  font-weight: 800;
+  letter-spacing: 0.015em;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.quarto-title-banner .subtitle,
+.quarto-title-banner .description,
+.quarto-title-banner .quarto-title-meta {
+  color: var(--muted);
+}
+
+/* === Bookページ共通の章頭ブロック === */
+#title-block-header.quarto-title-block.default {
+  position: relative;
+  margin: 0 0 var(--space-8);
+  padding: var(--space-5) var(--space-7) var(--space-6);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.96), var(--gray-100));
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+#title-block-header.quarto-title-block.default::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-700), var(--accent-500), var(--accent-300));
+}
+
+#title-block-header .quarto-title-breadcrumbs {
+  margin-bottom: var(--space-2);
+}
+
+#title-block-header .quarto-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+#title-block-header .title {
+  margin: 0;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: clamp(1.9rem, 1.45rem + 1vw, 2.45rem);
+  font-weight: 800;
+  line-height: var(--lh-tight);
+  letter-spacing: 0.005em;
+  color: var(--gray-900);
+}
+
+/* Chapter number badge — refined with gradient, subtle ring, tabular nums */
+#title-block-header .title .chapter-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.3rem;
+  height: 2.3rem;
+  margin-right: 0.45rem;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent-50), var(--accent-100));
+  color: var(--accent-700);
+  border: 1px solid var(--accent-200);
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb),0.08), inset 0 1px 0 rgba(var(--surface-rgb),0.6);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.78em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
-  text-transform: uppercase;
-  font-family: 'Noto Sans JP', sans-serif;
 }
 
-/* 見出しのアカデミックスタイル */
-/* h2 = セクション見出し（旧 h1） */
-h2 {
-  font-size: 1.8em;
+/* === Index page hero (no breadcrumbs in title block) === */
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs)) {
+  margin: 0 0 var(--space-9);
+  padding: var(--space-9) var(--space-7) var(--space-7);
+  background:
+    radial-gradient(ellipse 80% 60% at 88% -20%, var(--accent-50) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 5% 110%, rgba(var(--accent-rgb),0.04) 0%, transparent 55%),
+    linear-gradient(180deg, var(--paper) 0%, var(--gray-50) 100%);
+  border-color: var(--gray-300);
+  box-shadow: var(--shadow-card);
+}
+
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs))::before {
+  height: 5px;
+  background: linear-gradient(90deg, var(--accent-800), var(--accent-500), var(--accent-200));
+}
+
+/* Index hero gets a small eyebrow label above the title */
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs))::after {
+  content: "Statistical Analysis Guide";
+  position: absolute;
+  top: var(--space-6);
+  left: var(--space-7);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-600);
+}
+
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs)) .title {
+  font-size: clamp(2.1rem, 1.5rem + 1.6vw, 2.85rem);
+  font-weight: 800;
+  letter-spacing: 0.005em;
+  margin-bottom: var(--space-2);
+}
+
+/* Meta row — horizontal layout, separated by top border */
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs)) .quarto-title-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-7);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--gray-200);
+}
+
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs)) .quarto-title-meta-heading {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gray-600);
+  margin-bottom: 0.18rem;
+}
+
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs)) .quarto-title-meta-contents {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  line-height: var(--lh-snug);
+}
+
+#title-block-header.quarto-title-block.default:not(:has(.quarto-page-breadcrumbs)) .quarto-title-meta-contents p {
+  margin: 0;
+}
+
+.code-tools-button {
+  border-color: rgba(var(--gray-mid-rgb),0.55) !important;
+  border-radius: 999px !important;
+  background: rgba(var(--surface-rgb),0.85) !important;
+  color: var(--accent-strong) !important;
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 700 !important;
+  box-shadow: 0 6px 14px rgba(var(--shadow-rgb),0.06);
+}
+
+.code-tools-button:hover,
+.code-tools-button:focus {
+  background: var(--accent-soft) !important;
+}
+
+.dropdown-menu {
+  border: 1px solid rgba(215, 221, 227, 0.95);
+  border-radius: 14px;
+  padding: 0.45rem;
+  box-shadow: 0 16px 34px rgba(var(--shadow-rgb),0.12);
+  backdrop-filter: blur(14px);
+}
+
+.dropdown-item {
+  border-radius: 10px;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.93rem;
+  padding: 0.55rem 0.72rem;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: rgba(var(--accent-rgb),0.08);
+  color: var(--accent-strong);
+}
+
+/* パンくず */
+.quarto-secondary-nav {
+  background: rgba(var(--surface-rgb),0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(215, 221, 227, 0.9);
+}
+
+.quarto-page-breadcrumbs .breadcrumb {
+  margin: 0;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.quarto-page-breadcrumbs .breadcrumb-item,
+.quarto-page-breadcrumbs .breadcrumb-item a {
+  color: var(--muted);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.9rem;
+}
+
+.quarto-page-breadcrumbs .breadcrumb-item + .breadcrumb-item::before {
+  color: var(--muted-2);
+}
+
+/* 見出し */
+main.content h1,
+main.content h2,
+main.content h3,
+main.content h4 {
+  color: var(--gray-900);
+  letter-spacing: 0.01em;
+}
+
+main.content .anchored {
+  scroll-margin-top: 5.5rem;
+}
+
+main.content h2 {
+  position: relative;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: clamp(1.55rem, 1.2rem + 0.8vw, 2rem);
+  font-weight: 750;
+  line-height: var(--lh-tight);
+  margin-top: var(--space-9);
+  margin-bottom: var(--space-5);
+  padding: 0.35rem 0 0.55rem 0.9rem;
+  border-bottom: 0;
+  background: linear-gradient(90deg, rgba(var(--accent-rgb),0.07), transparent 70%);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  text-transform: none;
+}
+
+main.content h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  bottom: 0.55rem;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent-strong), var(--accent-300));
+}
+
+main.content h2::after {
+  content: "";
+  position: absolute;
+  left: 0.9rem;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(var(--gray-mid-rgb),0.75), rgba(var(--gray-mid-rgb),0.08));
+}
+
+main.content h3 {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 1.3rem;
   font-weight: 700;
-  color: #1a1a1a;
-  border-bottom: 2px solid #212529;
-  padding-bottom: 0.5em;
-  margin-top: 2em;
-  margin-bottom: 1em;
-  text-transform: uppercase;
+  line-height: var(--lh-snug);
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-3);
+  padding-left: 0.8rem;
+  border-left: 3px solid rgba(var(--accent-rgb),0.25);
+}
+
+main.content h3::before {
+  content: none;
+}
+
+main.content h4 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  font-style: normal;
+  line-height: var(--lh-snug);
+  color: var(--gray-800);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-2);
+}
+
+main.content .anchored .anchorjs-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin-left: 0.45rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--accent-500);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: middle;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease,
+              color 0.18s ease, border-color 0.18s ease;
+}
+
+main.content .anchored:hover .anchorjs-link,
+main.content .anchored .anchorjs-link:focus-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+main.content .anchored .anchorjs-link:hover {
+  background: var(--accent-50);
+  color: var(--accent-700);
+  border-color: var(--accent-200);
+}
+
+main.content .anchored .anchorjs-link:active {
+  transform: translateX(0) scale(0.94);
+}
+
+main.content .anchored .anchorjs-link.anchorjs-copied {
+  background: var(--success-bg);
+  color: var(--success-fg);
+  border-color: var(--success-border);
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Toast feedback — appears bottom-center on link copy */
+.anchor-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  background: var(--gray-900);
+  color: var(--paper);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 12px 32px rgba(var(--shadow-rgb), 0.18);
+  z-index: 2100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.anchor-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.anchor-toast[hidden] {
+  display: none;
+}
+
+.header-section-number,
+.chapter-number {
+  color: var(--muted-2);
+  font-weight: 600;
+}
+
+/* サイドバー */
+#quarto-sidebar {
+  background: rgba(var(--surface-rgb),0.94);
+  border-right: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  font-size: 0.92rem;
+}
+
+#quarto-sidebar .sidebar-title,
+#quarto-sidebar .sidebar-title a {
+  color: var(--gray-900);
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+#quarto-sidebar .sidebar-item-section > .sidebar-item-container {
+  margin-top: 0.55rem;
+}
+
+/* 部タイトル（第I部、第II部...）を目立たせる */
+#quarto-sidebar .sidebar-item-section > .sidebar-item-container > .sidebar-item-text {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--accent-strong);
+  text-transform: none;
   letter-spacing: 0.03em;
+  padding: 0.45rem 0.6rem;
+  margin-top: 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--accent-rgb),0.05);
+  border-left: 3px solid rgba(var(--accent-rgb),0.25);
 }
 
-/* h3 = サブセクション見出し（旧 h2） */
-h3 {
-  font-size: 1.4em;
-  font-weight: 600;
-  color: #343a40;
-  margin-top: 1.5em;
-  margin-bottom: 0.8em;
+#quarto-sidebar .sidebar-item-text,
+#quarto-sidebar .sidebar-link {
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.55rem;
+  line-height: 1.45;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-h3:before {
-  content: "\00A7"; /* § */
-  margin-right: 0.5em;
-  color: #6c757d;
-  font-weight: 400;
+#quarto-sidebar .sidebar-item-text:hover,
+#quarto-sidebar .sidebar-link:hover {
+  color: var(--accent-strong);
+  background: rgba(var(--accent-rgb),0.06);
 }
 
-/* h4 = サブサブセクション見出し（旧 h3） */
-h4 {
-  font-size: 1.2em;
-  font-weight: 600;
-  color: #495057;
-  font-style: italic;
-  margin-top: 1.2em;
-  margin-bottom: 0.6em;
+#quarto-sidebar .sidebar-link.active,
+#quarto-sidebar .active > .sidebar-item-container > .sidebar-item-text,
+#quarto-sidebar .active > .sidebar-item-container > .sidebar-link {
+  color: var(--accent-strong);
+  background: rgba(var(--accent-rgb),0.1);
+  box-shadow: inset 3px 0 0 var(--accent);
+  font-weight: 650;
 }
 
-/* テーブルを学術論文風に */
-table {
-  margin: 2em auto;
-  border-collapse: collapse;
-  font-size: 0.95em;
-  width: 90%;
-  border-top: 2px solid #212529;
-  border-bottom: 2px solid #212529;
+#quarto-sidebar .sidebar-section > li > .sidebar-item-container > .sidebar-item-text {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 650;
 }
 
-thead {
-  background: #f8f9fa;
-  border-bottom: 1px solid #212529;
+#quarto-sidebar .chapter-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  height: 1.65rem;
+  margin-right: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--accent-50);
+  color: var(--accent-700);
+  border: 1px solid rgba(var(--accent-rgb),0.12);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
 }
 
-/* コードブロックをシンプルに */
-pre {
-  background: #f8f9fa !important;
-  border: 1px solid #dee2e6;
+#quarto-sidebar .sidebar-link.active .chapter-number,
+#quarto-sidebar .active .chapter-number {
+  background: linear-gradient(135deg, var(--accent-100), var(--accent-200));
+  border-color: var(--accent-300);
+}
+
+#quarto-sidebar .sidebar-item-toggle {
+  color: var(--muted-2);
+}
+
+.sidebar-desktop-toggle {
+  position: fixed;
+  top: 5rem;
+  z-index: 1030;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(var(--gray-mid-rgb),0.7);
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb),0.96);
+  color: var(--accent-strong);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(var(--shadow-rgb),0.1);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sidebar-desktop-toggle:hover,
+.sidebar-desktop-toggle:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  box-shadow: 0 12px 28px rgba(var(--shadow-rgb),0.14);
+}
+
+.sidebar-desktop-toggle[hidden] {
+  display: none;
+}
+
+/* 右TOC */
+#quarto-margin-sidebar {
+  color: var(--muted);
+}
+
+body.sidebar-toc-integrated #quarto-margin-sidebar {
+  display: none !important;
+}
+
+#TOC {
+  position: sticky;
+  top: 5rem;
+  background: rgba(var(--surface-rgb),0.9);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1rem 0.75rem;
+  box-shadow: var(--shadow-card);
+}
+
+#TOC > h2 {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  border-bottom: 0;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
+
+#TOC a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+#TOC a:hover,
+#TOC a.active {
+  color: var(--accent-strong);
+}
+
+#TOC a.active {
+  font-weight: 650;
+}
+
+#TOC .active {
+  border-left: 2px solid var(--accent);
+  padding-left: 0.5rem;
+  margin-left: -0.65rem;
+}
+
+#TOC ul {
+  padding-left: 0.9rem;
+}
+
+#TOC li {
+  margin: 0.15rem 0;
+}
+
+#TOC ul ul {
+  margin-top: 0.18rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(215, 221, 227, 0.75);
+}
+
+#quarto-sidebar .sidebar-item-current-chapter {
+  margin-bottom: 0.7rem;
+}
+
+#quarto-sidebar .sidebar-page-toc {
+  margin: 0.35rem 0 0.75rem 0.4rem;
+  padding-left: 0.3rem;
+  border-left: 2px solid rgba(var(--accent-rgb),0.14);
+}
+
+#quarto-sidebar .sidebar-page-toc-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  list-style: none;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.77rem;
+  font-weight: 750;
+  color: var(--accent-strong);
+  background: rgba(var(--accent-rgb),0.05);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+#quarto-sidebar .sidebar-page-toc-summary::-webkit-details-marker {
+  display: none;
+}
+
+#quarto-sidebar .sidebar-page-toc-summary::before {
+  content: "▾";
+  color: var(--accent);
+  font-size: 0.88rem;
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+#quarto-sidebar .sidebar-page-toc:not([open]) .sidebar-page-toc-summary::before {
+  transform: rotate(-90deg);
+}
+
+#quarto-sidebar .sidebar-page-toc-summary:hover,
+#quarto-sidebar .sidebar-page-toc-summary:focus-visible {
+  background: rgba(var(--accent-rgb),0.1);
+  color: var(--accent-strong);
+}
+
+#quarto-sidebar .sidebar-page-toc-nav {
+  position: static;
+  top: auto;
+  background: transparent;
+  border: 0;
   border-radius: 0;
-  padding: 1em;
-  font-size: 0.9em;
+  padding: 0.45rem 0 0;
+  box-shadow: none;
 }
 
-/* 数式を強調 */
-.math {
-  color: #212529;
-  font-size: 1.05em;
-  font-style: italic;
+#quarto-sidebar .sidebar-page-toc-nav a {
+  display: block;
+  padding: 0.24rem 0.45rem;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.38;
+  text-decoration: none;
 }
 
-/* タブスタイル（panel-tabset） */
+#quarto-sidebar .sidebar-page-toc-nav a:hover,
+#quarto-sidebar .sidebar-page-toc-nav a.active {
+  color: var(--accent-strong);
+  background: rgba(var(--accent-rgb),0.08);
+}
+
+#quarto-sidebar .sidebar-page-toc-nav a.active {
+  font-weight: 700;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav .active {
+  border-left: 0;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav ul {
+  padding-left: 0;
+  margin-bottom: 0;
+  list-style: none;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav li {
+  margin: 0.1rem 0;
+}
+
+#quarto-sidebar .sidebar-page-toc-nav ul ul {
+  margin-top: 0.16rem;
+  padding-left: 0.72rem;
+  border-left: 1px solid rgba(215, 221, 227, 0.75);
+}
+
+/* 標準テーブル */
+table:not(.gt_table) {
+  width: 100%;
+  margin: var(--space-6) 0;
+  border-collapse: collapse;
+  border-top: 2px solid var(--line-strong);
+  border-bottom: 2px solid var(--line-strong);
+  font-size: 0.94rem;
+  background: var(--paper);
+}
+
+table:not(.gt_table) thead {
+  background: transparent;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+table:not(.gt_table) th {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 650;
+  font-size: 0.9rem;
+  color: var(--gray-800);
+  padding: 0.6rem 0.7rem;
+  border-bottom: 1px solid rgba(215, 221, 227, 0.8);
+}
+
+table:not(.gt_table) td {
+  padding: 0.58rem 0.7rem;
+  border-bottom: 1px solid rgba(215, 221, 227, 0.8);
+}
+
+/* Responsive table overflow */
+.table-responsive,
+main.content#quarto-document-content > div:has(> table),
+main.content .quarto-float-tbl > div:has(> table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table:not(.gt_table) tbody tr:nth-child(even) {
+  background: rgba(246, 248, 250, 0.72);
+}
+
+table:not(.gt_table) tbody tr:hover {
+  background: rgba(232, 241, 246, 0.5);
+}
+
+table:not(.gt_table) tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* gt テーブル */
+.gt_table {
+  border-top: 1.5px solid var(--line-strong) !important;
+  border-bottom: 1.5px solid var(--line-strong) !important;
+  font-size: 0.95rem !important;
+  color: var(--ink) !important;
+}
+
+.gt_table .gt_heading,
+.gt_table .gt_col_headings {
+  background: rgba(246, 248, 250, 0.92) !important;
+}
+
+.gt_table .gt_title,
+.gt_table .gt_subtitle {
+  font-family: "Noto Sans JP", sans-serif !important;
+}
+
+.gt_table .gt_row {
+  border-top-color: rgba(215, 221, 227, 0.8) !important;
+}
+
+.gt_table .gt_footnotes {
+  background: rgba(246, 248, 250, 0.9) !important;
+}
+
+.gt_table .gt_footnote {
+  color: var(--muted) !important;
+  font-size: 0.88rem !important;
+  line-height: 1.5 !important;
+}
+
+.gt_table .gt_footnote_marks {
+  color: var(--accent-strong) !important;
+}
+
+/* コード */
+code:not(pre code) {
+  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 0.88em;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  border: 1px solid rgba(var(--accent-rgb),0.08);
+  border-radius: var(--radius-sm);
+  padding: 0.12rem 0.34rem;
+}
+
+div.sourceCode,
+.cell-output-stdout pre,
+.cell-output-stderr pre {
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  box-shadow: 0 4px 12px rgba(var(--shadow-rgb),0.03);
+}
+
+div.sourceCode {
+  margin: 0.25rem 0 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+pre.sourceCode,
+pre > code.sourceCode,
+.sourceCode pre > code.sourceCode,
+.sourceCode pre code,
+.cell-output-stdout pre,
+.cell-output-stderr pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  background: transparent !important;
+  border: 0;
+  border-radius: 0;
+  white-space: pre !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+pre > code.sourceCode,
+.sourceCode pre > code.sourceCode,
+.sourceCode pre code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  white-space: inherit !important;
+  overflow-wrap: inherit !important;
+  word-break: inherit !important;
+}
+
+.cell-output {
+  margin-top: var(--space-2);
+  position: relative;
+}
+
+.cell-output-stdout pre,
+.cell-output-stderr pre {
+  border-left: 3px solid rgba(var(--accent-rgb),0.15);
+}
+
+.cell-output-stderr pre {
+  border-left-color: var(--danger-border);
+  background: var(--danger-bg) !important;
+}
+
+.cell-output-display {
+  margin-top: var(--space-2);
+  padding: 0.5rem;
+  border: 1px solid rgba(215, 221, 227, 0.65);
+  border-radius: var(--radius-md);
+  background: rgba(var(--surface-rgb),0.95);
+  box-shadow: 0 4px 12px rgba(var(--shadow-rgb),0.03);
+}
+
+.cell-output-display > .quarto-figure,
+.cell-output-display > div[id] {
+  border-radius: var(--radius-md);
+}
+
+.cell-output-display img,
+.cell-output-display .plotly,
+.cell-output-display .html-widget,
+.cell-output-display iframe {
+  border-radius: var(--radius-md);
+}
+
+.code-copy-button {
+  background: rgba(var(--surface-rgb),0.95) !important;
+  border: 1px solid var(--gray-300) !important;
+  color: var(--gray-700) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 4px 10px rgba(var(--shadow-rgb),0.06);
+  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease,
+              border-color 0.2s ease, transform 0.2s ease;
+}
+
+.code-copy-button:hover {
+  background: var(--accent-50) !important;
+  color: var(--accent-700) !important;
+  border-color: var(--accent-200) !important;
+  transform: translateY(-1px);
+}
+
+.code-copy-button-checked {
+  background: var(--success-bg) !important;
+  border-color: var(--success-border) !important;
+  color: var(--success-fg) !important;
+}
+
+/* === Phase C: code/output block differentiation === */
+
+/* language chip on cells containing source code */
+.cell:has(.sourceCode) {
+  position: relative;
+}
+
+.cell:has(.sourceCode)::before {
+  content: "R";
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  z-index: 3;
+  padding: 0.16rem 0.62rem;
+  background: var(--accent-50);
+  color: var(--accent-700);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid rgba(var(--accent-rgb),0.18);
+  border-radius: 999px;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.78;
+  transition: opacity 0.18s ease;
+}
+
+.cell:hover::before,
+.cell:focus-within::before {
+  opacity: 1;
+}
+
+/* output / warning labels — sit on top border, fieldset-legend style */
+.cell-output-stdout,
+.cell-output-stderr {
+  position: relative;
+}
+
+.cell-output-stdout::before,
+.cell-output-stderr::before {
+  position: absolute;
+  top: 0;
+  left: 0.95rem;
+  z-index: 2;
+  transform: translateY(-50%);
+  padding: 0 0.5rem;
+  background: var(--paper);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.cell-output-stdout::before {
+  content: "出力";
+  color: var(--gray-600);
+}
+
+.cell-output-stderr::before {
+  content: "警告";
+  color: var(--danger-fg);
+}
+
+/* hide chip / labels on very narrow screens to avoid clutter */
+@media (max-width: 575.98px) {
+  .cell:has(.sourceCode)::before,
+  .cell-output-stdout::before,
+  .cell-output-stderr::before {
+    display: none;
+  }
+}
+
+details.code-fold {
+  margin: var(--space-5) 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(var(--surface-rgb),0.82);
+  overflow: hidden;
+}
+
+details.code-fold > summary {
+  list-style: none;
+  cursor: pointer;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--accent-strong);
+  background: var(--paper-alt);
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  transition: background 0.15s ease;
+}
+
+details.code-fold > summary:hover {
+  background: var(--accent-soft);
+}
+
+details.code-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.code-fold > summary::before {
+  content: "\25B6";
+  display: inline-block;
+  margin-right: 0.45rem;
+  font-size: 0.7em;
+  color: var(--accent);
+  transition: transform 0.2s ease;
+}
+
+details.code-fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.code-fold > .sourceCode,
+details.code-fold > .cell-output,
+details.code-fold > .cell {
+  margin: 0;
+}
+
+details.code-fold > .sourceCode {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* callout */
+.callout {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(var(--surface-rgb),0.92);
+  box-shadow: 0 6px 16px rgba(var(--shadow-rgb),0.04);
+  margin: var(--space-7) 0;
+  overflow: hidden;
+}
+
+.callout-header {
+  border-bottom: 1px solid rgba(215, 221, 227, 0.85);
+  background: linear-gradient(180deg, rgba(246, 248, 250, 0.96), rgba(239, 244, 247, 0.92));
+}
+
+.callout-title {
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.callout-body {
+  color: var(--ink);
+  padding-top: 0.15rem;
+}
+
+.callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+.callout.callout-tip {
+  border-left: 4px solid var(--info-border);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.96), var(--info-bg));
+}
+
+.callout.callout-note {
+  border-left: 4px solid var(--gray-500);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.96), rgba(123, 135, 146, 0.05));
+}
+
+.callout.callout-warning {
+  border-left: 4px solid var(--warning-border);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.96), var(--warning-bg));
+}
+
+.callout.callout-caution {
+  border-left: 4px solid var(--warning-border);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.96), var(--warning-bg));
+}
+
+.callout.callout-important {
+  border-left: 4px solid var(--danger-border);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.96), var(--danger-bg));
+}
+
+/* per-type icon & title color (subtle differentiation) */
+.callout-icon-container {
+  color: var(--accent-strong);
+}
+
+.callout.callout-tip .callout-icon-container,
+.callout.callout-tip > .callout-header .callout-title-container {
+  color: var(--info-fg);
+}
+
+.callout.callout-note .callout-icon-container,
+.callout.callout-note > .callout-header .callout-title-container {
+  color: var(--gray-700);
+}
+
+.callout.callout-warning .callout-icon-container,
+.callout.callout-warning > .callout-header .callout-title-container,
+.callout.callout-caution .callout-icon-container,
+.callout.callout-caution > .callout-header .callout-title-container {
+  color: var(--warning-fg);
+}
+
+.callout.callout-important .callout-icon-container,
+.callout.callout-important > .callout-header .callout-title-container {
+  color: var(--danger-fg);
+}
+
+/* tabset */
 .panel-tabset {
-  margin-top: 2em;
-  margin-bottom: 2em;
+  margin: var(--space-7) 0;
 }
 
-.nav-tabs {
-  border-bottom: 2px solid #dee2e6;
+.panel-tabset > .nav-tabs {
+  border-bottom: 1px solid var(--line);
+  gap: 0.35rem;
 }
 
-.nav-tabs .nav-link.active {
-  font-weight: 600;
-  border-bottom: 3px solid #007bff;
+.panel-tabset > .nav-tabs .nav-link {
+  border: 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--muted);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.94rem;
+  font-weight: 650;
+  padding: 0.6rem 0.95rem 0.55rem;
 }
 
-/* 参考文献リストを表示（Quarto Bookのインラインdisplay:noneを上書き） */
+.panel-tabset > .nav-tabs .nav-link:hover {
+  color: var(--accent-strong);
+  background: rgba(var(--accent-rgb),0.05);
+}
+
+.panel-tabset > .nav-tabs .nav-link.active {
+  color: var(--accent-strong);
+  background: rgba(var(--accent-rgb),0.08);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  font-weight: 700;
+}
+
+.panel-tabset > .tab-content {
+  padding: 0.95rem 1rem 0.25rem;
+  border: 1px solid rgba(215, 221, 227, 0.9);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: rgba(var(--surface-rgb),0.84);
+  box-shadow: 0 10px 24px rgba(var(--shadow-rgb),0.03);
+}
+
+/* 図表・数式・参考文献 */
+.quarto-figure {
+  margin: var(--space-7) 0;
+}
+
+.quarto-figure > figure,
+.cell-output-display > .quarto-figure > figure {
+  background: rgba(var(--surface-rgb),0.8);
+  border: 1px solid rgba(215, 221, 227, 0.7);
+  border-radius: var(--radius-lg);
+  padding: 0.7rem 0.7rem 0.95rem;
+  box-shadow: var(--shadow-card);
+}
+
+.quarto-figure img,
+.quarto-figure svg,
+.cell-output-display img,
+.cell-output-display svg {
+  display: block;
+  margin-inline: auto;
+}
+
+figcaption,
+.figure-caption,
+.quarto-float-caption-top,
+.table-caption {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+figcaption {
+  padding-inline: 0.25rem;
+  margin-top: 0.55rem;
+  border-top: 1px solid rgba(215, 221, 227, 0.65);
+  padding-top: 0.55rem;
+}
+
+/* Plot zoom */
+.plot-zoom-target {
+  cursor: zoom-in;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.plot-zoom-target:hover,
+.plot-zoom-target:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(var(--shadow-rgb),0.16);
+}
+
+body.plot-zoom-open {
+  overflow: hidden;
+}
+
+.plot-zoom-overlay[hidden] {
+  display: none !important;
+}
+
+.plot-zoom-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(18, 26, 32, 0.82);
+  backdrop-filter: blur(7px);
+}
+
+.plot-zoom-stage {
+  display: grid;
+  gap: 0.8rem;
+  max-width: min(96vw, 1500px);
+  max-height: 92vh;
+}
+
+.plot-zoom-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(92vh - 3.5rem);
+  width: auto;
+  height: auto;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  background: rgba(var(--surface-rgb),0.98);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
+}
+
+.plot-zoom-caption {
+  margin: 0;
+  text-align: center;
+  color: rgba(var(--surface-rgb),0.92);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.plot-zoom-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb),0.14);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.plot-zoom-close:hover,
+.plot-zoom-close:focus-visible {
+  background: rgba(var(--surface-rgb),0.24);
+}
+
+.math,
+.MathJax {
+  color: var(--ink);
+}
+
+mark {
+  background: rgba(183, 121, 31, 0.14);
+  color: inherit;
+  padding: 0.08rem 0.25rem;
+  border-radius: 4px;
+}
+
+.footnotes {
+  margin-top: var(--space-10);
+  padding: 1.15rem 1.2rem 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.9), rgba(241, 245, 248, 0.7));
+  color: var(--muted);
+  font-size: 0.94rem;
+  box-shadow: 0 8px 20px rgba(var(--shadow-rgb),0.03);
+}
+
+.footnotes ol {
+  padding-left: 1.1rem;
+}
+
+.footnote-ref {
+  font-family: "Noto Sans JP", sans-serif;
+}
+
+a.footnote-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.22rem;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb),0.08);
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: super;
+}
+
+a.footnote-ref:hover,
+a.footnote-ref:focus {
+  background: rgba(var(--accent-rgb),0.14);
+}
+
 #refs {
   display: block !important;
+  margin-top: var(--space-8);
+  padding-top: 0.4rem;
+}
+
+#refs .csl-entry {
+  margin-bottom: 0.7rem;
+  padding-left: 1.4rem;
+  text-indent: -1.4rem;
+}
+
+/* 前後ページナビゲーション */
+.page-navigation {
+  margin-top: var(--space-10);
+  padding-top: var(--space-6);
+  border-top: 2px solid var(--line);
+  gap: 1.2rem;
+}
+
+.nav-page .pagination-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 100%;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(var(--surface-rgb),0.95), var(--paper-alt));
+  box-shadow: 0 4px 14px rgba(var(--shadow-rgb),0.04);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.nav-page .pagination-link:hover {
+  background: linear-gradient(180deg, rgba(232, 241, 246, 0.6), rgba(232, 241, 246, 0.9));
+  border-color: rgba(var(--accent-rgb),0.28);
+  box-shadow: 0 6px 18px rgba(var(--shadow-rgb),0.07);
+  transform: translateY(-1px);
+}
+
+.nav-page .nav-page-text {
+  color: var(--ink);
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.nav-page .pagination-link .bi {
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+
+/* モバイル */
+/* 大画面でも本文はグリッド列の全幅を使う */
+
+@media (max-width: 991.98px) {
+  main.content#quarto-document-content {
+    max-width: 100%;
+    padding-inline: 1rem;
+  }
+
+  .quarto-title-banner {
+    padding: 2rem 1.1rem 1.8rem;
+  }
+
+  #title-block-header.quarto-title-block.default {
+    padding: 1rem 1rem 1.05rem;
+  }
+
+  #TOC {
+    box-shadow: none;
+    border-radius: var(--radius-md);
+    position: static;
+  }
+
+  table:not(.gt_table) {
+    font-size: 0.92rem;
+  }
+
+  main table:not(.gt_table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  code:not(pre code) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .csl-entry a,
+  a.uri {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
+
+  mjx-container[jax="CHTML"] {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .math.inline {
+    display: inline-block;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    vertical-align: middle;
+  }
+}
+
+@media (min-width: 992px) {
+  body.sidebar-collapsed #quarto-sidebar {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border-right: 0 !important;
+    opacity: 0;
+    overflow: hidden !important;
+    pointer-events: none;
+  }
+
+  body.sidebar-collapsed #quarto-sidebar > * {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  body.sidebar-collapsed #quarto-sidebar-glass {
+    display: none !important;
+  }
+
+  body.sidebar-collapsed #quarto-document-content,
+  body.sidebar-collapsed .page-navigation {
+    grid-column: page-start / body-content-end !important;
+  }
+
+  body.sidebar-collapsed main.content#quarto-document-content > p,
+  body.sidebar-collapsed main.content#quarto-document-content > ul,
+  body.sidebar-collapsed main.content#quarto-document-content > ol,
+  body.sidebar-collapsed main.content#quarto-document-content > blockquote,
+  body.sidebar-collapsed main.content#quarto-document-content > dl,
+  body.sidebar-collapsed #quarto-document-content > p:first-of-type {
+    max-width: var(--measure-prose-wide);
+  }
+}
+
+/* ============================================
+   Dark mode
+   - Auto via prefers-color-scheme (overridable by [data-theme="light"])
+   - Manual toggle via [data-theme="dark"] on <html>
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    /* RGB tuples — adjust for dark surface */
+    --surface-rgb:   28, 33, 39;
+    --shadow-rgb:    0, 0, 0;
+    --accent-rgb:    135, 179, 197;   /* lighter accent for contrast */
+    --gray-mid-rgb:  141, 152, 164;
+
+    /* gray ramp — invert lightness order */
+    --gray-50:   #1a1f24;
+    --gray-100:  #232a31;
+    --gray-200:  #2d3640;
+    --gray-300:  #3d4751;
+    --gray-400:  #5a6771;
+    --gray-500:  #8d98a4;
+    --gray-600:  #a1abb5;
+    --gray-700:  #b8c0c8;
+    --gray-800:  #d5dadf;
+    --gray-900:  #e8ecf0;
+
+    /* accent ramp — flip lightness so 50 = darkest tint, 900 = brightest */
+    --accent-50:   rgba(135, 179, 197, 0.08);
+    --accent-100:  rgba(135, 179, 197, 0.14);
+    --accent-200:  rgba(135, 179, 197, 0.22);
+    --accent-300:  #5a90a8;
+    --accent-400:  #6ea7be;
+    --accent-500:  #87b3c5;
+    --accent-600:  #9ec3d3;
+    --accent-700:  #b8d2dd;
+    --accent-800:  #cfdfe7;
+    --accent-900:  #e6f1f5;
+
+    /* semantic — calibrate for dark backgrounds */
+    --info-fg:        #b8d2dd;
+    --info-bg:        rgba(135, 179, 197, 0.08);
+    --info-border:    #87b3c5;
+
+    --success-fg:     #82c8a0;
+    --success-bg:     rgba(95, 175, 130, 0.08);
+    --success-border: #5fb085;
+
+    --warning-fg:     #e0b87a;
+    --warning-bg:     rgba(212, 159, 60, 0.1);
+    --warning-border: #c89a5e;
+
+    --danger-fg:      #d99879;
+    --danger-bg:      rgba(195, 110, 80, 0.1);
+    --danger-border:  #b87a5d;
+
+    /* base surfaces */
+    --paper:        #14181c;
+    --paper-tint:   #1f262d;
+
+    /* shadows — stronger on dark */
+    --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --shadow-card: 0 12px 28px rgba(0, 0, 0, 0.40);
+
+    /* misc tints */
+    --accent-faint: rgba(135, 179, 197, 0.06);
+    --warm-soft:    rgba(212, 159, 60, 0.10);
+
+    /* Bootstrap variable bridges */
+    --bs-body-bg:    var(--paper);
+    --bs-body-color: var(--ink);
+    --bs-border-color: var(--line);
+    --bs-secondary-color: var(--muted);
+  }
+
+  /* Plot images: PNG plots have white backgrounds — wrap them in a "matte" card
+     so they don't punch a hole in the dark surface */
+  :root:not([data-theme="light"]) .cell-output-display img,
+  :root:not([data-theme="light"]) .quarto-figure img {
+    background: #f4f5f7;
+    padding: 0.4rem;
+    border-radius: var(--radius-md);
+  }
+
+  /* Subtly desaturate sidebar/TOC backdrop so content stays primary */
+  :root:not([data-theme="light"]) #quarto-sidebar,
+  :root:not([data-theme="light"]) #TOC {
+    background: rgba(28, 33, 39, 0.94);
+  }
+}
+
+/* Manual toggle — mirror dark overrides when [data-theme="dark"] is set */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-rgb:   28, 33, 39;
+  --shadow-rgb:    0, 0, 0;
+  --accent-rgb:    135, 179, 197;
+  --gray-mid-rgb:  141, 152, 164;
+
+  --gray-50:   #1a1f24;
+  --gray-100:  #232a31;
+  --gray-200:  #2d3640;
+  --gray-300:  #3d4751;
+  --gray-400:  #5a6771;
+  --gray-500:  #8d98a4;
+  --gray-600:  #a1abb5;
+  --gray-700:  #b8c0c8;
+  --gray-800:  #d5dadf;
+  --gray-900:  #e8ecf0;
+
+  --accent-50:   rgba(135, 179, 197, 0.08);
+  --accent-100:  rgba(135, 179, 197, 0.14);
+  --accent-200:  rgba(135, 179, 197, 0.22);
+  --accent-300:  #5a90a8;
+  --accent-400:  #6ea7be;
+  --accent-500:  #87b3c5;
+  --accent-600:  #9ec3d3;
+  --accent-700:  #b8d2dd;
+  --accent-800:  #cfdfe7;
+  --accent-900:  #e6f1f5;
+
+  --info-fg:        #b8d2dd;
+  --info-bg:        rgba(135, 179, 197, 0.08);
+  --info-border:    #87b3c5;
+  --success-fg:     #82c8a0;
+  --success-bg:     rgba(95, 175, 130, 0.08);
+  --success-border: #5fb085;
+  --warning-fg:     #e0b87a;
+  --warning-bg:     rgba(212, 159, 60, 0.10);
+  --warning-border: #c89a5e;
+  --danger-fg:      #d99879;
+  --danger-bg:      rgba(195, 110, 80, 0.10);
+  --danger-border:  #b87a5d;
+
+  --paper:        #14181c;
+  --paper-tint:   #1f262d;
+
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 12px 28px rgba(0, 0, 0, 0.40);
+
+  --accent-faint: rgba(135, 179, 197, 0.06);
+  --warm-soft:    rgba(212, 159, 60, 0.10);
+
+  --bs-body-bg:    var(--paper);
+  --bs-body-color: var(--ink);
+  --bs-border-color: var(--line);
+  --bs-secondary-color: var(--muted);
+}
+
+[data-theme="dark"] .cell-output-display img,
+[data-theme="dark"] .quarto-figure img {
+  background: #f4f5f7;
+  padding: 0.4rem;
+  border-radius: var(--radius-md);
+}
+
+[data-theme="dark"] #quarto-sidebar,
+[data-theme="dark"] #TOC {
+  background: rgba(28, 33, 39, 0.94);
 }

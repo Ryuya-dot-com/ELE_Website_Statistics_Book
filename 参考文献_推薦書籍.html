@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.33">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>26&nbsp; 参考文献・推薦書籍 – Rによる統計解析実戦ガイド</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+  margin-bottom: 0em;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./20_欠測データ解析とロバスト統計.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-ea385d0e468b0dd5ea5bf0780b1290d9.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-c070c2d3d9ab8be3b7708aa6a93ceb82.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "一致なし",
+    "search-matching-documents-text": "一致した文書",
+    "search-copy-link-title": "検索へのリンクをコピー",
+    "search-hide-matches-text": "追加の検索結果を非表示",
+    "search-more-match-text": "追加の検索結果",
+    "search-more-matches-text": "追加の検索結果",
+    "search-clear-button-title": "消去",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "取消",
+    "search-submit-button-title": "検索",
+    "search-label": "サーチ"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="custom.css">
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+<a class="skip-link" href="#quarto-document-content">本文へスキップ</a>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./参考文献_推薦書籍.html"><span class="chapter-number">26</span>&nbsp; <span class="chapter-title">参考文献・推薦書籍</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="サイドバーを切り替える" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="サーチ" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Rによる統計解析実戦ガイド</a> 
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="サーチ"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">主なパッケージの役割</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./Rの基本的な使い方.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Rの基本的な使い方</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">第I部：統計モデルの基礎</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./統計モデルについての概略.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">統計モデルについての概略</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./1_T検定と効果量.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">t 検定と効果量</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./2_ANOVAとカテゴリカル変数のコーディング.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">ANOVAとカテゴリカル変数のコーディング</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./3_MANOVA_判別分析.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">MANOVA・判別分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">第II部：回帰分析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./4_重回帰分析と交互作用.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">重回帰分析と交互作用</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./5_一般化線形モデル_一般化加法モデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">一般化線形モデル・一般化加法モデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./6_混合効果モデル_2値ロジスティック回帰.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">混合効果モデル：2値ロジスティック回帰分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true">
+ <span class="menu-text">第III部：ベイズ統計と機械学習</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./7_ベイズ推定.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">ベイズ推定</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./8_予測分析_ROC曲線とツリーモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">予測分析：ROC曲線とツリーモデル</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true">
+ <span class="menu-text">第IV部：多変量解析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./9_潜在変数モデリングと次元縮約.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">12</span>&nbsp; <span class="chapter-title">潜在変数モデリングと次元縮約：PCA・因子分析・SEM・LGM・CA・MDS</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10_一般化可能性理論.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">13</span>&nbsp; <span class="chapter-title">一般化可能性理論</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_項目応答理論とラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">14</span>&nbsp; <span class="chapter-title">項目応答理論とラッシュモデル</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_拡張ラッシュモデル.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">15</span>&nbsp; <span class="chapter-title">拡張ラッシュモデル</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true">
+ <span class="menu-text">第V部：時系列データ分析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13_時系列データ分析_基礎.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">16</span>&nbsp; <span class="chapter-title">時系列データ分析（基礎）：ARIMA・ETS・介入時系列分析</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13b_時系列データ分析_発展.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">17</span>&nbsp; <span class="chapter-title">時系列データ分析（発展）：GAMM・VAR・DTW・HMM・状態空間モデル・ベイズ時系列</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13c_音声時系列分析_Praat.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">18</span>&nbsp; <span class="chapter-title">音声時系列分析：Praat・rPraat・音響分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true">
+ <span class="menu-text">第VI部：地理空間データ</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14_地理空間データ分析_入門.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">19</span>&nbsp; <span class="chapter-title">地理空間データ分析（入門）：sf・地図作成・パネル整形</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15_地理空間データ分析_応用.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">20</span>&nbsp; <span class="chapter-title">地理空間データ分析（応用）：空間自己相関・空間回帰・施策評価</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true">
+ <span class="menu-text">第VII部：ネットワーク分析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16_ネットワーク分析.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">21</span>&nbsp; <span class="chapter-title">ネットワーク分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true">
+ <span class="menu-text">第VIII部：メタ分析</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./17_メタ分析.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">22</span>&nbsp; <span class="chapter-title">メタ分析</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="true">
+ <span class="menu-text">第IX部：因果推論とクラスタリング</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./18_統計的因果推論.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">23</span>&nbsp; <span class="chapter-title">統計的因果推論</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./19_クラスタリング.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">24</span>&nbsp; <span class="chapter-title">クラスタリング</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" role="navigation" aria-expanded="true">
+ <span class="menu-text">第X部：欠測データ解析とロバスト統計</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-10" role="navigation" aria-expanded="true" aria-label="セクションを切り替え">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-10" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./20_欠測データ解析とロバスト統計.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">25</span>&nbsp; <span class="chapter-title">欠測データ解析とロバスト統計</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./参考文献_推薦書籍.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">26</span>&nbsp; <span class="chapter-title">参考文献・推薦書籍</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">目次</h2>
+   
+  <ul>
+  <li><a href="#このページの使い方" id="toc-このページの使い方" class="nav-link active" data-scroll-target="#このページの使い方"><span class="header-section-number">26.1</span> このページの使い方</a></li>
+  <li><a href="#急いでいる人向け" id="toc-急いでいる人向け" class="nav-link" data-scroll-target="#急いでいる人向け"><span class="header-section-number">26.2</span> 急いでいる人向け</a></li>
+  <li><a href="#まず読む本" id="toc-まず読む本" class="nav-link" data-scroll-target="#まず読む本"><span class="header-section-number">26.3</span> まず読む本</a>
+  <ul class="collapse">
+  <li><a href="#全体像をつかむための本" id="toc-全体像をつかむための本" class="nav-link" data-scroll-target="#全体像をつかむための本"><span class="header-section-number">26.3.1</span> 全体像をつかむための本</a></li>
+  <li><a href="#トピック別に深めるための本" id="toc-トピック別に深めるための本" class="nav-link" data-scroll-target="#トピック別に深めるための本"><span class="header-section-number">26.3.2</span> トピック別に深めるための本</a></li>
+  </ul></li>
+  <li><a href="#チュートリアル論文レビュー論文" id="toc-チュートリアル論文レビュー論文" class="nav-link" data-scroll-target="#チュートリアル論文レビュー論文"><span class="header-section-number">26.4</span> チュートリアル論文・レビュー論文</a>
+  <ul class="collapse">
+  <li><a href="#回帰glm混合効果モデル" id="toc-回帰glm混合効果モデル" class="nav-link" data-scroll-target="#回帰glm混合効果モデル"><span class="header-section-number">26.4.1</span> 回帰・GLM・混合効果モデル</a></li>
+  <li><a href="#ベイズ統計と-brms-stan" id="toc-ベイズ統計と-brms-stan" class="nav-link" data-scroll-target="#ベイズ統計と-brms-stan"><span class="header-section-number">26.4.2</span> ベイズ統計と <code>brms</code> / Stan</a></li>
+  <li><a href="#潜在変数モデルsemirt" id="toc-潜在変数モデルsemirt" class="nav-link" data-scroll-target="#潜在変数モデルsemirt"><span class="header-section-number">26.4.3</span> 潜在変数モデル・SEM・IRT</a></li>
+  <li><a href="#縦断データ動的データgamm" id="toc-縦断データ動的データgamm" class="nav-link" data-scroll-target="#縦断データ動的データgamm"><span class="header-section-number">26.4.4</span> 縦断データ・動的データ・GAMM</a></li>
+  <li><a href="#ネットワーク分析メタ分析因果推論" id="toc-ネットワーク分析メタ分析因果推論" class="nav-link" data-scroll-target="#ネットワーク分析メタ分析因果推論"><span class="header-section-number">26.4.5</span> ネットワーク分析・メタ分析・因果推論</a></li>
+  </ul></li>
+  <li><a href="#オンライン教材実務向けリソース" id="toc-オンライン教材実務向けリソース" class="nav-link" data-scroll-target="#オンライン教材実務向けリソース"><span class="header-section-number">26.5</span> オンライン教材・実務向けリソース</a></li>
+  <li><a href="#参考文献" id="toc-参考文献" class="nav-link" data-scroll-target="#参考文献">参考文献</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main tabindex="-1" class="content" id="quarto-document-content">
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<div class="quarto-title-block"><div><h1 class="title"><span class="chapter-number">26</span>&nbsp; <span class="chapter-title">参考文献・推薦書籍</span></h1><button type="button" class="btn code-tools-button dropdown-toggle" id="quarto-code-tools-menu" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi"></i> コード</button><ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quarto-code-tools-menu"><li><a id="quarto-show-all-code" class="dropdown-item" href="javascript:void(0)" role="button">すべてのコードを表示</a></li><li><a id="quarto-hide-all-code" class="dropdown-item" href="javascript:void(0)" role="button">すべてのコードを非表示</a></li><li><hr class="dropdown-divider"></li><li><a id="quarto-view-source" class="dropdown-item" href="javascript:void(0)" role="button">ソースコードを表示</a></li></ul></div></div>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="cell">
+<details open="" class="code-fold">
+<summary>コード</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>required_packages <span class="ot">&lt;-</span> <span class="fu">character</span>(<span class="dv">0</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>missing_packages <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(required_packages, <span class="fu">rownames</span>(<span class="fu">installed.packages</span>()))</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">length</span>(missing_packages) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">install.packages</span>(missing_packages, <span class="at">repos =</span> <span class="st">"https://cloud.r-project.org"</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># このファイルでは追加パッケージを使用しません。</span></span></code><button title="コピー" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>こちらのページでは、Rを使った統計モデリングを学ぶための書籍、チュートリアル論文、オンライン教材をまとめています。単なる「本の一覧」ではなく、「まず全体像をつかむ」「必要になった手法を実装する」「理論的背景を補う」という順番で使えるように整理しています。とくにチュートリアル論文は、特定の分析を実際に行う直前に読む資料として位置づけています。</p>
+<section id="このページの使い方" class="level2" data-number="26.1">
+<h2 data-number="26.1" class="anchored" data-anchor-id="このページの使い方"><span class="header-section-number">26.1</span> このページの使い方</h2>
+<ul>
+<li>まず統計モデリング全体の地図をつかみたい場合は、次節の「まず読む本」から入るのが無難です。</li>
+<li>ある手法をすぐ使いたい場合は、「チュートリアル論文・レビュー論文」から該当トピックへ進む方が効率的です。</li>
+<li>実装上の細かな疑問、パッケージの書式、モデル比較の作法を確認したい場合は、「オンライン教材・実務向けリソース」を併用するとよいです。</li>
+</ul>
+</section>
+<section id="急いでいる人向け" class="level2" data-number="26.2">
+<h2 data-number="26.2" class="anchored" data-anchor-id="急いでいる人向け"><span class="header-section-number">26.2</span> 急いでいる人向け</h2>
+<ul>
+<li>統計モデリング全体の入口として最初の1冊を選ぶなら、<span class="citation" data-cites="winter2019">Winter (<a href="#ref-winter2019" role="doc-biblioref">2019</a>)</span> が最も勧めやすいです。回帰から混合効果モデルまでを無理なくつなぎます。</li>
+<li>混合効果モデルにすぐ入りたいなら、<span class="citation" data-cites="jaeger2008">Jaeger (<a href="#ref-jaeger2008" role="doc-biblioref">2008</a>)</span> と <span class="citation" data-cites="brown2021">Brown (<a href="#ref-brown2021" role="doc-biblioref">2021</a>)</span> の組み合わせが効率的です。前者で必要性を理解し、後者で実装と解釈を確認できます。</li>
+<li>ベイズ統計に入るなら、<span class="citation" data-cites="burkner2017">Bürkner (<a href="#ref-burkner2017" role="doc-biblioref">2017</a>)</span> と <span class="citation" data-cites="nicenboim2025">Nicenboim et al. (<a href="#ref-nicenboim2025" role="doc-biblioref">2025</a>)</span> が実践的です。<code>brms</code> の書き方と、ベイズ的な考え方の両方を理解できます。</li>
+<li>潜在変数モデルや因子分析に入るなら、<span class="citation" data-cites="rosseel2012">Rosseel (<a href="#ref-rosseel2012" role="doc-biblioref">2012</a>)</span> と <span class="citation" data-cites="flora2020">Flora (<a href="#ref-flora2020" role="doc-biblioref">2020</a>)</span> がよい入口です。<code>lavaan</code> の基本と、信頼性指標の扱いを補強できます。</li>
+<li>IRTやラッシュモデルに入るなら、<span class="citation" data-cites="chalmers2012">Chalmers (<a href="#ref-chalmers2012" role="doc-biblioref">2012</a>)</span>、<span class="citation" data-cites="burkner2021">Bürkner (<a href="#ref-burkner2021" role="doc-biblioref">2021</a>)</span>、<span class="citation" data-cites="sijtsmavanderark2017">Sijtsma &amp; Ark (<a href="#ref-sijtsmavanderark2017" role="doc-biblioref">2017</a>)</span> を順に見ると、古典的IRT、多次元IRT、ノンパラメトリック尺度分析の違いが見えます。</li>
+<li>ネットワーク分析、メタ分析、因果推論に手を出すなら、<span class="citation" data-cites="epskamp2018">Epskamp et al. (<a href="#ref-epskamp2018" role="doc-biblioref">2018</a>)</span>、<span class="citation" data-cites="viechtbauer2010">Viechtbauer (<a href="#ref-viechtbauer2010" role="doc-biblioref">2010</a>)</span>、<span class="citation" data-cites="ho2011">Ho et al. (<a href="#ref-ho2011" role="doc-biblioref">2011</a>)</span> がそれぞれの最初の足場になります。</li>
+</ul>
+</section>
+<section id="まず読む本" class="level2" data-number="26.3">
+<h2 data-number="26.3" class="anchored" data-anchor-id="まず読む本"><span class="header-section-number">26.3</span> まず読む本</h2>
+<section id="全体像をつかむための本" class="level3" data-number="26.3.1">
+<h3 data-number="26.3.1" class="anchored" data-anchor-id="全体像をつかむための本"><span class="header-section-number">26.3.1</span> 全体像をつかむための本</h3>
+<ul>
+<li><p><span class="citation" data-cites="winter2019">Winter (<a href="#ref-winter2019" role="doc-biblioref">2019</a>)</span> — 回帰分析の考え方から混合効果モデルへの橋渡しまでを、言語データに近い例で学べる入門書です。本書の多くの章に接続しやすく、最初の1冊として適しています。</p></li>
+<li><p><span class="citation" data-cites="levshina2015">Levshina (<a href="#ref-levshina2015" role="doc-biblioref">2015</a>)</span> — 探索的データ解析、回帰、決定木、ランダムフォレストまで幅広く扱う入門書です。回帰一辺倒ではなく、分析の選択肢を早い段階で見渡したい人に向いています。</p></li>
+<li><p><span class="citation" data-cites="baayen2008book">Baayen (<a href="#ref-baayen2008book" role="doc-biblioref">2008</a>)</span> — 言語データの分析を統計モデリングとしてどう考えるかを学ぶ古典的な本です。初版の<a href="http://www.sfs.uni-tuebingen.de/~hbaayen/publications/baayenCUPstats.pdf">PDF</a>が公開されており、混合効果モデルが広まっていく時代の空気も感じられます。</p></li>
+<li><p><span class="citation" data-cites="kubo2012">久保 (<a href="#ref-kubo2012" role="doc-biblioref">2012</a>)</span> — GLM、GLMM、ベイズまでをひとつの流れで学べる定番書です。日本語で統計モデリングの発想をつかみたい場合には、依然として強力な入口です。</p></li>
+</ul>
+</section>
+<section id="トピック別に深めるための本" class="level3" data-number="26.3.2">
+<h3 data-number="26.3.2" class="anchored" data-anchor-id="トピック別に深めるための本"><span class="header-section-number">26.3.2</span> トピック別に深めるための本</h3>
+<ul>
+<li><p><span class="citation" data-cites="fox2019">Fox &amp; Weisberg (<a href="#ref-fox2019" role="doc-biblioref">2019</a>)</span> — 一般化線形モデルを中心に、回帰モデルの実務を丁寧に扱った本です。<code>car</code> パッケージや効果の可視化まで含めて確認したいときに役立ちます。</p></li>
+<li><p><span class="citation" data-cites="gelman2020">Gelman et al. (<a href="#ref-gelman2020" role="doc-biblioref">2020</a>)</span> — 回帰分析、モデル化、因果推論的な発想を、ベイズ的な視点も交えて学べる本です。推定値を「どう解釈するか」に強い本で、数式よりも考え方を重視する読者に向いています。</p></li>
+<li><p><span class="citation" data-cites="hox2018">Hox et al. (<a href="#ref-hox2018" role="doc-biblioref">2018</a>)</span> — マルチレベル分析の体系的な教科書です。ランダム切片やランダム傾きの基礎から、より高度な話題まで一段深く学びたいときの標準文献です。<a href="https://multilevel-analysis.sites.uu.nl/">オンライン版</a>もあります。</p></li>
+<li><p><span class="citation" data-cites="shimizu2014">清水 (<a href="#ref-shimizu2014" role="doc-biblioref">2014</a>)</span> — 日本語でマルチレベル分析を学びたい場合の有力候補です。個人レベルと集団レベルの切り分けを丁寧に確認できます。</p></li>
+<li><p><span class="citation" data-cites="barr2021">Barr (<a href="#ref-barr2021" role="doc-biblioref">2021</a>)</span> — シミュレーションを通して統計モデルを理解するオンライン教科書です。混合効果モデルを「式の丸暗記」ではなく、データ生成の観点から理解したい人に向いています。<a href="https://psyteachr.github.io/stat-models-v1/">オンライン版</a>のみです。</p></li>
+<li><p><span class="citation" data-cites="gries2021book">Gries (<a href="#ref-gries2021book" role="doc-biblioref">2021</a>)</span> — コーパスデータを例に統計モデリングを学べる実践的な本です。混合効果モデルや決定木など、言語研究でよく出会う手法を横断的に見られます。</p></li>
+<li><p><span class="citation" data-cites="hastie2009">Hastie et al. (<a href="#ref-hastie2009" role="doc-biblioref">2009</a>)</span> — 回帰と予測を起点に、機械学習まで視野を広げたいときの古典的定番書です。統計モデリングをより広いデータサイエンスの文脈で捉えたいときに有用です。</p></li>
+<li><p><span class="citation" data-cites="vasishth_lmm">Vasishth et al. (<a href="#ref-vasishth_lmm" role="doc-biblioref">2024</a>)</span> — 線形混合モデルについて非常に丁寧に書かれたオンライン草稿です。視線計測や反応時間の例が多く、実験系の言語研究と相性がよいです。<a href="https://vasishth.github.io/Freq_CogSci/">オンライン版</a>。</p></li>
+<li><p><span class="citation" data-cites="nicenboim2025">Nicenboim et al. (<a href="#ref-nicenboim2025" role="doc-biblioref">2025</a>)</span> — 認知科学データを題材にベイズ統計を学ぶ本です。<code>brms</code> と Stan を用いた現代的な実装に強く、混合効果とベイズをつなぎたいときに有効です。<a href="https://vasishth.github.io/bayescogsci/book/">オンライン版</a>。</p></li>
+<li><p><span class="citation" data-cites="kosugi2014">小杉 et al. (<a href="#ref-kosugi2014" role="doc-biblioref">2014</a>)</span> — 観測変数と潜在変数、説明変数と目的変数という整理に基づき、多様な統計モデリングを見渡せる本です。本書全体の「地図」を別の角度から補強します。</p></li>
+<li><p><span class="citation" data-cites="singer2003">Singer &amp; Willett (<a href="#ref-singer2003" role="doc-biblioref">2003</a>)</span> — 縦断データをどうモデル化するかを学ぶ定番書です。成長曲線モデルやイベント発生モデルまで含めて、時系列的・発達的なデータを扱う前に読んでおくと理解が安定します。</p></li>
+<li><p><span class="citation" data-cites="windhua2022">Wind &amp; Hua (<a href="#ref-windhua2022" role="doc-biblioref">2022</a>)</span> — ラッシュモデルをRで実装しながら学べる実践書です。IRT章や測定モデルの章に進む前後に読むと理解が深まります。</p></li>
+<li><p><span class="citation" data-cites="suzuki2017">鈴木 (<a href="#ref-suzuki2017" role="doc-biblioref">2017</a>)</span> — 日本語でネットワーク分析を学ぶときの定番書です。ネットワークの指標や可視化を体系的に学ぶのに向いています。</p></li>
+<li><p><span class="citation" data-cites="harrer2021">Harrer et al. (<a href="#ref-harrer2021" role="doc-biblioref">2021</a>)</span> — <code>metafor</code> や <code>meta</code> を使ったメタ分析の実践書です。コードベースで学べるので、メタ分析を手で動かしたい読者には特に有用です。</p></li>
+</ul>
+</section>
+</section>
+<section id="チュートリアル論文レビュー論文" class="level2" data-number="26.4">
+<h2 data-number="26.4" class="anchored" data-anchor-id="チュートリアル論文レビュー論文"><span class="header-section-number">26.4</span> チュートリアル論文・レビュー論文</h2>
+<section id="回帰glm混合効果モデル" class="level3" data-number="26.4.1">
+<h3 data-number="26.4.1" class="anchored" data-anchor-id="回帰glm混合効果モデル"><span class="header-section-number">26.4.1</span> 回帰・GLM・混合効果モデル</h3>
+<ul>
+<li><p><span class="citation" data-cites="jaeger2008">Jaeger (<a href="#ref-jaeger2008" role="doc-biblioref">2008</a>)</span> — カテゴリカルデータを「慣例的にANOVA」で処理する発想から、ロジット混合モデルへ移る必要性を明快に示した古典的チュートリアルです。</p></li>
+<li><p><span class="citation" data-cites="brown2021">Brown (<a href="#ref-brown2021" role="doc-biblioref">2021</a>)</span> — 線形混合効果モデルの考え方、モデル式の読み方、<code>lme4</code> の使い方を一通り確認するのに向いた導入論文です。</p></li>
+<li><p><span class="citation" data-cites="cunnings2012">Cunnings (<a href="#ref-cunnings2012" role="doc-biblioref">2012</a>)</span> — 第二言語研究者向けに混合効果モデルを概説したレビューです。応用言語学・英語教育の読者には特に読みやすいです。</p></li>
+<li><p><span class="citation" data-cites="schad2020">Schad et al. (<a href="#ref-schad2020" role="doc-biblioref">2020</a>)</span> — コントラスト符号化を曖昧なままにしないための重要なチュートリアルです。要因の効果をどのように表現し、どの比較を検定しているのかを丁寧に理解できます。</p></li>
+<li><p><span class="citation" data-cites="lo2015">Lo &amp; Andrews (<a href="#ref-lo2015" role="doc-biblioref">2015</a>)</span> — 反応時間データに対して、対数変換に頼るべきか、GLMMを使うべきかを考えるための実践的なガイドです。</p></li>
+<li><p><span class="citation" data-cites="lachaud2011">Lachaud &amp; Renaud (<a href="#ref-lachaud2011" role="doc-biblioref">2011</a>)</span> — 反応時間データの前処理、外れ値処理、欠測への対応、モデル選択までをまとめて扱っており、実務的に有用な論文です。</p></li>
+</ul>
+</section>
+<section id="ベイズ統計と-brms-stan" class="level3" data-number="26.4.2">
+<h3 data-number="26.4.2" class="anchored" data-anchor-id="ベイズ統計と-brms-stan"><span class="header-section-number">26.4.2</span> ベイズ統計と <code>brms</code> / Stan</h3>
+<ul>
+<li><p><span class="citation" data-cites="burkner2017">Bürkner (<a href="#ref-burkner2017" role="doc-biblioref">2017</a>)</span> — <code>brms</code> の基本的な構文と設計思想を理解するための標準的なパッケージ論文です。ベイズ版の多層モデルをRから扱う入口として最適です。</p></li>
+<li><p><span class="citation" data-cites="burkner2018">Bürkner (<a href="#ref-burkner2018" role="doc-biblioref">2018</a>)</span> — <code>brms</code> を使ったより高度なベイズ多層モデリングの解説です。分布族、非線形モデル、多層構造を拡張したいときに役立ちます。</p></li>
+<li><p><span class="citation" data-cites="winter2021">Winter &amp; Bürkner (<a href="#ref-winter2021" role="doc-biblioref">2021</a>)</span> — 言語データで頻出するカウントデータを、<code>brms</code> でどうモデル化するかを学ぶ実践的チュートリアルです。</p></li>
+<li><p><span class="citation" data-cites="vasishth2018">Vasishth et al. (<a href="#ref-vasishth2018" role="doc-biblioref">2018</a>)</span> — 音声学データを例に、ベイズ統計の考え方と実装を結びつけた入門論文です。ベイズ章の補助文献として有用です。</p></li>
+<li><p><span class="citation" data-cites="vehtari2017">Vehtari et al. (<a href="#ref-vehtari2017" role="doc-biblioref">2017</a>)</span> — LOOやWAICを用いたベイズモデル評価の基準点になる論文です。ベイズモデル比較を「AICの置き換え」で済ませないためにも重要です。</p></li>
+</ul>
+</section>
+<section id="潜在変数モデルsemirt" class="level3" data-number="26.4.3">
+<h3 data-number="26.4.3" class="anchored" data-anchor-id="潜在変数モデルsemirt"><span class="header-section-number">26.4.3</span> 潜在変数モデル・SEM・IRT</h3>
+<ul>
+<li><p><span class="citation" data-cites="rosseel2012">Rosseel (<a href="#ref-rosseel2012" role="doc-biblioref">2012</a>)</span> — <code>lavaan</code> の基本的な使い方と設計思想を理解するための標準的なパッケージ論文です。SEMや確認的因子分析をRで行うなら最初に読んでおきたい文献です。</p></li>
+<li><p><span class="citation" data-cites="merkle2018">Merkle &amp; Rosseel (<a href="#ref-merkle2018" role="doc-biblioref">2018</a>)</span> — <code>blavaan</code> によるベイズSEMの導入です。<code>lavaan</code> の文法を活かしながらベイズ的にSEMを扱いたいときに役立ちます。</p></li>
+<li><p><span class="citation" data-cites="flora2020">Flora (<a href="#ref-flora2020" role="doc-biblioref">2020</a>)</span> — <code>alpha</code> だけで信頼性を語らず、<code>omega</code> を含めて考えるためのチュートリアルです。尺度開発や因子分析の読解力を補強します。</p></li>
+<li><p><span class="citation" data-cites="holgadotello2010">Holgado-Tello et al. (<a href="#ref-holgadotello2010" role="doc-biblioref">2010</a>)</span> — 順序尺度項目に対してPearson相関を使うか、polychoric相関を使うかという論点を整理した論文です。順序カテゴリの項目が多い調査研究では特に重要です。</p></li>
+<li><p><span class="citation" data-cites="chalmers2012">Chalmers (<a href="#ref-chalmers2012" role="doc-biblioref">2012</a>)</span> — 多次元IRTを含む <code>mirt</code> パッケージの標準論文です。IRTの実装をRで進める際の参照先として非常に有用です。</p></li>
+<li><p><span class="citation" data-cites="burkner2021">Bürkner (<a href="#ref-burkner2021" role="doc-biblioref">2021</a>)</span> — <code>brms</code> と Stan を用いたベイズIRTの解説です。IRTをベイズ的に扱いたい場合の現代的な入口になります。</p></li>
+<li><p><span class="citation" data-cites="sijtsmavanderark2017">Sijtsma &amp; Ark (<a href="#ref-sijtsmavanderark2017" role="doc-biblioref">2017</a>)</span> — Mokken尺度分析の考え方と実装を丁寧に説明したチュートリアルです。ノンパラメトリックIRTの導入として有用です。</p></li>
+</ul>
+</section>
+<section id="縦断データ動的データgamm" class="level3" data-number="26.4.4">
+<h3 data-number="26.4.4" class="anchored" data-anchor-id="縦断データ動的データgamm"><span class="header-section-number">26.4.4</span> 縦断データ・動的データ・GAMM</h3>
+<ul>
+<li><p><span class="citation" data-cites="wieling2018gamm">Wieling (<a href="#ref-wieling2018gamm" role="doc-biblioref">2018</a>)</span> — 動的な音声データをGAMMで扱うための代表的なチュートリアルです。時間方向に滑らかに変化するデータを扱うときの入口として有用です。</p></li>
+<li><p><span class="citation" data-cites="pedersen2019">Pedersen et al. (<a href="#ref-pedersen2019" role="doc-biblioref">2019</a>)</span> — <code>mgcv</code> を用いた階層的GAMの入門論文です。ランダム効果と平滑化項をどう併用するかを理解する助けになります。</p></li>
+<li><p><span class="citation" data-cites="wirtz2025">Wirtz &amp; Pfenninger (<a href="#ref-wirtz2025" role="doc-biblioref">2025</a>)</span> — 第二言語発達データを対象にしたGAMのチュートリアルです。応用言語学の文脈に近い例で長期的変化を扱えます。</p></li>
+</ul>
+</section>
+<section id="ネットワーク分析メタ分析因果推論" class="level3" data-number="26.4.5">
+<h3 data-number="26.4.5" class="anchored" data-anchor-id="ネットワーク分析メタ分析因果推論"><span class="header-section-number">26.4.5</span> ネットワーク分析・メタ分析・因果推論</h3>
+<ul>
+<li><p><span class="citation" data-cites="epskamp2018">Epskamp et al. (<a href="#ref-epskamp2018" role="doc-biblioref">2018</a>)</span> — ネットワーク推定のあとに、エッジの不確実性や中心性の安定性をどう評価するかを示した重要なチュートリアルです。</p></li>
+<li><p><span class="citation" data-cites="saqr2024">Saqr et al. (<a href="#ref-saqr2024" role="doc-biblioref">2024</a>)</span> — Rを用いた社会ネットワーク分析の導入として使えるガイドです。ネットワーク指標、可視化、実装の流れをひと通り確認できます。</p></li>
+<li><p><span class="citation" data-cites="viechtbauer2010">Viechtbauer (<a href="#ref-viechtbauer2010" role="doc-biblioref">2010</a>)</span> — <code>metafor</code> パッケージ論文であり、Rによるメタ分析の最重要参照文献のひとつです。実装と理論の対応が分かりやすいです。</p></li>
+<li><p><span class="citation" data-cites="assink2016">Assink &amp; Wibbelink (<a href="#ref-assink2016" role="doc-biblioref">2016</a>)</span> — 3水準メタ分析をRで実行するためのステップバイステップのチュートリアルです。効果量が入れ子構造を持つ場合に役立ちます。</p></li>
+<li><p><span class="citation" data-cites="jak2021_masem">Jak &amp; Cheung (<a href="#ref-jak2021_masem" role="doc-biblioref">2021</a>)</span> — 1段階のメタ分析的構造方程式モデリングを扱ったチュートリアルです。メタ分析とSEMを接続したいときのよい入口です。</p></li>
+<li><p><span class="citation" data-cites="ho2011">Ho et al. (<a href="#ref-ho2011" role="doc-biblioref">2011</a>)</span> — <code>MatchIt</code> のパッケージ論文です。傾向スコアマッチングを含む前処理の考え方と実装を、Rで確認できます。</p></li>
+</ul>
+</section>
+</section>
+<section id="オンライン教材実務向けリソース" class="level2" data-number="26.5">
+<h2 data-number="26.5" class="anchored" data-anchor-id="オンライン教材実務向けリソース"><span class="header-section-number">26.5</span> オンライン教材・実務向けリソース</h2>
+<ul>
+<li><p><span class="citation" data-cites="kurz_rethinking">Kurz (<a href="#ref-kurz_rethinking" role="doc-biblioref">2023</a>)</span> — <a href="https://xcelab.net/rm/statistical-rethinking/">Statistical Rethinking</a> を <code>brms</code> と tidyverse で読み替えたBookdownです。Stanを直接書かずにベイズの考え方を学びたい人に向いています。</p></li>
+<li><p><span class="citation" data-cites="vasishth_lmm">Vasishth et al. (<a href="#ref-vasishth_lmm" role="doc-biblioref">2024</a>)</span> — 書籍としては執筆途上ですが、線形混合モデルの学習リソースとしては非常に充実しています。式、解釈、シミュレーション、推定のつながりを丁寧に確認できます。</p></li>
+<li><p><span class="citation" data-cites="glmmfaq">Bolker et al. (<a href="#ref-glmmfaq" role="doc-biblioref">2025</a>)</span> — 混合効果モデルで実際に困りやすい収束、過分散、<span class="math inline">\(R^2\)</span>、検定、ランダム効果構造の話題をまとめた定番FAQです。実務上の疑問に対する参照先として便利です。</p></li>
+<li><p><span class="citation" data-cites="nicenboim2025">Nicenboim et al. (<a href="#ref-nicenboim2025" role="doc-biblioref">2025</a>)</span> — <a href="https://vasishth.github.io/bayescogsci/book/">オンライン版</a> が公開されており、<code>brms</code> とStanを使ったベイズ分析を継続的に学びやすいです。</p></li>
+<li><p><span class="citation" data-cites="hox2018">Hox et al. (<a href="#ref-hox2018" role="doc-biblioref">2018</a>)</span> や <span class="citation" data-cites="barr2021">Barr (<a href="#ref-barr2021" role="doc-biblioref">2021</a>)</span> もオンラインで参照しやすく、章を読み進めながら必要な箇所だけ確認する使い方に向いています。</p></li>
+</ul>
+</section>
+<section id="参考文献" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="参考文献">参考文献</h2>
+
+
+<!-- -->
+
+<div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list">
+<div id="ref-assink2016" class="csl-entry" role="listitem">
+Assink, M., &amp; Wibbelink, C. J. M. (2016). Fitting three-level meta-analytic models in <span>R</span>: A step-by-step tutorial. <em>The Quantitative Methods for Psychology</em>, <em>12</em>(3), 154–174. <a href="https://doi.org/10.20982/tqmp.12.3.p154">https://doi.org/10.20982/tqmp.12.3.p154</a>
+</div>
+<div id="ref-baayen2008book" class="csl-entry" role="listitem">
+Baayen, R. H. (2008). <em>Analyzing linguistic data: A practical introduction to statistics using <span>R</span></em>. Cambridge University Press. <a href="https://doi.org/10.1017/CBO9780511801686">https://doi.org/10.1017/CBO9780511801686</a>
+</div>
+<div id="ref-barr2021" class="csl-entry" role="listitem">
+Barr, D. J. (2021). <em>Learning statistical models through simulation in <span>R</span></em>. <a href="https://psyteachr.github.io/stat-models-v1/">https://psyteachr.github.io/stat-models-v1/</a>
+</div>
+<div id="ref-glmmfaq" class="csl-entry" role="listitem">
+Bolker, B. et al. (2025). <em>GLMM FAQ</em>. <a href="https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html">https://bbolker.github.io/mixedmodels-misc/glmmFAQ.html</a>
+</div>
+<div id="ref-brown2021" class="csl-entry" role="listitem">
+Brown, V. A. (2021). An introduction to linear Mixed-Effects modeling in <span>R</span>. <em>Advances in Methods and Practices in Psychological Science</em>, <em>4</em>(1), 1–19. <a href="https://doi.org/10.1177/2515245920960351">https://doi.org/10.1177/2515245920960351</a>
+</div>
+<div id="ref-burkner2017" class="csl-entry" role="listitem">
+Bürkner, P.-C. (2017). <span>brms</span>: An <span>R</span> package for <span>Bayesian</span> multilevel models using <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>80</em>(1), 1–28. <a href="https://doi.org/10.18637/jss.v080.i01">https://doi.org/10.18637/jss.v080.i01</a>
+</div>
+<div id="ref-burkner2018" class="csl-entry" role="listitem">
+Bürkner, P.-C. (2018). Advanced <span>Bayesian</span> multilevel modeling with the <span>R</span> package <span>brms</span>. <em>The R Journal</em>, <em>10</em>(1), 395–411. <a href="https://doi.org/10.32614/RJ-2018-017">https://doi.org/10.32614/RJ-2018-017</a>
+</div>
+<div id="ref-burkner2021" class="csl-entry" role="listitem">
+Bürkner, P.-C. (2021). Bayesian item response modeling in <span>R</span> with <span>brms</span> and <span>Stan</span>. <em>Journal of Statistical Software</em>, <em>100</em>(5), 1–54. <a href="https://doi.org/10.18637/jss.v100.i05">https://doi.org/10.18637/jss.v100.i05</a>
+</div>
+<div id="ref-chalmers2012" class="csl-entry" role="listitem">
+Chalmers, R. P. (2012). <span>mirt</span>: A multidimensional item response theory package for the <span>R</span> environment. <em>Journal of Statistical Software</em>, <em>48</em>(6), 1–29. <a href="https://doi.org/10.18637/jss.v048.i06">https://doi.org/10.18637/jss.v048.i06</a>
+</div>
+<div id="ref-cunnings2012" class="csl-entry" role="listitem">
+Cunnings, I. (2012). An overview of Mixed-Effects statistical models for second language researchers. <em>Second Language Research</em>, <em>28</em>(3), 369–382. <a href="https://doi.org/10.1177/0267658312443651">https://doi.org/10.1177/0267658312443651</a>
+</div>
+<div id="ref-epskamp2018" class="csl-entry" role="listitem">
+Epskamp, S., Borsboom, D., &amp; Fried, E. I. (2018). Estimating psychological networks and their accuracy: A tutorial paper. <em>Behavior Research Methods</em>, <em>50</em>, 195–212. <a href="https://doi.org/10.3758/s13428-017-0862-1">https://doi.org/10.3758/s13428-017-0862-1</a>
+</div>
+<div id="ref-flora2020" class="csl-entry" role="listitem">
+Flora, D. B. (2020). Your coefficient alpha is probably wrong, but which coefficient omega is right? <span>A</span> tutorial on using <span>R</span> to obtain better reliability estimates. <em>Advances in Methods and Practices in Psychological Science</em>, <em>3</em>(4), 484–501. <a href="https://doi.org/10.1177/2515245920951747">https://doi.org/10.1177/2515245920951747</a>
+</div>
+<div id="ref-fox2019" class="csl-entry" role="listitem">
+Fox, J., &amp; Weisberg, S. (2019). <em>An <span>R</span> companion to applied regression</em> (3rd ed.). Sage Publications. <a href="https://socialsciences.mcmaster.ca/jfox/Books/Companion/">https://socialsciences.mcmaster.ca/jfox/Books/Companion/</a>
+</div>
+<div id="ref-gelman2020" class="csl-entry" role="listitem">
+Gelman, A., Hill, J., &amp; Vehtari, A. (2020). <em>Regression and other stories</em>. Cambridge University Press. <a href="https://doi.org/10.1017/9781139161879">https://doi.org/10.1017/9781139161879</a>
+</div>
+<div id="ref-gries2021book" class="csl-entry" role="listitem">
+Gries, S. Th. (2021). <em>Statistics for linguistics with <span>R</span>: A practical introduction</em> (3rd ed.). De Gruyter Mouton. <a href="https://doi.org/10.1515/9783110718256">https://doi.org/10.1515/9783110718256</a>
+</div>
+<div id="ref-harrer2021" class="csl-entry" role="listitem">
+Harrer, M., Cuijpers, P., Furukawa, T. A., &amp; Ebert, D. D. (2021). <em>Doing Meta-Analysis with <span>R</span>: A Hands-On guide</em>. Chapman; Hall/CRC Press. <a href="https://doi.org/10.1201/9781003107347">https://doi.org/10.1201/9781003107347</a>
+</div>
+<div id="ref-hastie2009" class="csl-entry" role="listitem">
+Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009). <em>The elements of statistical learning: Data mining, inference, and prediction</em> (2nd ed.). Springer. <a href="https://doi.org/10.1007/978-0-387-84858-7">https://doi.org/10.1007/978-0-387-84858-7</a>
+</div>
+<div id="ref-ho2011" class="csl-entry" role="listitem">
+Ho, D. E., Imai, K., King, G., &amp; Stuart, E. A. (2011). <span>MatchIt</span>: Nonparametric Preprocessing for Parametric Causal Inference. <em>Journal of Statistical Software</em>, <em>42</em>(8), 1–28. <a href="https://doi.org/10.18637/jss.v042.i08">https://doi.org/10.18637/jss.v042.i08</a>
+</div>
+<div id="ref-holgadotello2010" class="csl-entry" role="listitem">
+Holgado-Tello, F. P., Chacón-Moscoso, S., Barbero-García, I., &amp; Vila-Abad, E. (2010). Polychoric versus <span>Pearson</span> correlations in exploratory and confirmatory factor analysis of ordinal variables. <em>Quality &amp; Quantity</em>, <em>44</em>(1), 153–166. <a href="https://doi.org/10.1007/s11135-008-9190-y">https://doi.org/10.1007/s11135-008-9190-y</a>
+</div>
+<div id="ref-hox2018" class="csl-entry" role="listitem">
+Hox, J. J., Moerbeek, M., &amp; Schoot, R. van de. (2018). <em>Multilevel analysis: Techniques and applications</em> (3rd ed.). Routledge. <a href="https://doi.org/10.4324/9781315650982">https://doi.org/10.4324/9781315650982</a>
+</div>
+<div id="ref-jaeger2008" class="csl-entry" role="listitem">
+Jaeger, T. F. (2008). Categorical data analysis: Away from <span>ANOVAs</span> (transformation or not) and towards logit mixed models. <em>Journal of Memory and Language</em>, <em>59</em>(4), 434–446. <a href="https://doi.org/10.1016/j.jml.2007.11.007">https://doi.org/10.1016/j.jml.2007.11.007</a>
+</div>
+<div id="ref-jak2021_masem" class="csl-entry" role="listitem">
+Jak, S., &amp; Cheung, M. W.-L. (2021). Meta-analytic structural equation modeling made easy: A tutorial and web application for one-stage <span>MASEM</span>. <em>Research Synthesis Methods</em>, <em>12</em>(5), 590–606. <a href="https://doi.org/10.1002/jrsm.1498">https://doi.org/10.1002/jrsm.1498</a>
+</div>
+<div id="ref-kurz_rethinking" class="csl-entry" role="listitem">
+Kurz, A. S. (2023). <em>Statistical rethinking with brms, ggplot2, and the tidyverse</em>. <a href="https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/">https://bookdown.org/ajkurz/Statistical_Rethinking_recoded/</a>
+</div>
+<div id="ref-lachaud2011" class="csl-entry" role="listitem">
+Lachaud, C. M., &amp; Renaud, O. (2011). A tutorial for analyzing human reaction times: How to filter data, manage missing values, and choose a statistical model. <em>Applied Psycholinguistics</em>, <em>32</em>(2), 389–416. <a href="https://doi.org/10.1017/S0142716410000457">https://doi.org/10.1017/S0142716410000457</a>
+</div>
+<div id="ref-levshina2015" class="csl-entry" role="listitem">
+Levshina, N. (2015). <em>How to do linguistics with <span>R</span>: Data exploration and statistical analysis</em>. John Benjamins. <a href="https://doi.org/10.1075/z.195">https://doi.org/10.1075/z.195</a>
+</div>
+<div id="ref-lo2015" class="csl-entry" role="listitem">
+Lo, S., &amp; Andrews, S. (2015). To transform or not to transform: Using generalized linear mixed models to analyse reaction time data. <em>Frontiers in Psychology</em>, <em>6</em>, 1171. <a href="https://doi.org/10.3389/fpsyg.2015.01171">https://doi.org/10.3389/fpsyg.2015.01171</a>
+</div>
+<div id="ref-merkle2018" class="csl-entry" role="listitem">
+Merkle, E. C., &amp; Rosseel, Y. (2018). blavaan: <span>B</span>ayesian Structural Equation Models via Parameter Expansion. <em>Journal of Statistical Software</em>, <em>85</em>(4), 1–30. <a href="https://doi.org/10.18637/jss.v085.i04">https://doi.org/10.18637/jss.v085.i04</a>
+</div>
+<div id="ref-nicenboim2025" class="csl-entry" role="listitem">
+Nicenboim, B., Schad, D. J., &amp; Vasishth, S. (2025). <em>An introduction to <span>Bayesian</span> data analysis for cognitive science</em>. Chapman; Hall/CRC. <a href="https://doi.org/10.1201/9781003341734">https://doi.org/10.1201/9781003341734</a>
+</div>
+<div id="ref-pedersen2019" class="csl-entry" role="listitem">
+Pedersen, E. J., Miller, D. L., Simpson, G. L., &amp; Ross, N. (2019). Hierarchical generalized additive models in ecology: An introduction with mgcv. <em>PeerJ</em>, <em>7</em>, e6876. <a href="https://doi.org/10.7717/peerj.6876">https://doi.org/10.7717/peerj.6876</a>
+</div>
+<div id="ref-rosseel2012" class="csl-entry" role="listitem">
+Rosseel, Y. (2012). <span>lavaan</span>: An <span>R</span> package for structural equation modeling. <em>Journal of Statistical Software</em>, <em>48</em>(2), 1–36. <a href="https://doi.org/10.18637/jss.v048.i02">https://doi.org/10.18637/jss.v048.i02</a>
+</div>
+<div id="ref-saqr2024" class="csl-entry" role="listitem">
+Saqr, M., López-Pernas, S., Conde, M. Á., &amp; Hernández-Garcı́a, Á. (2024). Social network analysis: A primer, a guide and a tutorial in <span>R</span>. <em>Learning Analytics Methods and Tutorials</em> (pp. 473–511). Springer. <a href="https://doi.org/10.1007/978-3-031-54464-4_15">https://doi.org/10.1007/978-3-031-54464-4_15</a>
+</div>
+<div id="ref-schad2020" class="csl-entry" role="listitem">
+Schad, D. J., Vasishth, S., Hohenstein, S., &amp; Kliegl, R. (2020). How to Capitalize on a Priori Contrasts in Linear (Mixed) Models: A Tutorial. <em>Journal of Memory and Language</em>, <em>110</em>, 104038. <a href="https://doi.org/10.1016/j.jml.2019.104038">https://doi.org/10.1016/j.jml.2019.104038</a>
+</div>
+<div id="ref-sijtsmavanderark2017" class="csl-entry" role="listitem">
+Sijtsma, K., &amp; Ark, L. A. van der. (2017). A tutorial on how to do a mokken scale analysis on your test and questionnaire data. <em>British Journal of Mathematical and Statistical Psychology</em>, <em>70</em>(1), 137–158. <a href="https://doi.org/10.1111/bmsp.12078">https://doi.org/10.1111/bmsp.12078</a>
+</div>
+<div id="ref-singer2003" class="csl-entry" role="listitem">
+Singer, J. D., &amp; Willett, J. B. (2003). <em>Applied longitudinal data analysis: Modeling change and event occurrence</em>. Oxford University Press. <a href="https://doi.org/10.1093/acprof:oso/9780195152968.001.0001">https://doi.org/10.1093/acprof:oso/9780195152968.001.0001</a>
+</div>
+<div id="ref-vasishth2018" class="csl-entry" role="listitem">
+Vasishth, S., Nicenboim, B., Beckman, M. E., Li, F., &amp; Kong, E. J. (2018). <span>Bayesian</span> data analysis in the phonetic sciences: A tutorial introduction. <em>Journal of Phonetics</em>, <em>71</em>, 147–161. <a href="https://doi.org/10.1016/j.wocn.2018.07.008">https://doi.org/10.1016/j.wocn.2018.07.008</a>
+</div>
+<div id="ref-vasishth_lmm" class="csl-entry" role="listitem">
+Vasishth, S., Schad, D., Bürki, A., &amp; Kliegl, R. (2024). <em>Linear mixed models in linguistics and psychology: A comprehensive introduction</em>. <a href="https://vasishth.github.io/Freq_CogSci/">https://vasishth.github.io/Freq_CogSci/</a>
+</div>
+<div id="ref-vehtari2017" class="csl-entry" role="listitem">
+Vehtari, A., Gelman, A., &amp; Gabry, J. (2017). Practical <span>Bayesian</span> model evaluation using Leave-One-Out Cross-Validation and <span>WAIC</span>. <em>Statistics and Computing</em>, <em>27</em>(5), 1413–1432. <a href="https://doi.org/10.1007/s11222-016-9696-4">https://doi.org/10.1007/s11222-016-9696-4</a>
+</div>
+<div id="ref-viechtbauer2010" class="csl-entry" role="listitem">
+Viechtbauer, W. (2010). Conducting Meta-Analyses in <span>R</span> with the metafor package. <em>Journal of Statistical Software</em>, <em>36</em>(3), 1–48. <a href="https://doi.org/10.18637/jss.v036.i03">https://doi.org/10.18637/jss.v036.i03</a>
+</div>
+<div id="ref-wieling2018gamm" class="csl-entry" role="listitem">
+Wieling, M. (2018). Analyzing dynamic phonetic data using generalized additive mixed modeling: A tutorial focusing on articulatory differences between <span>L1</span> and <span>L2</span> speakers of <span>English</span>. <em>Journal of Phonetics</em>, <em>70</em>, 86–116. <a href="https://doi.org/10.1016/j.wocn.2018.03.002">https://doi.org/10.1016/j.wocn.2018.03.002</a>
+</div>
+<div id="ref-windhua2022" class="csl-entry" role="listitem">
+Wind, S. A., &amp; Hua, C. (2022). <em>Rasch measurement theory analysis in <span>R</span>: Illustrations and practical guidance for researchers and practitioners</em>. Chapman; Hall/CRC. <a href="https://doi.org/10.1201/9781003308867">https://doi.org/10.1201/9781003308867</a>
+</div>
+<div id="ref-winter2019" class="csl-entry" role="listitem">
+Winter, B. (2019). <em>Statistics for linguists: An introduction using <span>R</span></em>. Routledge. <a href="https://doi.org/10.4324/9781315165547">https://doi.org/10.4324/9781315165547</a>
+</div>
+<div id="ref-winter2021" class="csl-entry" role="listitem">
+Winter, B., &amp; Bürkner, P.-C. (2021). Poisson regression for linguists: A tutorial introduction to modelling count data with <span>brms</span>. <em>Language and Linguistics Compass</em>, <em>15</em>(11), e12439. <a href="https://doi.org/10.1111/lnc3.12439">https://doi.org/10.1111/lnc3.12439</a>
+</div>
+<div id="ref-wirtz2025" class="csl-entry" role="listitem">
+Wirtz, C., &amp; Pfenninger, S. E. (2025). Generalized additive models for longitudinal second language development data: A tutorial. <em>Research Methods in Applied Linguistics</em>, <em>4</em>, 100259. <a href="https://doi.org/10.1016/j.rmal.2025.100259">https://doi.org/10.1016/j.rmal.2025.100259</a>
+</div>
+<div id="ref-kubo2012" class="csl-entry" role="listitem">
+久保拓弥. (2012). <em>データ解析のための統計モデリング入門――一般化線形モデル・階層ベイズモデル・<span>MCMC</span></em>. 岩波書店.
+</div>
+<div id="ref-kosugi2014" class="csl-entry" role="listitem">
+小杉考司., 清水裕士., 押江隆., 山根嵩史., 平川真., 浅野良輔., 竹林由武., 藤原翔., 大谷和大., 森敦広., &amp; 林真広. (2014). <em><span>M-plus</span>と<span>R</span>による構造方程式モデリング入門</em>. 北大路書房.
+</div>
+<div id="ref-shimizu2014" class="csl-entry" role="listitem">
+清水裕士. (2014). <em>個人と集団のマルチレベル分析</em>. ナカニシヤ出版.
+</div>
+<div id="ref-suzuki2017" class="csl-entry" role="listitem">
+鈴木努. (2017). <em><span>R</span>で学ぶデータサイエンス 8 ネットワーク分析</em> (第2版 ed.). 共立出版.
+</div>
+</div>
+</section>
+
+</main> <!-- /main -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.__plotZoomInitialized) return;
+  window.__plotZoomInitialized = true;
+
+  const selector = ".cell-output-display img, .quarto-figure img";
+  const figures = Array.from(document.querySelectorAll(selector)).filter((img) => {
+    if (img.closest("a")) return false;
+    if (img.closest(".plot-zoom-overlay")) return false;
+    const width = img.naturalWidth || img.width || 0;
+    const height = img.naturalHeight || img.height || 0;
+    return width >= 220 || height >= 140;
+  });
+
+  if (!figures.length) return;
+
+  const overlay = document.createElement("div");
+  overlay.id = "plot-zoom-dialog";
+  overlay.className = "plot-zoom-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", "図の拡大表示");
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <button type="button" class="plot-zoom-close" aria-label="拡大表示を閉じる">&times;</button>
+    <div class="plot-zoom-stage">
+      <img class="plot-zoom-image" alt="">
+      <p class="plot-zoom-caption"></p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const zoomedImage = overlay.querySelector(".plot-zoom-image");
+  const caption = overlay.querySelector(".plot-zoom-caption");
+  const closeButton = overlay.querySelector(".plot-zoom-close");
+  let activeTrigger = null;
+
+  const closeOverlay = () => {
+    const trigger = activeTrigger;
+    activeTrigger = null;
+    overlay.hidden = true;
+    document.body.classList.remove("plot-zoom-open");
+    zoomedImage.removeAttribute("src");
+    trigger?.focus();
+  };
+
+  const findCaption = (img) => {
+    const figure = img.closest("figure");
+    const figcaption = figure ? figure.querySelector("figcaption") : null;
+    return figcaption ? figcaption.textContent.trim() : "";
+  };
+
+  const openOverlay = (img) => {
+    activeTrigger = img;
+    zoomedImage.src = img.currentSrc || img.src;
+    zoomedImage.alt = img.alt || "拡大した図";
+    caption.textContent = findCaption(img);
+    overlay.hidden = false;
+    document.body.classList.add("plot-zoom-open");
+    closeButton.focus();
+  };
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay || event.target.closest(".plot-zoom-close")) {
+      closeOverlay();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!overlay.hidden && event.key === "Escape") {
+      closeOverlay();
+    }
+  });
+
+  overlay.addEventListener("keydown", (event) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+      closeButton.focus();
+    }
+  });
+
+  figures.forEach((img) => {
+    img.classList.add("plot-zoom-target");
+    img.tabIndex = 0;
+    img.setAttribute("role", "button");
+    img.setAttribute("aria-haspopup", "dialog");
+    img.setAttribute("aria-controls", overlay.id);
+    img.setAttribute("aria-label", `${img.alt || "図"}を拡大表示`);
+    img.addEventListener("click", () => openOverlay(img));
+    img.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openOverlay(img);
+      }
+    });
+  });
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.__layoutControlsInitialized) return;
+  window.__layoutControlsInitialized = true;
+
+  const sidebar = document.getElementById("quarto-sidebar");
+  if (!sidebar) return;
+
+  const desktopBreakpoint = window.matchMedia("(min-width: 992px)");
+  const storageKey = "ele-book-sidebar-collapsed";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "sidebar-desktop-toggle";
+  button.setAttribute("aria-controls", "quarto-sidebar");
+  document.body.appendChild(button);
+
+  const updateButtonPosition = () => {
+    if (!desktopBreakpoint.matches) {
+      button.hidden = true;
+      return;
+    }
+
+    button.hidden = false;
+    const rect = sidebar.getBoundingClientRect();
+    const collapsed = document.body.classList.contains("sidebar-collapsed");
+    const left = collapsed ? Math.max(16, rect.left + 12) : Math.max(16, rect.right - 28);
+    button.style.left = `${Math.round(left)}px`;
+  };
+
+  const applySidebarState = (collapsed, persist = true) => {
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+    button.textContent = collapsed ? "目次を開く" : "目次を閉じる";
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.setAttribute("aria-label", collapsed ? "左サイドバーを表示" : "左サイドバーを隠す");
+    if (persist) {
+      window.localStorage.setItem(storageKey, collapsed ? "1" : "0");
+    }
+    window.requestAnimationFrame(updateButtonPosition);
+  };
+
+  button.addEventListener("click", () => {
+    const collapsed = document.body.classList.contains("sidebar-collapsed");
+    applySidebarState(!collapsed);
+  });
+
+  const storedCollapsed = window.localStorage.getItem(storageKey) === "1";
+  applySidebarState(storedCollapsed, false);
+
+  window.addEventListener("resize", updateButtonPosition);
+  window.addEventListener("load", updateButtonPosition);
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (window.__sidebarPageTocInitialized) return;
+  window.__sidebarPageTocInitialized = true;
+
+  const sidebar = document.getElementById("quarto-sidebar");
+  const marginSidebar = document.getElementById("quarto-margin-sidebar");
+  const toc = document.getElementById("TOC");
+
+  if (!sidebar) return;
+
+  document.body.classList.add("sidebar-toc-integrated");
+
+  if (!toc || !marginSidebar) return;
+
+  const activeItem = sidebar.querySelector(".sidebar-link.active")?.closest(".sidebar-item");
+  const anchorPoint = activeItem ?? sidebar.querySelector(".sidebar-menu-container");
+  const tocLinks = toc.querySelectorAll("a[data-scroll-target]");
+
+  if (!anchorPoint || tocLinks.length === 0) {
+    marginSidebar.remove();
+    return;
+  }
+
+  const storageKey = "ele-book-page-toc-collapsed";
+  const wrapper = document.createElement("details");
+  wrapper.className = "sidebar-page-toc";
+
+  const storedCollapsed = window.localStorage.getItem(storageKey);
+  wrapper.open = storedCollapsed === null ? true : storedCollapsed !== "1";
+
+  wrapper.addEventListener("toggle", () => {
+    window.localStorage.setItem(storageKey, wrapper.open ? "0" : "1");
+  });
+
+  const summary = document.createElement("summary");
+  summary.className = "sidebar-page-toc-summary";
+  summary.textContent = "このページの見出し";
+  wrapper.appendChild(summary);
+
+  toc.classList.add("sidebar-page-toc-nav");
+  toc.querySelector("#toc-title")?.remove();
+  wrapper.appendChild(toc);
+
+  if (activeItem) {
+    activeItem.classList.add("sidebar-item-current-chapter");
+    activeItem.appendChild(wrapper);
+  } else {
+    anchorPoint.appendChild(wrapper);
+  }
+
+  marginSidebar.remove();
+});
+</script>
+<script>
+(function () {
+  if (window.__readingProgressInitialized) return;
+  window.__readingProgressInitialized = true;
+
+  const init = () => {
+    const bar = document.createElement('div');
+    bar.className = 'reading-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+
+    let ticking = false;
+    const update = () => {
+      const scrolled = window.scrollY;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? Math.min(100, Math.max(0, (scrolled / max) * 100)) : 0;
+      bar.style.setProperty('--progress', pct + '%');
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+<script>
+(function () {
+  if (window.__anchorEnhanceInitialized) return;
+  window.__anchorEnhanceInitialized = true;
+
+  const init = () => {
+    const toast = document.createElement('div');
+    toast.className = 'anchor-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.hidden = true;
+    document.body.appendChild(toast);
+
+    let toastTimer = null;
+    let hideTimer = null;
+    const showToast = (text) => {
+      toast.textContent = text;
+      toast.hidden = false;
+      // force reflow so the transition runs
+      void toast.offsetWidth;
+      toast.classList.add('anchor-toast--visible');
+      clearTimeout(toastTimer);
+      clearTimeout(hideTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('anchor-toast--visible');
+        hideTimer = setTimeout(() => { toast.hidden = true; }, 240);
+      }, 1400);
+    };
+
+    document.addEventListener('click', async (e) => {
+      const link = e.target.closest('.anchorjs-link');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      e.preventDefault();
+
+      const url = window.location.origin + window.location.pathname + href;
+
+      let copied = false;
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(url);
+          copied = true;
+        } catch (_) { /* fall through to navigation */ }
+      }
+
+      const target = document.querySelector(href);
+      if (target) {
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        history.pushState(null, '', href);
+      } else {
+        window.location.hash = href;
+      }
+
+      if (copied) {
+        link.classList.add('anchorjs-copied');
+        setTimeout(() => link.classList.remove('anchorjs-copied'), 1400);
+        showToast('リンクをコピーしました');
+      }
+    });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "コピーしました");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "コピーしました");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+    const viewSource = window.document.getElementById('quarto-view-source') ||
+                       window.document.getElementById('quarto-code-tools-source');
+    if (viewSource) {
+      const sourceUrl = viewSource.getAttribute("data-quarto-source-url");
+      viewSource.addEventListener("click", function(e) {
+        if (sourceUrl) {
+          // rstudio viewer pane
+          if (/\bcapabilities=\b/.test(window.location)) {
+            window.open(sourceUrl);
+          } else {
+            window.location.href = sourceUrl;
+          }
+        } else {
+          const modal = new bootstrap.Modal(document.getElementById('quarto-embedded-source-code-modal'));
+          modal.show();
+        }
+        return false;
+      });
+    }
+    function toggleCodeHandler(show) {
+      return function(e) {
+        const detailsSrc = window.document.querySelectorAll(".cell > details > .sourceCode");
+        for (let i=0; i<detailsSrc.length; i++) {
+          const details = detailsSrc[i].parentElement;
+          if (show) {
+            details.open = true;
+          } else {
+            details.removeAttribute("open");
+          }
+        }
+        const cellCodeDivs = window.document.querySelectorAll(".cell > .sourceCode");
+        const fromCls = show ? "hidden" : "unhidden";
+        const toCls = show ? "unhidden" : "hidden";
+        for (let i=0; i<cellCodeDivs.length; i++) {
+          const codeDiv = cellCodeDivs[i];
+          if (codeDiv.classList.contains(fromCls)) {
+            codeDiv.classList.remove(fromCls);
+            codeDiv.classList.add(toCls);
+          } 
+        }
+        return false;
+      }
+    }
+    const hideAllCode = window.document.getElementById("quarto-hide-all-code");
+    if (hideAllCode) {
+      hideAllCode.addEventListener("click", toggleCodeHandler(false));
+    }
+    const showAllCode = window.document.getElementById("quarto-show-all-code");
+    if (showAllCode) {
+      showAllCode.addEventListener("click", toggleCodeHandler(true));
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./20_欠測データ解析とロバスト統計.html" class="pagination-link" aria-label="欠測データ解析とロバスト統計">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">25</span>&nbsp; <span class="chapter-title">欠測データ解析とロバスト統計</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+  </div>
+</nav><div class="modal fade" id="quarto-embedded-source-code-modal" tabindex="-1" aria-labelledby="quarto-embedded-source-code-modal-label" aria-hidden="true"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="quarto-embedded-source-code-modal-label">ソースコード</h5><button aria-label="閉じる" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="">
+<div class="sourceCode" id="cb2" data-shortcodes="false"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="an">title:</span><span class="co"> "参考文献・推薦書籍"</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="an">bibliography:</span><span class="co"> references_recommended.bib</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="in">```{r}</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co">#| label: required-packages</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">#| eval: false</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>required_packages <span class="ot">&lt;-</span> <span class="fu">character</span>(<span class="dv">0</span>)</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>missing_packages <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(required_packages, <span class="fu">rownames</span>(<span class="fu">installed.packages</span>()))</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (<span class="fu">length</span>(missing_packages) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">install.packages</span>(missing_packages, <span class="at">repos =</span> <span class="st">"https://cloud.r-project.org"</span>)</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="co"># このファイルでは追加パッケージを使用しません。</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>こちらのページでは、Rを使った統計モデリングを学ぶための書籍、チュートリアル論文、オンライン教材をまとめています。単なる「本の一覧」ではなく、「まず全体像をつかむ」「必要になった手法を実装する」「理論的背景を補う」という順番で使えるように整理しています。とくにチュートリアル論文は、特定の分析を実際に行う直前に読む資料として位置づけています。</span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="fu">## このページの使い方</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>まず統計モデリング全体の地図をつかみたい場合は、次節の「まず読む本」から入るのが無難です。</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>ある手法をすぐ使いたい場合は、「チュートリアル論文・レビュー論文」から該当トピックへ進む方が効率的です。</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>実装上の細かな疑問、パッケージの書式、モデル比較の作法を確認したい場合は、「オンライン教材・実務向けリソース」を併用するとよいです。</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a><span class="fu">## 急いでいる人向け</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>統計モデリング全体の入口として最初の1冊を選ぶなら、@winter2019 が最も勧めやすいです。回帰から混合効果モデルまでを無理なくつなぎます。</span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>混合効果モデルにすぐ入りたいなら、@jaeger2008 と @brown2021 の組み合わせが効率的です。前者で必要性を理解し、後者で実装と解釈を確認できます。</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>ベイズ統計に入るなら、@burkner2017 と @nicenboim2025 が実践的です。<span class="in">`brms`</span> の書き方と、ベイズ的な考え方の両方を理解できます。</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>潜在変数モデルや因子分析に入るなら、@rosseel2012 と @flora2020 がよい入口です。<span class="in">`lavaan`</span> の基本と、信頼性指標の扱いを補強できます。</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>IRTやラッシュモデルに入るなら、@chalmers2012、@burkner2021、@sijtsmavanderark2017 を順に見ると、古典的IRT、多次元IRT、ノンパラメトリック尺度分析の違いが見えます。</span>
+<span id="cb2-37"><a href="#cb2-37" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>ネットワーク分析、メタ分析、因果推論に手を出すなら、@epskamp2018、@viechtbauer2010、@ho2011 がそれぞれの最初の足場になります。</span>
+<span id="cb2-38"><a href="#cb2-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-39"><a href="#cb2-39" aria-hidden="true" tabindex="-1"></a><span class="fu">## まず読む本</span></span>
+<span id="cb2-40"><a href="#cb2-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-41"><a href="#cb2-41" aria-hidden="true" tabindex="-1"></a><span class="fu">### 全体像をつかむための本</span></span>
+<span id="cb2-42"><a href="#cb2-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-43"><a href="#cb2-43" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@winter2019 — 回帰分析の考え方から混合効果モデルへの橋渡しまでを、言語データに近い例で学べる入門書です。本書の多くの章に接続しやすく、最初の1冊として適しています。</span>
+<span id="cb2-44"><a href="#cb2-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-45"><a href="#cb2-45" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@levshina2015 — 探索的データ解析、回帰、決定木、ランダムフォレストまで幅広く扱う入門書です。回帰一辺倒ではなく、分析の選択肢を早い段階で見渡したい人に向いています。</span>
+<span id="cb2-46"><a href="#cb2-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-47"><a href="#cb2-47" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@baayen2008book — 言語データの分析を統計モデリングとしてどう考えるかを学ぶ古典的な本です。初版の<span class="co">[</span><span class="ot">PDF</span><span class="co">](http://www.sfs.uni-tuebingen.de/~hbaayen/publications/baayenCUPstats.pdf)</span>が公開されており、混合効果モデルが広まっていく時代の空気も感じられます。</span>
+<span id="cb2-48"><a href="#cb2-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-49"><a href="#cb2-49" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@kubo2012 — GLM、GLMM、ベイズまでをひとつの流れで学べる定番書です。日本語で統計モデリングの発想をつかみたい場合には、依然として強力な入口です。</span>
+<span id="cb2-50"><a href="#cb2-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-51"><a href="#cb2-51" aria-hidden="true" tabindex="-1"></a><span class="fu">### トピック別に深めるための本</span></span>
+<span id="cb2-52"><a href="#cb2-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-53"><a href="#cb2-53" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@fox2019 — 一般化線形モデルを中心に、回帰モデルの実務を丁寧に扱った本です。<span class="in">`car`</span> パッケージや効果の可視化まで含めて確認したいときに役立ちます。</span>
+<span id="cb2-54"><a href="#cb2-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-55"><a href="#cb2-55" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@gelman2020 — 回帰分析、モデル化、因果推論的な発想を、ベイズ的な視点も交えて学べる本です。推定値を「どう解釈するか」に強い本で、数式よりも考え方を重視する読者に向いています。</span>
+<span id="cb2-56"><a href="#cb2-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-57"><a href="#cb2-57" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@hox2018 — マルチレベル分析の体系的な教科書です。ランダム切片やランダム傾きの基礎から、より高度な話題まで一段深く学びたいときの標準文献です。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://multilevel-analysis.sites.uu.nl/)</span>もあります。</span>
+<span id="cb2-58"><a href="#cb2-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-59"><a href="#cb2-59" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@shimizu2014 — 日本語でマルチレベル分析を学びたい場合の有力候補です。個人レベルと集団レベルの切り分けを丁寧に確認できます。</span>
+<span id="cb2-60"><a href="#cb2-60" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-61"><a href="#cb2-61" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@barr2021 — シミュレーションを通して統計モデルを理解するオンライン教科書です。混合効果モデルを「式の丸暗記」ではなく、データ生成の観点から理解したい人に向いています。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://psyteachr.github.io/stat-models-v1/)</span>のみです。</span>
+<span id="cb2-62"><a href="#cb2-62" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-63"><a href="#cb2-63" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@gries2021book — コーパスデータを例に統計モデリングを学べる実践的な本です。混合効果モデルや決定木など、言語研究でよく出会う手法を横断的に見られます。</span>
+<span id="cb2-64"><a href="#cb2-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-65"><a href="#cb2-65" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@hastie2009 — 回帰と予測を起点に、機械学習まで視野を広げたいときの古典的定番書です。統計モデリングをより広いデータサイエンスの文脈で捉えたいときに有用です。</span>
+<span id="cb2-66"><a href="#cb2-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-67"><a href="#cb2-67" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@vasishth_lmm — 線形混合モデルについて非常に丁寧に書かれたオンライン草稿です。視線計測や反応時間の例が多く、実験系の言語研究と相性がよいです。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://vasishth.github.io/Freq_CogSci/)</span>。</span>
+<span id="cb2-68"><a href="#cb2-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-69"><a href="#cb2-69" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@nicenboim2025 — 認知科学データを題材にベイズ統計を学ぶ本です。<span class="in">`brms`</span> と Stan を用いた現代的な実装に強く、混合効果とベイズをつなぎたいときに有効です。<span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://vasishth.github.io/bayescogsci/book/)</span>。</span>
+<span id="cb2-70"><a href="#cb2-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-71"><a href="#cb2-71" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@kosugi2014 — 観測変数と潜在変数、説明変数と目的変数という整理に基づき、多様な統計モデリングを見渡せる本です。本書全体の「地図」を別の角度から補強します。</span>
+<span id="cb2-72"><a href="#cb2-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-73"><a href="#cb2-73" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@singer2003 — 縦断データをどうモデル化するかを学ぶ定番書です。成長曲線モデルやイベント発生モデルまで含めて、時系列的・発達的なデータを扱う前に読んでおくと理解が安定します。</span>
+<span id="cb2-74"><a href="#cb2-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-75"><a href="#cb2-75" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@windhua2022 — ラッシュモデルをRで実装しながら学べる実践書です。IRT章や測定モデルの章に進む前後に読むと理解が深まります。</span>
+<span id="cb2-76"><a href="#cb2-76" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-77"><a href="#cb2-77" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@suzuki2017 — 日本語でネットワーク分析を学ぶときの定番書です。ネットワークの指標や可視化を体系的に学ぶのに向いています。</span>
+<span id="cb2-78"><a href="#cb2-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-79"><a href="#cb2-79" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@harrer2021 — <span class="in">`metafor`</span> や <span class="in">`meta`</span> を使ったメタ分析の実践書です。コードベースで学べるので、メタ分析を手で動かしたい読者には特に有用です。</span>
+<span id="cb2-80"><a href="#cb2-80" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-81"><a href="#cb2-81" aria-hidden="true" tabindex="-1"></a><span class="fu">## チュートリアル論文・レビュー論文</span></span>
+<span id="cb2-82"><a href="#cb2-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-83"><a href="#cb2-83" aria-hidden="true" tabindex="-1"></a><span class="fu">### 回帰・GLM・混合効果モデル</span></span>
+<span id="cb2-84"><a href="#cb2-84" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-85"><a href="#cb2-85" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@jaeger2008 — カテゴリカルデータを「慣例的にANOVA」で処理する発想から、ロジット混合モデルへ移る必要性を明快に示した古典的チュートリアルです。</span>
+<span id="cb2-86"><a href="#cb2-86" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-87"><a href="#cb2-87" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@brown2021 — 線形混合効果モデルの考え方、モデル式の読み方、<span class="in">`lme4`</span> の使い方を一通り確認するのに向いた導入論文です。</span>
+<span id="cb2-88"><a href="#cb2-88" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-89"><a href="#cb2-89" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@cunnings2012 — 第二言語研究者向けに混合効果モデルを概説したレビューです。応用言語学・英語教育の読者には特に読みやすいです。</span>
+<span id="cb2-90"><a href="#cb2-90" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-91"><a href="#cb2-91" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@schad2020 — コントラスト符号化を曖昧なままにしないための重要なチュートリアルです。要因の効果をどのように表現し、どの比較を検定しているのかを丁寧に理解できます。</span>
+<span id="cb2-92"><a href="#cb2-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-93"><a href="#cb2-93" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@lo2015 — 反応時間データに対して、対数変換に頼るべきか、GLMMを使うべきかを考えるための実践的なガイドです。</span>
+<span id="cb2-94"><a href="#cb2-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-95"><a href="#cb2-95" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@lachaud2011 — 反応時間データの前処理、外れ値処理、欠測への対応、モデル選択までをまとめて扱っており、実務的に有用な論文です。</span>
+<span id="cb2-96"><a href="#cb2-96" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-97"><a href="#cb2-97" aria-hidden="true" tabindex="-1"></a><span class="fu">### ベイズ統計と `brms` / Stan</span></span>
+<span id="cb2-98"><a href="#cb2-98" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-99"><a href="#cb2-99" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@burkner2017 — <span class="in">`brms`</span> の基本的な構文と設計思想を理解するための標準的なパッケージ論文です。ベイズ版の多層モデルをRから扱う入口として最適です。</span>
+<span id="cb2-100"><a href="#cb2-100" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-101"><a href="#cb2-101" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@burkner2018 — <span class="in">`brms`</span> を使ったより高度なベイズ多層モデリングの解説です。分布族、非線形モデル、多層構造を拡張したいときに役立ちます。</span>
+<span id="cb2-102"><a href="#cb2-102" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-103"><a href="#cb2-103" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@winter2021 — 言語データで頻出するカウントデータを、<span class="in">`brms`</span> でどうモデル化するかを学ぶ実践的チュートリアルです。</span>
+<span id="cb2-104"><a href="#cb2-104" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-105"><a href="#cb2-105" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@vasishth2018 — 音声学データを例に、ベイズ統計の考え方と実装を結びつけた入門論文です。ベイズ章の補助文献として有用です。</span>
+<span id="cb2-106"><a href="#cb2-106" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-107"><a href="#cb2-107" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@vehtari2017 — LOOやWAICを用いたベイズモデル評価の基準点になる論文です。ベイズモデル比較を「AICの置き換え」で済ませないためにも重要です。</span>
+<span id="cb2-108"><a href="#cb2-108" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-109"><a href="#cb2-109" aria-hidden="true" tabindex="-1"></a><span class="fu">### 潜在変数モデル・SEM・IRT</span></span>
+<span id="cb2-110"><a href="#cb2-110" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-111"><a href="#cb2-111" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@rosseel2012 — <span class="in">`lavaan`</span> の基本的な使い方と設計思想を理解するための標準的なパッケージ論文です。SEMや確認的因子分析をRで行うなら最初に読んでおきたい文献です。</span>
+<span id="cb2-112"><a href="#cb2-112" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-113"><a href="#cb2-113" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@merkle2018 — <span class="in">`blavaan`</span> によるベイズSEMの導入です。<span class="in">`lavaan`</span> の文法を活かしながらベイズ的にSEMを扱いたいときに役立ちます。</span>
+<span id="cb2-114"><a href="#cb2-114" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-115"><a href="#cb2-115" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@flora2020 — <span class="in">`alpha`</span> だけで信頼性を語らず、<span class="in">`omega`</span> を含めて考えるためのチュートリアルです。尺度開発や因子分析の読解力を補強します。</span>
+<span id="cb2-116"><a href="#cb2-116" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-117"><a href="#cb2-117" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@holgadotello2010 — 順序尺度項目に対してPearson相関を使うか、polychoric相関を使うかという論点を整理した論文です。順序カテゴリの項目が多い調査研究では特に重要です。</span>
+<span id="cb2-118"><a href="#cb2-118" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-119"><a href="#cb2-119" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@chalmers2012 — 多次元IRTを含む <span class="in">`mirt`</span> パッケージの標準論文です。IRTの実装をRで進める際の参照先として非常に有用です。</span>
+<span id="cb2-120"><a href="#cb2-120" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-121"><a href="#cb2-121" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@burkner2021 — <span class="in">`brms`</span> と Stan を用いたベイズIRTの解説です。IRTをベイズ的に扱いたい場合の現代的な入口になります。</span>
+<span id="cb2-122"><a href="#cb2-122" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-123"><a href="#cb2-123" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@sijtsmavanderark2017 — Mokken尺度分析の考え方と実装を丁寧に説明したチュートリアルです。ノンパラメトリックIRTの導入として有用です。</span>
+<span id="cb2-124"><a href="#cb2-124" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-125"><a href="#cb2-125" aria-hidden="true" tabindex="-1"></a><span class="fu">### 縦断データ・動的データ・GAMM</span></span>
+<span id="cb2-126"><a href="#cb2-126" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-127"><a href="#cb2-127" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@wieling2018gamm — 動的な音声データをGAMMで扱うための代表的なチュートリアルです。時間方向に滑らかに変化するデータを扱うときの入口として有用です。</span>
+<span id="cb2-128"><a href="#cb2-128" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-129"><a href="#cb2-129" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@pedersen2019 — <span class="in">`mgcv`</span> を用いた階層的GAMの入門論文です。ランダム効果と平滑化項をどう併用するかを理解する助けになります。</span>
+<span id="cb2-130"><a href="#cb2-130" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-131"><a href="#cb2-131" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@wirtz2025 — 第二言語発達データを対象にしたGAMのチュートリアルです。応用言語学の文脈に近い例で長期的変化を扱えます。</span>
+<span id="cb2-132"><a href="#cb2-132" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-133"><a href="#cb2-133" aria-hidden="true" tabindex="-1"></a><span class="fu">### ネットワーク分析・メタ分析・因果推論</span></span>
+<span id="cb2-134"><a href="#cb2-134" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-135"><a href="#cb2-135" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@epskamp2018 — ネットワーク推定のあとに、エッジの不確実性や中心性の安定性をどう評価するかを示した重要なチュートリアルです。</span>
+<span id="cb2-136"><a href="#cb2-136" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-137"><a href="#cb2-137" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@saqr2024 — Rを用いた社会ネットワーク分析の導入として使えるガイドです。ネットワーク指標、可視化、実装の流れをひと通り確認できます。</span>
+<span id="cb2-138"><a href="#cb2-138" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-139"><a href="#cb2-139" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@viechtbauer2010 — <span class="in">`metafor`</span> パッケージ論文であり、Rによるメタ分析の最重要参照文献のひとつです。実装と理論の対応が分かりやすいです。</span>
+<span id="cb2-140"><a href="#cb2-140" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-141"><a href="#cb2-141" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@assink2016 — 3水準メタ分析をRで実行するためのステップバイステップのチュートリアルです。効果量が入れ子構造を持つ場合に役立ちます。</span>
+<span id="cb2-142"><a href="#cb2-142" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-143"><a href="#cb2-143" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@jak2021_masem — 1段階のメタ分析的構造方程式モデリングを扱ったチュートリアルです。メタ分析とSEMを接続したいときのよい入口です。</span>
+<span id="cb2-144"><a href="#cb2-144" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-145"><a href="#cb2-145" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@ho2011 — <span class="in">`MatchIt`</span> のパッケージ論文です。傾向スコアマッチングを含む前処理の考え方と実装を、Rで確認できます。</span>
+<span id="cb2-146"><a href="#cb2-146" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-147"><a href="#cb2-147" aria-hidden="true" tabindex="-1"></a><span class="fu">## オンライン教材・実務向けリソース</span></span>
+<span id="cb2-148"><a href="#cb2-148" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-149"><a href="#cb2-149" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@kurz_rethinking — <span class="co">[</span><span class="ot">Statistical Rethinking</span><span class="co">](https://xcelab.net/rm/statistical-rethinking/)</span> を <span class="in">`brms`</span> と tidyverse で読み替えたBookdownです。Stanを直接書かずにベイズの考え方を学びたい人に向いています。</span>
+<span id="cb2-150"><a href="#cb2-150" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-151"><a href="#cb2-151" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@vasishth_lmm — 書籍としては執筆途上ですが、線形混合モデルの学習リソースとしては非常に充実しています。式、解釈、シミュレーション、推定のつながりを丁寧に確認できます。</span>
+<span id="cb2-152"><a href="#cb2-152" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-153"><a href="#cb2-153" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@glmmfaq — 混合効果モデルで実際に困りやすい収束、過分散、$R^2$、検定、ランダム効果構造の話題をまとめた定番FAQです。実務上の疑問に対する参照先として便利です。</span>
+<span id="cb2-154"><a href="#cb2-154" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-155"><a href="#cb2-155" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@nicenboim2025 — <span class="co">[</span><span class="ot">オンライン版</span><span class="co">](https://vasishth.github.io/bayescogsci/book/)</span> が公開されており、<span class="in">`brms`</span> とStanを使ったベイズ分析を継続的に学びやすいです。</span>
+<span id="cb2-156"><a href="#cb2-156" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-157"><a href="#cb2-157" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>@hox2018 や @barr2021 もオンラインで参照しやすく、章を読み進めながら必要な箇所だけ確認する使い方に向いています。</span>
+<span id="cb2-158"><a href="#cb2-158" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-159"><a href="#cb2-159" aria-hidden="true" tabindex="-1"></a><span class="fu">## 参考文献 {.unnumbered}</span></span>
+</code><button title="コピー" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+</div></div></div></div></div>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
